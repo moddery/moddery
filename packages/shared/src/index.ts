@@ -105,15 +105,19 @@ export interface ProjectSummaryContract {
   readonly kind: ProjectKind;
   readonly status: ProjectStatus;
   readonly categories: readonly string[];
+  readonly discordUrl?: string | null;
   readonly downloads: number;
   readonly followers: number;
   readonly gameVersions: readonly string[];
   readonly iconUrl?: string | null;
+  readonly issuesUrl?: string | null;
   readonly license: ProjectLicenseContract;
   readonly links: readonly ProjectLinkContract[];
   readonly loaders: readonly string[];
   readonly gallery: readonly ProjectGalleryImageContract[];
+  readonly sourceUrl?: string | null;
   readonly updatedAt: string;
+  readonly wikiUrl?: string | null;
 }
 
 export interface ProjectLicenseContract {
@@ -136,6 +140,21 @@ export interface ProjectGalleryImageContract {
   readonly rawUrl: string;
   readonly sortOrder: number;
   readonly title?: string | null;
+}
+
+export interface VersionDependencyContract {
+  readonly dependencyKind: DependencyKind;
+  readonly externalFileName?: string | null;
+  readonly id: string;
+  readonly targetProject?: {
+    readonly id: string;
+    readonly slug: string;
+    readonly title: string;
+  } | null;
+  readonly targetVersion?: {
+    readonly id: string;
+    readonly versionNumber: string;
+  } | null;
 }
 
 export interface CatalogQueryContract {

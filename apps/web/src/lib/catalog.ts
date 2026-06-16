@@ -1,5 +1,9 @@
 import { gql } from '@apollo/client';
-import { type ProjectKind, type ReportReason } from '@moddery/shared';
+import {
+  type DependencyKind,
+  type ProjectKind,
+  type ReportReason,
+} from '@moddery/shared';
 
 import { apolloClient, authTokenStorageKey } from '../apollo.js';
 import { type Mod, type ProjectType } from '../types.js';
@@ -127,10 +131,26 @@ export interface ProjectVersion {
   version_type: 'release' | 'beta' | 'alpha';
   date_published: string;
   downloads: number;
+  dependencies: VersionDependency[];
   changelog: string | null;
   game_versions: string[];
   loaders: string[];
   files: ProjectFile[];
+}
+
+export interface VersionDependency {
+  dependencyKind: DependencyKind;
+  externalFileName: string | null;
+  id: string;
+  targetProject: {
+    id: string;
+    slug: string;
+    title: string;
+  } | null;
+  targetVersion: {
+    id: string;
+    versionNumber: string;
+  } | null;
 }
 
 export interface ProjectMember {
@@ -170,10 +190,12 @@ interface ProjectSummary {
   kind: ProjectKind;
   status: string;
   categories: string[];
+  discordUrl: string | null;
   downloads: number;
   followers: number;
   gameVersions: string[];
   iconUrl: string | null;
+  issuesUrl: string | null;
   license: {
     id: string;
     name: string;
@@ -185,6 +207,7 @@ interface ProjectSummary {
     url: string;
   }[];
   loaders: string[];
+  sourceUrl: string | null;
   gallery: {
     createdAt: string;
     description: string | null;
@@ -195,6 +218,7 @@ interface ProjectSummary {
     title: string | null;
   }[];
   updatedAt: string;
+  wikiUrl: string | null;
 }
 
 interface PlatformMetadataQueryData {
@@ -285,11 +309,23 @@ interface CreateProjectReportMutationData {
   createProjectReport: ReportSummary;
 }
 
+interface CreateVersionReportMutationData {
+  createVersionReport: ReportSummary;
+}
+
 interface CreateProjectReportMutationVariables {
   input: {
     body: string;
     projectSlug: string;
     reason: ReportReason;
+  };
+}
+
+interface CreateVersionReportMutationVariables {
+  input: {
+    body: string;
+    reason: ReportReason;
+    versionId: string;
   };
 }
 
@@ -310,6 +346,7 @@ interface VersionSummary {
   changelog: string | null;
   channel: 'RELEASE' | 'BETA' | 'ALPHA';
   datePublished: string | null;
+  dependencies: VersionDependency[];
   downloads: number;
   files: {
     fileName: string;
@@ -335,10 +372,12 @@ const PROJECTS_QUERY = gql`
       kind
       status
       categories
+      discordUrl
       downloads
       followers
       gameVersions
       iconUrl
+      issuesUrl
       license {
         id
         name
@@ -350,6 +389,7 @@ const PROJECTS_QUERY = gql`
         url
       }
       loaders
+      sourceUrl
       gallery {
         createdAt
         description
@@ -360,6 +400,7 @@ const PROJECTS_QUERY = gql`
         title
       }
       updatedAt
+      wikiUrl
     }
   }
 `;
@@ -375,10 +416,12 @@ const PROJECT_BY_SLUG_QUERY = gql`
       kind
       status
       categories
+      discordUrl
       downloads
       followers
       gameVersions
       iconUrl
+      issuesUrl
       license {
         id
         name
@@ -390,6 +433,7 @@ const PROJECT_BY_SLUG_QUERY = gql`
         url
       }
       loaders
+      sourceUrl
       gallery {
         createdAt
         description
@@ -400,6 +444,7 @@ const PROJECT_BY_SLUG_QUERY = gql`
         title
       }
       updatedAt
+      wikiUrl
     }
   }
 `;
@@ -419,6 +464,20 @@ const VERSIONS_FOR_PROJECT_QUERY = gql`
       changelog
       channel
       datePublished
+      dependencies {
+        dependencyKind
+        externalFileName
+        id
+        targetProject {
+          id
+          slug
+          title
+        }
+        targetVersion {
+          id
+          versionNumber
+        }
+      }
       downloads
       files {
         fileName
@@ -514,6 +573,21 @@ const CREATE_PROJECT_REPORT_MUTATION = gql`
   }
 `;
 
+const CREATE_VERSION_REPORT_MUTATION = gql`
+  mutation CreateVersionReport($input: CreateVersionReportInput!) {
+    createVersionReport(input: $input) {
+      body
+      createdAt
+      id
+      projectId
+      reason
+      state
+      userTargetId
+      versionId
+    }
+  }
+`;
+
 const PUBLIC_COLLECTIONS_QUERY = gql`
   query PublicCollections {
     publicCollections {
@@ -539,10 +613,12 @@ const PUBLIC_COLLECTIONS_QUERY = gql`
         kind
         status
         categories
+        discordUrl
         downloads
         followers
         gameVersions
         iconUrl
+        issuesUrl
         license {
           id
           name
@@ -554,6 +630,7 @@ const PUBLIC_COLLECTIONS_QUERY = gql`
           url
         }
         loaders
+        sourceUrl
         gallery {
           createdAt
           description
@@ -564,6 +641,7 @@ const PUBLIC_COLLECTIONS_QUERY = gql`
           title
         }
         updatedAt
+        wikiUrl
       }
       slug
       updatedAt
@@ -798,6 +876,26 @@ export async function createProjectReport(input: {
   return data.createProjectReport;
 }
 
+export async function createVersionReport(input: {
+  body: string;
+  reason: ReportReason;
+  versionId: string;
+}): Promise<ReportSummary> {
+  const { data } = await apolloClient.mutate<
+    CreateVersionReportMutationData,
+    CreateVersionReportMutationVariables
+  >({
+    mutation: CREATE_VERSION_REPORT_MUTATION,
+    variables: { input },
+  });
+
+  if (data === null || data === undefined) {
+    throw new Error('Report did not return from the API');
+  }
+
+  return data.createVersionReport;
+}
+
 export function hasAuthToken(): boolean {
   return localStorage.getItem(authTokenStorageKey) !== null;
 }
@@ -833,10 +931,13 @@ function collectionFromSummary(
 
 function projectDetailsFromSummary(project: ProjectSummary): ProjectDetails {
   const mod = projectFromSummary(project);
-  const sourceUrl = projectLinkUrl(project.links, 'SOURCE');
-  const issuesUrl = projectLinkUrl(project.links, 'ISSUES');
-  const wikiUrl = projectLinkUrl(project.links, 'WIKI');
-  const discordUrl = projectLinkUrl(project.links, 'DISCORD');
+  const sourceUrl =
+    project.sourceUrl ?? projectLinkUrl(project.links, 'SOURCE');
+  const issuesUrl =
+    project.issuesUrl ?? projectLinkUrl(project.links, 'ISSUES');
+  const wikiUrl = project.wikiUrl ?? projectLinkUrl(project.links, 'WIKI');
+  const discordUrl =
+    project.discordUrl ?? projectLinkUrl(project.links, 'DISCORD');
 
   return {
     additional_categories: [],
@@ -854,7 +955,7 @@ function projectDetailsFromSummary(project: ProjectSummary): ProjectDetails {
         url: link.url,
       })),
     downloads: project.downloads,
-    followers: 0,
+    followers: project.followers,
     gallery: project.gallery.map((image) => ({
       created: image.createdAt,
       description: image.description,
@@ -891,6 +992,7 @@ function versionFromSummary(version: VersionSummary): ProjectVersion {
   return {
     changelog: version.changelog,
     date_published: version.datePublished ?? new Date().toISOString(),
+    dependencies: version.dependencies,
     downloads: version.downloads,
     files: version.files.map((file) => ({
       filename: file.fileName,

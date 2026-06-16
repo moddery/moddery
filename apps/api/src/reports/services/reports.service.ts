@@ -90,6 +90,37 @@ export class ReportsService {
       },
     });
   }
+
+  async createUserReport({
+    body,
+    reason,
+    reporterId,
+    username,
+  }: {
+    body: string;
+    reason: ReportReason;
+    reporterId: string;
+    username: string;
+  }) {
+    const userTarget = await this.prisma.user.findUnique({
+      select: { id: true },
+      where: { username },
+    });
+
+    if (userTarget === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.report.create({
+      data: {
+        body: body.trim(),
+        reason,
+        reporterId,
+        userTargetId: userTarget.id,
+      },
+      select: reportSelect(),
+    });
+  }
 }
 
 function reportSelect() {
@@ -114,6 +145,13 @@ function reportSelect() {
       },
     },
     state: true,
+    userTarget: {
+      select: {
+        displayName: true,
+        id: true,
+        username: true,
+      },
+    },
     userTargetId: true,
     versionId: true,
   };

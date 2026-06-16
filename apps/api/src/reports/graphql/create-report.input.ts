@@ -43,3 +43,19 @@ export class CreateVersionReportInput {
   @IsString()
   versionId!: string;
 }
+
+@InputType()
+export class CreateUserReportInput {
+  @Field(() => String)
+  @IsString()
+  @MinLength(8)
+  body!: string;
+
+  @Field(() => String)
+  @IsIn(reportReasons)
+  reason!: ReportReason;
+
+  @Field(() => String)
+  @IsString()
+  username!: string;
+}

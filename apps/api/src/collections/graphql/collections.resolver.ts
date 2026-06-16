@@ -5,6 +5,8 @@ import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { AddProjectToCollectionInput } from '../dto/add-project-to-collection.input.js';
 import { CreateCollectionInput } from '../dto/create-collection.input.js';
+import { RemoveProjectFromCollectionInput } from '../dto/remove-project-from-collection.input.js';
+import { UpdateCollectionInput } from '../dto/update-collection.input.js';
 import { CollectionsService } from '../services/collections.service.js';
 import { CollectionSummary } from './collection-summary.model.js';
 
@@ -32,5 +34,21 @@ export class CollectionsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.collectionsService.createCollection(input, user.id);
+  }
+
+  @Mutation(() => CollectionSummary)
+  removeProjectFromCollection(
+    @Args('input') input: RemoveProjectFromCollectionInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.collectionsService.removeProjectFromCollection(input, user.id);
+  }
+
+  @Mutation(() => CollectionSummary)
+  updateCollection(
+    @Args('input') input: UpdateCollectionInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.collectionsService.updateCollection(input, user.id);
   }
 }

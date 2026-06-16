@@ -50,6 +50,9 @@ export class ReportSummary {
   @Field(() => String)
   state!: string;
 
+  @Field(() => ReportUser, { nullable: true })
+  userTarget?: ReportUser | null;
+
   @Field(() => String, { nullable: true })
   userTargetId!: string | null;
 

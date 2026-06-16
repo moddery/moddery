@@ -1,11 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { isGameVersionTag, type ProjectSummaryContract } from '@moddery/shared';
-import { Loader, type Prisma } from '@prisma/client';
+import { Loader, TeamPermission, type Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SearchService } from '../../search/search.service.js';
+import { type AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.js';
+import { type AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
 import { type CatalogQueryInput } from '../dto/catalog-query.input.js';
 import { type CreateProjectInput } from '../dto/create-project.input.js';
+import { type RemoveProjectTeamMemberInput } from '../dto/remove-project-team-member.input.js';
+import { type UpdateProjectInput } from '../dto/update-project.input.js';
 
 interface ProjectRow {
   description: string;
@@ -197,6 +205,124 @@ export class CatalogService {
     return contract;
   }
 
+  async addProjectGalleryImage(
+    input: AddProjectGalleryImageInput,
+    userId: string,
+  ): Promise<ProjectSummaryContract> {
+    const project = await this.findManagedProject(input.projectSlug, userId);
+
+    await this.prisma.projectGalleryImage.create({
+      data: {
+        description: nullableTrim(input.description),
+        displayUrl: input.displayUrl.trim(),
+        featured: input.featured,
+        projectId: project.id,
+        rawUrl: input.rawUrl.trim(),
+        sortOrder: input.sortOrder ?? 0,
+        title: nullableTrim(input.title),
+      },
+    });
+
+    const updated = await this.prisma.project.findUniqueOrThrow({
+      select: projectSelect(),
+      where: { id: project.id },
+    });
+
+    return projectRowToContract(updated);
+  }
+
+  async updateProject(
+    input: UpdateProjectInput,
+    userId: string,
+  ): Promise<ProjectSummaryContract> {
+    const existing = await this.findManagedProject(input.projectSlug, userId);
+
+    const project = await this.prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        data: projectUpdateData(input),
+        where: { id: existing.id },
+      });
+
+      if (input.categories !== undefined && input.categories !== null) {
+        await replaceProjectCategories(tx, existing.id, input.categories);
+      }
+
+      if (input.gameVersions !== undefined && input.gameVersions !== null) {
+        await replaceProjectGameVersions(tx, existing.id, input.gameVersions);
+      }
+
+      if (input.loaders !== undefined && input.loaders !== null) {
+        await replaceProjectLoaders(tx, existing.id, input.loaders);
+      }
+
+      return tx.project.findUniqueOrThrow({
+        select: projectSelect(),
+        where: { id: existing.id },
+      });
+    });
+
+    const contract = projectRowToContract(project);
+    await this.searchService.indexProjects([projectContractToSearch(contract)]);
+
+    return contract;
+  }
+
+  private async findManagedProject(projectSlug: string, userId: string) {
+    const project = await this.prisma.project.findFirst({
+      select: { id: true },
+      where: {
+        slug: projectSlug,
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              userId,
+            },
+          },
+        },
+      },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
+  }
+
+  private async findProjectForMemberManagement(
+    projectSlug: string,
+    userId: string,
+  ) {
+    const project = await this.prisma.project.findFirst({
+      select: {
+        id: true,
+        teamId: true,
+      },
+      where: {
+        slug: projectSlug,
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: 'MANAGE_MEMBERS' } },
+              ],
+              userId,
+            },
+          },
+        },
+      },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
+  }
+
   async findProjectMembers(
     projectSlug: string,
   ): Promise<ProjectMemberContract[]> {
@@ -228,6 +354,80 @@ export class CatalogService {
     });
 
     return (project?.team.members ?? []).map(projectMemberRowToContract);
+  }
+
+  async addProjectTeamMember(
+    input: AddProjectTeamMemberInput,
+    userId: string,
+  ): Promise<ProjectMemberContract[]> {
+    const project = await this.findProjectForMemberManagement(
+      input.projectSlug,
+      userId,
+    );
+    const user = await this.prisma.user.findFirst({
+      select: { id: true },
+      where: { username: { equals: input.username, mode: 'insensitive' } },
+    });
+
+    if (user === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.prisma.teamMember.upsert({
+      create: {
+        acceptedAt: new Date(),
+        permissions: projectMemberPermissions(input.permissions),
+        role: input.role.trim() || 'Member',
+        teamId: project.teamId,
+        userId: user.id,
+      },
+      update: {
+        acceptedAt: new Date(),
+        permissions: projectMemberPermissions(input.permissions),
+        role: input.role.trim() || 'Member',
+      },
+      where: {
+        teamId_userId: {
+          teamId: project.teamId,
+          userId: user.id,
+        },
+      },
+    });
+
+    return this.findProjectMembers(input.projectSlug);
+  }
+
+  async removeProjectTeamMember(
+    input: RemoveProjectTeamMemberInput,
+    userId: string,
+  ): Promise<ProjectMemberContract[]> {
+    const project = await this.findProjectForMemberManagement(
+      input.projectSlug,
+      userId,
+    );
+    const member = await this.prisma.teamMember.findFirst({
+      select: {
+        id: true,
+        isOwner: true,
+        user: { select: { username: true } },
+      },
+      where: {
+        teamId: project.teamId,
+        user: { username: { equals: input.username, mode: 'insensitive' } },
+      },
+    });
+
+    if (member === null) {
+      throw new NotFoundException('Team member not found');
+    }
+
+    if (member.isOwner) {
+      throw new ForbiddenException('Project owner cannot be removed');
+    }
+
+    await this.prisma.teamMember.delete({ where: { id: member.id } });
+
+    return this.findProjectMembers(input.projectSlug);
   }
 
   async findViewerProjectFollowState(
@@ -391,6 +591,7 @@ async function replaceProjectCategories(
   categories: readonly string[],
 ): Promise<void> {
   const slugs = uniqueNormalized(categories).slice(0, 12);
+  await tx.projectCategory.deleteMany({ where: { projectId } });
   if (slugs.length === 0) return;
 
   for (const slug of slugs) {
@@ -420,6 +621,7 @@ async function replaceProjectGameVersions(
   const normalized = uniqueNormalized(versions)
     .filter(isGameVersionTag)
     .slice(0, 12);
+  await tx.projectGameVersion.deleteMany({ where: { projectId } });
   if (normalized.length === 0) return;
 
   for (const version of normalized) {
@@ -447,6 +649,7 @@ async function replaceProjectLoaders(
     .map(loaderToEnum)
     .filter((loader) => loader !== null)
     .slice(0, 8);
+  await tx.projectLoader.deleteMany({ where: { projectId } });
 
   for (const loader of normalized) {
     await tx.projectLoader.create({
@@ -458,10 +661,50 @@ async function replaceProjectLoaders(
   }
 }
 
+function projectUpdateData(
+  input: UpdateProjectInput,
+): Prisma.ProjectUpdateInput {
+  return {
+    ...(input.description === undefined
+      ? {}
+      : { description: input.description?.trim() ?? '' }),
+    ...(input.discordUrl === undefined
+      ? {}
+      : { discordUrl: optionalUrl(input.discordUrl) }),
+    ...(input.iconUrl === undefined
+      ? {}
+      : { iconUrl: optionalUrl(input.iconUrl) }),
+    ...(input.issuesUrl === undefined
+      ? {}
+      : { issuesUrl: optionalUrl(input.issuesUrl) }),
+    ...(input.sourceUrl === undefined
+      ? {}
+      : { sourceUrl: optionalUrl(input.sourceUrl) }),
+    ...(input.summary === undefined
+      ? {}
+      : { summary: input.summary?.trim() ?? '' }),
+    ...(input.title === undefined ? {} : { title: input.title?.trim() ?? '' }),
+    ...(input.wikiUrl === undefined
+      ? {}
+      : { wikiUrl: optionalUrl(input.wikiUrl) }),
+  };
+}
+
+function optionalUrl(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+function nullableTrim(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed.length === 0 ? null : trimmed;
+}
+
 function projectRowToContract(project: ProjectRow): ProjectSummaryContract {
   return {
     body: project.description,
     categories: project.categories.map(({ category }) => category.slug),
+    discordUrl: project.discordUrl,
     downloads: project.downloads,
     followers: project.followers,
     gallery: project.gallery.map((image) => ({
@@ -473,6 +716,7 @@ function projectRowToContract(project: ProjectRow): ProjectSummaryContract {
     ),
     iconUrl: project.iconUrl,
     id: project.id,
+    issuesUrl: project.issuesUrl,
     kind: project.kind,
     license: {
       id: project.license?.key ?? 'unknown',
@@ -482,10 +726,12 @@ function projectRowToContract(project: ProjectRow): ProjectSummaryContract {
     links: projectLinksToContract(project),
     loaders: project.loaders.map(({ loader }) => loader),
     slug: project.slug,
+    sourceUrl: project.sourceUrl,
     status: project.status,
     summary: project.summary,
     title: project.title,
     updatedAt: project.updatedAt.toISOString(),
+    wikiUrl: project.wikiUrl,
   };
 }
 
@@ -574,6 +820,24 @@ function normalizeSlug(value: string): string {
     .replace(/[^a-z0-9_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);
+}
+
+function projectMemberPermissions(
+  permissions: readonly string[] | null | undefined,
+): TeamPermission[] {
+  const allowed = new Set<TeamPermission>([
+    TeamPermission.MANAGE_DETAILS,
+    TeamPermission.MANAGE_MEMBERS,
+    TeamPermission.MANAGE_SETTINGS,
+    TeamPermission.MANAGE_VERSIONS,
+    TeamPermission.VIEW_ANALYTICS,
+  ]);
+
+  return [...new Set(permissions ?? [])].flatMap((permission) =>
+    allowed.has(permission as TeamPermission)
+      ? [permission as TeamPermission]
+      : [],
+  );
 }
 
 function titleize(slug: string): string {

@@ -63,6 +63,9 @@ export class ProjectSummary {
   @Field(() => Int)
   followers!: number;
 
+  @Field(() => String, { nullable: true })
+  discordUrl!: string | null;
+
   @Field(() => [String])
   gameVersions!: string[];
 
@@ -71,6 +74,9 @@ export class ProjectSummary {
 
   @Field(() => String, { nullable: true })
   iconUrl!: string | null;
+
+  @Field(() => String, { nullable: true })
+  issuesUrl!: string | null;
 
   @Field(() => String)
   kind!: ProjectKind;
@@ -90,6 +96,9 @@ export class ProjectSummary {
   @Field(() => String)
   slug!: string;
 
+  @Field(() => String, { nullable: true })
+  sourceUrl!: string | null;
+
   @Field(() => String)
   status!: ProjectStatus;
 
@@ -101,6 +110,9 @@ export class ProjectSummary {
 
   @Field(() => Date)
   updatedAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  wikiUrl!: string | null;
 }
 
 @ObjectType()

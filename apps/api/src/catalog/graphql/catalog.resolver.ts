@@ -3,8 +3,12 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
+import { AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.js';
+import { AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
 import { CatalogQueryInput } from '../dto/catalog-query.input.js';
 import { CreateProjectInput } from '../dto/create-project.input.js';
+import { RemoveProjectTeamMemberInput } from '../dto/remove-project-team-member.input.js';
+import { UpdateProjectInput } from '../dto/update-project.input.js';
 import { CatalogService } from '../services/catalog.service.js';
 import {
   ProjectFollowState,
@@ -43,6 +47,24 @@ export class CatalogResolver {
     return this.catalogService.findProjectMembers(projectSlug);
   }
 
+  @Mutation(() => [ProjectMemberSummary])
+  addProjectTeamMember(
+    @Args('input') input: AddProjectTeamMemberInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogService.addProjectTeamMember(input, user.id);
+  }
+
+  @Mutation(() => ProjectSummary)
+  async addProjectGalleryImage(
+    @Args('input') input: AddProjectGalleryImageInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return projectToGraphql(
+      await this.catalogService.addProjectGalleryImage(input, user.id),
+    );
+  }
+
   @Mutation(() => ProjectSummary)
   async createProject(
     @Args('input') input: CreateProjectInput,
@@ -51,6 +73,24 @@ export class CatalogResolver {
     return projectToGraphql(
       await this.catalogService.createProject(input, user.id),
     );
+  }
+
+  @Mutation(() => ProjectSummary)
+  async updateProject(
+    @Args('input') input: UpdateProjectInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return projectToGraphql(
+      await this.catalogService.updateProject(input, user.id),
+    );
+  }
+
+  @Mutation(() => [ProjectMemberSummary])
+  removeProjectTeamMember(
+    @Args('input') input: RemoveProjectTeamMemberInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.catalogService.removeProjectTeamMember(input, user.id);
   }
 
   @Query(() => ProjectFollowState, { nullable: true })

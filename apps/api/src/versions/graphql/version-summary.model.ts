@@ -1,6 +1,45 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
+export class VersionDependencyProjectSummary {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  slug!: string;
+
+  @Field(() => String)
+  title!: string;
+}
+
+@ObjectType()
+export class VersionDependencyVersionSummary {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  versionNumber!: string;
+}
+
+@ObjectType()
+export class VersionDependencySummary {
+  @Field(() => String)
+  dependencyKind!: string;
+
+  @Field(() => String, { nullable: true })
+  externalFileName!: string | null;
+
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => VersionDependencyProjectSummary, { nullable: true })
+  targetProject!: VersionDependencyProjectSummary | null;
+
+  @Field(() => VersionDependencyVersionSummary, { nullable: true })
+  targetVersion!: VersionDependencyVersionSummary | null;
+}
+
+@ObjectType()
 export class VersionFileSummary {
   @Field(() => String)
   fileName!: string;
@@ -31,6 +70,9 @@ export class VersionSummary {
 
   @Field(() => Int)
   downloads!: number;
+
+  @Field(() => [VersionDependencySummary])
+  dependencies!: VersionDependencySummary[];
 
   @Field(() => [VersionFileSummary])
   files!: VersionFileSummary[];

@@ -89,9 +89,102 @@ describe(CollectionsService.name, () => {
     );
     expect(collection.id).toBe('collection-a');
   });
+
+  test('removes projects from collections owned by the current user', async () => {
+    const deletes: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: (query: { select?: unknown; where?: { id?: string } }) => {
+          if (query.where?.id === 'collection-a') {
+            return Promise.resolve(
+              query.select === undefined
+                ? { id: 'collection-a' }
+                : collectionRow(),
+            );
+          }
+
+          return Promise.resolve(null);
+        },
+      },
+      collectionProject: {
+        delete: (query: unknown) => {
+          deletes.push(query);
+          return Promise.resolve({});
+        },
+      },
+      project: {
+        findUnique: () => Promise.resolve({ id: 'project-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const collection = await service.removeProjectFromCollection(
+      {
+        collectionId: 'collection-a',
+        projectSlug: 'example',
+      },
+      'user-a',
+    );
+
+    expect(deletes[0]).toEqual({
+      where: {
+        collectionId_projectId: {
+          collectionId: 'collection-a',
+          projectId: 'project-a',
+        },
+      },
+    });
+    expect(collection.id).toBe('collection-a');
+  });
+
+  test('updates owned collection metadata', async () => {
+    const updates: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: (query: { select?: unknown; where?: { id?: string } }) => {
+          if (query.where?.id === 'collection-a') {
+            return Promise.resolve(
+              query.select === undefined
+                ? { id: 'collection-a' }
+                : collectionRow({ name: 'Updated' }),
+            );
+          }
+
+          return Promise.resolve(null);
+        },
+        update: (query: unknown) => {
+          updates.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    const collection = await service.updateCollection(
+      {
+        collectionId: 'collection-a',
+        color: '  ',
+        description: ' Updated description ',
+        name: ' Updated ',
+        slug: 'updated',
+        visibility: 'UNLISTED',
+      },
+      'user-a',
+    );
+
+    expect(updates[0]).toEqual({
+      data: {
+        color: null,
+        description: 'Updated description',
+        name: 'Updated',
+        slug: 'updated',
+        visibility: 'UNLISTED',
+      },
+      where: { id: 'collection-a' },
+    });
+    expect(collection.name).toBe('Updated');
+  });
 });
 
-function collectionRow() {
+function collectionRow(overrides: Partial<{ name: string }> = {}) {
   return {
     _count: { projects: 1 },
     color: '#1d9bf0',
@@ -99,7 +192,7 @@ function collectionRow() {
     description: 'Example list',
     iconUrl: null,
     id: 'collection-a',
-    name: 'Example',
+    name: overrides.name ?? 'Example',
     owner: {
       avatarUrl: null,
       displayName: null,

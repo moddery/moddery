@@ -28,6 +28,7 @@ describe(ReportsService.name, () => {
                 username: 'reporter',
               },
               state: 'OPEN',
+              userTarget: null,
               userTargetId: null,
               versionId: null,
             },
@@ -67,6 +68,7 @@ describe(ReportsService.name, () => {
               username: 'reporter',
             },
             state: 'CLOSED',
+            userTarget: null,
             userTargetId: null,
             versionId: null,
           });
@@ -107,6 +109,7 @@ describe(ReportsService.name, () => {
             projectId: 'project-a',
             reason: 'BROKEN_OR_MISLEADING',
             state: 'OPEN',
+            userTarget: null,
             userTargetId: null,
             versionId: null,
           });
@@ -130,5 +133,58 @@ describe(ReportsService.name, () => {
       },
     });
     expect(report.id).toBe('report-a');
+  });
+
+  test('creates user reports against existing users', async () => {
+    const creates: unknown[] = [];
+    const service = new ReportsService({
+      report: {
+        create: (query: unknown) => {
+          creates.push(query);
+          return Promise.resolve({
+            body: 'Impersonating staff',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            id: 'report-a',
+            project: null,
+            projectId: null,
+            reason: 'IMPERSONATION',
+            reporter: {
+              displayName: null,
+              id: 'user-a',
+              username: 'reporter',
+            },
+            state: 'OPEN',
+            userTarget: {
+              displayName: 'Target',
+              id: 'user-b',
+              username: 'target',
+            },
+            userTargetId: 'user-b',
+            versionId: null,
+          });
+        },
+      },
+      user: {
+        findUnique: () => Promise.resolve({ id: 'user-b' }),
+      },
+    } as unknown as PrismaService);
+
+    const report = await service.createUserReport({
+      body: '  Impersonating staff  ',
+      reason: 'IMPERSONATION',
+      reporterId: 'user-a',
+      username: 'target',
+    });
+
+    expect(creates[0]).toEqual({
+      data: {
+        body: 'Impersonating staff',
+        reason: 'IMPERSONATION',
+        reporterId: 'user-a',
+        userTargetId: 'user-b',
+      },
+      select: expect.any(Object),
+    });
+    expect(report.userTarget?.username).toBe('target');
   });
 });

@@ -3,6 +3,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type AddProjectToCollectionInput } from '../dto/add-project-to-collection.input.js';
 import { type CreateCollectionInput } from '../dto/create-collection.input.js';
+import { type RemoveProjectFromCollectionInput } from '../dto/remove-project-from-collection.input.js';
+import { type UpdateCollectionInput } from '../dto/update-collection.input.js';
 
 interface CollectionRow {
   _count: {
@@ -24,6 +26,7 @@ interface CollectionRow {
     project: {
       categories: { category: { slug: string } }[];
       description: string;
+      discordUrl: string | null;
       downloads: number;
       followers: number;
       gallery: {
@@ -38,15 +41,18 @@ interface CollectionRow {
       gameVersions: { gameVersion: { version: string } }[];
       iconUrl: string | null;
       id: string;
+      issuesUrl: string | null;
       kind: string;
       license: { key: string; name: string; url: string | null } | null;
       links: { kind: string; label: string | null; url: string }[];
       loaders: { loader: string }[];
       slug: string;
+      sourceUrl: string | null;
       status: string;
       summary: string;
       title: string;
       updatedAt: Date;
+      wikiUrl: string | null;
     };
   }[];
   slug: string;
@@ -134,6 +140,74 @@ export class CollectionsService {
     return collections.map(collectionRowToContract);
   }
 
+  async removeProjectFromCollection(
+    input: RemoveProjectFromCollectionInput,
+    ownerId: string,
+  ) {
+    const collection = await this.prisma.collection.findFirst({
+      select: { id: true },
+      where: {
+        id: input.collectionId,
+        ownerId,
+      },
+    });
+
+    if (collection === null) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    const project = await this.prisma.project.findUnique({
+      select: { id: true },
+      where: { slug: input.projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.prisma.collectionProject.delete({
+      where: {
+        collectionId_projectId: {
+          collectionId: collection.id,
+          projectId: project.id,
+        },
+      },
+    });
+
+    return this.findCollectionForOwner(collection.id, ownerId);
+  }
+
+  async updateCollection(input: UpdateCollectionInput, ownerId: string) {
+    const collection = await this.prisma.collection.findFirst({
+      select: { id: true },
+      where: {
+        id: input.collectionId,
+        ownerId,
+      },
+    });
+
+    if (collection === null) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    await this.prisma.collection.update({
+      data: {
+        color:
+          input.color === undefined ? undefined : nullableTrim(input.color),
+        description:
+          input.description === undefined
+            ? undefined
+            : nullableTrim(input.description),
+        name: input.name == null ? undefined : input.name.trim(),
+        slug: input.slug == null ? undefined : input.slug.trim(),
+        visibility: input.visibility ?? undefined,
+      },
+      where: { id: collection.id },
+    });
+
+    return this.findCollectionForOwner(collection.id, ownerId);
+  }
+
   private async findCollectionForOwner(collectionId: string, ownerId: string) {
     const collection = await this.prisma.collection.findFirst({
       select: collectionSelect(6),
@@ -149,6 +223,11 @@ export class CollectionsService {
 
     return collectionRowToContract(collection);
   }
+}
+
+function nullableTrim(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed === '' ? null : trimmed;
 }
 
 function collectionSelect(projectTake: number) {
@@ -197,6 +276,7 @@ function projectSelect() {
       },
     },
     description: true,
+    discordUrl: true,
     downloads: true,
     followers: true,
     gallery: {
@@ -220,6 +300,7 @@ function projectSelect() {
     },
     iconUrl: true,
     id: true,
+    issuesUrl: true,
     kind: true,
     license: {
       select: {
@@ -239,10 +320,12 @@ function projectSelect() {
       select: { loader: true },
     },
     slug: true,
+    sourceUrl: true,
     status: true,
     summary: true,
     title: true,
     updatedAt: true,
+    wikiUrl: true,
   };
 }
 
@@ -259,6 +342,7 @@ function collectionRowToContract(collection: CollectionRow) {
     projects: collection.projects.map(({ project }) => ({
       body: project.description,
       categories: project.categories.map(({ category }) => category.slug),
+      discordUrl: project.discordUrl,
       downloads: project.downloads,
       followers: project.followers,
       gallery: project.gallery.map((image) => ({
@@ -270,6 +354,7 @@ function collectionRowToContract(collection: CollectionRow) {
       ),
       iconUrl: project.iconUrl,
       id: project.id,
+      issuesUrl: project.issuesUrl,
       kind: project.kind,
       license: {
         id: project.license?.key ?? 'unknown',
@@ -279,10 +364,12 @@ function collectionRowToContract(collection: CollectionRow) {
       links: project.links,
       loaders: project.loaders.map(({ loader }) => loader),
       slug: project.slug,
+      sourceUrl: project.sourceUrl,
       status: project.status,
       summary: project.summary,
       title: project.title,
       updatedAt: project.updatedAt,
+      wikiUrl: project.wikiUrl,
     })),
     slug: collection.slug,
     updatedAt: collection.updatedAt,

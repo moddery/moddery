@@ -4,6 +4,160 @@ import { type PrismaService } from '../../prisma/prisma.service.js';
 import { CatalogService } from './catalog.service.js';
 
 describe(CatalogService.name, () => {
+  test('adds gallery images to managed projects', async () => {
+    const creates: unknown[] = [];
+    const service = new CatalogService(
+      {
+        project: {
+          findFirst: () => Promise.resolve({ id: 'project-a' }),
+          findUniqueOrThrow: () =>
+            Promise.resolve(
+              projectRow({
+                gallery: [
+                  {
+                    createdAt: new Date('2026-01-02T00:00:00.000Z'),
+                    description: 'Preview',
+                    displayUrl: 'https://example.test/display.png',
+                    featured: true,
+                    rawUrl: 'https://example.test/raw.png',
+                    sortOrder: 1,
+                    title: 'Screenshot',
+                  },
+                ],
+                title: 'Example',
+              }),
+            ),
+        },
+        projectGalleryImage: {
+          create: (query: unknown) => {
+            creates.push(query);
+            return Promise.resolve({});
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+    );
+
+    const project = await service.addProjectGalleryImage(
+      {
+        description: ' Preview ',
+        displayUrl: ' https://example.test/display.png ',
+        featured: true,
+        projectSlug: 'example',
+        rawUrl: ' https://example.test/raw.png ',
+        sortOrder: 1,
+        title: ' Screenshot ',
+      },
+      'user-a',
+    );
+
+    expect(creates[0]).toEqual({
+      data: {
+        description: 'Preview',
+        displayUrl: 'https://example.test/display.png',
+        featured: true,
+        projectId: 'project-a',
+        rawUrl: 'https://example.test/raw.png',
+        sortOrder: 1,
+        title: 'Screenshot',
+      },
+    });
+    expect(project.gallery[0]?.title).toBe('Screenshot');
+  });
+
+  test('updates managed project metadata and reindexes search', async () => {
+    const operations: string[] = [];
+    const indexed: unknown[] = [];
+    const tx = {
+      category: {
+        upsert: () => Promise.resolve({ id: 'category-a' }),
+      },
+      gameVersion: {
+        upsert: () => Promise.resolve({ id: 'game-version-a' }),
+      },
+      project: {
+        findUniqueOrThrow: () =>
+          Promise.resolve(projectRow({ title: 'Updated Project' })),
+        update: (query: unknown) => {
+          operations.push(`project-update:${JSON.stringify(query)}`);
+          return Promise.resolve({});
+        },
+      },
+      projectCategory: {
+        create: () => Promise.resolve({}),
+        deleteMany: (query: unknown) => {
+          operations.push(`categories-delete:${JSON.stringify(query)}`);
+          return Promise.resolve({});
+        },
+      },
+      projectGameVersion: {
+        create: () => Promise.resolve({}),
+        deleteMany: (query: unknown) => {
+          operations.push(`versions-delete:${JSON.stringify(query)}`);
+          return Promise.resolve({});
+        },
+      },
+      projectLoader: {
+        create: () => Promise.resolve({}),
+        deleteMany: (query: unknown) => {
+          operations.push(`loaders-delete:${JSON.stringify(query)}`);
+          return Promise.resolve({});
+        },
+      },
+    };
+    const service = new CatalogService(
+      {
+        $transaction: (callback: (transaction: typeof tx) => unknown) =>
+          callback(tx),
+        project: {
+          findFirst: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: (projects: unknown[]) => {
+          indexed.push(...projects);
+          return Promise.resolve();
+        },
+        searchProjects: () => Promise.resolve({ ids: [] }),
+      } as never,
+    );
+
+    const project = await service.updateProject(
+      {
+        categories: ['utility'],
+        description: 'Updated body',
+        gameVersions: ['1.21.6'],
+        iconUrl: 'https://example.test/icon.png',
+        loaders: ['fabric'],
+        projectSlug: 'example',
+        sourceUrl: 'https://example.test/source',
+        summary: 'Updated summary',
+        title: 'Updated Project',
+      },
+      'user-a',
+    );
+
+    expect(project.title).toBe('Updated Project');
+    expect(operations[0]).toContain(
+      '"iconUrl":"https://example.test/icon.png"',
+    );
+    expect(operations).toContain(
+      'categories-delete:{"where":{"projectId":"project-a"}}',
+    );
+    expect(operations).toContain(
+      'versions-delete:{"where":{"projectId":"project-a"}}',
+    );
+    expect(operations).toContain(
+      'loaders-delete:{"where":{"projectId":"project-a"}}',
+    );
+    expect(indexed[0]).toEqual(
+      expect.objectContaining({
+        id: 'project-a',
+        title: 'Updated Project',
+      }),
+    );
+  });
+
   test('searches projects through OpenSearch tags before hydrating rows', async () => {
     const queries: unknown[] = [];
     const searchQueries: unknown[] = [];
@@ -172,4 +326,160 @@ describe(CatalogService.name, () => {
       'update:{"data":{"followers":8},"where":{"id":"project-a"}}',
     ]);
   });
+
+  test('adds project team members for managers', async () => {
+    const upserts: unknown[] = [];
+    const service = new CatalogService(
+      {
+        project: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'project-a',
+              teamId: 'team-a',
+            }),
+          findUnique: () => Promise.resolve(projectMembersRow()),
+        },
+        teamMember: {
+          upsert: (query: unknown) => {
+            upserts.push(query);
+            return Promise.resolve({});
+          },
+        },
+        user: {
+          findFirst: () => Promise.resolve({ id: 'user-b' }),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+    );
+
+    const members = await service.addProjectTeamMember(
+      {
+        permissions: ['MANAGE_VERSIONS', 'NOPE'],
+        projectSlug: 'iris',
+        role: 'Maintainer',
+        username: 'maintainer',
+      },
+      'user-a',
+    );
+
+    expect(upserts[0]).toEqual(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          acceptedAt: expect.any(Date),
+          permissions: ['MANAGE_VERSIONS'],
+          role: 'Maintainer',
+          teamId: 'team-a',
+          userId: 'user-b',
+        }),
+        where: {
+          teamId_userId: {
+            teamId: 'team-a',
+            userId: 'user-b',
+          },
+        },
+      }),
+    );
+    expect(members[0]?.role).toBe('Owner');
+  });
+
+  test('removes non-owner project team members for managers', async () => {
+    const deletes: unknown[] = [];
+    const service = new CatalogService(
+      {
+        project: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'project-a',
+              teamId: 'team-a',
+            }),
+          findUnique: () => Promise.resolve(projectMembersRow()),
+        },
+        teamMember: {
+          delete: (query: unknown) => {
+            deletes.push(query);
+            return Promise.resolve({});
+          },
+          findFirst: () =>
+            Promise.resolve({
+              id: 'member-b',
+              isOwner: false,
+              user: { username: 'maintainer' },
+            }),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+    );
+
+    const members = await service.removeProjectTeamMember(
+      {
+        projectSlug: 'iris',
+        username: 'maintainer',
+      },
+      'user-a',
+    );
+
+    expect(deletes[0]).toEqual({ where: { id: 'member-b' } });
+    expect(members[0]?.owner).toBe(true);
+  });
 });
+
+function projectMembersRow() {
+  return {
+    team: {
+      members: [
+        {
+          acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
+          isOwner: true,
+          role: 'Owner',
+          sortOrder: 0,
+          user: {
+            avatarUrl: 'https://example.test/avatar.png',
+            displayName: 'Seed User',
+            id: 'user-a',
+            username: 'seed',
+          },
+        },
+      ],
+    },
+  };
+}
+
+function projectRow({
+  gallery = [],
+  title,
+}: {
+  gallery?: {
+    createdAt: Date;
+    description: string | null;
+    displayUrl: string;
+    featured: boolean;
+    rawUrl: string;
+    sortOrder: number;
+    title: string | null;
+  }[];
+  title: string;
+}) {
+  return {
+    categories: [{ category: { slug: 'utility' } }],
+    description: 'Updated body',
+    discordUrl: null,
+    downloads: 10,
+    followers: 2,
+    gallery,
+    gameVersions: [{ gameVersion: { version: '1.21.6' } }],
+    iconUrl: 'https://example.test/icon.png',
+    id: 'project-a',
+    issuesUrl: null,
+    kind: 'MOD',
+    license: { key: 'mit', name: 'MIT', url: null },
+    links: [],
+    loaders: [{ loader: 'FABRIC' }],
+    slug: 'example',
+    sourceUrl: 'https://example.test/source',
+    status: 'APPROVED',
+    summary: 'Updated summary',
+    title,
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    wikiUrl: null,
+  };
+}

@@ -4,6 +4,134 @@ import { type PrismaService } from '../../prisma/prisma.service.js';
 import { VersionsService } from './versions.service.js';
 
 describe(VersionsService.name, () => {
+  test('replaces version dependencies for accepted project members', async () => {
+    const operations: string[] = [];
+    const service = new VersionsService({
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          project: {
+            findUnique: () => Promise.resolve({ id: 'project-b' }),
+          },
+          version: {
+            findUniqueOrThrow: () =>
+              Promise.resolve(
+                versionRow({
+                  dependencies: [
+                    {
+                      dependencyKind: 'REQUIRED',
+                      externalFileName: null,
+                      id: 'dependency-a',
+                      targetProject: {
+                        id: 'project-b',
+                        slug: 'library',
+                        title: 'Library',
+                      },
+                      targetVersion: null,
+                    },
+                  ],
+                }),
+              ),
+          },
+          versionDependency: {
+            create: (query: unknown) => {
+              operations.push(`create:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
+            deleteMany: (query: unknown) => {
+              operations.push(`delete:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
+          },
+        }),
+      version: {
+        findFirst: () => Promise.resolve(managedVersion()),
+      },
+    } as unknown as PrismaService);
+
+    const version = await service.updateVersionDependencies(
+      {
+        dependencies: [
+          {
+            dependencyKind: 'REQUIRED',
+            targetProjectSlug: 'library',
+          },
+        ],
+        versionId: 'version-a',
+      },
+      'user-a',
+    );
+
+    expect(operations[0]).toBe('delete:{"where":{"versionId":"version-a"}}');
+    expect(operations[1]).toContain('"targetProjectId":"project-b"');
+    expect(version.dependencies[0]?.targetProject?.slug).toBe('library');
+  });
+
+  test('updates versions for accepted project members', async () => {
+    const operations: string[] = [];
+    const service = new VersionsService({
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          gameVersion: {
+            upsert: () => Promise.resolve({ id: 'game-version-a' }),
+          },
+          version: {
+            findUniqueOrThrow: () =>
+              Promise.resolve(
+                versionRow({
+                  changelog: 'Updated notes',
+                  channel: 'BETA',
+                  name: 'Updated',
+                  versionNumber: '1.0.1',
+                }),
+              ),
+            update: (query: unknown) => {
+              operations.push(`version-update:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
+          },
+          versionGameVersion: {
+            create: () => Promise.resolve({}),
+            deleteMany: (query: unknown) => {
+              operations.push(`versions-delete:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
+          },
+          versionLoader: {
+            create: () => Promise.resolve({}),
+            deleteMany: (query: unknown) => {
+              operations.push(`loaders-delete:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
+          },
+        }),
+      version: {
+        findFirst: () => Promise.resolve(managedVersion()),
+      },
+    } as unknown as PrismaService);
+
+    const version = await service.updateVersion(
+      {
+        changelog: 'Updated notes',
+        channel: 'BETA',
+        gameVersions: ['1.21.6'],
+        loaders: ['fabric'],
+        name: 'Updated',
+        versionId: 'version-a',
+        versionNumber: '1.0.1',
+      },
+      'user-a',
+    );
+
+    expect(operations[0]).toContain('"name":"Updated"');
+    expect(operations).toContain(
+      'versions-delete:{"where":{"versionId":"version-a"}}',
+    );
+    expect(operations).toContain(
+      'loaders-delete:{"where":{"versionId":"version-a"}}',
+    );
+    expect(version.versionNumber).toBe('1.0.1');
+  });
+
   test('creates approved versions for accepted project members', async () => {
     const transactionSteps: string[] = [];
     const service = new VersionsService({
@@ -18,28 +146,20 @@ describe(VersionsService.name, () => {
               return Promise.resolve({ id: 'version-a' });
             },
             findUniqueOrThrow: () =>
-              Promise.resolve({
-                changelog: 'Notes',
-                channel: 'RELEASE',
-                downloads: 0,
-                files: [
-                  {
-                    fileName: 'example.jar',
-                    id: 'file-a',
-                    isPrimary: true,
-                    sizeBytes: 123n,
-                    url: 'https://example.test/example.jar',
-                  },
-                ],
-                gameVersions: [{ gameVersion: { version: '1.21.6' } }],
-                id: 'version-a',
-                loaders: [{ loader: 'FABRIC' }],
-                name: 'Example',
-                project: { slug: 'example' },
-                publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-                status: 'APPROVED',
-                versionNumber: '1.0.0',
-              }),
+              Promise.resolve(
+                versionRow({
+                  changelog: 'Notes',
+                  files: [
+                    {
+                      fileName: 'example.jar',
+                      id: 'file-a',
+                      isPrimary: true,
+                      sizeBytes: 123n,
+                      url: 'https://example.test/example.jar',
+                    },
+                  ],
+                }),
+              ),
           },
           versionFile: {
             create: () => {
@@ -49,9 +169,11 @@ describe(VersionsService.name, () => {
           },
           versionGameVersion: {
             create: () => Promise.resolve({}),
+            deleteMany: () => Promise.resolve({}),
           },
           versionLoader: {
             create: () => Promise.resolve({}),
+            deleteMany: () => Promise.resolve({}),
           },
         }),
       project: {
@@ -97,9 +219,8 @@ describe(VersionsService.name, () => {
         findMany: (query: unknown) => {
           queries.push(query);
           return Promise.resolve([
-            {
+            versionRow({
               changelog: 'Release notes',
-              channel: 'RELEASE',
               downloads: 42,
               files: [
                 {
@@ -110,19 +231,8 @@ describe(VersionsService.name, () => {
                   url: 'https://example.test/example.jar',
                 },
               ],
-              gameVersions: [
-                {
-                  gameVersion: { version: '1.21.6' },
-                },
-              ],
-              id: 'version-a',
-              loaders: [{ loader: 'FABRIC' }],
               name: 'Example 1.0.0',
-              project: { slug: 'example' },
-              publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-              status: 'APPROVED',
-              versionNumber: '1.0.0',
-            },
+            }),
           ]);
         },
       },
@@ -144,6 +254,7 @@ describe(VersionsService.name, () => {
         channel: 'RELEASE',
         datePublished: new Date('2026-01-01T00:00:00.000Z'),
         downloads: 42,
+        dependencies: [],
         files: [
           {
             fileName: 'example.jar',
@@ -164,3 +275,59 @@ describe(VersionsService.name, () => {
     ]);
   });
 });
+
+function managedVersion() {
+  return {
+    id: 'version-a',
+    project: {
+      team: { members: [{ userId: 'user-a' }] },
+    },
+  };
+}
+
+function versionRow(
+  overrides: Partial<{
+    changelog: string | null;
+    channel: string;
+    dependencies: {
+      dependencyKind: string;
+      externalFileName: string | null;
+      id: string;
+      targetProject: {
+        id: string;
+        slug: string;
+        title: string;
+      } | null;
+      targetVersion: {
+        id: string;
+        versionNumber: string;
+      } | null;
+    }[];
+    downloads: number;
+    files: {
+      fileName: string;
+      id: string;
+      isPrimary: boolean;
+      sizeBytes: bigint;
+      url: string;
+    }[];
+    name: string;
+    versionNumber: string;
+  }> = {},
+) {
+  return {
+    changelog: overrides.changelog ?? 'Notes',
+    channel: overrides.channel ?? 'RELEASE',
+    dependencies: overrides.dependencies ?? [],
+    downloads: overrides.downloads ?? 0,
+    files: overrides.files ?? [],
+    gameVersions: [{ gameVersion: { version: '1.21.6' } }],
+    id: 'version-a',
+    loaders: [{ loader: 'FABRIC' }],
+    name: overrides.name ?? 'Example',
+    project: { slug: 'example' },
+    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+    status: 'APPROVED',
+    versionNumber: overrides.versionNumber ?? '1.0.0',
+  };
+}

@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { type ProjectKind, type ProjectStatus } from '@moddery/shared';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
 
 interface UserProjectRow {
   categories: { category: { slug: string } }[];
   description: string;
+  discordUrl: string | null;
   downloads: number;
   followers: number;
   gallery: {
@@ -20,15 +22,18 @@ interface UserProjectRow {
   gameVersions: { gameVersion: { version: string } }[];
   iconUrl: string | null;
   id: string;
+  issuesUrl: string | null;
   kind: ProjectKind;
   license: { key: string; name: string; url: string | null } | null;
   links: { kind: string; label: string | null; url: string }[];
   loaders: { loader: string }[];
   slug: string;
+  sourceUrl: string | null;
   status: ProjectStatus;
   summary: string;
   title: string;
   updatedAt: Date;
+  wikiUrl: string | null;
 }
 
 interface UserProfileRow {
@@ -87,6 +92,30 @@ export class UsersService {
 
     return user === null ? null : userProfileRowToContract(user);
   }
+
+  async updateViewerProfile(id: string, input: UpdateViewerProfileInput) {
+    await this.prisma.user.update({
+      data: {
+        avatarUrl:
+          input.avatarUrl === undefined
+            ? undefined
+            : nullableTrim(input.avatarUrl),
+        bio: input.bio === undefined ? undefined : nullableTrim(input.bio),
+        displayName:
+          input.displayName === undefined
+            ? undefined
+            : nullableTrim(input.displayName),
+      },
+      where: { id },
+    });
+
+    return this.findById(id);
+  }
+}
+
+function nullableTrim(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed === '' ? null : trimmed;
 }
 
 function userProfileSelect({
@@ -183,6 +212,7 @@ function projectSelect() {
       },
     },
     description: true,
+    discordUrl: true,
     downloads: true,
     followers: true,
     gallery: {
@@ -206,6 +236,7 @@ function projectSelect() {
     },
     iconUrl: true,
     id: true,
+    issuesUrl: true,
     kind: true,
     license: {
       select: {
@@ -225,10 +256,12 @@ function projectSelect() {
       select: { loader: true },
     },
     slug: true,
+    sourceUrl: true,
     status: true,
     summary: true,
     title: true,
     updatedAt: true,
+    wikiUrl: true,
   };
 }
 
@@ -275,6 +308,7 @@ function projectRowToContract(project: UserProjectRow) {
   return {
     body: project.description,
     categories: project.categories.map(({ category }) => category.slug),
+    discordUrl: project.discordUrl,
     downloads: project.downloads,
     followers: project.followers,
     gallery: project.gallery.map((image) => ({
@@ -286,6 +320,7 @@ function projectRowToContract(project: UserProjectRow) {
     ),
     iconUrl: project.iconUrl,
     id: project.id,
+    issuesUrl: project.issuesUrl,
     kind: project.kind,
     license: {
       id: project.license?.key ?? 'unknown',
@@ -295,9 +330,11 @@ function projectRowToContract(project: UserProjectRow) {
     links: project.links,
     loaders: project.loaders.map(({ loader }) => loader),
     slug: project.slug,
+    sourceUrl: project.sourceUrl,
     status: project.status,
     summary: project.summary,
     title: project.title,
     updatedAt: project.updatedAt,
+    wikiUrl: project.wikiUrl,
   };
 }

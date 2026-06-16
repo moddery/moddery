@@ -1,17 +1,37 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-import { BookMarked, Download, Heart, Package, UserRound } from 'lucide-react';
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { type ReportReason } from '@moddery/shared';
+import {
+  BookMarked,
+  Download,
+  Flag,
+  Heart,
+  Package,
+  UserRound,
+} from 'lucide-react';
 
 import { timeAgo } from '../lib/format.ts';
 import {
+  createUserReport,
   fetchUserProfile,
   userProjectToMod,
   type PublicUserProfile,
   type UserCollectionPreview,
 } from '../lib/users.ts';
+import { hasAuthToken } from '../lib/catalog.ts';
 import type { Mod } from '../types.ts';
 import { EmptyState } from './EmptyState.tsx';
 import { ModCard } from './ModCard.tsx';
+
+const reportReasons: Array<{ label: string; value: ReportReason }> = [
+  { label: 'Broken or misleading', value: 'BROKEN_OR_MISLEADING' },
+  { label: 'Malware', value: 'MALWARE' },
+  { label: 'Copyright', value: 'COPYRIGHT' },
+  { label: 'Spam', value: 'SPAM' },
+  { label: 'Impersonation', value: 'IMPERSONATION' },
+  { label: 'Hateful or abusive', value: 'HATEFUL_OR_ABUSIVE' },
+  { label: 'Other', value: 'OTHER' },
+];
 
 export function UserProfilePage({
   username,
@@ -100,6 +120,38 @@ export function UserProfilePage({
 
 function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
   const name = profile.displayName ?? profile.username;
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reason, setReason] = useState<ReportReason>('IMPERSONATION');
+  const [body, setBody] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function submitReport(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!hasAuthToken()) {
+      setMessage('Sign in to report a user.');
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await createUserReport({
+        body,
+        reason,
+        username: profile.username,
+      });
+      setBody('');
+      setMessage('Report submitted.');
+      setReportOpen(false);
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Report failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <header className="border-b border-line pb-6">
@@ -126,6 +178,14 @@ function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
                 Admin
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => setReportOpen((current) => !current)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-control px-2.5 text-xs font-bold text-ink transition-colors hover:bg-control-hover"
+            >
+              <Flag className="size-3.5 text-accent-icon" />
+              Report
+            </button>
           </div>
           <p className="mt-1 text-sm font-semibold text-muted">
             @{profile.username} · joined {timeAgo(profile.createdAt)}
@@ -134,6 +194,52 @@ function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-ink">
               {profile.bio}
             </p>
+          )}
+          {reportOpen && (
+            <form
+              onSubmit={(event) => void submitReport(event)}
+              className="mt-4 max-w-3xl rounded-lg border border-line bg-surface-2 p-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:items-end">
+                <label className="block text-xs font-bold uppercase text-muted">
+                  Reason
+                  <select
+                    value={reason}
+                    onChange={(event) =>
+                      setReason(event.target.value as ReportReason)
+                    }
+                    className="mt-1 h-9 w-full rounded-md border border-line bg-control px-2 text-sm normal-case text-ink outline-none focus-visible:border-accent"
+                  >
+                    {reportReasons.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs font-bold uppercase text-muted">
+                  Details
+                  <input
+                    required
+                    minLength={8}
+                    value={body}
+                    onChange={(event) => setBody(event.target.value)}
+                    className="mt-1 h-9 w-full rounded-md border border-line bg-control px-2 text-sm normal-case text-ink outline-none placeholder:text-faint focus-visible:border-accent"
+                    placeholder="What should moderators know?"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Submit report
+                </button>
+              </div>
+            </form>
+          )}
+          {message && (
+            <p className="mt-2 text-xs font-semibold text-muted">{message}</p>
           )}
         </div>
       </div>

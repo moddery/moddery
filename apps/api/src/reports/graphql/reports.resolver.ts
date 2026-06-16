@@ -6,6 +6,7 @@ import { type AuthenticatedUser } from '../../auth/services/auth-token.service.j
 import { ReportsService } from '../services/reports.service.js';
 import {
   CreateProjectReportInput,
+  CreateUserReportInput,
   CreateVersionReportInput,
 } from './create-report.input.js';
 import { ReportSummary } from './report-summary.model.js';
@@ -56,6 +57,19 @@ export class ReportsResolver {
       reason: input.reason,
       reporterId: user.id,
       versionId: input.versionId,
+    });
+  }
+
+  @Mutation(() => ReportSummary)
+  createUserReport(
+    @Args('input') input: CreateUserReportInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.reportsService.createUserReport({
+      body: input.body,
+      reason: input.reason,
+      reporterId: user.id,
+      username: input.username,
     });
   }
 }

@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { type ProjectKind } from '@moddery/shared';
+import { type ProjectKind, type ReportReason } from '@moddery/shared';
 
 import { apolloClient } from '../apollo.js';
 import { type Mod } from '../types.js';
@@ -46,12 +46,35 @@ export interface UserProjectPreview {
   updatedAt: string;
 }
 
+export interface UserReportSummary {
+  body: string;
+  createdAt: string;
+  id: string;
+  projectId: string | null;
+  reason: ReportReason;
+  state: string;
+  userTargetId: string | null;
+  versionId: string | null;
+}
+
 interface UserByUsernameQueryData {
   userByUsername: PublicUserProfile | null;
 }
 
 interface UserByUsernameQueryVariables {
   username: string;
+}
+
+interface CreateUserReportMutationData {
+  createUserReport: UserReportSummary;
+}
+
+interface CreateUserReportMutationVariables {
+  input: {
+    body: string;
+    reason: ReportReason;
+    username: string;
+  };
 }
 
 const USER_BY_USERNAME_QUERY = gql`
@@ -107,6 +130,21 @@ const USER_BY_USERNAME_QUERY = gql`
   }
 `;
 
+const CREATE_USER_REPORT_MUTATION = gql`
+  mutation CreateUserReport($input: CreateUserReportInput!) {
+    createUserReport(input: $input) {
+      body
+      createdAt
+      id
+      projectId
+      reason
+      state
+      userTargetId
+      versionId
+    }
+  }
+`;
+
 export async function fetchUserProfile(
   username: string,
   signal?: AbortSignal,
@@ -122,6 +160,26 @@ export async function fetchUserProfile(
   });
 
   return data.userByUsername;
+}
+
+export async function createUserReport(input: {
+  body: string;
+  reason: ReportReason;
+  username: string;
+}): Promise<UserReportSummary> {
+  const { data } = await apolloClient.mutate<
+    CreateUserReportMutationData,
+    CreateUserReportMutationVariables
+  >({
+    mutation: CREATE_USER_REPORT_MUTATION,
+    variables: { input },
+  });
+
+  if (data === null || data === undefined) {
+    throw new Error('Report did not return from the API');
+  }
+
+  return data.createUserReport;
 }
 
 export function userProjectToMod(project: UserProjectPreview): Mod {
