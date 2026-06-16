@@ -9,9 +9,13 @@ const envSchema = z.object({
         'http://localhost:5173',
         'http://localhost:5180',
         'http://localhost:15173',
+        'http://localhost:15174',
+        'http://localhost:15175',
         'http://127.0.0.1:4173',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5180',
+        'http://127.0.0.1:15174',
+        'http://127.0.0.1:15175',
       ].join(','),
     )
     .transform((value) =>

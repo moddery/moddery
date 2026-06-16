@@ -1,408 +1,616 @@
-import { gql, useMutation, useQuery } from '@apollo/client';
-import type { ProjectSummaryContract } from '@moddery/shared';
-import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { motion } from 'motion/react';
+import { useQuery } from '@tanstack/react-query';
+import { isProjectCategoryTag } from '@moddery/shared';
+import type { Mod } from './types.ts';
+import { cn } from './lib/cn.ts';
+import {
+  fetchFilterTags,
+  searchProjects,
+  type FilterTags,
+  type SortKey,
+} from './lib/catalog.ts';
+import { CONTENT_TYPES, projectTypeMeta } from './lib/projectTypes.ts';
+import type { ProjectType } from './types.ts';
+import { NavBar } from './components/NavBar.tsx';
+import { SearchBar } from './components/SearchBar.tsx';
+import {
+  FilterSidebar,
+  type FacetOption,
+  type TagFacetOption,
+} from './components/FilterSidebar.tsx';
+import { SelectField, type SelectOption } from './components/ui/Select.tsx';
+import { ModCard, type Layout, type SearchTag } from './components/ModCard.tsx';
+import { ResultsSkeleton } from './components/Skeletons.tsx';
+import { EmptyState } from './components/EmptyState.tsx';
+import { Pagination } from './components/Pagination.tsx';
+import { Filter, LayoutGrid, List } from 'lucide-react';
+import { ProjectPage } from './components/ProjectPage.tsx';
+import { HomePage } from './components/HomePage.tsx';
+import { AuthControls } from './components/AuthControls.tsx';
 
-import { apolloClient, authTokenStorageKey } from './apollo.js';
+type AppView = 'home' | 'discover';
 
-const AUTHENTICATED_HOME_QUERY = gql`
-  query AuthenticatedHome {
-    me {
-      id
-      username
-      displayName
-      isAdmin
-      role
-    }
-    projects {
-      id
-      slug
-      title
-      summary
-      kind
-      status
-      downloads
-      updatedAt
-    }
-  }
-`;
+const SORT_OPTIONS: SelectOption[] = [
+  { label: 'Relevance', value: 'relevance' },
+  { label: 'Downloads', value: 'downloads' },
+  { label: 'Follows', value: 'follows' },
+  { label: 'Recently updated', value: 'updated' },
+  { label: 'Name (A-Z)', value: 'name' },
+];
 
-const LOGIN_MUTATION = gql`
-  mutation Login($input: LoginInput!) {
-    login(input: $input) {
-      accessToken
-      expiresIn
-      tokenType
-      user {
-        id
-        username
-        displayName
-        isAdmin
-        role
-      }
-    }
-  }
-`;
+const VIEW_OPTIONS: SelectOption[] = [
+  { label: '5', value: '5' },
+  { label: '10', value: '10' },
+  { label: '20', value: '20' },
+];
 
-const REGISTER_MUTATION = gql`
-  mutation Register($input: RegisterInput!) {
-    register(input: $input) {
-      accessToken
-      expiresIn
-      tokenType
-      user {
-        id
-        username
-        displayName
-        isAdmin
-        role
-      }
-    }
-  }
-`;
+const EMPTY_FILTER_TAGS: FilterTags = {
+  categories: [],
+  loaders: [],
+  versions: [],
+};
 
-interface AuthUser {
-  readonly displayName: string | null;
-  readonly id: string;
-  readonly isAdmin: boolean;
-  readonly role: string;
-  readonly username: string;
-}
-
-interface AuthPayload {
-  readonly accessToken: string;
-  readonly expiresIn: number;
-  readonly tokenType: 'Bearer';
-  readonly user: AuthUser;
-}
-
-interface AuthenticatedHomeQueryData {
-  readonly me: AuthUser;
-  readonly projects: readonly ProjectSummaryContract[];
-}
-
-interface LoginMutationData {
-  readonly login: AuthPayload;
-}
-
-interface LoginMutationVariables {
-  readonly input: {
-    readonly identifier: string;
-    readonly password: string;
-  };
-}
-
-interface RegisterMutationData {
-  readonly register: AuthPayload;
-}
-
-interface RegisterMutationVariables {
-  readonly input: {
-    readonly displayName?: string;
-    readonly email: string;
-    readonly password: string;
-    readonly username: string;
-  };
-}
-
-type AuthMode = 'login' | 'register';
-
-const buttonClassName =
-  'rounded border border-slate-900 px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50';
-const fieldClassName =
-  'rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900';
-const labelClassName = 'text-sm font-medium';
-const mainClassName =
-  'mx-auto flex min-h-screen w-full max-w-md flex-col gap-5 px-4 py-10 text-slate-950';
-
-export function App(): React.ReactElement {
-  const [accessToken, setAccessToken] = useState(() =>
-    localStorage.getItem(authTokenStorageKey),
+export function App() {
+  const [selectedProject, setSelectedProject] = useState(() =>
+    projectFromUrl(),
   );
-  const [authMode, setAuthMode] = useState<AuthMode>('login');
-  const [identifier, setIdentifier] = useState('');
-  const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
+  const [appView, setAppView] = useState<AppView>(() =>
+    projectFromUrl() ? 'discover' : viewFromUrl(),
+  );
+  const [projectType, setProjectType] = useState<ProjectType>(
+    () => projectFromUrl()?.projectType ?? projectTypeFromPath() ?? 'mod',
+  );
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortKey>('relevance');
+  const [view, setView] = useState('20');
+  const [layout, setLayout] = useState<Layout>('list');
+  const [page, setPage] = useState(1);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  const { data, error, loading, refetch } =
-    useQuery<AuthenticatedHomeQueryData>(AUTHENTICATED_HOME_QUERY, {
-      skip: !accessToken,
+  const [selectedVersions, setSelectedVersions] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedLoaders, setSelectedLoaders] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+
+  useEffect(() => {
+    function handlePopState() {
+      const next = projectFromUrl();
+      setSelectedProject(next);
+      setAppView(next ? 'discover' : viewFromUrl());
+      setProjectType(next?.projectType ?? projectTypeFromPath() ?? 'mod');
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const selectedVersionValues = useMemo(
+    () => [...selectedVersions].sort(),
+    [selectedVersions],
+  );
+  const selectedLoaderValues = useMemo(
+    () => [...selectedLoaders].sort(),
+    [selectedLoaders],
+  );
+  const selectedCategoryValues = useMemo(
+    () => [...selectedCategories].sort(),
+    [selectedCategories],
+  );
+  const shouldLoadCatalog = appView !== 'home' || Boolean(selectedProject);
+  const pageSize = Number(view);
+
+  const filterTagsQuery = useQuery({
+    enabled: shouldLoadCatalog,
+    queryFn: ({ signal }) => fetchFilterTags(projectType, signal),
+    queryKey: ['catalog', 'filter-tags', projectType],
+  });
+  const projectsQuery = useQuery({
+    enabled: shouldLoadCatalog,
+    queryFn: ({ signal }) =>
+      searchProjects({
+        projectType,
+        query,
+        sort,
+        page,
+        limit: pageSize,
+        versions: selectedVersionValues,
+        loaders: selectedLoaderValues,
+        categories: selectedCategoryValues,
+        signal,
+      }),
+    queryKey: [
+      'catalog',
+      'projects',
+      projectType,
+      query,
+      sort,
+      page,
+      pageSize,
+      selectedVersionValues,
+      selectedLoaderValues,
+      selectedCategoryValues,
+    ],
+  });
+
+  const filterTags = filterTagsQuery.data ?? EMPTY_FILTER_TAGS;
+  const mods = projectsQuery.data?.projects ?? [];
+  const total = projectsQuery.data?.totalHits ?? 0;
+  const loading = projectsQuery.isLoading || projectsQuery.isFetching;
+  const error =
+    projectsQuery.error instanceof Error ? projectsQuery.error.message : null;
+
+  const { versionOptions, loaderOptions, categoryOptions } = useMemo(() => {
+    return {
+      versionOptions: buildOptions(filterTags.versions, selectedVersions),
+      loaderOptions: buildOptions(filterTags.loaders, selectedLoaders),
+      categoryOptions: buildOptions(filterTags.categories, selectedCategories),
+    };
+  }, [filterTags, selectedVersions, selectedLoaders, selectedCategories]);
+  const tagOptions = useMemo(
+    () =>
+      buildTagOptions({
+        categories: [
+          ...filterTags.categories,
+          ...mods.flatMap((mod) => mod.categories),
+        ],
+      }),
+    [filterTags, mods],
+  );
+  const selectedTags = useMemo(
+    () =>
+      new Set([
+        ...selectedCategoriesToTags(selectedCategories),
+        ...selectedLoadersToTags(selectedLoaders),
+        ...selectedVersionsToTags(selectedVersions),
+      ]),
+    [selectedCategories, selectedLoaders, selectedVersions],
+  );
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+
+  const activeFilterCount =
+    selectedVersions.size + selectedLoaders.size + selectedCategories.size;
+  const hasActiveFilters = query.trim() !== '' || activeFilterCount > 0;
+
+  function toggleIn(
+    setter: Dispatch<SetStateAction<Set<string>>>,
+    value: string,
+  ) {
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
     });
-
-  const [login, { loading: loginLoading }] = useMutation<
-    LoginMutationData,
-    LoginMutationVariables
-  >(LOGIN_MUTATION);
-  const [register, { loading: registerLoading }] = useMutation<
-    RegisterMutationData,
-    RegisterMutationVariables
-  >(REGISTER_MUTATION);
-
-  async function persistSession(payload: AuthPayload): Promise<void> {
-    localStorage.setItem(authTokenStorageKey, payload.accessToken);
-    setAccessToken(payload.accessToken);
-    setFormError(null);
-    await apolloClient.resetStore();
+    setPage(1);
   }
 
-  async function handleLogin(
-    event: React.FormEvent<HTMLFormElement>,
-  ): Promise<void> {
-    event.preventDefault();
-    setFormError(null);
+  function clearAll() {
+    setQuery('');
+    setSelectedVersions(new Set());
+    setSelectedLoaders(new Set());
+    setSelectedCategories(new Set());
+    setPage(1);
+  }
 
-    try {
-      const result = await login({
-        variables: {
-          input: {
-            identifier,
-            password,
-          },
-        },
-      });
-
-      if (!result.data) {
-        setFormError('Login did not return a session.');
-        return;
-      }
-
-      await persistSession(result.data.login);
-    } catch (mutationError) {
-      setFormError(
-        mutationError instanceof Error
-          ? mutationError.message
-          : 'Login failed.',
-      );
+  function toggleTag(tag: TagFacetOption) {
+    if (tag.kind === 'category') {
+      toggleIn(setSelectedCategories, tag.value);
+      return;
     }
-  }
 
-  async function handleRegister(
-    event: React.FormEvent<HTMLFormElement>,
-  ): Promise<void> {
-    event.preventDefault();
-    setFormError(null);
-
-    try {
-      const result = await register({
-        variables: {
-          input: {
-            ...(displayName ? { displayName } : {}),
-            email,
-            password,
-            username,
-          },
-        },
-      });
-
-      if (!result.data) {
-        setFormError('Registration did not return a session.');
-        return;
-      }
-
-      await persistSession(result.data.register);
-    } catch (mutationError) {
-      setFormError(
-        mutationError instanceof Error
-          ? mutationError.message
-          : 'Registration failed.',
-      );
+    if (tag.kind === 'loader') {
+      toggleIn(setSelectedLoaders, tag.value);
+      return;
     }
+
+    toggleIn(setSelectedVersions, tag.value);
   }
 
-  async function handleLogout(): Promise<void> {
-    localStorage.removeItem(authTokenStorageKey);
-    setAccessToken(null);
-    setFormError(null);
-    await apolloClient.clearStore();
-  }
-
-  if (!accessToken) {
-    const submitting = loginLoading || registerLoading;
-
-    return (
-      <main className={mainClassName}>
-        <header>
-          <h1 className="text-2xl font-semibold">Hello world</h1>
-          <p className="mt-1 text-sm text-slate-600">GraphQL auth</p>
-        </header>
-
-        <div className="flex gap-2">
-          <button
-            className={`${buttonClassName} ${
-              authMode === 'login' ? 'bg-slate-900 text-white' : 'bg-white'
-            }`}
-            type="button"
-            onClick={() => setAuthMode('login')}
-          >
-            Login
-          </button>
-          <button
-            className={`${buttonClassName} ${
-              authMode === 'register' ? 'bg-slate-900 text-white' : 'bg-white'
-            }`}
-            type="button"
-            onClick={() => setAuthMode('register')}
-          >
-            Register
-          </button>
-        </div>
-
-        {authMode === 'login' ? (
-          <form
-            className="flex flex-col gap-3"
-            onSubmit={(event) => void handleLogin(event)}
-          >
-            <label className={labelClassName} htmlFor="login-identifier">
-              Username or email
-            </label>
-            <input
-              className={fieldClassName}
-              id="login-identifier"
-              name="identifier"
-              onChange={(event) => setIdentifier(event.target.value)}
-              required
-              type="text"
-              value={identifier}
-            />
-
-            <label className={labelClassName} htmlFor="login-password">
-              Password
-            </label>
-            <input
-              className={fieldClassName}
-              id="login-password"
-              name="password"
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              type="password"
-              value={password}
-            />
-
-            <button
-              className={`${buttonClassName} mt-2 bg-slate-900 text-white`}
-              disabled={submitting}
-              type="submit"
-            >
-              Login
-            </button>
-          </form>
-        ) : (
-          <form
-            className="flex flex-col gap-3"
-            onSubmit={(event) => void handleRegister(event)}
-          >
-            <label className={labelClassName} htmlFor="register-email">
-              Email
-            </label>
-            <input
-              className={fieldClassName}
-              id="register-email"
-              name="email"
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              type="email"
-              value={email}
-            />
-
-            <label className={labelClassName} htmlFor="register-username">
-              Username
-            </label>
-            <input
-              className={fieldClassName}
-              id="register-username"
-              name="username"
-              onChange={(event) => setUsername(event.target.value)}
-              required
-              type="text"
-              value={username}
-            />
-
-            <label className={labelClassName} htmlFor="register-display-name">
-              Display name
-            </label>
-            <input
-              className={fieldClassName}
-              id="register-display-name"
-              name="displayName"
-              onChange={(event) => setDisplayName(event.target.value)}
-              type="text"
-              value={displayName}
-            />
-
-            <label className={labelClassName} htmlFor="register-password">
-              Password
-            </label>
-            <input
-              className={fieldClassName}
-              id="register-password"
-              name="password"
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              type="password"
-              value={password}
-            />
-
-            <button
-              className={`${buttonClassName} mt-2 bg-slate-900 text-white`}
-              disabled={submitting}
-              type="submit"
-            >
-              Register
-            </button>
-          </form>
-        )}
-
-        {formError ? <p className="text-sm text-red-700">{formError}</p> : null}
-      </main>
+  function searchByTag(tag: SearchTag) {
+    setSelectedProject(null);
+    setAppView('discover');
+    setMobileFiltersOpen(false);
+    setQuery('');
+    setSelectedVersions(new Set());
+    setSelectedLoaders(
+      tag.kind === 'loader' ? new Set([tag.value]) : new Set(),
     );
+    setSelectedCategories(
+      tag.kind === 'category' ? new Set([tag.value]) : new Set(),
+    );
+    setPage(1);
+    writeProjectListToUrl(projectType);
+    window.scrollTo({ top: 0 });
   }
 
-  const firstProject = data?.projects[0];
+  function openProject(mod: Mod) {
+    const next = {
+      slug: mod.slug,
+      projectType: mod.projectType ?? projectType,
+    };
+
+    setSelectedProject(next);
+    setAppView('discover');
+    setProjectType(next.projectType);
+    setMobileFiltersOpen(false);
+    writeProjectToUrl(next);
+    window.scrollTo({ top: 0 });
+  }
+
+  function closeProject() {
+    setSelectedProject(null);
+    setAppView('discover');
+    writeProjectListToUrl(projectType);
+    window.scrollTo({ top: 0 });
+  }
+
+  function openHome() {
+    setSelectedProject(null);
+    setAppView('home');
+    writeHomeToUrl();
+    window.scrollTo({ top: 0 });
+  }
+
+  function openDiscover() {
+    setSelectedProject(null);
+    setAppView('discover');
+    setProjectType('mod');
+    writeProjectListToUrl('mod');
+    window.scrollTo({ top: 0 });
+  }
+
+  function changeProjectType(nextType: ProjectType) {
+    if (nextType === projectType) return;
+    setProjectType(nextType);
+    setSelectedProject(null);
+    setAppView('discover');
+    writeProjectListToUrl(nextType);
+    setQuery('');
+    setSelectedVersions(new Set());
+    setSelectedLoaders(new Set());
+    setSelectedCategories(new Set());
+    setPage(1);
+    setMobileFiltersOpen(false);
+  }
+
+  const meta = projectTypeMeta(projectType);
+
+  if (appView === 'home' && !selectedProject) {
+    return <HomePage onDiscover={openDiscover} />;
+  }
 
   return (
-    <main className={mainClassName}>
-      <header>
-        <h1 className="text-2xl font-semibold">Hello world</h1>
-      </header>
+    <div className="min-h-dvh bg-bg">
+      <NavBar
+        activeType={projectType}
+        onTypeChange={changeProjectType}
+        onHome={openHome}
+        onDiscover={openDiscover}
+        isDiscoverActive={appView === 'discover' || Boolean(selectedProject)}
+        showContentTabs={appView === 'discover' || Boolean(selectedProject)}
+        accountSlot={<AuthControls />}
+      />
 
-      <div className="flex gap-2">
-        <button
-          className={buttonClassName}
-          type="button"
-          onClick={() => void handleLogout()}
-        >
-          Logout
-        </button>
-        <button
-          className={buttonClassName}
-          type="button"
-          onClick={() => void refetch()}
-        >
-          Refetch GraphQL
-        </button>
-      </div>
+      {selectedProject ? (
+        <ProjectPage
+          slug={selectedProject.slug}
+          projectTypeHint={selectedProject.projectType}
+          onBack={closeProject}
+          onTagSearch={searchByTag}
+        />
+      ) : (
+        <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+            <aside
+              id="filters-panel"
+              className={cn('lg:block', mobileFiltersOpen ? 'block' : 'hidden')}
+            >
+              <FilterSidebar
+                tagOptions={tagOptions}
+                versionOptions={versionOptions}
+                loaderOptions={loaderOptions}
+                categoryOptions={categoryOptions}
+                selectedTags={selectedTags}
+                selectedVersions={selectedVersions}
+                selectedLoaders={selectedLoaders}
+                selectedCategories={selectedCategories}
+                onToggleTag={toggleTag}
+                onToggleVersion={(v) => toggleIn(setSelectedVersions, v)}
+                onToggleLoader={(v) => toggleIn(setSelectedLoaders, v)}
+                onToggleCategory={(v) => toggleIn(setSelectedCategories, v)}
+                onClearAll={clearAll}
+                hasActiveFilters={hasActiveFilters}
+              />
+            </aside>
 
-      {loading ? (
-        <p className="text-sm text-slate-600">
-          Loading authenticated GraphQL...
-        </p>
-      ) : null}
-      {error ? <p className="text-sm text-red-700">{error.message}</p> : null}
+            <section>
+              <div className="flex flex-wrap items-center gap-2 border-b border-line pb-4">
+                <div className="min-w-[16rem] flex-1">
+                  <SearchBar
+                    value={query}
+                    placeholder={`Search ${meta.plural}...`}
+                    ariaLabel={`Search ${meta.plural}`}
+                    onChange={(v) => {
+                      setQuery(v);
+                      setPage(1);
+                    }}
+                  />
+                </div>
 
-      {data ? (
-        <section className="border-t border-slate-200 pt-4">
-          <p>
-            Signed in as {data.me.displayName ?? data.me.username} (
-            {data.me.isAdmin ? 'admin' : 'non-admin'}, {data.me.role})
-          </p>
-          <p className="mt-2 text-sm text-slate-600">
-            {firstProject?.title ?? 'No projects yet'}
-          </p>
-        </section>
-      ) : null}
-    </main>
+                <button
+                  type="button"
+                  onClick={() => setMobileFiltersOpen((o) => !o)}
+                  aria-expanded={mobileFiltersOpen}
+                  aria-controls="filters-panel"
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover lg:hidden"
+                >
+                  <Filter className="size-4 text-accent-icon" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <span className="grid size-5 place-items-center rounded-full bg-accent text-xs font-bold text-white tabular-nums">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+
+                <SelectField
+                  ariaLabel="Sort results"
+                  prefix="Sort by:"
+                  value={sort}
+                  onValueChange={(v) => {
+                    setSort(v as SortKey);
+                    setPage(1);
+                  }}
+                  options={SORT_OPTIONS}
+                />
+
+                <SelectField
+                  ariaLabel="Results per page"
+                  prefix="View:"
+                  value={view}
+                  onValueChange={(v) => {
+                    setView(v);
+                    setPage(1);
+                  }}
+                  options={VIEW_OPTIONS}
+                />
+
+                <div
+                  role="group"
+                  aria-label="Layout"
+                  className="flex items-center rounded-lg border border-line bg-control p-0.5"
+                >
+                  <LayoutButton
+                    active={layout === 'list'}
+                    ariaLabel="List view"
+                    onClick={() => setLayout('list')}
+                  >
+                    <List className="size-4" />
+                  </LayoutButton>
+                  <LayoutButton
+                    active={layout === 'grid'}
+                    ariaLabel="Grid view"
+                    onClick={() => setLayout('grid')}
+                  >
+                    <LayoutGrid className="size-4" />
+                  </LayoutButton>
+                </div>
+
+                <span
+                  aria-live="polite"
+                  className="ml-auto text-sm font-semibold text-muted tabular-nums"
+                >
+                  {total.toLocaleString('en-US')}{' '}
+                  {total === 1 ? 'result' : 'results'}
+                </span>
+              </div>
+
+              <div className="mt-5" aria-busy={loading}>
+                {error && (
+                  <div className="mb-3 rounded-lg bg-accent-soft px-3 py-2 text-sm font-semibold text-ink">
+                    The catalog is not responding right now. {error}
+                  </div>
+                )}
+
+                {loading ? (
+                  <ResultsSkeleton layout={layout} count={5} />
+                ) : total === 0 ? (
+                  <EmptyState onClear={clearAll} itemLabel={meta.plural} />
+                ) : (
+                  <div
+                    className={cn(
+                      layout === 'grid'
+                        ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3'
+                        : 'flex flex-col',
+                    )}
+                  >
+                    {mods.map((mod) => (
+                      <div
+                        key={mod.slug}
+                        className={layout === 'grid' ? 'flex' : undefined}
+                      >
+                        <ModCard
+                          mod={mod}
+                          layout={layout}
+                          onOpen={openProject}
+                          onTagSearch={searchByTag}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {!loading && total > 0 && totalPages > 1 && (
+                <div className="mt-6 flex justify-center sm:justify-end">
+                  <Pagination
+                    page={safePage}
+                    totalPages={totalPages}
+                    onPage={setPage}
+                  />
+                </div>
+              )}
+            </section>
+          </div>
+        </main>
+      )}
+    </div>
+  );
+}
+
+export default App;
+
+interface SelectedProject {
+  slug: string;
+  projectType: ProjectType;
+}
+
+function projectFromUrl(): SelectedProject | null {
+  const params = new URLSearchParams(window.location.search);
+  const slug = params.get('project');
+  const rawType = params.get('type') ?? projectTypeFromPath();
+  if (!slug) return null;
+
+  return {
+    slug,
+    projectType: isProjectType(rawType) ? rawType : 'mod',
+  };
+}
+
+function viewFromUrl(): AppView {
+  if (projectTypeFromPath()) return 'discover';
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get('view') === 'discover' ? 'discover' : 'home';
+}
+
+function writeHomeToUrl() {
+  const url = new URL(window.location.href);
+  url.pathname = '/';
+  url.searchParams.delete('project');
+  url.searchParams.delete('type');
+  url.searchParams.delete('tab');
+  url.searchParams.delete('view');
+
+  window.history.pushState(null, '', url);
+}
+
+function writeProjectListToUrl(projectType: ProjectType) {
+  const url = new URL(window.location.href);
+  url.pathname = `/${projectTypeMeta(projectType).path}`;
+  url.searchParams.delete('project');
+  url.searchParams.delete('type');
+  url.searchParams.delete('tab');
+  url.searchParams.delete('view');
+
+  window.history.pushState(null, '', url);
+}
+
+function writeProjectToUrl(project: SelectedProject | null) {
+  const url = new URL(window.location.href);
+  if (project) {
+    url.pathname = `/${projectTypeMeta(project.projectType).path}`;
+    url.searchParams.set('project', project.slug);
+    url.searchParams.set('type', project.projectType);
+    url.searchParams.delete('view');
+  } else {
+    url.searchParams.delete('project');
+    url.searchParams.delete('type');
+    url.searchParams.delete('tab');
+  }
+  window.history.pushState(null, '', url);
+}
+
+function projectTypeFromPath(): ProjectType | null {
+  const segment = window.location.pathname.split('/').filter(Boolean)[0];
+  const meta = CONTENT_TYPES.find((item) => item.path === segment);
+
+  return meta?.type ?? null;
+}
+
+function isProjectType(value: string | null): value is ProjectType {
+  return (
+    value === 'mod' ||
+    value === 'resourcepack' ||
+    value === 'datapack' ||
+    value === 'shader' ||
+    value === 'modpack' ||
+    value === 'plugin'
+  );
+}
+
+function buildOptions(values: string[], selected: Set<string>): FacetOption[] {
+  const merged = new Set([...values, ...selected]);
+  return [...merged].map((value) => ({ value }));
+}
+
+function buildTagOptions({
+  categories,
+}: {
+  categories: string[];
+}): TagFacetOption[] {
+  return [
+    ...unique(categories)
+      .filter(isProjectCategoryTag)
+      .map((value): TagFacetOption => ({ kind: 'category', value })),
+  ];
+}
+
+function selectedCategoriesToTags(selected: Set<string>): string[] {
+  return [...selected].map((value) => `category:${value}`);
+}
+
+function selectedLoadersToTags(selected: Set<string>): string[] {
+  return [...selected].map((value) => `loader:${value}`);
+}
+
+function selectedVersionsToTags(selected: Set<string>): string[] {
+  return [...selected].map((value) => `version:${value}`);
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+}
+
+function LayoutButton({
+  active,
+  ariaLabel,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  ariaLabel: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'relative grid size-9 place-items-center rounded-md transition-colors',
+        active ? 'text-accent-icon' : 'text-faint hover:text-accent-icon',
+      )}
+    >
+      {active && (
+        <motion.span
+          layoutId="layoutToggleIndicator"
+          className="absolute inset-0 rounded-md bg-control-hover"
+          transition={{ type: 'spring', stiffness: 520, damping: 40 }}
+        />
+      )}
+      <span className="relative z-10">{children}</span>
+    </button>
   );
 }

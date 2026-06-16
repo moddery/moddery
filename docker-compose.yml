@@ -9,7 +9,7 @@ services:
       api:
         condition: service_started
     ports:
-      - '15173:4173'
+      - '15175:4173'
 
   api:
     build:

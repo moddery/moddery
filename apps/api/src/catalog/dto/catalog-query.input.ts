@@ -1,6 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
 import { type ModLoader, type ProjectSort } from '@moddery/shared';
-import { IsOptional, IsString } from 'class-validator';
+import { IsArray, IsOptional, IsString } from 'class-validator';
 
 @InputType()
 export class CatalogQueryInput {
@@ -23,4 +23,10 @@ export class CatalogQueryInput {
   @IsOptional()
   @IsString()
   sort?: ProjectSort;
+
+  @Field(() => [String], { nullable: true })
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  tags?: string[];
 }
