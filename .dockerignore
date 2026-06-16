@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+dist
+apps/*/dist
+coverage
+.bun
+.cache
+.turbo
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+README.md

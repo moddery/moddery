@@ -1,0 +1,32 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: deps
+    command: bun run --filter @moddery/web dev
+    environment:
+      VITE_GRAPHQL_URL: http://localhost:13001/graphql
+    ports:
+      - '15173:5173'
+    volumes:
+      - ./apps/web/index.html:/app/apps/web/index.html
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/vite.config.ts:/app/apps/web/vite.config.ts
+      - ./packages/shared/src:/app/packages/shared/src
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: deps
+    command:
+      - /bin/sh
+      - -c
+      - bun run --filter @moddery/api prisma:generate && bun run --filter @moddery/api start:dev
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./apps/api/prisma:/app/apps/api/prisma
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages/shared/src:/app/packages/shared/src

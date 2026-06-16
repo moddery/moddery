@@ -1,0 +1,26 @@
+import { Field, InputType } from '@nestjs/graphql';
+import { type ModLoader, type ProjectSort } from '@moddery/shared';
+import { IsOptional, IsString } from 'class-validator';
+
+@InputType()
+export class CatalogQueryInput {
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsString()
+  gameVersion?: string;
+
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsString()
+  loader?: ModLoader;
+
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsString()
+  sort?: ProjectSort;
+}
