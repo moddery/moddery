@@ -1,5 +1,9 @@
-import { Args, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
+import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
+import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { Public } from '../../auth/decorators/public.decorator.js';
+import { CreateVersionInput } from '../dto/create-version.input.js';
 import { VersionsService } from '../services/versions.service.js';
 import { VersionSummary } from './version-summary.model.js';
 
@@ -7,10 +11,19 @@ import { VersionSummary } from './version-summary.model.js';
 export class VersionsResolver {
   constructor(private readonly versionsService: VersionsService) {}
 
+  @Public()
   @Query(() => [VersionSummary])
-  versionsForProject(
+  async versionsForProject(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
-  ): VersionSummary[] {
+  ): Promise<VersionSummary[]> {
     return this.versionsService.findByProjectSlug(projectSlug);
+  }
+
+  @Mutation(() => VersionSummary)
+  createVersion(
+    @Args('input') input: CreateVersionInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<VersionSummary> {
+    return this.versionsService.createVersion(input, user.id);
   }
 }

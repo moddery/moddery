@@ -1,0 +1,136 @@
+import { describe, expect, test } from 'bun:test';
+
+import { type PrismaService } from '../../prisma/prisma.service.js';
+import { CollectionsService } from './collections.service.js';
+
+describe(CollectionsService.name, () => {
+  test('creates owned collections with trimmed optional fields', async () => {
+    const createCalls: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        create: (query: unknown) => {
+          createCalls.push(query);
+          return Promise.resolve(collectionRow());
+        },
+      },
+    } as unknown as PrismaService);
+
+    const collection = await service.createCollection(
+      {
+        color: ' #1d9bf0 ',
+        description: '  Example list  ',
+        name: 'Example',
+        slug: 'example',
+        visibility: 'PUBLIC',
+      },
+      'user-a',
+    );
+
+    expect(createCalls[0]).toEqual(
+      expect.objectContaining({
+        data: {
+          color: '#1d9bf0',
+          description: 'Example list',
+          name: 'Example',
+          ownerId: 'user-a',
+          slug: 'example',
+          visibility: 'PUBLIC',
+        },
+      }),
+    );
+    expect(collection.projectCount).toBe(1);
+  });
+
+  test('adds projects to collections owned by the current user', async () => {
+    const upserts: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: (query: { select?: unknown; where?: { id?: string } }) => {
+          if (query.where?.id === 'collection-a') {
+            return Promise.resolve(
+              query.select === undefined
+                ? { id: 'collection-a' }
+                : collectionRow(),
+            );
+          }
+
+          return Promise.resolve(null);
+        },
+      },
+      collectionProject: {
+        count: () => Promise.resolve(3),
+        upsert: (query: unknown) => {
+          upserts.push(query);
+          return Promise.resolve({});
+        },
+      },
+      project: {
+        findUnique: () => Promise.resolve({ id: 'project-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const collection = await service.addProjectToCollection(
+      {
+        collectionId: 'collection-a',
+        projectSlug: 'example',
+      },
+      'user-a',
+    );
+
+    expect(upserts[0]).toEqual(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          addedById: 'user-a',
+          collectionId: 'collection-a',
+          projectId: 'project-a',
+          sortOrder: 3,
+        }),
+      }),
+    );
+    expect(collection.id).toBe('collection-a');
+  });
+});
+
+function collectionRow() {
+  return {
+    _count: { projects: 1 },
+    color: '#1d9bf0',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    description: 'Example list',
+    iconUrl: null,
+    id: 'collection-a',
+    name: 'Example',
+    owner: {
+      avatarUrl: null,
+      displayName: null,
+      id: 'user-a',
+      username: 'creator',
+    },
+    projects: [
+      {
+        project: {
+          categories: [{ category: { slug: 'utility' } }],
+          description: 'Body',
+          downloads: 10,
+          followers: 2,
+          gallery: [],
+          gameVersions: [{ gameVersion: { version: '1.21.6' } }],
+          iconUrl: null,
+          id: 'project-a',
+          kind: 'MOD',
+          license: { key: 'mit', name: 'MIT', url: null },
+          links: [],
+          loaders: [{ loader: 'FABRIC' }],
+          slug: 'example',
+          status: 'APPROVED',
+          summary: 'Summary',
+          title: 'Example',
+          updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+        },
+      },
+    ],
+    slug: 'example',
+    updatedAt: new Date('2026-01-03T00:00:00.000Z'),
+    visibility: 'PUBLIC',
+  };
+}

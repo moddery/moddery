@@ -3,7 +3,7 @@ import { CONTENT_TYPES } from '../lib/projectTypes.ts';
 import { motion } from 'motion/react';
 import { type ReactNode } from 'react';
 import type { ProjectType } from '../types.ts';
-import { Plus } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 import { ModderyMark } from './icons.tsx';
 
 export function NavBar({
@@ -11,7 +11,12 @@ export function NavBar({
   onTypeChange,
   onHome,
   onDiscover,
+  onCollections,
+  onOrganizations,
+  onDashboard,
   isDiscoverActive,
+  isCollectionsActive,
+  isOrganizationsActive,
   showContentTabs,
   accountSlot,
 }: {
@@ -19,7 +24,12 @@ export function NavBar({
   onTypeChange: (type: ProjectType) => void;
   onHome: () => void;
   onDiscover: () => void;
+  onCollections: () => void;
+  onOrganizations: () => void;
+  onDashboard: () => void;
   isDiscoverActive: boolean;
+  isCollectionsActive: boolean;
+  isOrganizationsActive: boolean;
   showContentTabs: boolean;
   accountSlot?: ReactNode;
 }) {
@@ -56,16 +66,47 @@ export function NavBar({
           >
             Discover
           </a>
+          <a
+            href="/collections"
+            onClick={(e) => {
+              e.preventDefault();
+              onCollections();
+            }}
+            className={cn(
+              'border-b px-2.5 py-1.5 text-sm font-semibold transition-colors hover:border-accent-icon hover:text-ink',
+              isCollectionsActive
+                ? 'border-accent-icon text-ink'
+                : 'border-transparent text-muted',
+            )}
+          >
+            Collections
+          </a>
+          <a
+            href="/organizations"
+            onClick={(e) => {
+              e.preventDefault();
+              onOrganizations();
+            }}
+            className={cn(
+              'border-b px-2.5 py-1.5 text-sm font-semibold transition-colors hover:border-accent-icon hover:text-ink',
+              isOrganizationsActive
+                ? 'border-accent-icon text-ink'
+                : 'border-transparent text-muted',
+            )}
+          >
+            Organizations
+          </a>
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
           <button
             type="button"
-            aria-label="Publish"
+            aria-label="Dashboard"
+            onClick={onDashboard}
             className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong"
           >
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">Publish</span>
+            <LayoutDashboard className="size-4" />
+            <span className="hidden sm:inline">Dashboard</span>
           </button>
           {accountSlot}
         </div>

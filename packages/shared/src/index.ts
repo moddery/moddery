@@ -109,9 +109,23 @@ export interface ProjectSummaryContract {
   readonly followers: number;
   readonly gameVersions: readonly string[];
   readonly iconUrl?: string | null;
+  readonly license: ProjectLicenseContract;
+  readonly links: readonly ProjectLinkContract[];
   readonly loaders: readonly string[];
   readonly gallery: readonly ProjectGalleryImageContract[];
   readonly updatedAt: string;
+}
+
+export interface ProjectLicenseContract {
+  readonly id: string;
+  readonly name: string;
+  readonly url?: string | null;
+}
+
+export interface ProjectLinkContract {
+  readonly kind: string;
+  readonly label?: string | null;
+  readonly url: string;
 }
 
 export interface ProjectGalleryImageContract {

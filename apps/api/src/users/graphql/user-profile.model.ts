@@ -1,7 +1,25 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
+
+import { CollectionSummary } from '../../collections/graphql/collection-summary.model.js';
+import { ProjectSummary } from '../../catalog/graphql/project-summary.model.js';
 
 @ObjectType()
 export class UserProfile {
+  @Field(() => String, { nullable: true })
+  avatarUrl!: string | null;
+
+  @Field(() => String, { nullable: true })
+  bio!: string | null;
+
+  @Field(() => Int)
+  collectionCount!: number;
+
+  @Field(() => [CollectionSummary])
+  collections!: CollectionSummary[];
+
+  @Field(() => Date)
+  createdAt!: Date;
+
   @Field(() => String, { nullable: true })
   displayName!: string | null;
 
@@ -13,6 +31,15 @@ export class UserProfile {
 
   @Field(() => String)
   role!: string;
+
+  @Field(() => Int)
+  followedProjectCount!: number;
+
+  @Field(() => Int)
+  projectCount!: number;
+
+  @Field(() => [ProjectSummary])
+  projects!: ProjectSummary[];
 
   @Field(() => String)
   username!: string;

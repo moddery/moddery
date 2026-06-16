@@ -1,12 +1,18 @@
 import {
+  CollectionVisibility,
+  FileKind,
+  HashAlgorithm,
+  LinkKind,
   Loader,
   PrismaClient,
   ProjectKind,
   ProjectStatus,
   TeamTargetKind,
+  VersionChannel,
 } from '@prisma/client';
 import { Client } from '@opensearch-project/opensearch';
 import { isProjectCategoryTag } from '@moddery/shared';
+import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
 const searchClient = new Client({
@@ -16,6 +22,7 @@ const searchClient = new Client({
 const sourceBaseUrl =
   process.env.SEED_SOURCE_API_URL ?? 'https://api.modrinth.com/v2';
 const limit = Number(process.env.SEED_PROJECT_LIMIT ?? '20');
+const versionsPerProject = Number(process.env.SEED_VERSIONS_PER_PROJECT ?? '5');
 const projectsIndex = 'projects';
 
 interface SearchResponse {
@@ -40,7 +47,25 @@ interface SearchHit {
 
 interface ProjectDetail {
   body: string;
+  discord_url: string | null;
+  donation_urls: SourceDonationLink[];
   gallery: ProjectDetailGalleryImage[];
+  issues_url: string | null;
+  license: SourceLicense;
+  source_url: string | null;
+  wiki_url: string | null;
+}
+
+interface SourceDonationLink {
+  id: string;
+  platform: string;
+  url: string;
+}
+
+interface SourceLicense {
+  id: string;
+  name: string;
+  url: string | null;
 }
 
 interface ProjectDetailGalleryImage {
@@ -53,47 +78,146 @@ interface ProjectDetailGalleryImage {
   url: string;
 }
 
+interface SourceVersion {
+  changelog: string | null;
+  date_published: string;
+  downloads: number;
+  files: SourceVersionFile[];
+  game_versions: string[];
+  id: string;
+  loaders: string[];
+  name: string;
+  version_number: string;
+  version_type: string;
+}
+
+interface SourceVersionFile {
+  filename: string;
+  hashes: Partial<Record<'sha1' | 'sha256' | 'sha512', string>>;
+  primary: boolean;
+  size: number;
+  url: string;
+}
+
 async function main(): Promise<void> {
   const projects = await fetchPopularProjects();
   const owner = await prisma.user.upsert({
     create: {
+      bio: 'Local development curator for seeded catalog data.',
+      displayName: 'Seed Curator',
       email: 'seed@moddery.local',
       username: 'seed',
     },
-    update: {},
+    update: {
+      bio: 'Local development curator for seeded catalog data.',
+      displayName: 'Seed Curator',
+    },
     where: { username: 'seed' },
   });
+  await upsertSeedPassword(owner.id);
+  const organization = await upsertSeedOrganization(owner.id);
 
   for (const project of projects) {
     const kind = mapProjectKind(project.project_type);
     if (kind === null) continue;
     const detail = await fetchProjectDetail(project.project_id);
 
-    const license = await prisma.license.upsert({
-      create: {
-        key: project.license,
-        name: project.license,
-      },
-      update: {},
-      where: { key: project.license },
-    });
+    const license = await upsertLicense(project, detail);
     const existing = await prisma.project.findUnique({
       select: { id: true },
       where: { slug: project.slug },
     });
     const saved =
       existing === null
-        ? await createProject(project, detail, kind, license.id, owner.id)
-        : await updateProject(project, detail, kind, license.id);
+        ? await createProject(
+            project,
+            detail,
+            kind,
+            license.id,
+            owner.id,
+            organization.id,
+          )
+        : await updateProject(
+            project,
+            detail,
+            kind,
+            license.id,
+            organization.id,
+          );
 
     await upsertCategories(saved.id, kind, project.categories);
     await upsertGameVersions(saved.id, project.versions);
     await upsertLoaders(saved.id, project.categories);
     await replaceGallery(saved.id, detail.gallery);
+    await replaceProjectLinks(saved.id, detail);
+    await replaceVersions(saved.id, owner.id, project.project_id);
+    await replaceAnalyticsEvents(saved.id, project.downloads);
     await indexProject(saved.id, project, detail, kind);
   }
 
+  await seedPublicCollections(owner.id);
+  await seedNotifications(owner.id);
+
   console.log(`Seeded ${projects.length.toString()} projects`);
+}
+
+async function upsertSeedPassword(userId: string): Promise<void> {
+  await prisma.passwordCredential.upsert({
+    create: {
+      passwordHash: await hash('password123', 12),
+      userId,
+    },
+    update: {},
+    where: { userId },
+  });
+}
+
+async function upsertSeedOrganization(ownerId: string) {
+  const existing = await prisma.organization.findUnique({
+    select: { id: true },
+    where: { slug: 'moddery-seed' },
+  });
+
+  if (existing !== null) {
+    return prisma.organization.update({
+      data: {
+        color: '#1d9bf0',
+        description: 'Local development organization for seeded catalog data.',
+        name: 'Moddery Seed',
+        ownerId,
+      },
+      where: { id: existing.id },
+    });
+  }
+
+  return prisma.organization.create({
+    data: {
+      color: '#1d9bf0',
+      description: 'Local development organization for seeded catalog data.',
+      name: 'Moddery Seed',
+      ownerId,
+      slug: 'moddery-seed',
+      team: {
+        create: {
+          members: {
+            create: {
+              acceptedAt: new Date(),
+              isOwner: true,
+              permissions: [
+                'MANAGE_DETAILS',
+                'MANAGE_MEMBERS',
+                'MANAGE_SETTINGS',
+                'VIEW_ANALYTICS',
+              ],
+              role: 'Owner',
+              userId: ownerId,
+            },
+          },
+          targetKind: TeamTargetKind.ORGANIZATION,
+        },
+      },
+    },
+  });
 }
 
 async function indexProject(
@@ -178,12 +302,172 @@ function projectIndexMapping() {
   };
 }
 
+async function seedPublicCollections(ownerId: string): Promise<void> {
+  await Promise.all([
+    upsertPublicCollection(ownerId, {
+      categorySlugs: ['optimization', 'library'],
+      color: '#1d9bf0',
+      description: 'Performance-focused projects and libraries worth testing.',
+      name: 'Performance Picks',
+      slug: 'performance-picks',
+    }),
+    upsertPublicCollection(ownerId, {
+      categorySlugs: ['adventure', 'mobs', 'decoration'],
+      color: '#30a46c',
+      description: 'Projects that add places, creatures, and world detail.',
+      name: 'Worldbuilding',
+      slug: 'worldbuilding',
+    }),
+    upsertPublicCollection(ownerId, {
+      categorySlugs: ['utility', 'management'],
+      color: '#f76808',
+      description: 'Utilities for managing play, servers, and project stacks.',
+      name: 'Utility Shelf',
+      slug: 'utility-shelf',
+    }),
+  ]);
+}
+
+async function upsertPublicCollection(
+  ownerId: string,
+  collection: {
+    categorySlugs: string[];
+    color: string;
+    description: string;
+    name: string;
+    slug: string;
+  },
+): Promise<void> {
+  const saved = await prisma.collection.upsert({
+    create: {
+      color: collection.color,
+      description: collection.description,
+      name: collection.name,
+      ownerId,
+      slug: collection.slug,
+      visibility: CollectionVisibility.PUBLIC,
+    },
+    update: {
+      color: collection.color,
+      description: collection.description,
+      name: collection.name,
+      visibility: CollectionVisibility.PUBLIC,
+    },
+    where: {
+      ownerId_slug: {
+        ownerId,
+        slug: collection.slug,
+      },
+    },
+  });
+
+  const projects = await prisma.project.findMany({
+    orderBy: [{ downloads: 'desc' }],
+    select: { id: true },
+    take: 6,
+    where: {
+      categories: {
+        some: {
+          category: {
+            slug: { in: collection.categorySlugs },
+          },
+        },
+      },
+      status: ProjectStatus.APPROVED,
+    },
+  });
+
+  await prisma.collectionProject.deleteMany({
+    where: { collectionId: saved.id },
+  });
+
+  await prisma.collectionProject.createMany({
+    data: projects.map((project, index) => ({
+      addedById: ownerId,
+      collectionId: saved.id,
+      projectId: project.id,
+      sortOrder: index,
+    })),
+  });
+}
+
+async function seedNotifications(userId: string): Promise<void> {
+  await prisma.notification.deleteMany({
+    where: {
+      type: { in: ['seed.project_update', 'seed.moderation'] },
+      userId,
+    },
+  });
+
+  await prisma.notification.createMany({
+    data: [
+      {
+        actionUrl: '/mods?project=iris&type=mod',
+        body: 'A seeded project has fresh versions, files, and gallery data.',
+        title: 'Project data refreshed',
+        type: 'seed.project_update',
+        userId,
+      },
+      {
+        actionUrl: '/collections',
+        body: 'Public collections were generated from the current catalog.',
+        title: 'Collections are ready',
+        type: 'seed.moderation',
+        userId,
+      },
+    ],
+  });
+}
+
+async function replaceAnalyticsEvents(
+  projectId: string,
+  downloads: number,
+): Promise<void> {
+  await prisma.projectViewEvent.deleteMany({ where: { projectId } });
+  await prisma.downloadEvent.deleteMany({ where: { projectId } });
+
+  const now = new Date();
+  const dailyViews = Math.max(2, Math.min(32, Math.floor(downloads / 50_000)));
+  const dailyDownloads = Math.max(
+    1,
+    Math.min(18, Math.floor(downloads / 125_000)),
+  );
+
+  await prisma.projectViewEvent.createMany({
+    data: Array.from({ length: 14 }).flatMap((_, dayIndex) => {
+      const createdAt = daysAgo(now, 13 - dayIndex);
+      return Array.from({ length: dailyViews + (dayIndex % 5) }).map(() => ({
+        countryCode: 'US',
+        createdAt,
+        projectId,
+        referrer: 'seed',
+        userAgent: 'seed-script',
+      }));
+    }),
+  });
+
+  await prisma.downloadEvent.createMany({
+    data: Array.from({ length: 14 }).flatMap((_, dayIndex) => {
+      const createdAt = daysAgo(now, 13 - dayIndex);
+      return Array.from({ length: dailyDownloads + (dayIndex % 3) }).map(
+        () => ({
+          countryCode: 'US',
+          createdAt,
+          projectId,
+          userAgent: 'seed-script',
+        }),
+      );
+    }),
+  });
+}
+
 async function createProject(
   project: SearchHit,
   detail: ProjectDetail,
   kind: ProjectKind,
   licenseId: string,
   ownerId: string,
+  organizationId: string,
 ) {
   const team = await prisma.team.create({
     data: {
@@ -215,6 +499,7 @@ async function createProject(
       id: project.project_id,
       kind,
       licenseId,
+      organizationId,
       publishedAt: parseDate(project.date_created),
       slug: project.slug,
       status: ProjectStatus.APPROVED,
@@ -231,6 +516,7 @@ function updateProject(
   detail: ProjectDetail,
   kind: ProjectKind,
   licenseId: string,
+  organizationId: string,
 ) {
   return prisma.project.update({
     data: {
@@ -239,6 +525,7 @@ function updateProject(
       iconUrl: project.icon_url,
       kind,
       licenseId,
+      organizationId,
       publishedAt: parseDate(project.date_created),
       status: ProjectStatus.APPROVED,
       summary: project.description,
@@ -281,6 +568,45 @@ async function fetchProjectDetail(projectId: string): Promise<ProjectDetail> {
   return (await response.json()) as ProjectDetail;
 }
 
+async function fetchProjectVersions(
+  projectId: string,
+): Promise<SourceVersion[]> {
+  const response = await fetch(
+    `${sourceBaseUrl}/project/${projectId}/version`,
+    {
+      headers: { Accept: 'application/json' },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Seed source project versions returned ${response.status.toString()} for ${projectId}`,
+    );
+  }
+
+  return ((await response.json()) as SourceVersion[]).slice(
+    0,
+    versionsPerProject,
+  );
+}
+
+async function upsertLicense(project: SearchHit, detail: ProjectDetail) {
+  const key = detail.license.id || project.license;
+
+  return prisma.license.upsert({
+    create: {
+      key,
+      name: detail.license.name || key,
+      url: detail.license.url,
+    },
+    update: {
+      name: detail.license.name || key,
+      url: detail.license.url,
+    },
+    where: { key },
+  });
+}
+
 async function replaceGallery(
   projectId: string,
   gallery: ProjectDetailGalleryImage[],
@@ -302,6 +628,83 @@ async function replaceGallery(
       sortOrder: image.ordering,
       title: image.title,
     })),
+  });
+}
+
+async function replaceProjectLinks(
+  projectId: string,
+  detail: ProjectDetail,
+): Promise<void> {
+  await prisma.project.update({
+    data: {
+      discordUrl: detail.discord_url,
+      issuesUrl: detail.issues_url,
+      sourceUrl: detail.source_url,
+      wikiUrl: detail.wiki_url,
+    },
+    where: { id: projectId },
+  });
+
+  await prisma.projectLink.deleteMany({
+    where: { projectId },
+  });
+
+  if (detail.donation_urls.length === 0) return;
+
+  await prisma.projectLink.createMany({
+    data: detail.donation_urls.map((link) => ({
+      kind: LinkKind.DONATION,
+      label: link.platform || link.id,
+      projectId,
+      url: link.url,
+    })),
+  });
+}
+
+async function replaceVersions(
+  projectId: string,
+  authorId: string,
+  sourceProjectId: string,
+): Promise<void> {
+  const versions = uniqueVersionsByNumber(
+    await fetchProjectVersions(sourceProjectId),
+  );
+
+  await prisma.version.deleteMany({
+    where: { projectId },
+  });
+
+  for (const [index, version] of versions.entries()) {
+    const saved = await prisma.version.create({
+      data: {
+        authorId,
+        changelog: version.changelog,
+        channel: mapVersionChannel(version.version_type),
+        downloads: version.downloads,
+        featured: index === 0,
+        id: version.id,
+        name: version.name,
+        projectId,
+        publishedAt: parseDate(version.date_published),
+        sortOrder: index,
+        status: ProjectStatus.APPROVED,
+        versionNumber: version.version_number,
+      },
+    });
+
+    await upsertVersionGameVersions(saved.id, version.game_versions);
+    await upsertVersionLoaders(saved.id, version.loaders);
+    await createVersionFiles(saved.id, version.files);
+  }
+}
+
+function uniqueVersionsByNumber(versions: SourceVersion[]): SourceVersion[] {
+  const seen = new Set<string>();
+
+  return versions.filter((version) => {
+    if (seen.has(version.version_number)) return false;
+    seen.add(version.version_number);
+    return true;
   });
 }
 
@@ -392,6 +795,79 @@ async function upsertLoaders(
   }
 }
 
+async function upsertVersionGameVersions(
+  versionId: string,
+  versions: string[],
+): Promise<void> {
+  for (const version of new Set(versions)) {
+    const gameVersion = await prisma.gameVersion.upsert({
+      create: { version },
+      update: {},
+      where: { version },
+    });
+
+    await prisma.versionGameVersion.create({
+      data: {
+        gameVersionId: gameVersion.id,
+        versionId,
+      },
+    });
+  }
+}
+
+async function upsertVersionLoaders(
+  versionId: string,
+  loaders: string[],
+): Promise<void> {
+  for (const sourceLoader of new Set(loaders)) {
+    const loader = mapLoader(sourceLoader);
+    if (loader === null) continue;
+
+    await prisma.versionLoader.create({
+      data: {
+        loader,
+        versionId,
+      },
+    });
+  }
+}
+
+async function createVersionFiles(
+  versionId: string,
+  files: SourceVersionFile[],
+): Promise<void> {
+  for (const file of files) {
+    const saved = await prisma.versionFile.create({
+      data: {
+        bucket: 'external',
+        fileName: file.filename,
+        isPrimary: file.primary,
+        key: `${versionId}/${file.filename}`,
+        kind: FileKind.UNIVERSAL,
+        sizeBytes: BigInt(file.size),
+        url: file.url,
+        versionId,
+      },
+    });
+
+    await createFileHashes(saved.id, file.hashes);
+  }
+}
+
+async function createFileHashes(
+  fileId: string,
+  hashes: SourceVersionFile['hashes'],
+): Promise<void> {
+  const data = Object.entries(hashes).flatMap(([algorithm, value]) => {
+    const mapped = mapHashAlgorithm(algorithm);
+    return mapped === null ? [] : [{ algorithm: mapped, fileId, value }];
+  });
+
+  if (data.length === 0) return;
+
+  await prisma.fileHash.createMany({ data });
+}
+
 function mapProjectKind(kind: string): ProjectKind | null {
   if (kind === 'mod') return ProjectKind.MOD;
   if (kind === 'modpack') return ProjectKind.MODPACK;
@@ -410,12 +886,31 @@ function mapLoader(category: string): Loader | null {
   return null;
 }
 
+function mapVersionChannel(channel: string): VersionChannel {
+  if (channel === 'alpha') return VersionChannel.ALPHA;
+  if (channel === 'beta') return VersionChannel.BETA;
+  return VersionChannel.RELEASE;
+}
+
+function mapHashAlgorithm(algorithm: string): HashAlgorithm | null {
+  if (algorithm === 'sha1') return HashAlgorithm.SHA1;
+  if (algorithm === 'sha256') return HashAlgorithm.SHA256;
+  if (algorithm === 'sha512') return HashAlgorithm.SHA512;
+  return null;
+}
+
 function parseDate(value: string): Date {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     throw new Error(`Invalid date from seed source: ${value}`);
   }
 
+  return date;
+}
+
+function daysAgo(from: Date, days: number): Date {
+  const date = new Date(from);
+  date.setUTCDate(date.getUTCDate() - days);
   return date;
 }
 

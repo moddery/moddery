@@ -26,11 +26,21 @@ import { ResultsSkeleton } from './components/Skeletons.tsx';
 import { EmptyState } from './components/EmptyState.tsx';
 import { Pagination } from './components/Pagination.tsx';
 import { Filter, LayoutGrid, List } from 'lucide-react';
+import { DashboardPage } from './components/DashboardPage.tsx';
 import { ProjectPage } from './components/ProjectPage.tsx';
 import { HomePage } from './components/HomePage.tsx';
 import { AuthControls } from './components/AuthControls.tsx';
+import { CollectionsPage } from './components/CollectionsPage.tsx';
+import { OrganizationPage } from './components/OrganizationPage.tsx';
+import { UserProfilePage } from './components/UserProfilePage.tsx';
 
-type AppView = 'home' | 'discover';
+type AppView =
+  | 'home'
+  | 'discover'
+  | 'collections'
+  | 'dashboard'
+  | 'organization'
+  | 'profile';
 
 const SORT_OPTIONS: SelectOption[] = [
   { label: 'Relevance', value: 'relevance' },
@@ -56,8 +66,20 @@ export function App() {
   const [selectedProject, setSelectedProject] = useState(() =>
     projectFromUrl(),
   );
+  const [selectedUsername, setSelectedUsername] = useState(() =>
+    profileFromUrl(),
+  );
+  const [selectedOrganization, setSelectedOrganization] = useState(() =>
+    organizationFromUrl(),
+  );
   const [appView, setAppView] = useState<AppView>(() =>
-    projectFromUrl() ? 'discover' : viewFromUrl(),
+    projectFromUrl()
+      ? 'discover'
+      : organizationFromUrl()
+        ? 'organization'
+        : profileFromUrl()
+          ? 'profile'
+          : viewFromUrl(),
   );
   const [projectType, setProjectType] = useState<ProjectType>(
     () => projectFromUrl()?.projectType ?? projectTypeFromPath() ?? 'mod',
@@ -82,8 +104,20 @@ export function App() {
   useEffect(() => {
     function handlePopState() {
       const next = projectFromUrl();
+      const nextUsername = profileFromUrl();
+      const nextOrganization = organizationFromUrl();
       setSelectedProject(next);
-      setAppView(next ? 'discover' : viewFromUrl());
+      setSelectedUsername(nextUsername);
+      setSelectedOrganization(nextOrganization);
+      setAppView(
+        next
+          ? 'discover'
+          : nextOrganization
+            ? 'organization'
+            : nextUsername
+              ? 'profile'
+              : viewFromUrl(),
+      );
       setProjectType(next?.projectType ?? projectTypeFromPath() ?? 'mod');
     }
 
@@ -103,7 +137,7 @@ export function App() {
     () => [...selectedCategories].sort(),
     [selectedCategories],
   );
-  const shouldLoadCatalog = appView !== 'home' || Boolean(selectedProject);
+  const shouldLoadCatalog = appView === 'discover' || Boolean(selectedProject);
   const pageSize = Number(view);
 
   const filterTagsQuery = useQuery({
@@ -217,6 +251,8 @@ export function App() {
 
   function searchByTag(tag: SearchTag) {
     setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
     setAppView('discover');
     setMobileFiltersOpen(false);
     setQuery('');
@@ -239,6 +275,8 @@ export function App() {
     };
 
     setSelectedProject(next);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
     setAppView('discover');
     setProjectType(next.projectType);
     setMobileFiltersOpen(false);
@@ -248,6 +286,8 @@ export function App() {
 
   function closeProject() {
     setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
     setAppView('discover');
     writeProjectListToUrl(projectType);
     window.scrollTo({ top: 0 });
@@ -255,6 +295,8 @@ export function App() {
 
   function openHome() {
     setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
     setAppView('home');
     writeHomeToUrl();
     window.scrollTo({ top: 0 });
@@ -262,9 +304,38 @@ export function App() {
 
   function openDiscover() {
     setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
     setAppView('discover');
     setProjectType('mod');
     writeProjectListToUrl('mod');
+    window.scrollTo({ top: 0 });
+  }
+
+  function openCollections() {
+    setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
+    setAppView('collections');
+    writeCollectionsToUrl();
+    window.scrollTo({ top: 0 });
+  }
+
+  function openDashboard() {
+    setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
+    setAppView('dashboard');
+    writeDashboardToUrl();
+    window.scrollTo({ top: 0 });
+  }
+
+  function openOrganizations() {
+    setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
+    setAppView('organization');
+    writeOrganizationsToUrl();
     window.scrollTo({ top: 0 });
   }
 
@@ -272,6 +343,8 @@ export function App() {
     if (nextType === projectType) return;
     setProjectType(nextType);
     setSelectedProject(null);
+    setSelectedUsername(null);
+    setSelectedOrganization(null);
     setAppView('discover');
     writeProjectListToUrl(nextType);
     setQuery('');
@@ -295,7 +368,12 @@ export function App() {
         onTypeChange={changeProjectType}
         onHome={openHome}
         onDiscover={openDiscover}
+        onCollections={openCollections}
+        onOrganizations={openOrganizations}
+        onDashboard={openDashboard}
         isDiscoverActive={appView === 'discover' || Boolean(selectedProject)}
+        isCollectionsActive={appView === 'collections'}
+        isOrganizationsActive={appView === 'organization'}
         showContentTabs={appView === 'discover' || Boolean(selectedProject)}
         accountSlot={<AuthControls />}
       />
@@ -306,6 +384,23 @@ export function App() {
           projectTypeHint={selectedProject.projectType}
           onBack={closeProject}
           onTagSearch={searchByTag}
+        />
+      ) : appView === 'collections' ? (
+        <CollectionsPage
+          onOpenProject={openProject}
+          onTagSearch={searchByTag}
+        />
+      ) : appView === 'dashboard' ? (
+        <DashboardPage onOpenProject={openProject} />
+      ) : appView === 'organization' ? (
+        <OrganizationPage
+          slug={selectedOrganization}
+          onOpenProject={openProject}
+        />
+      ) : appView === 'profile' && selectedUsername ? (
+        <UserProfilePage
+          username={selectedUsername}
+          onOpenProject={openProject}
         />
       ) : (
         <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
@@ -487,6 +582,11 @@ function projectFromUrl(): SelectedProject | null {
 }
 
 function viewFromUrl(): AppView {
+  if (window.location.pathname === '/dashboard') return 'dashboard';
+  if (window.location.pathname === '/collections') return 'collections';
+  if (window.location.pathname === '/organizations') return 'organization';
+  if (organizationFromUrl()) return 'organization';
+  if (profileFromUrl()) return 'profile';
   if (projectTypeFromPath()) return 'discover';
 
   const params = new URLSearchParams(window.location.search);
@@ -504,6 +604,39 @@ function writeHomeToUrl() {
   window.history.pushState(null, '', url);
 }
 
+function writeCollectionsToUrl() {
+  const url = new URL(window.location.href);
+  url.pathname = '/collections';
+  url.searchParams.delete('project');
+  url.searchParams.delete('type');
+  url.searchParams.delete('tab');
+  url.searchParams.delete('view');
+
+  window.history.pushState(null, '', url);
+}
+
+function writeDashboardToUrl() {
+  const url = new URL(window.location.href);
+  url.pathname = '/dashboard';
+  url.searchParams.delete('project');
+  url.searchParams.delete('type');
+  url.searchParams.delete('tab');
+  url.searchParams.delete('view');
+
+  window.history.pushState(null, '', url);
+}
+
+function writeOrganizationsToUrl() {
+  const url = new URL(window.location.href);
+  url.pathname = '/organizations';
+  url.searchParams.delete('project');
+  url.searchParams.delete('type');
+  url.searchParams.delete('tab');
+  url.searchParams.delete('view');
+
+  window.history.pushState(null, '', url);
+}
+
 function writeProjectListToUrl(projectType: ProjectType) {
   const url = new URL(window.location.href);
   url.pathname = `/${projectTypeMeta(projectType).path}`;
@@ -513,6 +646,22 @@ function writeProjectListToUrl(projectType: ProjectType) {
   url.searchParams.delete('view');
 
   window.history.pushState(null, '', url);
+}
+
+function profileFromUrl(): string | null {
+  const [resource, username] = window.location.pathname
+    .split('/')
+    .filter(Boolean);
+  if (resource !== 'users' || !username) return null;
+
+  return decodeURIComponent(username);
+}
+
+function organizationFromUrl(): string | null {
+  const [resource, slug] = window.location.pathname.split('/').filter(Boolean);
+  if (resource !== 'organizations' || !slug) return null;
+
+  return decodeURIComponent(slug);
 }
 
 function writeProjectToUrl(project: SelectedProject | null) {

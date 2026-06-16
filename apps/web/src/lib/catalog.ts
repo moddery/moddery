@@ -1,8 +1,9 @@
 import { gql } from '@apollo/client';
-import { type ProjectKind } from '@moddery/shared';
+import { type ProjectKind, type ReportReason } from '@moddery/shared';
 
-import { apolloClient } from '../apollo.js';
+import { apolloClient, authTokenStorageKey } from '../apollo.js';
 import { type Mod, type ProjectType } from '../types.js';
+import { projectTypeFromKind } from './projectTypes.js';
 
 export type SortKey =
   | 'relevance'
@@ -32,6 +33,43 @@ export interface SearchProjectsParams {
 export interface SearchProjectsResult {
   projects: Mod[];
   totalHits: number;
+}
+
+export interface PublicCollection {
+  color: string | null;
+  createdAt: string;
+  description: string | null;
+  iconUrl: string | null;
+  id: string;
+  name: string;
+  owner: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+  projectCount: number;
+  projects: Mod[];
+  slug: string;
+  updatedAt: string;
+  visibility: string;
+}
+
+export interface ProjectFollowState {
+  followers: number;
+  following: boolean;
+  projectSlug: string;
+}
+
+export interface ReportSummary {
+  body: string;
+  createdAt: string;
+  id: string;
+  projectId: string | null;
+  reason: ReportReason;
+  state: string;
+  userTargetId: string | null;
+  versionId: string | null;
 }
 
 export interface ProjectDetails {
@@ -98,11 +136,29 @@ export interface ProjectVersion {
 export interface ProjectMember {
   role: string;
   accepted: boolean;
+  owner: boolean;
+  sortOrder: number;
   user: {
     id: string;
     username: string;
+    display_name: string | null;
     avatar_url: string | null;
   };
+}
+
+export interface ProjectAnalytics {
+  days: ProjectAnalyticsDay[];
+  downloadsLast30Days: number;
+  projectSlug: string;
+  totalDownloads: number;
+  totalViews: number;
+  viewsLast30Days: number;
+}
+
+export interface ProjectAnalyticsDay {
+  date: string;
+  downloads: number;
+  views: number;
 }
 
 interface ProjectSummary {
@@ -118,6 +174,16 @@ interface ProjectSummary {
   followers: number;
   gameVersions: string[];
   iconUrl: string | null;
+  license: {
+    id: string;
+    name: string;
+    url: string | null;
+  };
+  links: {
+    kind: string;
+    label: string | null;
+    url: string;
+  }[];
   loaders: string[];
   gallery: {
     createdAt: string;
@@ -158,6 +224,106 @@ interface ProjectBySlugQueryVariables {
   slug: string;
 }
 
+interface PublicCollectionsQueryData {
+  publicCollections: PublicCollectionSummary[];
+}
+
+interface PublicCollectionSummary {
+  color: string | null;
+  createdAt: string;
+  description: string | null;
+  iconUrl: string | null;
+  id: string;
+  name: string;
+  owner: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+  projectCount: number;
+  projects: ProjectSummary[];
+  slug: string;
+  updatedAt: string;
+  visibility: string;
+}
+
+interface VersionsForProjectQueryData {
+  versionsForProject: VersionSummary[];
+}
+
+interface VersionsForProjectQueryVariables {
+  projectSlug: string;
+}
+
+interface ProjectMembersQueryData {
+  projectMembers: ProjectMemberSummary[];
+}
+
+interface ProjectMembersQueryVariables {
+  projectSlug: string;
+}
+
+interface ProjectFollowStateQueryData {
+  viewerProjectFollowState: ProjectFollowState | null;
+}
+
+interface ProjectFollowStateMutationData {
+  followProject?: ProjectFollowState;
+  unfollowProject?: ProjectFollowState;
+}
+
+interface ProjectAnalyticsQueryData {
+  projectAnalytics: ProjectAnalytics | null;
+}
+
+interface ProjectAnalyticsQueryVariables {
+  projectSlug: string;
+}
+
+interface CreateProjectReportMutationData {
+  createProjectReport: ReportSummary;
+}
+
+interface CreateProjectReportMutationVariables {
+  input: {
+    body: string;
+    projectSlug: string;
+    reason: ReportReason;
+  };
+}
+
+interface ProjectMemberSummary {
+  accepted: boolean;
+  owner: boolean;
+  role: string;
+  sortOrder: number;
+  user: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+}
+
+interface VersionSummary {
+  changelog: string | null;
+  channel: 'RELEASE' | 'BETA' | 'ALPHA';
+  datePublished: string | null;
+  downloads: number;
+  files: {
+    fileName: string;
+    primary: boolean;
+    sizeBytes: string;
+    url: string;
+  }[];
+  gameVersions: string[];
+  id: string;
+  loaders: string[];
+  name: string;
+  versionNumber: string;
+}
+
 const PROJECTS_QUERY = gql`
   query CatalogProjects($query: CatalogQueryInput) {
     projects(query: $query) {
@@ -173,6 +339,16 @@ const PROJECTS_QUERY = gql`
       followers
       gameVersions
       iconUrl
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
       loaders
       gallery {
         createdAt
@@ -203,6 +379,16 @@ const PROJECT_BY_SLUG_QUERY = gql`
       followers
       gameVersions
       iconUrl
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
       loaders
       gallery {
         createdAt
@@ -223,6 +409,165 @@ const PLATFORM_METADATA_QUERY = gql`
     platformMetadata {
       gameVersions
       loaders
+    }
+  }
+`;
+
+const VERSIONS_FOR_PROJECT_QUERY = gql`
+  query VersionsForProject($projectSlug: String!) {
+    versionsForProject(projectSlug: $projectSlug) {
+      changelog
+      channel
+      datePublished
+      downloads
+      files {
+        fileName
+        primary
+        sizeBytes
+        url
+      }
+      gameVersions
+      id
+      loaders
+      name
+      versionNumber
+    }
+  }
+`;
+
+const PROJECT_MEMBERS_QUERY = gql`
+  query ProjectMembers($projectSlug: String!) {
+    projectMembers(projectSlug: $projectSlug) {
+      accepted
+      owner
+      role
+      sortOrder
+      user {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+    }
+  }
+`;
+
+const VIEWER_PROJECT_FOLLOW_STATE_QUERY = gql`
+  query ViewerProjectFollowState($projectSlug: String!) {
+    viewerProjectFollowState(projectSlug: $projectSlug) {
+      followers
+      following
+      projectSlug
+    }
+  }
+`;
+
+const PROJECT_ANALYTICS_QUERY = gql`
+  query ProjectAnalytics($projectSlug: String!) {
+    projectAnalytics(projectSlug: $projectSlug) {
+      days {
+        date
+        downloads
+        views
+      }
+      downloadsLast30Days
+      projectSlug
+      totalDownloads
+      totalViews
+      viewsLast30Days
+    }
+  }
+`;
+
+const FOLLOW_PROJECT_MUTATION = gql`
+  mutation FollowProject($projectSlug: String!) {
+    followProject(projectSlug: $projectSlug) {
+      followers
+      following
+      projectSlug
+    }
+  }
+`;
+
+const UNFOLLOW_PROJECT_MUTATION = gql`
+  mutation UnfollowProject($projectSlug: String!) {
+    unfollowProject(projectSlug: $projectSlug) {
+      followers
+      following
+      projectSlug
+    }
+  }
+`;
+
+const CREATE_PROJECT_REPORT_MUTATION = gql`
+  mutation CreateProjectReport($input: CreateProjectReportInput!) {
+    createProjectReport(input: $input) {
+      body
+      createdAt
+      id
+      projectId
+      reason
+      state
+      userTargetId
+      versionId
+    }
+  }
+`;
+
+const PUBLIC_COLLECTIONS_QUERY = gql`
+  query PublicCollections {
+    publicCollections {
+      color
+      createdAt
+      description
+      iconUrl
+      id
+      name
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      projectCount
+      projects {
+        body
+        id
+        slug
+        title
+        summary
+        kind
+        status
+        categories
+        downloads
+        followers
+        gameVersions
+        iconUrl
+        license {
+          id
+          name
+          url
+        }
+        links {
+          kind
+          label
+          url
+        }
+        loaders
+        gallery {
+          createdAt
+          description
+          displayUrl
+          featured
+          rawUrl
+          sortOrder
+          title
+        }
+        updatedAt
+      }
+      slug
+      updatedAt
+      visibility
     }
   }
 `;
@@ -293,6 +638,21 @@ export async function fetchFilterTags(
   };
 }
 
+export async function fetchPublicCollections(
+  signal?: AbortSignal,
+): Promise<PublicCollection[]> {
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<PublicCollectionsQueryData>({
+    fetchPolicy: 'network-only',
+    query: PUBLIC_COLLECTIONS_QUERY,
+  });
+
+  throwIfAborted(signal);
+
+  return data.publicCollections.map(collectionFromSummary);
+}
+
 export async function fetchProjectDetails(
   slug: string,
   signal?: AbortSignal,
@@ -321,32 +681,125 @@ export async function fetchProjectVersions(
   slug: string,
   signal?: AbortSignal,
 ): Promise<ProjectVersion[]> {
-  const project = await fetchProjectDetails(slug, signal);
+  throwIfAborted(signal);
 
-  return [
-    {
-      changelog: null,
-      date_published: project.updated,
-      downloads: project.downloads,
-      files: [],
-      game_versions: project.game_versions,
-      id: `${project.id}_initial`,
-      loaders: project.loaders,
-      name: 'Initial release',
-      version_number: '1.0.0',
-      version_type: 'release',
-    },
-  ];
+  const { data } = await apolloClient.query<
+    VersionsForProjectQueryData,
+    VersionsForProjectQueryVariables
+  >({
+    fetchPolicy: 'network-only',
+    query: VERSIONS_FOR_PROJECT_QUERY,
+    variables: { projectSlug: slug },
+  });
+
+  throwIfAborted(signal);
+
+  return data.versionsForProject.map(versionFromSummary);
 }
 
 export async function fetchProjectMembers(
-  _slug: string,
+  slug: string,
   signal?: AbortSignal,
 ): Promise<ProjectMember[]> {
-  void _slug;
-  await Promise.resolve();
   throwIfAborted(signal);
-  return [];
+
+  const { data } = await apolloClient.query<
+    ProjectMembersQueryData,
+    ProjectMembersQueryVariables
+  >({
+    fetchPolicy: 'network-only',
+    query: PROJECT_MEMBERS_QUERY,
+    variables: { projectSlug: slug },
+  });
+
+  throwIfAborted(signal);
+
+  return data.projectMembers.map(memberFromSummary);
+}
+
+export async function fetchProjectAnalytics(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<ProjectAnalytics | null> {
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<
+    ProjectAnalyticsQueryData,
+    ProjectAnalyticsQueryVariables
+  >({
+    fetchPolicy: 'network-only',
+    query: PROJECT_ANALYTICS_QUERY,
+    variables: { projectSlug: slug },
+  });
+
+  throwIfAborted(signal);
+
+  return data.projectAnalytics;
+}
+
+export async function fetchViewerProjectFollowState(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<ProjectFollowState | null> {
+  if (!hasAuthToken()) return null;
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<
+    ProjectFollowStateQueryData,
+    ProjectMembersQueryVariables
+  >({
+    fetchPolicy: 'network-only',
+    query: VIEWER_PROJECT_FOLLOW_STATE_QUERY,
+    variables: { projectSlug: slug },
+  });
+
+  throwIfAborted(signal);
+
+  return data.viewerProjectFollowState;
+}
+
+export async function setProjectFollowing(
+  slug: string,
+  following: boolean,
+): Promise<ProjectFollowState> {
+  const { data } = await apolloClient.mutate<
+    ProjectFollowStateMutationData,
+    ProjectMembersQueryVariables
+  >({
+    mutation: following ? FOLLOW_PROJECT_MUTATION : UNFOLLOW_PROJECT_MUTATION,
+    variables: { projectSlug: slug },
+  });
+  const state = following ? data?.followProject : data?.unfollowProject;
+
+  if (state === undefined) {
+    throw new Error('Follow state did not return from the API');
+  }
+
+  return state;
+}
+
+export async function createProjectReport(input: {
+  body: string;
+  projectSlug: string;
+  reason: ReportReason;
+}): Promise<ReportSummary> {
+  const { data } = await apolloClient.mutate<
+    CreateProjectReportMutationData,
+    CreateProjectReportMutationVariables
+  >({
+    mutation: CREATE_PROJECT_REPORT_MUTATION,
+    variables: { input },
+  });
+
+  if (data === null || data === undefined) {
+    throw new Error('Report did not return from the API');
+  }
+
+  return data.createProjectReport;
+}
+
+export function hasAuthToken(): boolean {
+  return localStorage.getItem(authTokenStorageKey) !== null;
 }
 
 function projectFromSummary(project: ProjectSummary): Mod {
@@ -369,8 +822,21 @@ function projectFromSummary(project: ProjectSummary): Mod {
   };
 }
 
+function collectionFromSummary(
+  collection: PublicCollectionSummary,
+): PublicCollection {
+  return {
+    ...collection,
+    projects: collection.projects.map(projectFromSummary),
+  };
+}
+
 function projectDetailsFromSummary(project: ProjectSummary): ProjectDetails {
   const mod = projectFromSummary(project);
+  const sourceUrl = projectLinkUrl(project.links, 'SOURCE');
+  const issuesUrl = projectLinkUrl(project.links, 'ISSUES');
+  const wikiUrl = projectLinkUrl(project.links, 'WIKI');
+  const discordUrl = projectLinkUrl(project.links, 'DISCORD');
 
   return {
     additional_categories: [],
@@ -379,8 +845,14 @@ function projectDetailsFromSummary(project: ProjectSummary): ProjectDetails {
     categories: mod.categories,
     color: 0x1d9bf0,
     description: project.summary,
-    discord_url: null,
-    donation_urls: [],
+    discord_url: discordUrl,
+    donation_urls: project.links
+      .filter((link) => link.kind === 'DONATION')
+      .map((link) => ({
+        id: link.label ?? link.url,
+        platform: link.label ?? 'Donation',
+        url: link.url,
+      })),
     downloads: project.downloads,
     followers: 0,
     gallery: project.gallery.map((image) => ({
@@ -395,38 +867,60 @@ function projectDetailsFromSummary(project: ProjectSummary): ProjectDetails {
     game_versions: mod.gameVersions,
     icon_url: mod.icon,
     id: project.id,
-    issues_url: null,
-    license: {
-      id: 'unknown',
-      name: 'Unknown',
-      url: null,
-    },
+    issues_url: issuesUrl,
+    license: project.license,
     loaders: mod.loaders,
     project_type: mod.projectType ?? 'mod',
     published: project.updatedAt,
     slug: project.slug,
-    source_url: null,
+    source_url: sourceUrl,
     title: project.title,
     updated: project.updatedAt,
-    wiki_url: null,
+    wiki_url: wikiUrl,
   };
 }
 
-function projectTypeFromKind(kind: ProjectKind): ProjectType {
-  switch (kind) {
-    case 'DATAPACK':
-      return 'datapack';
-    case 'MODPACK':
-      return 'modpack';
-    case 'PLUGIN':
-      return 'plugin';
-    case 'RESOURCE_PACK':
-      return 'resourcepack';
-    case 'SHADER':
-      return 'shader';
-    case 'MOD':
-      return 'mod';
-  }
+function projectLinkUrl(
+  links: ProjectSummary['links'],
+  kind: string,
+): string | null {
+  return links.find((link) => link.kind === kind)?.url ?? null;
+}
+
+function versionFromSummary(version: VersionSummary): ProjectVersion {
+  return {
+    changelog: version.changelog,
+    date_published: version.datePublished ?? new Date().toISOString(),
+    downloads: version.downloads,
+    files: version.files.map((file) => ({
+      filename: file.fileName,
+      primary: file.primary,
+      size: Number(file.sizeBytes),
+      url: file.url,
+    })),
+    game_versions: version.gameVersions,
+    id: version.id,
+    loaders: normalizeLoaders(version.loaders),
+    name: version.name,
+    version_number: version.versionNumber,
+    version_type:
+      version.channel.toLowerCase() as ProjectVersion['version_type'],
+  };
+}
+
+function memberFromSummary(member: ProjectMemberSummary): ProjectMember {
+  return {
+    accepted: member.accepted,
+    owner: member.owner,
+    role: member.role,
+    sortOrder: member.sortOrder,
+    user: {
+      avatar_url: member.user.avatarUrl,
+      display_name: member.user.displayName,
+      id: member.user.id,
+      username: member.user.username,
+    },
+  };
 }
 
 function projectKindFromType(projectType: ProjectType): ProjectKind {

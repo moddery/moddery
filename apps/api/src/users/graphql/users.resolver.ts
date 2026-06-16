@@ -1,6 +1,7 @@
 import { Args, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
+import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { UsersService } from '../services/users.service.js';
 import { UserProfile } from './user-profile.model.js';
@@ -14,6 +15,7 @@ export class UsersResolver {
     return user.role === 'ADMIN';
   }
 
+  @Public()
   @Query(() => UserProfile, { nullable: true })
   userByUsername(
     @Args('username', { type: () => String }) username: string,

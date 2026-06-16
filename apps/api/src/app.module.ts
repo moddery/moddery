@@ -6,11 +6,15 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { AuthModule } from './auth/auth.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
+import { CollectionsModule } from './collections/collections.module.js';
 import { validateEnvironment } from './config/env.validation.js';
 import { HealthModule } from './health/health.module.js';
 import { MailModule } from './mail/mail.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PlatformModule } from './platform/platform.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ReportsModule } from './reports/reports.module.js';
 import { SearchModule } from './search/search.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -33,10 +37,14 @@ import { VersionsModule } from './versions/versions.module.js';
     AuthModule,
     AnalyticsModule,
     CatalogModule,
+    CollectionsModule,
     HealthModule,
     MailModule,
+    NotificationsModule,
+    OrganizationsModule,
     PlatformModule,
     PrismaModule,
+    ReportsModule,
     SearchModule,
     StorageModule,
     UsersModule,
