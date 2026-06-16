@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
@@ -7,9 +8,11 @@ import { AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.
 import { AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
 import { CatalogQueryInput } from '../dto/catalog-query.input.js';
 import { CreateProjectInput } from '../dto/create-project.input.js';
+import { ModerateProjectInput } from '../dto/moderate-project.input.js';
 import { RemoveProjectTeamMemberInput } from '../dto/remove-project-team-member.input.js';
 import { UpdateProjectInput } from '../dto/update-project.input.js';
 import { CatalogService } from '../services/catalog.service.js';
+import { ModerationActionSummary } from './moderation-action-summary.model.js';
 import {
   ProjectFollowState,
   ProjectMemberSummary,
@@ -37,6 +40,23 @@ export class CatalogResolver {
     const projects = await this.catalogService.findProjects(query);
 
     return projects.map(projectToGraphql);
+  }
+
+  @Query(() => [ProjectSummary])
+  async moderationProjects(@CurrentUser() user: AuthenticatedUser) {
+    assertCanModerate(user);
+    const projects = await this.catalogService.findProjectsForModeration();
+
+    return projects.map(projectToGraphql);
+  }
+
+  @Query(() => [ModerationActionSummary])
+  projectModerationActions(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+    return this.catalogService.findProjectModerationActions(projectSlug);
   }
 
   @Public()
@@ -85,6 +105,18 @@ export class CatalogResolver {
     );
   }
 
+  @Mutation(() => ProjectSummary)
+  async moderateProject(
+    @Args('input') input: ModerateProjectInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+
+    return projectToGraphql(
+      await this.catalogService.moderateProject(input, user.id),
+    );
+  }
+
   @Mutation(() => [ProjectMemberSummary])
   removeProjectTeamMember(
     @Args('input') input: RemoveProjectTeamMemberInput,
@@ -119,6 +151,14 @@ export class CatalogResolver {
   ) {
     return this.catalogService.unfollowProject(projectSlug, user.id);
   }
+}
+
+function assertCanModerate(user: AuthenticatedUser): void {
+  if (user.role === 'ADMIN' || user.role === 'MODERATOR') {
+    return;
+  }
+
+  throw new ForbiddenException('Moderator access required');
 }
 
 function projectToGraphql(project: {

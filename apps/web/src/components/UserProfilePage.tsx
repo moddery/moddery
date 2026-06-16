@@ -21,7 +21,14 @@ import {
 import { hasAuthToken } from '../lib/catalog.ts';
 import type { Mod } from '../types.ts';
 import { EmptyState } from './EmptyState.tsx';
+import {
+  canUseModerationNotes,
+  createUserModerationNote,
+  fetchModerationViewer,
+  fetchUserModerationNotes,
+} from '../lib/moderation.ts';
 import { ModCard } from './ModCard.tsx';
+import { ModerationNotesPanel } from './ModerationNotesPanel.tsx';
 
 const reportReasons: Array<{ label: string; value: ReportReason }> = [
   { label: 'Broken or misleading', value: 'BROKEN_OR_MISLEADING' },
@@ -60,6 +67,7 @@ export function UserProfilePage({
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
       <ProfileHeader profile={profileQuery.data} />
+      <UserModerationNotes username={profileQuery.data.username} />
 
       <section className="mt-8">
         <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
@@ -292,6 +300,37 @@ function ProfileStat({
         {value.toLocaleString('en-US')}
       </div>
     </div>
+  );
+}
+
+function UserModerationNotes({ username }: { username: string }) {
+  const viewerQuery = useQuery({
+    enabled: hasAuthToken(),
+    queryFn: ({ signal }) => fetchModerationViewer(signal),
+    queryKey: ['moderation', 'viewer'],
+    retry: false,
+  });
+  const enabled = canUseModerationNotes(viewerQuery.data);
+  const notesQuery = useQuery({
+    enabled,
+    queryFn: ({ signal }) => fetchUserModerationNotes(username, signal),
+    queryKey: ['moderation', 'user-notes', username],
+  });
+
+  if (!enabled) return null;
+
+  return (
+    <ModerationNotesPanel
+      error={
+        notesQuery.error instanceof Error ? notesQuery.error.message : null
+      }
+      loading={notesQuery.isLoading}
+      notes={notesQuery.data}
+      onCreate={async (body) => {
+        await createUserModerationNote({ body, username });
+        await notesQuery.refetch();
+      }}
+    />
   );
 }
 

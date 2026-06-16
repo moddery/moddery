@@ -32,6 +32,9 @@ export class UserProfile {
   @Field(() => String)
   role!: string;
 
+  @Field(() => String)
+  status!: string;
+
   @Field(() => Int)
   followedProjectCount!: number;
 

@@ -1,18 +1,23 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../decorators/current-user.decorator.js';
+import { CreateApiTokenInput } from '../dto/create-api-token.input.js';
 import { Public } from '../decorators/public.decorator.js';
 import { LoginInput } from '../dto/login.input.js';
 import { RegisterInput } from '../dto/register.input.js';
+import { ApiTokensService } from '../services/api-tokens.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { type AuthenticatedUser } from '../services/auth-token.service.js';
 import { UsersService } from '../../users/services/users.service.js';
+import { ApiTokenSummary, CreatedApiToken } from './api-token.model.js';
 import { AuthPayload } from './auth-payload.model.js';
 import { AuthUser } from './auth-user.model.js';
+import { SessionSummary } from './session.model.js';
 
 @Resolver()
 export class AuthResolver {
   constructor(
+    private readonly apiTokensService: ApiTokensService,
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
   ) {}
@@ -40,5 +45,50 @@ export class AuthResolver {
   @Mutation(() => AuthPayload)
   register(@Args('input') input: RegisterInput) {
     return this.authService.register(input);
+  }
+
+  @Query(() => [ApiTokenSummary])
+  viewerApiTokens(@CurrentUser() user: AuthenticatedUser) {
+    return this.apiTokensService.findViewerTokens(user.id);
+  }
+
+  @Query(() => [SessionSummary])
+  viewerSessions(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.findViewerSessions(user.id);
+  }
+
+  @Mutation(() => CreatedApiToken)
+  createApiToken(
+    @Args('input') input: CreateApiTokenInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.apiTokensService.createViewerToken({
+      expiresInDays: input.expiresInDays,
+      name: input.name,
+      scopes: input.scopes,
+      user,
+    });
+  }
+
+  @Mutation(() => ApiTokenSummary)
+  revokeApiToken(
+    @Args('tokenId') tokenId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.apiTokensService.revokeViewerToken({
+      tokenId,
+      userId: user.id,
+    });
+  }
+
+  @Mutation(() => SessionSummary)
+  revokeSession(
+    @Args('sessionId') sessionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authService.revokeViewerSession({
+      sessionId,
+      userId: user.id,
+    });
   }
 }

@@ -1,6 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { createHash } from 'node:crypto';
+
+import { PrismaService } from '../../prisma/prisma.service.js';
 
 export interface AuthenticatedUser {
   readonly id: string;
@@ -14,11 +17,16 @@ interface AccessTokenPayload {
   readonly username: string;
 }
 
+export interface SessionTokenPayload extends AuthenticatedUser {
+  readonly sessionId: string;
+}
+
 @Injectable()
 export class AuthTokenService {
   constructor(
     private readonly config: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   accessTokenTtlSeconds(): number {
@@ -56,5 +64,105 @@ export class AuthTokenService {
     } catch {
       throw new UnauthorizedException('Invalid bearer token');
     }
+  }
+
+  async verifyBearerToken(token: string): Promise<AuthenticatedUser> {
+    const jwtUser = await this.verifySessionAccessToken(token);
+    if (jwtUser !== null) {
+      return jwtUser;
+    }
+
+    return this.verifyPersonalAccessToken(token);
+  }
+
+  async signSessionAccessToken(user: SessionTokenPayload): Promise<string> {
+    return this.jwtService.signAsync(
+      {
+        role: user.role,
+        sessionId: user.sessionId,
+        username: user.username,
+      },
+      {
+        expiresIn: this.accessTokenTtlSeconds(),
+        secret: this.config.getOrThrow<string>('app.jwtAccessTokenSecret'),
+        subject: user.id,
+      },
+    );
+  }
+
+  hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async verifySessionAccessToken(
+    token: string,
+  ): Promise<AuthenticatedUser | null> {
+    try {
+      const payload = await this.jwtService.verifyAsync<
+        AccessTokenPayload & { sessionId?: string }
+      >(token, {
+        secret: this.config.getOrThrow<string>('app.jwtAccessTokenSecret'),
+      });
+
+      if (payload.sessionId === undefined) {
+        return null;
+      }
+
+      const session = await this.prisma.session.findFirst({
+        include: { user: true },
+        where: {
+          expiresAt: { gt: new Date() },
+          id: payload.sessionId,
+          revokedAt: null,
+          tokenHash: this.hashToken(token),
+        },
+      });
+
+      if (session?.user.status !== 'ACTIVE') {
+        throw new UnauthorizedException('Invalid bearer token');
+      }
+
+      await this.prisma.session.update({
+        data: { lastUsedAt: new Date() },
+        where: { id: session.id },
+      });
+
+      return {
+        id: session.user.id,
+        role: session.user.role,
+        username: session.user.username,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async verifyPersonalAccessToken(
+    token: string,
+  ): Promise<AuthenticatedUser> {
+    const tokenHash = this.hashToken(token);
+    const apiToken = await this.prisma.apiToken.findFirst({
+      include: { user: true },
+      where: {
+        tokenHash,
+        revokedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+    });
+
+    if (apiToken?.user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Invalid bearer token');
+    }
+
+    await this.prisma.apiToken.update({
+      data: { lastUsedAt: new Date() },
+      where: { id: apiToken.id },
+    });
+
+    return {
+      id: apiToken.user.id,
+      role: apiToken.user.role,
+      username: apiToken.user.username,
+    };
   }
 }

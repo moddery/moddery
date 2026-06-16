@@ -45,7 +45,7 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Missing bearer token');
     }
 
-    request.user = await this.authTokenService.verifyAccessToken(token);
+    request.user = await this.authTokenService.verifyBearerToken(token);
 
     return true;
   }

@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import {
   Args,
   Mutation,
@@ -10,6 +11,7 @@ import {
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { UpdateUserAccountInput } from '../dto/update-user-account.input.js';
 import { UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
 import { UsersService } from '../services/users.service.js';
 import { UserProfile } from './user-profile.model.js';
@@ -36,6 +38,12 @@ export class UsersResolver {
     return this.usersService.findById(user.id);
   }
 
+  @Query(() => [UserProfile])
+  adminUsers(@CurrentUser() user: AuthenticatedUser) {
+    assertAdmin(user);
+    return this.usersService.findAdminUsers();
+  }
+
   @Mutation(() => UserProfile, { nullable: true })
   updateViewerProfile(
     @Args('input') input: UpdateViewerProfileInput,
@@ -43,4 +51,21 @@ export class UsersResolver {
   ): Promise<UserProfile | null> {
     return this.usersService.updateViewerProfile(user.id, input);
   }
+
+  @Mutation(() => UserProfile)
+  updateUserAccount(
+    @Args('input') input: UpdateUserAccountInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertAdmin(user);
+    return this.usersService.updateUserAccount(input, user.id);
+  }
+}
+
+function assertAdmin(user: AuthenticatedUser): void {
+  if (user.role === 'ADMIN') {
+    return;
+  }
+
+  throw new ForbiddenException('Admin access required');
 }

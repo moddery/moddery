@@ -187,4 +187,193 @@ describe(ReportsService.name, () => {
     });
     expect(report.userTarget?.username).toBe('target');
   });
+
+  test('creates report threads on first read', async () => {
+    const upserts: unknown[] = [];
+    const service = new ReportsService({
+      report: {
+        findUnique: () => Promise.resolve({ id: 'report-a' }),
+      },
+      thread: {
+        upsert: (query: unknown) => {
+          upserts.push(query);
+          return Promise.resolve({
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            id: 'thread-a',
+            messages: [],
+            reportId: 'report-a',
+            subject: 'Report report-a',
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+          });
+        },
+      },
+    } as unknown as PrismaService);
+
+    const thread = await service.findReportThread('report-a');
+
+    expect(upserts[0]).toEqual(
+      expect.objectContaining({
+        create: {
+          reportId: 'report-a',
+          subject: 'Report report-a',
+        },
+        where: { reportId: 'report-a' },
+      }),
+    );
+    expect(thread.messages).toEqual([]);
+  });
+
+  test('creates report thread messages', async () => {
+    const messageCreates: unknown[] = [];
+    const memberUpserts: unknown[] = [];
+    const service = new ReportsService({
+      report: {
+        findUnique: () => Promise.resolve({ id: 'report-a' }),
+      },
+      thread: {
+        findUniqueOrThrow: () =>
+          Promise.resolve({
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            id: 'thread-a',
+            messages: [
+              {
+                author: {
+                  displayName: 'Moderator',
+                  id: 'user-a',
+                  username: 'moderator',
+                },
+                body: 'We are checking this.',
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                id: 'message-a',
+              },
+            ],
+            reportId: 'report-a',
+            subject: 'Report report-a',
+            updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+          }),
+        upsert: () => Promise.resolve({ id: 'thread-a' }),
+      },
+      threadMember: {
+        upsert: (query: unknown) => {
+          memberUpserts.push(query);
+          return Promise.resolve({});
+        },
+      },
+      threadMessage: {
+        create: (query: unknown) => {
+          messageCreates.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    const thread = await service.createReportThreadMessage({
+      authorId: 'user-a',
+      body: '  We are checking this.  ',
+      reportId: 'report-a',
+    });
+
+    expect(messageCreates[0]).toEqual({
+      data: {
+        authorId: 'user-a',
+        body: 'We are checking this.',
+        threadId: 'thread-a',
+      },
+    });
+    expect(memberUpserts[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          threadId_userId: {
+            threadId: 'thread-a',
+            userId: 'user-a',
+          },
+        },
+      }),
+    );
+    expect(thread.messages[0]?.body).toBe('We are checking this.');
+  });
+
+  test('creates project moderation notes', async () => {
+    const creates: unknown[] = [];
+    const service = new ReportsService({
+      moderationNote: {
+        create: (query: unknown) => {
+          creates.push(query);
+          return Promise.resolve(moderationNoteRow({ projectId: 'project-a' }));
+        },
+      },
+      project: {
+        findUnique: () => Promise.resolve({ id: 'project-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const note = await service.createProjectModerationNote({
+      authorId: 'moderator-a',
+      body: '  Needs license review.  ',
+      projectSlug: 'iris',
+    });
+
+    expect(creates[0]).toEqual({
+      data: {
+        authorId: 'moderator-a',
+        body: 'Needs license review.',
+        projectId: 'project-a',
+      },
+      select: expect.any(Object),
+    });
+    expect(note.projectId).toBe('project-a');
+  });
+
+  test('creates user moderation notes', async () => {
+    const creates: unknown[] = [];
+    const service = new ReportsService({
+      moderationNote: {
+        create: (query: unknown) => {
+          creates.push(query);
+          return Promise.resolve(moderationNoteRow({ userId: 'user-b' }));
+        },
+      },
+      user: {
+        findFirst: () => Promise.resolve({ id: 'user-b' }),
+      },
+    } as unknown as PrismaService);
+
+    const note = await service.createUserModerationNote({
+      authorId: 'moderator-a',
+      body: '  Prior warning on file.  ',
+      username: 'target',
+    });
+
+    expect(creates[0]).toEqual({
+      data: {
+        authorId: 'moderator-a',
+        body: 'Prior warning on file.',
+        userId: 'user-b',
+      },
+      select: expect.any(Object),
+    });
+    expect(note.userId).toBe('user-b');
+  });
 });
+
+function moderationNoteRow({
+  projectId = null,
+  userId = null,
+}: {
+  projectId?: string | null;
+  userId?: string | null;
+}) {
+  return {
+    author: {
+      displayName: 'Moderator',
+      id: 'moderator-a',
+      username: 'moderator',
+    },
+    body: 'Needs review.',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    id: 'note-a',
+    projectId,
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    userId,
+  };
+}

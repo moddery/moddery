@@ -179,6 +179,8 @@ model User {
   reportsReceived         Report[]                 @relation("ReportsReceived")
   sessions                Session[]
   teamMemberships         TeamMember[]
+  threadMessages          ThreadMessage[]
+  threadMemberships       ThreadMember[]
   uploadedVersions        Version[]
   passwordCredential      PasswordCredential?
 
@@ -598,6 +600,7 @@ model Report {
   closedAt     DateTime?
   project      Project?     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   reporter     User         @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  thread       Thread?
   userTarget   User?        @relation("ReportsReceived", fields: [userTargetId], references: [id], onDelete: Cascade)
   version      Version?     @relation(fields: [versionId], references: [id], onDelete: Cascade)
 
@@ -606,6 +609,47 @@ model Report {
   @@index([state])
   @@index([versionId])
   @@map("reports")
+}
+
+model Thread {
+  id        String          @id @default(cuid())
+  reportId  String?         @unique
+  subject   String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  members   ThreadMember[]
+  messages  ThreadMessage[]
+  report    Report?         @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+  @@map("threads")
+}
+
+model ThreadMember {
+  threadId   String
+  userId     String
+  lastReadAt DateTime?
+  createdAt  DateTime @default(now())
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([threadId, userId])
+  @@index([userId])
+  @@map("thread_members")
+}
+
+model ThreadMessage {
+  id        String   @id @default(cuid())
+  threadId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([threadId, createdAt])
+  @@map("thread_messages")
 }
 
 model ModerationAction {

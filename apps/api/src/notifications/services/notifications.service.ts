@@ -1,6 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { NotificationChannel } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type SendNotificationInput } from '../graphql/send-notification.input.js';
 
 @Injectable()
 export class NotificationsService {
@@ -35,4 +41,165 @@ export class NotificationsService {
       },
     });
   }
+
+  async findViewerPreferences(userId: string) {
+    const saved = await this.prisma.notificationPreference.findMany({
+      orderBy: [{ type: 'asc' }, { channel: 'asc' }],
+      where: { userId },
+    });
+    const savedKeys = new Set(
+      saved.map((preference) => preferenceKey(preference)),
+    );
+    const defaults = defaultPreferences()
+      .filter((preference) => !savedKeys.has(preferenceKey(preference)))
+      .map((preference) => ({
+        ...preference,
+        updatedAt: new Date(0),
+      }));
+
+    return [...saved, ...defaults].sort(comparePreferences);
+  }
+
+  updatePreference({
+    channel,
+    enabled,
+    type,
+    userId,
+  }: {
+    channel: string;
+    enabled: boolean;
+    type: string;
+    userId: string;
+  }) {
+    const normalizedType = type.trim().toLowerCase();
+    const normalizedChannel = notificationChannel(channel);
+
+    return this.prisma.notificationPreference.upsert({
+      create: {
+        channel: normalizedChannel,
+        enabled,
+        type: normalizedType,
+        userId,
+      },
+      update: { enabled },
+      where: {
+        userId_type_channel: {
+          channel: normalizedChannel,
+          type: normalizedType,
+          userId,
+        },
+      },
+    });
+  }
+
+  async sendNotification(input: SendNotificationInput) {
+    const type = requiredTrim(
+      input.type,
+      'Notification type is required',
+    ).toLowerCase();
+    const title = requiredTrim(input.title, 'Notification title is required');
+    const recipient = await this.prisma.user.findFirst({
+      select: { id: true },
+      where: {
+        username: {
+          equals: input.username.trim(),
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (recipient === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    const preferences = await this.enabledPreferences(recipient.id, type);
+
+    return this.prisma.notification.create({
+      data: {
+        actionUrl: nullableTrim(input.actionUrl),
+        body: nullableTrim(input.body),
+        deliveries: {
+          create: preferences.map((preference) => ({
+            channel: preference.channel,
+          })),
+        },
+        state: 'PENDING',
+        title,
+        type,
+        userId: recipient.id,
+      },
+    });
+  }
+
+  private async enabledPreferences(userId: string, type: string) {
+    const saved = await this.prisma.notificationPreference.findMany({
+      where: { type, userId },
+    });
+    const savedByChannel = new Map(
+      saved.map((preference) => [preference.channel, preference]),
+    );
+
+    return defaultPreferences()
+      .filter((preference) => preference.type === type)
+      .map(
+        (preference) =>
+          savedByChannel.get(preference.channel) ?? {
+            ...preference,
+            userId,
+          },
+      )
+      .filter((preference) => preference.enabled);
+  }
+}
+
+function defaultPreferences() {
+  return [
+    { channel: NotificationChannel.IN_APP, enabled: true, type: 'project' },
+    { channel: NotificationChannel.EMAIL, enabled: true, type: 'project' },
+    { channel: NotificationChannel.IN_APP, enabled: true, type: 'moderation' },
+    { channel: NotificationChannel.EMAIL, enabled: false, type: 'moderation' },
+    { channel: NotificationChannel.IN_APP, enabled: true, type: 'team' },
+    { channel: NotificationChannel.EMAIL, enabled: true, type: 'team' },
+  ];
+}
+
+function notificationChannel(channel: string): NotificationChannel {
+  const normalized = channel.trim().toUpperCase();
+  return normalized === NotificationChannel.EMAIL
+    ? NotificationChannel.EMAIL
+    : NotificationChannel.IN_APP;
+}
+
+function nullableTrim(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+function requiredTrim(value: string, message: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new BadRequestException(message);
+  }
+
+  return trimmed;
+}
+
+function preferenceKey({
+  channel,
+  type,
+}: {
+  channel: string;
+  type: string;
+}): string {
+  return `${type}:${channel}`;
+}
+
+function comparePreferences(
+  left: { channel: string; type: string },
+  right: { channel: string; type: string },
+): number {
+  return (
+    left.type.localeCompare(right.type) ||
+    left.channel.localeCompare(right.channel)
+  );
 }

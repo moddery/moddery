@@ -118,10 +118,22 @@ export interface ProjectGalleryImage {
 }
 
 export interface ProjectFile {
+  id: string;
   filename: string;
+  hashes: {
+    algorithm: string;
+    value: string;
+  }[];
   url: string;
   size: number;
   primary: boolean;
+  scans: {
+    createdAt: string;
+    details: string | null;
+    id: string;
+    status: string;
+    verdict: string | null;
+  }[];
 }
 
 export interface ProjectVersion {
@@ -223,6 +235,9 @@ interface ProjectSummary {
 
 interface PlatformMetadataQueryData {
   platformMetadata: {
+    categories: {
+      slug: string;
+    }[];
     gameVersions: string[];
     loaders: string[];
   };
@@ -297,6 +312,35 @@ interface ProjectFollowStateMutationData {
   unfollowProject?: ProjectFollowState;
 }
 
+interface RecordDownloadMutationData {
+  recordDownload: {
+    fileId: string;
+    projectDownloads: number;
+    projectId: string;
+    versionDownloads: number;
+    versionId: string;
+  };
+}
+
+interface RecordProjectViewMutationData {
+  recordProjectView: {
+    projectId: string;
+    projectSlug: string;
+  };
+}
+
+interface RecordDownloadMutationVariables {
+  input: {
+    fileId: string;
+  };
+}
+
+interface RecordProjectViewMutationVariables {
+  input: {
+    projectSlug: string;
+  };
+}
+
 interface ProjectAnalyticsQueryData {
   projectAnalytics: ProjectAnalytics | null;
 }
@@ -350,7 +394,19 @@ interface VersionSummary {
   downloads: number;
   files: {
     fileName: string;
+    hashes: {
+      algorithm: string;
+      value: string;
+    }[];
+    id: string;
     primary: boolean;
+    scans: {
+      createdAt: string;
+      details: string | null;
+      id: string;
+      status: string;
+      verdict: string | null;
+    }[];
     sizeBytes: string;
     url: string;
   }[];
@@ -452,6 +508,9 @@ const PROJECT_BY_SLUG_QUERY = gql`
 const PLATFORM_METADATA_QUERY = gql`
   query CatalogPlatformMetadata {
     platformMetadata {
+      categories {
+        slug
+      }
       gameVersions
       loaders
     }
@@ -481,7 +540,19 @@ const VERSIONS_FOR_PROJECT_QUERY = gql`
       downloads
       files {
         fileName
+        hashes {
+          algorithm
+          value
+        }
+        id
         primary
+        scans {
+          createdAt
+          details
+          id
+          status
+          verdict
+        }
         sizeBytes
         url
       }
@@ -553,6 +624,27 @@ const UNFOLLOW_PROJECT_MUTATION = gql`
     unfollowProject(projectSlug: $projectSlug) {
       followers
       following
+      projectSlug
+    }
+  }
+`;
+
+const RECORD_DOWNLOAD_MUTATION = gql`
+  mutation RecordDownload($input: RecordDownloadInput!) {
+    recordDownload(input: $input) {
+      fileId
+      projectDownloads
+      projectId
+      versionDownloads
+      versionId
+    }
+  }
+`;
+
+const RECORD_PROJECT_VIEW_MUTATION = gql`
+  mutation RecordProjectView($input: RecordProjectViewInput!) {
+    recordProjectView(input: $input) {
+      projectId
       projectSlug
     }
   }
@@ -710,7 +802,9 @@ export async function fetchFilterTags(
   throwIfAborted(signal);
 
   return {
-    categories: [],
+    categories: data.platformMetadata.categories.map(
+      (category) => category.slug,
+    ),
     loaders: data.platformMetadata.loaders,
     versions: data.platformMetadata.gameVersions,
   };
@@ -856,6 +950,34 @@ export async function setProjectFollowing(
   return state;
 }
 
+export async function recordDownload(fileId: string): Promise<void> {
+  const { data } = await apolloClient.mutate<
+    RecordDownloadMutationData,
+    RecordDownloadMutationVariables
+  >({
+    mutation: RECORD_DOWNLOAD_MUTATION,
+    variables: { input: { fileId } },
+  });
+
+  if (!data?.recordDownload) {
+    throw new Error('Download record did not return from the API');
+  }
+}
+
+export async function recordProjectView(projectSlug: string): Promise<void> {
+  const { data } = await apolloClient.mutate<
+    RecordProjectViewMutationData,
+    RecordProjectViewMutationVariables
+  >({
+    mutation: RECORD_PROJECT_VIEW_MUTATION,
+    variables: { input: { projectSlug } },
+  });
+
+  if (!data?.recordProjectView) {
+    throw new Error('Project view record did not return from the API');
+  }
+}
+
 export async function createProjectReport(input: {
   body: string;
   projectSlug: string;
@@ -996,7 +1118,10 @@ function versionFromSummary(version: VersionSummary): ProjectVersion {
     downloads: version.downloads,
     files: version.files.map((file) => ({
       filename: file.fileName,
+      hashes: file.hashes,
+      id: file.id,
       primary: file.primary,
+      scans: file.scans,
       size: Number(file.sizeBytes),
       url: file.url,
     })),

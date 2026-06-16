@@ -5,10 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { isGameVersionTag, type DependencyKind } from '@moddery/shared';
-import { Loader, type Prisma } from '@prisma/client';
+import { HashAlgorithm, Loader, type Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { type CreateVersionInput } from '../dto/create-version.input.js';
+import { type RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import {
   type UpdateVersionDependenciesInput,
   type VersionDependencyInput,
@@ -35,8 +37,19 @@ interface VersionRow {
   downloads: number;
   files: {
     fileName: string;
+    hashes: {
+      algorithm: string;
+      value: string;
+    }[];
     id: string;
     isPrimary: boolean;
+    scans: {
+      createdAt: Date;
+      details: Prisma.JsonValue | null;
+      id: string;
+      status: string;
+      verdict: string | null;
+    }[];
     sizeBytes: bigint;
     url: string;
   }[];
@@ -71,8 +84,19 @@ export interface VersionSummaryContract {
   downloads: number;
   files: {
     fileName: string;
+    hashes: {
+      algorithm: string;
+      value: string;
+    }[];
     id: string;
     primary: boolean;
+    scans: {
+      createdAt: Date;
+      details: string | null;
+      id: string;
+      status: string;
+      verdict: string | null;
+    }[];
     sizeBytes: string;
     url: string;
   }[];
@@ -221,6 +245,44 @@ export class VersionsService {
     return versionRowToContract(updated);
   }
 
+  async recordFileScan(
+    input: RecordFileScanInput,
+    user: AuthenticatedUser,
+  ): Promise<VersionSummaryContract> {
+    if (user.role !== 'ADMIN' && user.role !== 'MODERATOR') {
+      throw new ForbiddenException('Moderator access required');
+    }
+
+    const file = await this.prisma.versionFile.findUnique({
+      select: {
+        id: true,
+        versionId: true,
+      },
+      where: { id: input.fileId },
+    });
+
+    if (file === null) {
+      throw new NotFoundException('File not found');
+    }
+
+    const details = parseScanDetails(input.details);
+    await this.prisma.fileScan.create({
+      data: {
+        details,
+        fileId: file.id,
+        status: requiredTrim(input.status, 'Scan status is required'),
+        verdict: nullableTrim(input.verdict),
+      },
+    });
+
+    const updated = await this.prisma.version.findUniqueOrThrow({
+      select: versionSelect(),
+      where: { id: file.versionId },
+    });
+
+    return versionRowToContract(updated);
+  }
+
   private async findManagedVersion(versionId: string, userId: string) {
     const version = await this.prisma.version.findFirst({
       select: {
@@ -338,8 +400,26 @@ function versionSelect() {
       orderBy: [{ isPrimary: 'desc' as const }, { fileName: 'asc' as const }],
       select: {
         fileName: true,
+        hashes: {
+          orderBy: { algorithm: 'asc' as const },
+          select: {
+            algorithm: true,
+            value: true,
+          },
+        },
         id: true,
         isPrimary: true,
+        scans: {
+          orderBy: { createdAt: 'desc' as const },
+          select: {
+            createdAt: true,
+            details: true,
+            id: true,
+            status: true,
+            verdict: true,
+          },
+          take: 3,
+        },
         sizeBytes: true,
         url: true,
       },
@@ -422,7 +502,7 @@ async function createVersionFiles(
   files: CreateVersionInput['files'],
 ): Promise<void> {
   for (const file of files.slice(0, 8)) {
-    await tx.versionFile.create({
+    const created = await tx.versionFile.create({
       data: {
         bucket: 'external',
         fileName: file.fileName.trim(),
@@ -432,8 +512,40 @@ async function createVersionFiles(
         url: file.url.trim(),
         versionId,
       },
+      select: { id: true },
     });
+
+    for (const hash of file.hashes?.slice(0, 8) ?? []) {
+      const algorithm = hashAlgorithm(hash.algorithm);
+      if (algorithm === null) continue;
+
+      const value = hash.value.trim().toLowerCase();
+      if (value.length === 0) continue;
+
+      await tx.fileHash.upsert({
+        create: {
+          algorithm,
+          fileId: created.id,
+          value,
+        },
+        update: { value },
+        where: {
+          fileId_algorithm: {
+            algorithm,
+            fileId: created.id,
+          },
+        },
+      });
+    }
   }
+}
+
+function hashAlgorithm(value: string): HashAlgorithm | null {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === HashAlgorithm.SHA1) return HashAlgorithm.SHA1;
+  if (normalized === HashAlgorithm.SHA256) return HashAlgorithm.SHA256;
+  if (normalized === HashAlgorithm.SHA512) return HashAlgorithm.SHA512;
+  return null;
 }
 
 function loaderToEnum(loader: string): Loader | null {
@@ -459,6 +571,30 @@ function nullableTrim(value: string | null | undefined): string | null {
   return trimmed.length === 0 ? null : trimmed;
 }
 
+function requiredTrim(value: string, message: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new BadRequestException(message);
+  }
+
+  return trimmed;
+}
+
+function parseScanDetails(
+  value: string | null | undefined,
+): Prisma.InputJsonValue | undefined {
+  const trimmed = value?.trim() ?? '';
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(trimmed) as Prisma.InputJsonValue;
+  } catch {
+    throw new BadRequestException('Scan details must be valid JSON');
+  }
+}
+
 function versionRowToContract(version: VersionRow): VersionSummaryContract {
   return {
     changelog: version.changelog,
@@ -468,8 +604,17 @@ function versionRowToContract(version: VersionRow): VersionSummaryContract {
     downloads: version.downloads,
     files: version.files.map((file) => ({
       fileName: file.fileName,
+      hashes: file.hashes,
       id: file.id,
       primary: file.isPrimary,
+      scans: file.scans.map((scan) => ({
+        createdAt: scan.createdAt,
+        details:
+          scan.details === null ? null : JSON.stringify(scan.details, null, 2),
+        id: scan.id,
+        status: scan.status,
+        verdict: scan.verdict,
+      })),
       sizeBytes: file.sizeBytes.toString(),
       url: file.url,
     })),

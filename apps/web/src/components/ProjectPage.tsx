@@ -20,6 +20,8 @@ import {
   createVersionReport,
   fetchProjectAnalytics,
   hasAuthToken,
+  recordDownload,
+  recordProjectView,
   setProjectFollowing,
   type ProjectDetails,
   type ProjectAnalytics,
@@ -37,6 +39,13 @@ import {
   timeAgo,
   compareVersions,
 } from '../lib/format.ts';
+import {
+  canUseModerationNotes,
+  createProjectModerationNote,
+  fetchModerationViewer,
+  fetchProjectModerationActions,
+  fetchProjectModerationNotes,
+} from '../lib/moderation.ts';
 import {
   ChevronLeft,
   Clock,
@@ -56,6 +65,7 @@ import 'yet-another-react-lightbox/plugins/captions.css';
 import 'yet-another-react-lightbox/plugins/counter.css';
 import 'yet-another-react-lightbox/plugins/thumbnails.css';
 import { CategoryTag, Chip, LoaderTag } from './Chips.tsx';
+import { ModerationNotesPanel } from './ModerationNotesPanel.tsx';
 import { SelectField, type SelectOption } from './ui/Select.tsx';
 
 const allowedEmbedSrc =
@@ -175,6 +185,16 @@ export function ProjectPage({
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [slug]);
+
+  useEffect(() => {
+    if (projectQuery.data?.project === undefined) return;
+
+    void recordProjectView(slug).catch((error: unknown) => {
+      if (import.meta.env.DEV) {
+        console.error(error);
+      }
+    });
+  }, [projectQuery.data?.project, slug]);
 
   function selectTab(tab: ProjectTab) {
     setActiveTab(tab);
@@ -396,6 +416,7 @@ export function ProjectPage({
             {members.length > 0 && <ProjectMembersSection members={members} />}
 
             <ProjectReportSection project={project} />
+            <ProjectModerationNotes projectSlug={project.slug} />
 
             {supportedVersions.length > 0 && (
               <section className="mt-6">
@@ -757,6 +778,17 @@ function formatLoaderLabel(loader: string): string {
   return labels[loader] ?? loader;
 }
 
+function formatModerationAction(kind: string): string {
+  const labels: Record<string, string> = {
+    APPROVE: 'Approved',
+    ARCHIVE: 'Archived',
+    REJECT: 'Rejected',
+    RESTORE: 'Restored',
+  };
+
+  return labels[kind] ?? kind;
+}
+
 function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <button
@@ -1048,6 +1080,112 @@ function ProjectReportSection({ project }: { project: ProjectDetails }) {
   );
 }
 
+function ProjectModerationNotes({ projectSlug }: { projectSlug: string }) {
+  const viewerQuery = useQuery({
+    enabled: hasAuthToken(),
+    queryFn: ({ signal }) => fetchModerationViewer(signal),
+    queryKey: ['moderation', 'viewer'],
+    retry: false,
+  });
+  const enabled = canUseModerationNotes(viewerQuery.data);
+  const notesQuery = useQuery({
+    enabled,
+    queryFn: ({ signal }) => fetchProjectModerationNotes(projectSlug, signal),
+    queryKey: ['moderation', 'project-notes', projectSlug],
+  });
+  const actionsQuery = useQuery({
+    enabled,
+    queryFn: ({ signal }) => fetchProjectModerationActions(projectSlug, signal),
+    queryKey: ['moderation', 'project-actions', projectSlug],
+  });
+
+  if (!enabled) return null;
+
+  return (
+    <div className="grid gap-4">
+      <ModerationActionsPanel
+        actions={actionsQuery.data}
+        error={
+          actionsQuery.error instanceof Error
+            ? actionsQuery.error.message
+            : null
+        }
+        loading={actionsQuery.isLoading}
+      />
+      <ModerationNotesPanel
+        error={
+          notesQuery.error instanceof Error ? notesQuery.error.message : null
+        }
+        loading={notesQuery.isLoading}
+        notes={notesQuery.data}
+        onCreate={async (body) => {
+          await createProjectModerationNote({ body, projectSlug });
+          await notesQuery.refetch();
+        }}
+      />
+    </div>
+  );
+}
+
+function ModerationActionsPanel({
+  actions,
+  error,
+  loading,
+}: {
+  actions:
+    | Awaited<ReturnType<typeof fetchProjectModerationActions>>
+    | undefined;
+  error: string | null;
+  loading: boolean;
+}) {
+  return (
+    <section className="rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-base font-extrabold text-ink">
+          Moderation history
+        </h2>
+        <span className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
+          {actions?.length ?? 0} actions
+        </span>
+      </div>
+      {error && (
+        <p className="mt-3 text-sm font-semibold text-danger">{error}</p>
+      )}
+      {loading && <p className="mt-3 text-sm text-muted">Loading actions...</p>}
+      {!loading && !error && actions?.length === 0 && (
+        <p className="mt-3 text-sm text-muted">No moderation actions yet.</p>
+      )}
+      {actions && actions.length > 0 && (
+        <div className="mt-3 grid gap-2">
+          {actions.map((action) => (
+            <div
+              key={action.id}
+              className="rounded-lg border border-line bg-raised px-3 py-2"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-extrabold text-ink">
+                  {formatModerationAction(action.kind)}
+                </p>
+                <time className="text-xs font-semibold text-muted">
+                  {formatDate(action.createdAt)}
+                </time>
+              </div>
+              <p className="mt-1 text-xs font-semibold text-muted">
+                {action.moderator.displayName ?? action.moderator.username}
+              </p>
+              {action.reason && (
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  {action.reason}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ExternalLink({
   href,
   children,
@@ -1079,6 +1217,11 @@ function VersionRow({ version }: { version: ProjectVersion }) {
     alpha: 'text-faint',
   }[version.version_type];
 
+  async function downloadFile(file: ProjectVersion['files'][number]) {
+    await recordDownload(file.id);
+    window.location.assign(file.url);
+  }
+
   return (
     <div className="grid gap-3 border-b border-line py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
@@ -1104,6 +1247,22 @@ function VersionRow({ version }: { version: ProjectVersion }) {
             <Chip key={dependency.id}>{dependencyLabel(dependency)}</Chip>
           ))}
         </div>
+        {primaryFile && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-muted">
+            <span>{primaryFile.filename}</span>
+            {primaryFile.scans[0] && (
+              <span>
+                Scan{' '}
+                {primaryFile.scans[0].verdict ?? primaryFile.scans[0].status}
+              </span>
+            )}
+            {primaryFile.hashes.slice(0, 2).map((hash) => (
+              <span key={hash.algorithm}>
+                {hash.algorithm} {shortHash(hash.value)}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4 text-sm sm:justify-end">
@@ -1123,13 +1282,14 @@ function VersionRow({ version }: { version: ProjectVersion }) {
           <Flag className="size-4" />
         </button>
         {primaryFile && (
-          <a
-            href={primaryFile.url}
+          <button
+            type="button"
+            onClick={() => void downloadFile(primaryFile)}
             className="grid size-9 place-items-center rounded-lg bg-control text-accent-icon transition-colors hover:bg-control-hover"
             aria-label={`Download ${version.name}`}
           >
             <Download className="size-4" />
-          </a>
+          </button>
         )}
       </div>
 
@@ -1143,6 +1303,10 @@ function VersionRow({ version }: { version: ProjectVersion }) {
       )}
     </div>
   );
+}
+
+function shortHash(value: string): string {
+  return value.length <= 12 ? value : `${value.slice(0, 12)}...`;
 }
 
 function VersionReportForm({

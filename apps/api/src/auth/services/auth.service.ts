@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { compare, hash } from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type LoginInput } from '../dto/login.input.js';
@@ -91,8 +92,29 @@ export class AuthService {
   }
 
   private async createAuthPayload(user: AuthenticatedUser) {
+    const expiresAt = new Date(
+      Date.now() + this.authTokenService.accessTokenTtlSeconds() * 1000,
+    );
+    const session = await this.prisma.session.create({
+      data: {
+        expiresAt,
+        tokenHash: `pending:${randomUUID()}`,
+        userId: user.id,
+      },
+      select: { id: true },
+    });
+    const accessToken = await this.authTokenService.signSessionAccessToken({
+      ...user,
+      sessionId: session.id,
+    });
+
+    await this.prisma.session.update({
+      data: { tokenHash: this.authTokenService.hashToken(accessToken) },
+      where: { id: session.id },
+    });
+
     return {
-      accessToken: await this.authTokenService.signAccessToken(user),
+      accessToken,
       expiresIn: this.authTokenService.accessTokenTtlSeconds(),
       tokenType: 'Bearer' as const,
       user: {
@@ -102,4 +124,48 @@ export class AuthService {
       },
     };
   }
+
+  findViewerSessions(userId: string) {
+    return this.prisma.session.findMany({
+      orderBy: [{ revokedAt: 'asc' }, { lastUsedAt: 'desc' }],
+      select: sessionSelect(),
+      where: { userId },
+    });
+  }
+
+  async revokeViewerSession({
+    sessionId,
+    userId,
+  }: {
+    sessionId: string;
+    userId: string;
+  }) {
+    const update = await this.prisma.session.updateMany({
+      data: { revokedAt: new Date() },
+      where: {
+        id: sessionId,
+        userId,
+      },
+    });
+
+    if (update.count === 0) {
+      throw new UnauthorizedException('Session not found');
+    }
+
+    return this.prisma.session.findUniqueOrThrow({
+      select: sessionSelect(),
+      where: { id: sessionId },
+    });
+  }
+}
+
+function sessionSelect() {
+  return {
+    createdAt: true,
+    expiresAt: true,
+    id: true,
+    lastUsedAt: true,
+    revokedAt: true,
+    userAgent: true,
+  };
 }

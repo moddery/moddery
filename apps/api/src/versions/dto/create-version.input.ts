@@ -2,9 +2,21 @@ import { Field, InputType, Int } from '@nestjs/graphql';
 import { type VersionChannel } from '@moddery/shared';
 
 @InputType()
+export class CreateVersionFileHashInput {
+  @Field(() => String)
+  algorithm!: string;
+
+  @Field(() => String)
+  value!: string;
+}
+
+@InputType()
 export class CreateVersionFileInput {
   @Field(() => String)
   fileName!: string;
+
+  @Field(() => [CreateVersionFileHashInput], { nullable: true })
+  hashes?: CreateVersionFileHashInput[] | null;
 
   @Field(() => Boolean, { defaultValue: true })
   primary!: boolean;

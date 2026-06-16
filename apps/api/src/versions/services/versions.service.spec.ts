@@ -152,8 +152,10 @@ describe(VersionsService.name, () => {
                   files: [
                     {
                       fileName: 'example.jar',
+                      hashes: [{ algorithm: 'SHA256', value: 'abc123' }],
                       id: 'file-a',
                       isPrimary: true,
+                      scans: [],
                       sizeBytes: 123n,
                       url: 'https://example.test/example.jar',
                     },
@@ -164,6 +166,12 @@ describe(VersionsService.name, () => {
           versionFile: {
             create: () => {
               transactionSteps.push('file');
+              return Promise.resolve({ id: 'file-a' });
+            },
+          },
+          fileHash: {
+            upsert: () => {
+              transactionSteps.push('hash');
               return Promise.resolve({});
             },
           },
@@ -193,6 +201,7 @@ describe(VersionsService.name, () => {
         files: [
           {
             fileName: 'example.jar',
+            hashes: [{ algorithm: 'sha256', value: 'ABC123' }],
             primary: true,
             sizeBytes: 123,
             url: 'https://example.test/example.jar',
@@ -207,7 +216,8 @@ describe(VersionsService.name, () => {
       'user-a',
     );
 
-    expect(transactionSteps).toEqual(['version', 'file']);
+    expect(transactionSteps).toEqual(['version', 'file', 'hash']);
+    expect(version.files[0]?.hashes[0]?.value).toBe('abc123');
     expect(version.files[0]?.sizeBytes).toBe('123');
     expect(version.projectSlug).toBe('example');
   });
@@ -225,8 +235,18 @@ describe(VersionsService.name, () => {
               files: [
                 {
                   fileName: 'example.jar',
+                  hashes: [{ algorithm: 'SHA512', value: 'def456' }],
                   id: 'file-a',
                   isPrimary: true,
+                  scans: [
+                    {
+                      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+                      details: { signal: 'clean' },
+                      id: 'scan-a',
+                      status: 'COMPLETE',
+                      verdict: 'CLEAN',
+                    },
+                  ],
                   sizeBytes: 1234n,
                   url: 'https://example.test/example.jar',
                 },
@@ -258,8 +278,18 @@ describe(VersionsService.name, () => {
         files: [
           {
             fileName: 'example.jar',
+            hashes: [{ algorithm: 'SHA512', value: 'def456' }],
             id: 'file-a',
             primary: true,
+            scans: [
+              {
+                createdAt: new Date('2026-01-02T00:00:00.000Z'),
+                details: '{\n  "signal": "clean"\n}',
+                id: 'scan-a',
+                status: 'COMPLETE',
+                verdict: 'CLEAN',
+              },
+            ],
             sizeBytes: '1234',
             url: 'https://example.test/example.jar',
           },
@@ -273,6 +303,67 @@ describe(VersionsService.name, () => {
         versionNumber: '1.0.0',
       },
     ]);
+  });
+
+  test('records moderator file scan results', async () => {
+    const creates: unknown[] = [];
+    const service = new VersionsService({
+      fileScan: {
+        create: (query: unknown) => {
+          creates.push(query);
+          return Promise.resolve({});
+        },
+      },
+      version: {
+        findUniqueOrThrow: () =>
+          Promise.resolve(
+            versionRow({
+              files: [
+                {
+                  fileName: 'example.jar',
+                  hashes: [],
+                  id: 'file-a',
+                  isPrimary: true,
+                  scans: [
+                    {
+                      createdAt: new Date('2026-01-02T00:00:00.000Z'),
+                      details: { engine: 'scanner' },
+                      id: 'scan-a',
+                      status: 'COMPLETE',
+                      verdict: 'CLEAN',
+                    },
+                  ],
+                  sizeBytes: 1234n,
+                  url: 'https://example.test/example.jar',
+                },
+              ],
+            }),
+          ),
+      },
+      versionFile: {
+        findUnique: () => Promise.resolve({ id: 'file-a', versionId: 'v-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const version = await service.recordFileScan(
+      {
+        details: '{ "engine": "scanner" }',
+        fileId: 'file-a',
+        status: ' COMPLETE ',
+        verdict: ' CLEAN ',
+      },
+      { id: 'mod-a', role: 'MODERATOR', username: 'mod' },
+    );
+
+    expect(creates[0]).toEqual({
+      data: {
+        details: { engine: 'scanner' },
+        fileId: 'file-a',
+        status: 'COMPLETE',
+        verdict: 'CLEAN',
+      },
+    });
+    expect(version.files[0]?.scans[0]?.verdict).toBe('CLEAN');
   });
 });
 
@@ -306,8 +397,19 @@ function versionRow(
     downloads: number;
     files: {
       fileName: string;
+      hashes?: {
+        algorithm: string;
+        value: string;
+      }[];
       id: string;
       isPrimary: boolean;
+      scans?: {
+        createdAt: Date;
+        details: unknown;
+        id: string;
+        status: string;
+        verdict: string | null;
+      }[];
       sizeBytes: bigint;
       url: string;
     }[];
@@ -320,7 +422,11 @@ function versionRow(
     channel: overrides.channel ?? 'RELEASE',
     dependencies: overrides.dependencies ?? [],
     downloads: overrides.downloads ?? 0,
-    files: overrides.files ?? [],
+    files: (overrides.files ?? []).map((file) => ({
+      hashes: file.hashes ?? [],
+      scans: file.scans ?? [],
+      ...file,
+    })),
     gameVersions: [{ gameVersion: { version: '1.21.6' } }],
     id: 'version-a',
     loaders: [{ loader: 'FABRIC' }],

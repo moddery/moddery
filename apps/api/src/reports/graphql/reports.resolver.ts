@@ -5,11 +5,18 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { ReportsService } from '../services/reports.service.js';
 import {
+  CreateProjectModerationNoteInput,
+  CreateUserModerationNoteInput,
+} from './create-moderation-note.input.js';
+import { CreateReportThreadMessageInput } from './create-report-thread-message.input.js';
+import {
   CreateProjectReportInput,
   CreateUserReportInput,
   CreateVersionReportInput,
 } from './create-report.input.js';
+import { ModerationNoteSummary } from './moderation-note-summary.model.js';
 import { ReportSummary } from './report-summary.model.js';
+import { ThreadSummary } from './thread-summary.model.js';
 import { UpdateReportStateInput } from './update-report-state.input.js';
 
 @Resolver(() => ReportSummary)
@@ -20,6 +27,33 @@ export class ReportsResolver {
   moderationReports(@CurrentUser() user: AuthenticatedUser) {
     assertCanModerate(user);
     return this.reportsService.findModerationReports();
+  }
+
+  @Query(() => ThreadSummary)
+  reportThread(
+    @Args('reportId') reportId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.findReportThread(reportId);
+  }
+
+  @Query(() => [ModerationNoteSummary])
+  projectModerationNotes(
+    @Args('projectSlug') projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.findProjectModerationNotes(projectSlug);
+  }
+
+  @Query(() => [ModerationNoteSummary])
+  userModerationNotes(
+    @Args('username') username: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.findUserModerationNotes(username);
   }
 
   @Mutation(() => ReportSummary)
@@ -69,6 +103,45 @@ export class ReportsResolver {
       body: input.body,
       reason: input.reason,
       reporterId: user.id,
+      username: input.username,
+    });
+  }
+
+  @Mutation(() => ThreadSummary)
+  createReportThreadMessage(
+    @Args('input') input: CreateReportThreadMessageInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.createReportThreadMessage({
+      authorId: user.id,
+      body: input.body,
+      reportId: input.reportId,
+    });
+  }
+
+  @Mutation(() => ModerationNoteSummary)
+  createProjectModerationNote(
+    @Args('input') input: CreateProjectModerationNoteInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.createProjectModerationNote({
+      authorId: user.id,
+      body: input.body,
+      projectSlug: input.projectSlug,
+    });
+  }
+
+  @Mutation(() => ModerationNoteSummary)
+  createUserModerationNote(
+    @Args('input') input: CreateUserModerationNoteInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.createUserModerationNote({
+      authorId: user.id,
+      body: input.body,
       username: input.username,
     });
   }

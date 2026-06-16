@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { type ClickHouseClient } from '@clickhouse/client';
 
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -91,6 +91,77 @@ export class AnalyticsService {
       totalDownloads: project.downloads,
       totalViews,
       viewsLast30Days,
+    };
+  }
+
+  async recordProjectView(projectSlug: string) {
+    const project = await this.prisma.project.findUnique({
+      select: {
+        id: true,
+        slug: true,
+      },
+      where: { slug: projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.prisma.projectViewEvent.create({
+      data: {
+        projectId: project.id,
+      },
+    });
+
+    return {
+      projectId: project.id,
+      projectSlug: project.slug,
+    };
+  }
+
+  async recordDownload(fileId: string) {
+    const file = await this.prisma.versionFile.findUnique({
+      select: {
+        id: true,
+        version: {
+          select: {
+            id: true,
+            projectId: true,
+          },
+        },
+      },
+      where: { id: fileId },
+    });
+
+    if (file === null) {
+      throw new NotFoundException('File not found');
+    }
+
+    const [project, version] = await this.prisma.$transaction([
+      this.prisma.project.update({
+        data: { downloads: { increment: 1 } },
+        select: { downloads: true, id: true },
+        where: { id: file.version.projectId },
+      }),
+      this.prisma.version.update({
+        data: { downloads: { increment: 1 } },
+        select: { downloads: true, id: true },
+        where: { id: file.version.id },
+      }),
+      this.prisma.downloadEvent.create({
+        data: {
+          projectId: file.version.projectId,
+          versionId: file.version.id,
+        },
+      }),
+    ]);
+
+    return {
+      fileId: file.id,
+      projectDownloads: project.downloads,
+      projectId: project.id,
+      versionDownloads: version.downloads,
+      versionId: version.id,
     };
   }
 }

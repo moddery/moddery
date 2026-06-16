@@ -40,9 +40,39 @@ export class VersionDependencySummary {
 }
 
 @ObjectType()
+export class VersionFileHashSummary {
+  @Field(() => String)
+  algorithm!: string;
+
+  @Field(() => String)
+  value!: string;
+}
+
+@ObjectType()
+export class VersionFileScanSummary {
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  details!: string | null;
+
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  status!: string;
+
+  @Field(() => String, { nullable: true })
+  verdict!: string | null;
+}
+
+@ObjectType()
 export class VersionFileSummary {
   @Field(() => String)
   fileName!: string;
+
+  @Field(() => [VersionFileHashSummary])
+  hashes!: VersionFileHashSummary[];
 
   @Field(() => String)
   id!: string;
@@ -52,6 +82,9 @@ export class VersionFileSummary {
 
   @Field(() => String)
   sizeBytes!: string;
+
+  @Field(() => [VersionFileScanSummary])
+  scans!: VersionFileScanSummary[];
 
   @Field(() => String)
   url!: string;

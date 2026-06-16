@@ -22,6 +22,17 @@ export interface DashboardData {
   projectCount: number;
   projects: DashboardProject[];
   role: string;
+  status: string;
+  username: string;
+}
+
+export interface AdminUserAccount {
+  avatarUrl: string | null;
+  createdAt: string;
+  displayName: string | null;
+  id: string;
+  role: string;
+  status: string;
   username: string;
 }
 
@@ -47,13 +58,26 @@ export interface DashboardProject {
   iconUrl: string | null;
   issuesUrl: string | null;
   kind: ProjectKind;
+  license: {
+    id: string;
+    name: string;
+    url: string | null;
+  };
+  links: DashboardProjectLink[];
   loaders: string[];
   slug: string;
   sourceUrl: string | null;
+  status: string;
   summary: string;
   title: string;
   updatedAt: string;
   wikiUrl: string | null;
+}
+
+export interface DashboardProjectLink {
+  kind: string;
+  label: string | null;
+  url: string;
 }
 
 export interface DashboardProjectMember {
@@ -67,6 +91,49 @@ export interface DashboardProjectMember {
     id: string;
     username: string;
   };
+}
+
+export interface ApiTokenSummary {
+  createdAt: string;
+  expiresAt: string | null;
+  id: string;
+  lastUsedAt: string | null;
+  name: string;
+  revokedAt: string | null;
+  scopes: string[];
+}
+
+export interface SessionSummary {
+  createdAt: string;
+  expiresAt: string;
+  id: string;
+  lastUsedAt: string;
+  revokedAt: string | null;
+  userAgent: string | null;
+}
+
+export interface CreatedApiToken {
+  token: string;
+  tokenSummary: ApiTokenSummary;
+}
+
+export interface NotificationPreference {
+  channel: 'EMAIL' | 'IN_APP';
+  enabled: boolean;
+  type: string;
+  updatedAt: string;
+}
+
+export interface CategoryTaxonomy {
+  description: string | null;
+  name: string;
+  projectKind: ProjectKind | null;
+  slug: string;
+}
+
+export interface GameVersionTaxonomy {
+  isActive: boolean;
+  version: string;
 }
 
 export interface DashboardGalleryImage {
@@ -140,6 +207,10 @@ export interface UpdateProjectInput {
   gameVersions: string[];
   iconUrl: string | null;
   issuesUrl: string | null;
+  licenseKey: string;
+  licenseName: string;
+  licenseUrl: string | null;
+  links: DashboardProjectLink[];
   loaders: string[];
   projectSlug: string;
   sourceUrl: string | null;
@@ -189,6 +260,10 @@ export interface CreateVersionInput {
   channel: 'ALPHA' | 'BETA' | 'RELEASE';
   files: {
     fileName: string;
+    hashes: {
+      algorithm: string;
+      value: string;
+    }[];
     primary: boolean;
     sizeBytes: number;
     url: string;
@@ -277,6 +352,26 @@ export interface ModerationReport {
 
 export type ModerationReportState = 'OPEN' | 'TRIAGED' | 'CLOSED';
 
+export interface ReportThreadMessage {
+  author: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+  body: string;
+  createdAt: string;
+  id: string;
+}
+
+export interface ReportThread {
+  createdAt: string;
+  id: string;
+  messages: ReportThreadMessage[];
+  reportId: string | null;
+  subject: string;
+  updatedAt: string;
+}
+
 interface DashboardQueryData {
   viewer: DashboardData | null;
   viewerOrganizations: DashboardOrganization[];
@@ -302,6 +397,132 @@ interface UpdateReportStateMutationVariables {
   input: {
     id: string;
     state: ModerationReportState;
+  };
+}
+
+interface ReportThreadQueryData {
+  reportThread: ReportThread;
+}
+
+interface ReportThreadQueryVariables {
+  reportId: string;
+}
+
+interface CreateReportThreadMessageMutationData {
+  createReportThreadMessage: ReportThread;
+}
+
+interface CreateReportThreadMessageMutationVariables {
+  input: {
+    body: string;
+    reportId: string;
+  };
+}
+
+interface ViewerApiTokensQueryData {
+  viewerApiTokens: ApiTokenSummary[];
+}
+
+interface ViewerSessionsQueryData {
+  viewerSessions: SessionSummary[];
+}
+
+interface CreateApiTokenMutationData {
+  createApiToken: CreatedApiToken;
+}
+
+interface CreateApiTokenMutationVariables {
+  input: {
+    expiresInDays: number | null;
+    name: string;
+    scopes: string[];
+  };
+}
+
+interface RevokeApiTokenMutationData {
+  revokeApiToken: ApiTokenSummary;
+}
+
+interface RevokeApiTokenMutationVariables {
+  tokenId: string;
+}
+
+interface RevokeSessionMutationData {
+  revokeSession: SessionSummary;
+}
+
+interface RevokeSessionMutationVariables {
+  sessionId: string;
+}
+
+interface NotificationPreferencesQueryData {
+  viewerNotificationPreferences: NotificationPreference[];
+}
+
+interface CategoryTaxonomyQueryData {
+  categories: CategoryTaxonomy[];
+}
+
+interface GameVersionTaxonomyQueryData {
+  gameVersions: GameVersionTaxonomy[];
+}
+
+interface UpsertCategoryMutationData {
+  upsertCategory: CategoryTaxonomy;
+}
+
+interface UpsertCategoryMutationVariables {
+  input: {
+    description: string | null;
+    name: string;
+    projectKind: ProjectKind | null;
+    slug: string;
+  };
+}
+
+interface UpsertGameVersionMutationData {
+  upsertGameVersion: GameVersionTaxonomy;
+}
+
+interface UpsertGameVersionMutationVariables {
+  input: {
+    isActive: boolean;
+    version: string;
+  };
+}
+
+interface UpdateNotificationPreferenceMutationData {
+  updateNotificationPreference: NotificationPreference;
+}
+
+interface SendNotificationMutationData {
+  sendNotification: {
+    actionUrl: string | null;
+    body: string | null;
+    createdAt: string;
+    id: string;
+    readAt: string | null;
+    state: string;
+    title: string;
+    type: string;
+  };
+}
+
+interface SendNotificationMutationVariables {
+  input: {
+    actionUrl: string | null;
+    body: string | null;
+    title: string;
+    type: string;
+    username: string;
+  };
+}
+
+interface UpdateNotificationPreferenceMutationVariables {
+  input: {
+    channel: string;
+    enabled: boolean;
+    type: string;
   };
 }
 
@@ -441,8 +662,53 @@ interface UpdateVersionDependenciesMutationData {
   updateVersionDependencies: DashboardVersion;
 }
 
+interface RecordFileScanMutationData {
+  recordFileScan: DashboardVersion;
+}
+
+interface RecordFileScanMutationVariables {
+  input: {
+    details: string | null;
+    fileId: string;
+    status: string;
+    verdict: string | null;
+  };
+}
+
 interface UpdateVersionDependenciesMutationVariables {
   input: UpdateVersionDependenciesInput;
+}
+
+interface ModerationProjectsQueryData {
+  moderationProjects: DashboardProject[];
+}
+
+interface AdminUsersQueryData {
+  adminUsers: AdminUserAccount[];
+}
+
+interface UpdateUserAccountMutationData {
+  updateUserAccount: AdminUserAccount;
+}
+
+interface UpdateUserAccountMutationVariables {
+  input: {
+    role: string | null;
+    status: string | null;
+    userId: string;
+  };
+}
+
+interface ModerateProjectMutationData {
+  moderateProject: DashboardProject;
+}
+
+interface ModerateProjectMutationVariables {
+  input: {
+    action: string;
+    projectSlug: string;
+    reason: string | null;
+  };
 }
 
 const DASHBOARD_QUERY = gql`
@@ -485,15 +751,27 @@ const DASHBOARD_QUERY = gql`
         iconUrl
         issuesUrl
         kind
+        license {
+          id
+          name
+          url
+        }
+        links {
+          kind
+          label
+          url
+        }
         loaders
         slug
         sourceUrl
+        status
         summary
         title
         updatedAt
         wikiUrl
       }
       role
+      status
       username
     }
     viewerOrganizations {
@@ -506,6 +784,120 @@ const DASHBOARD_QUERY = gql`
       slug
       updatedAt
       visibility
+    }
+  }
+`;
+
+const ADMIN_USERS_QUERY = gql`
+  query AdminUsers {
+    adminUsers {
+      avatarUrl
+      createdAt
+      displayName
+      id
+      role
+      status
+      username
+    }
+  }
+`;
+
+const UPDATE_USER_ACCOUNT_MUTATION = gql`
+  mutation UpdateUserAccount($input: UpdateUserAccountInput!) {
+    updateUserAccount(input: $input) {
+      avatarUrl
+      createdAt
+      displayName
+      id
+      role
+      status
+      username
+    }
+  }
+`;
+
+const MODERATION_PROJECTS_QUERY = gql`
+  query ModerationProjects {
+    moderationProjects {
+      body
+      categories
+      discordUrl
+      downloads
+      followers
+      gallery {
+        createdAt
+        description
+        displayUrl
+        featured
+        rawUrl
+        sortOrder
+        title
+      }
+      gameVersions
+      iconUrl
+      issuesUrl
+      kind
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
+      loaders
+      slug
+      sourceUrl
+      status
+      summary
+      title
+      updatedAt
+      wikiUrl
+    }
+  }
+`;
+
+const MODERATE_PROJECT_MUTATION = gql`
+  mutation ModerateProject($input: ModerateProjectInput!) {
+    moderateProject(input: $input) {
+      body
+      categories
+      discordUrl
+      downloads
+      followers
+      gallery {
+        createdAt
+        description
+        displayUrl
+        featured
+        rawUrl
+        sortOrder
+        title
+      }
+      gameVersions
+      iconUrl
+      issuesUrl
+      kind
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
+      loaders
+      slug
+      sourceUrl
+      status
+      summary
+      title
+      updatedAt
+      wikiUrl
     }
   }
 `;
@@ -582,6 +974,200 @@ const UPDATE_REPORT_STATE_MUTATION = gql`
   }
 `;
 
+const REPORT_THREAD_QUERY = gql`
+  query ReportThread($reportId: String!) {
+    reportThread(reportId: $reportId) {
+      createdAt
+      id
+      messages {
+        author {
+          displayName
+          id
+          username
+        }
+        body
+        createdAt
+        id
+      }
+      reportId
+      subject
+      updatedAt
+    }
+  }
+`;
+
+const CREATE_REPORT_THREAD_MESSAGE_MUTATION = gql`
+  mutation CreateReportThreadMessage($input: CreateReportThreadMessageInput!) {
+    createReportThreadMessage(input: $input) {
+      createdAt
+      id
+      messages {
+        author {
+          displayName
+          id
+          username
+        }
+        body
+        createdAt
+        id
+      }
+      reportId
+      subject
+      updatedAt
+    }
+  }
+`;
+
+const VIEWER_API_TOKENS_QUERY = gql`
+  query ViewerApiTokens {
+    viewerApiTokens {
+      createdAt
+      expiresAt
+      id
+      lastUsedAt
+      name
+      revokedAt
+      scopes
+    }
+  }
+`;
+
+const VIEWER_SESSIONS_QUERY = gql`
+  query ViewerSessions {
+    viewerSessions {
+      createdAt
+      expiresAt
+      id
+      lastUsedAt
+      revokedAt
+      userAgent
+    }
+  }
+`;
+
+const CREATE_API_TOKEN_MUTATION = gql`
+  mutation CreateApiToken($input: CreateApiTokenInput!) {
+    createApiToken(input: $input) {
+      token
+      tokenSummary {
+        createdAt
+        expiresAt
+        id
+        lastUsedAt
+        name
+        revokedAt
+        scopes
+      }
+    }
+  }
+`;
+
+const REVOKE_API_TOKEN_MUTATION = gql`
+  mutation RevokeApiToken($tokenId: String!) {
+    revokeApiToken(tokenId: $tokenId) {
+      createdAt
+      expiresAt
+      id
+      lastUsedAt
+      name
+      revokedAt
+      scopes
+    }
+  }
+`;
+
+const REVOKE_SESSION_MUTATION = gql`
+  mutation RevokeSession($sessionId: String!) {
+    revokeSession(sessionId: $sessionId) {
+      createdAt
+      expiresAt
+      id
+      lastUsedAt
+      revokedAt
+      userAgent
+    }
+  }
+`;
+
+const NOTIFICATION_PREFERENCES_QUERY = gql`
+  query NotificationPreferences {
+    viewerNotificationPreferences {
+      channel
+      enabled
+      type
+      updatedAt
+    }
+  }
+`;
+
+const CATEGORY_TAXONOMY_QUERY = gql`
+  query CategoryTaxonomy {
+    categories {
+      description
+      name
+      projectKind
+      slug
+    }
+  }
+`;
+
+const GAME_VERSION_TAXONOMY_QUERY = gql`
+  query GameVersionTaxonomy {
+    gameVersions {
+      isActive
+      version
+    }
+  }
+`;
+
+const UPDATE_NOTIFICATION_PREFERENCE_MUTATION = gql`
+  mutation UpdateNotificationPreference(
+    $input: UpdateNotificationPreferenceInput!
+  ) {
+    updateNotificationPreference(input: $input) {
+      channel
+      enabled
+      type
+      updatedAt
+    }
+  }
+`;
+
+const UPSERT_CATEGORY_MUTATION = gql`
+  mutation UpsertCategory($input: UpsertCategoryInput!) {
+    upsertCategory(input: $input) {
+      description
+      name
+      projectKind
+      slug
+    }
+  }
+`;
+
+const UPSERT_GAME_VERSION_MUTATION = gql`
+  mutation UpsertGameVersion($input: UpsertGameVersionInput!) {
+    upsertGameVersion(input: $input) {
+      isActive
+      version
+    }
+  }
+`;
+
+const SEND_NOTIFICATION_MUTATION = gql`
+  mutation SendNotification($input: SendNotificationInput!) {
+    sendNotification(input: $input) {
+      actionUrl
+      body
+      createdAt
+      id
+      readAt
+      state
+      title
+      type
+    }
+  }
+`;
+
 const CREATE_PROJECT_MUTATION = gql`
   mutation CreateProject($input: CreateProjectInput!) {
     createProject(input: $input) {
@@ -603,9 +1189,20 @@ const CREATE_PROJECT_MUTATION = gql`
       iconUrl
       issuesUrl
       kind
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
       loaders
       slug
       sourceUrl
+      status
       summary
       title
       updatedAt
@@ -635,9 +1232,20 @@ const ADD_PROJECT_GALLERY_IMAGE_MUTATION = gql`
       iconUrl
       issuesUrl
       kind
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
       loaders
       slug
       sourceUrl
+      status
       summary
       title
       updatedAt
@@ -701,9 +1309,20 @@ const UPDATE_PROJECT_MUTATION = gql`
       iconUrl
       issuesUrl
       kind
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
       loaders
       slug
       sourceUrl
+      status
       summary
       title
       updatedAt
@@ -922,6 +1541,35 @@ const UPDATE_VERSION_DEPENDENCIES_MUTATION = gql`
   }
 `;
 
+const RECORD_FILE_SCAN_MUTATION = gql`
+  mutation RecordFileScan($input: RecordFileScanInput!) {
+    recordFileScan(input: $input) {
+      changelog
+      channel
+      dependencies {
+        dependencyKind
+        externalFileName
+        id
+        targetProject {
+          id
+          slug
+          title
+        }
+        targetVersion {
+          id
+          versionNumber
+        }
+      }
+      gameVersions
+      id
+      loaders
+      name
+      projectSlug
+      versionNumber
+    }
+  }
+`;
+
 export async function fetchDashboard(
   signal?: AbortSignal,
 ): Promise<DashboardData | null> {
@@ -951,6 +1599,30 @@ export async function fetchModerationReports(
   return data.moderationReports;
 }
 
+export async function fetchModerationProjects(
+  signal?: AbortSignal,
+): Promise<DashboardProject[]> {
+  const { data } = await apolloClient.query<ModerationProjectsQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: MODERATION_PROJECTS_QUERY,
+  });
+
+  return data.moderationProjects;
+}
+
+export async function fetchAdminUsers(
+  signal?: AbortSignal,
+): Promise<AdminUserAccount[]> {
+  const { data } = await apolloClient.query<AdminUsersQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: ADMIN_USERS_QUERY,
+  });
+
+  return data.adminUsers;
+}
+
 export async function updateViewerProfile(
   input: UpdateViewerProfileInput,
 ): Promise<ViewerProfileUpdate> {
@@ -972,6 +1644,26 @@ export async function updateViewerProfile(
   return data.updateViewerProfile;
 }
 
+export async function updateUserAccount(input: {
+  role: string | null;
+  status: string | null;
+  userId: string;
+}): Promise<AdminUserAccount> {
+  const { data } = await apolloClient.mutate<
+    UpdateUserAccountMutationData,
+    UpdateUserAccountMutationVariables
+  >({
+    mutation: UPDATE_USER_ACCOUNT_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.updateUserAccount) {
+    throw new Error('User account update did not return from the API');
+  }
+
+  return data.updateUserAccount;
+}
+
 export async function updateReportState(
   id: string,
   state: ModerationReportState,
@@ -989,6 +1681,263 @@ export async function updateReportState(
   }
 
   return data.updateReportState;
+}
+
+export async function moderateProject(input: {
+  action: string;
+  projectSlug: string;
+  reason: string | null;
+}): Promise<DashboardProject> {
+  const { data } = await apolloClient.mutate<
+    ModerateProjectMutationData,
+    ModerateProjectMutationVariables
+  >({
+    mutation: MODERATE_PROJECT_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.moderateProject) {
+    throw new Error('Project moderation did not return from the API');
+  }
+
+  return data.moderateProject;
+}
+
+export async function fetchReportThread(
+  reportId: string,
+  signal?: AbortSignal,
+): Promise<ReportThread> {
+  const { data } = await apolloClient.query<
+    ReportThreadQueryData,
+    ReportThreadQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: REPORT_THREAD_QUERY,
+    variables: { reportId },
+  });
+
+  return data.reportThread;
+}
+
+export async function createReportThreadMessage({
+  body,
+  reportId,
+}: {
+  body: string;
+  reportId: string;
+}): Promise<ReportThread> {
+  const { data } = await apolloClient.mutate<
+    CreateReportThreadMessageMutationData,
+    CreateReportThreadMessageMutationVariables
+  >({
+    mutation: CREATE_REPORT_THREAD_MESSAGE_MUTATION,
+    variables: { input: { body, reportId } },
+  });
+
+  if (!data?.createReportThreadMessage) {
+    throw new Error('Thread message did not return from the API');
+  }
+
+  return data.createReportThreadMessage;
+}
+
+export async function fetchViewerApiTokens(
+  signal?: AbortSignal,
+): Promise<ApiTokenSummary[]> {
+  const { data } = await apolloClient.query<ViewerApiTokensQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_API_TOKENS_QUERY,
+  });
+
+  return data.viewerApiTokens;
+}
+
+export async function fetchViewerSessions(
+  signal?: AbortSignal,
+): Promise<SessionSummary[]> {
+  const { data } = await apolloClient.query<ViewerSessionsQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_SESSIONS_QUERY,
+  });
+
+  return data.viewerSessions;
+}
+
+export async function createApiToken(input: {
+  expiresInDays: number | null;
+  name: string;
+  scopes: string[];
+}): Promise<CreatedApiToken> {
+  const { data } = await apolloClient.mutate<
+    CreateApiTokenMutationData,
+    CreateApiTokenMutationVariables
+  >({
+    mutation: CREATE_API_TOKEN_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.createApiToken) {
+    throw new Error('API token did not return from the API');
+  }
+
+  return data.createApiToken;
+}
+
+export async function revokeSession(
+  sessionId: string,
+): Promise<SessionSummary> {
+  const { data } = await apolloClient.mutate<
+    RevokeSessionMutationData,
+    RevokeSessionMutationVariables
+  >({
+    mutation: REVOKE_SESSION_MUTATION,
+    variables: { sessionId },
+  });
+
+  if (!data?.revokeSession) {
+    throw new Error('Session revocation did not return from the API');
+  }
+
+  return data.revokeSession;
+}
+
+export async function revokeApiToken(
+  tokenId: string,
+): Promise<ApiTokenSummary> {
+  const { data } = await apolloClient.mutate<
+    RevokeApiTokenMutationData,
+    RevokeApiTokenMutationVariables
+  >({
+    mutation: REVOKE_API_TOKEN_MUTATION,
+    variables: { tokenId },
+  });
+
+  if (!data?.revokeApiToken) {
+    throw new Error('API token revocation did not return from the API');
+  }
+
+  return data.revokeApiToken;
+}
+
+export async function fetchNotificationPreferences(
+  signal?: AbortSignal,
+): Promise<NotificationPreference[]> {
+  const { data } = await apolloClient.query<NotificationPreferencesQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: NOTIFICATION_PREFERENCES_QUERY,
+  });
+
+  return data.viewerNotificationPreferences;
+}
+
+export async function fetchCategoryTaxonomy(
+  signal?: AbortSignal,
+): Promise<CategoryTaxonomy[]> {
+  const { data } = await apolloClient.query<CategoryTaxonomyQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: CATEGORY_TAXONOMY_QUERY,
+  });
+
+  return data.categories;
+}
+
+export async function fetchGameVersionTaxonomy(
+  signal?: AbortSignal,
+): Promise<GameVersionTaxonomy[]> {
+  const { data } = await apolloClient.query<GameVersionTaxonomyQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: GAME_VERSION_TAXONOMY_QUERY,
+  });
+
+  return data.gameVersions;
+}
+
+export async function updateNotificationPreference(input: {
+  channel: string;
+  enabled: boolean;
+  type: string;
+}): Promise<NotificationPreference> {
+  const { data } = await apolloClient.mutate<
+    UpdateNotificationPreferenceMutationData,
+    UpdateNotificationPreferenceMutationVariables
+  >({
+    mutation: UPDATE_NOTIFICATION_PREFERENCE_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.updateNotificationPreference) {
+    throw new Error('Notification preference did not return from the API');
+  }
+
+  return data.updateNotificationPreference;
+}
+
+export async function upsertCategory(input: {
+  description: string | null;
+  name: string;
+  projectKind: ProjectKind | null;
+  slug: string;
+}): Promise<CategoryTaxonomy> {
+  const { data } = await apolloClient.mutate<
+    UpsertCategoryMutationData,
+    UpsertCategoryMutationVariables
+  >({
+    mutation: UPSERT_CATEGORY_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.upsertCategory) {
+    throw new Error('Category did not return from the API');
+  }
+
+  return data.upsertCategory;
+}
+
+export async function upsertGameVersion(input: {
+  isActive: boolean;
+  version: string;
+}): Promise<GameVersionTaxonomy> {
+  const { data } = await apolloClient.mutate<
+    UpsertGameVersionMutationData,
+    UpsertGameVersionMutationVariables
+  >({
+    mutation: UPSERT_GAME_VERSION_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.upsertGameVersion) {
+    throw new Error('Game version did not return from the API');
+  }
+
+  return data.upsertGameVersion;
+}
+
+export async function sendNotification(input: {
+  actionUrl: string | null;
+  body: string | null;
+  title: string;
+  type: string;
+  username: string;
+}): Promise<SendNotificationMutationData['sendNotification']> {
+  const { data } = await apolloClient.mutate<
+    SendNotificationMutationData,
+    SendNotificationMutationVariables
+  >({
+    mutation: SEND_NOTIFICATION_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.sendNotification) {
+    throw new Error('Notification did not return from the API');
+  }
+
+  return data.sendNotification;
 }
 
 export async function createProject(
@@ -1281,6 +2230,27 @@ export async function updateVersionDependencies(
   }
 
   return data.updateVersionDependencies;
+}
+
+export async function recordFileScan(input: {
+  details: string | null;
+  fileId: string;
+  status: string;
+  verdict: string | null;
+}): Promise<DashboardVersion> {
+  const { data } = await apolloClient.mutate<
+    RecordFileScanMutationData,
+    RecordFileScanMutationVariables
+  >({
+    mutation: RECORD_FILE_SCAN_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.recordFileScan) {
+    throw new Error('File scan did not return a version');
+  }
+
+  return data.recordFileScan;
 }
 
 export function dashboardProjectToMod(project: DashboardProject): Mod {

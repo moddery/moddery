@@ -1,6 +1,18 @@
 import { Field, InputType } from '@nestjs/graphql';
 
 @InputType()
+export class UpdateProjectLinkInput {
+  @Field(() => String)
+  kind!: string;
+
+  @Field(() => String, { nullable: true })
+  label?: string | null;
+
+  @Field(() => String)
+  url!: string;
+}
+
+@InputType()
 export class UpdateProjectInput {
   @Field(() => [String], { nullable: true })
   categories?: string[] | null;
@@ -19,6 +31,18 @@ export class UpdateProjectInput {
 
   @Field(() => String, { nullable: true })
   issuesUrl?: string | null;
+
+  @Field(() => String, { nullable: true })
+  licenseKey?: string | null;
+
+  @Field(() => String, { nullable: true })
+  licenseName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  licenseUrl?: string | null;
+
+  @Field(() => [UpdateProjectLinkInput], { nullable: true })
+  links?: UpdateProjectLinkInput[] | null;
 
   @Field(() => [String], { nullable: true })
   loaders?: string[] | null;

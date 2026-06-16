@@ -4,7 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { isGameVersionTag, type ProjectSummaryContract } from '@moddery/shared';
-import { Loader, TeamPermission, type Prisma } from '@prisma/client';
+import {
+  Loader,
+  LinkKind,
+  ModerationActionKind,
+  TeamPermission,
+  type Prisma,
+} from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SearchService } from '../../search/search.service.js';
@@ -12,6 +18,7 @@ import { type AddProjectTeamMemberInput } from '../dto/add-project-team-member.i
 import { type AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
 import { type CatalogQueryInput } from '../dto/catalog-query.input.js';
 import { type CreateProjectInput } from '../dto/create-project.input.js';
+import { type ModerateProjectInput } from '../dto/moderate-project.input.js';
 import { type RemoveProjectTeamMemberInput } from '../dto/remove-project-team-member.input.js';
 import { type UpdateProjectInput } from '../dto/update-project.input.js';
 
@@ -77,6 +84,19 @@ export interface ProjectFollowStateContract {
   following: boolean;
   followers: number;
   projectSlug: string;
+}
+
+export interface ModerationActionContract {
+  createdAt: Date;
+  id: string;
+  kind: string;
+  moderator: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+  projectId: string;
+  reason: string | null;
 }
 
 @Injectable()
@@ -205,6 +225,103 @@ export class CatalogService {
     return contract;
   }
 
+  async findProjectsForModeration(): Promise<ProjectSummaryContract[]> {
+    const projects: ProjectRow[] = await this.prisma.project.findMany({
+      orderBy: [{ queuedAt: 'asc' }, { createdAt: 'asc' }],
+      select: projectSelect(),
+      take: 50,
+      where: {
+        status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+      },
+    });
+
+    return projects.map(projectRowToContract);
+  }
+
+  async findProjectModerationActions(
+    projectSlug: string,
+  ): Promise<ModerationActionContract[]> {
+    const project = await this.prisma.project.findUnique({
+      select: { id: true },
+      where: { slug: projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const actions = await this.prisma.moderationAction.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        createdAt: true,
+        id: true,
+        kind: true,
+        moderator: {
+          select: {
+            displayName: true,
+            id: true,
+            username: true,
+          },
+        },
+        projectId: true,
+        reason: true,
+      },
+      take: 25,
+      where: { projectId: project.id },
+    });
+
+    return actions.map((action) => ({
+      ...action,
+      kind: action.kind,
+      projectId: action.projectId ?? project.id,
+    }));
+  }
+
+  async moderateProject(
+    input: ModerateProjectInput,
+    moderatorId: string,
+  ): Promise<ProjectSummaryContract> {
+    const action = moderationAction(input.action);
+    const project = await this.prisma.project.findUnique({
+      select: { id: true },
+      where: { slug: input.projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const now = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        data: moderationProjectData(action, now),
+        where: { id: project.id },
+      });
+      await tx.moderationAction.create({
+        data: {
+          kind: action,
+          moderatorId,
+          projectId: project.id,
+          reason: nullableTrim(input.reason),
+        },
+      });
+
+      return tx.project.findUniqueOrThrow({
+        select: projectSelect(),
+        where: { id: project.id },
+      });
+    });
+
+    const contract = projectRowToContract(updated);
+    if (contract.status === 'APPROVED') {
+      await this.searchService.indexProjects([
+        projectContractToSearch(contract),
+      ]);
+    }
+
+    return contract;
+  }
+
   async addProjectGalleryImage(
     input: AddProjectGalleryImageInput,
     userId: string,
@@ -238,8 +355,10 @@ export class CatalogService {
     const existing = await this.findManagedProject(input.projectSlug, userId);
 
     const project = await this.prisma.$transaction(async (tx) => {
+      const licenseId = await updatedLicenseId(tx, input);
+
       await tx.project.update({
-        data: projectUpdateData(input),
+        data: projectUpdateData(input, licenseId),
         where: { id: existing.id },
       });
 
@@ -253,6 +372,10 @@ export class CatalogService {
 
       if (input.loaders !== undefined && input.loaders !== null) {
         await replaceProjectLoaders(tx, existing.id, input.loaders);
+      }
+
+      if (input.links !== undefined && input.links !== null) {
+        await replaceProjectLinks(tx, existing.id, input.links);
       }
 
       return tx.project.findUniqueOrThrow({
@@ -661,8 +784,54 @@ async function replaceProjectLoaders(
   }
 }
 
+async function replaceProjectLinks(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  links: readonly NonNullable<UpdateProjectInput['links']>[number][],
+): Promise<void> {
+  const normalized = links
+    .map((link) => ({
+      kind: linkKind(link.kind),
+      label: nullableTrim(link.label),
+      url: requiredText(link.url),
+    }))
+    .slice(0, 16);
+
+  await tx.projectLink.deleteMany({ where: { projectId } });
+
+  for (const link of normalized) {
+    await tx.projectLink.create({
+      data: {
+        ...link,
+        projectId,
+      },
+    });
+  }
+}
+
+async function updatedLicenseId(
+  tx: Prisma.TransactionClient,
+  input: UpdateProjectInput,
+): Promise<string | undefined> {
+  if (input.licenseKey === undefined) {
+    return undefined;
+  }
+
+  const key = requiredText(input.licenseKey).toLowerCase();
+  const name = nullableTrim(input.licenseName) ?? key;
+  const url = optionalUrl(input.licenseUrl);
+  const license = await tx.license.upsert({
+    create: { key, name, url },
+    update: { name, url },
+    where: { key },
+  });
+
+  return license.id;
+}
+
 function projectUpdateData(
   input: UpdateProjectInput,
+  licenseId: string | undefined,
 ): Prisma.ProjectUpdateInput {
   return {
     ...(input.description === undefined
@@ -677,6 +846,9 @@ function projectUpdateData(
     ...(input.issuesUrl === undefined
       ? {}
       : { issuesUrl: optionalUrl(input.issuesUrl) }),
+    ...(licenseId === undefined
+      ? {}
+      : { license: { connect: { id: licenseId } } }),
     ...(input.sourceUrl === undefined
       ? {}
       : { sourceUrl: optionalUrl(input.sourceUrl) }),
@@ -695,9 +867,79 @@ function optionalUrl(value: string | null | undefined): string | null {
   return trimmed.length === 0 ? null : trimmed;
 }
 
+function requiredText(value: string | null | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  if (trimmed.length === 0) {
+    throw new ForbiddenException('Required project metadata is missing');
+  }
+  return trimmed;
+}
+
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function linkKind(value: string): LinkKind {
+  const normalized = value.trim().toUpperCase();
+  if (normalized in LinkKind) {
+    return LinkKind[normalized as keyof typeof LinkKind];
+  }
+
+  throw new ForbiddenException('Unsupported project link kind');
+}
+
+function moderationAction(action: string): ModerationActionKind {
+  const normalized = action.trim().toUpperCase();
+  if (normalized === ModerationActionKind.APPROVE) {
+    return ModerationActionKind.APPROVE;
+  }
+  if (normalized === ModerationActionKind.REJECT) {
+    return ModerationActionKind.REJECT;
+  }
+  if (normalized === ModerationActionKind.ARCHIVE) {
+    return ModerationActionKind.ARCHIVE;
+  }
+  if (normalized === ModerationActionKind.RESTORE) {
+    return ModerationActionKind.RESTORE;
+  }
+
+  throw new ForbiddenException('Unsupported moderation action');
+}
+
+function moderationProjectData(
+  action: ModerationActionKind,
+  now: Date,
+): Prisma.ProjectUpdateInput {
+  if (action === ModerationActionKind.APPROVE) {
+    return {
+      approvedAt: now,
+      publishedAt: now,
+      requestedStatus: null,
+      status: 'APPROVED',
+    };
+  }
+
+  if (action === ModerationActionKind.REJECT) {
+    return {
+      requestedStatus: null,
+      status: 'REJECTED',
+    };
+  }
+
+  if (action === ModerationActionKind.ARCHIVE) {
+    return {
+      archivedAt: now,
+      requestedStatus: null,
+      status: 'ARCHIVED',
+    };
+  }
+
+  return {
+    archivedAt: null,
+    requestedStatus: null,
+    status: 'APPROVED',
+  };
 }
 
 function projectRowToContract(project: ProjectRow): ProjectSummaryContract {

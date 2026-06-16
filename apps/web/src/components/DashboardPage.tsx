@@ -2,13 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import {
   type CollectionVisibility,
   type DependencyKind,
+  type ProjectKind,
 } from '@moddery/shared';
 import {
   BookMarked,
+  Bell,
   Building2,
   Flag,
   FolderKanban,
   Heart,
+  KeyRound,
   ShieldCheck,
   UserRound,
 } from 'lucide-react';
@@ -20,23 +23,44 @@ import {
   addProjectTeamMember,
   addProjectToCollection,
   addProjectToOrganization,
+  createApiToken,
   createCollection,
   createOrganization,
   createProject,
+  createReportThreadMessage,
   createVersion,
   dashboardProjectToMod,
+  fetchAdminUsers,
+  fetchCategoryTaxonomy,
   fetchDashboard,
+  fetchGameVersionTaxonomy,
+  fetchModerationProjects,
   fetchModerationReports,
+  fetchNotificationPreferences,
+  fetchReportThread,
+  fetchViewerApiTokens,
+  fetchViewerSessions,
   removeProjectFromCollection,
   removeProjectFromOrganization,
   removeProjectTeamMember,
+  moderateProject,
+  recordFileScan,
+  revokeApiToken,
+  revokeSession,
+  sendNotification,
   updateCollection,
+  updateNotificationPreference,
   updateOrganization,
-  updateProject,
   updateReportState,
+  upsertCategory,
+  upsertGameVersion,
+  updateUserAccount,
   updateViewerProfile,
   updateVersion,
   updateVersionDependencies,
+  type ApiTokenSummary,
+  type AdminUserAccount,
+  type CategoryTaxonomy,
   type CreateCollectionInput,
   type CreateOrganizationInput,
   type CreateProjectInput,
@@ -48,6 +72,9 @@ import {
   type DashboardProject,
   type ModerationReport,
   type ModerationReportState,
+  type NotificationPreference,
+  type ReportThread,
+  type SessionSummary,
   type UpdateCollectionInput,
   type UpdateOrganizationInput,
   type UpdateViewerProfileInput,
@@ -57,6 +84,7 @@ import { timeAgo } from '../lib/format.ts';
 import { type Mod } from '../types.ts';
 import { EmptyState } from './EmptyState.tsx';
 import { ModCard } from './ModCard.tsx';
+import { ProjectMetadataForm } from './dashboard/ProjectMetadataForm.tsx';
 
 export function DashboardPage({
   onOpenProject,
@@ -98,6 +126,7 @@ export function DashboardPage({
   const dashboard = dashboardQuery.data;
   const canModerate =
     dashboard.role === 'ADMIN' || dashboard.role === 'MODERATOR';
+  const canAdmin = dashboard.role === 'ADMIN';
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
@@ -109,6 +138,14 @@ export function DashboardPage({
           await dashboardQuery.refetch();
         }}
       />
+
+      <NotificationPreferencesPanel />
+
+      {canModerate && <SendNotificationPanel />}
+
+      <SessionsPanel />
+
+      <ApiTokensPanel />
 
       <CreateOrganizationForm
         organizations={dashboard.organizations}
@@ -126,7 +163,7 @@ export function DashboardPage({
 
       {dashboard.projects.length > 0 && (
         <>
-          <EditProjectForm
+          <ProjectMetadataForm
             projects={dashboard.projects}
             onUpdated={async () => {
               await dashboardQuery.refetch();
@@ -153,7 +190,19 @@ export function DashboardPage({
         }}
       />
 
-      {canModerate && <ModerationQueue />}
+      {canModerate && (
+        <>
+          {canAdmin && (
+            <>
+              <AdminUsersPanel viewerId={dashboard.id} />
+              <TaxonomyPanel />
+            </>
+          )}
+          <FileScanForm projects={dashboard.projects} />
+          <ProjectModerationQueue onOpenProject={onOpenProject} />
+          <ModerationQueue />
+        </>
+      )}
 
       <section className="mt-8">
         <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
@@ -981,207 +1030,6 @@ function ProjectTeamManagementForm({
             className="inline-flex h-10 items-center rounded-lg border border-line bg-control px-4 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             Remove member
-          </button>
-        </div>
-      </form>
-    </section>
-  );
-}
-
-function EditProjectForm({
-  onUpdated,
-  projects,
-}: {
-  onUpdated: () => Promise<void>;
-  projects: DashboardProject[];
-}) {
-  const [projectSlug, setProjectSlug] = useState(projects[0]?.slug ?? '');
-  const project =
-    projects.find((item) => item.slug === projectSlug) ?? projects[0];
-  const [title, setTitle] = useState(project?.title ?? '');
-  const [summary, setSummary] = useState(project?.summary ?? '');
-  const [description, setDescription] = useState(project?.body ?? '');
-  const [iconUrl, setIconUrl] = useState(project?.iconUrl ?? '');
-  const [sourceUrl, setSourceUrl] = useState(project?.sourceUrl ?? '');
-  const [issuesUrl, setIssuesUrl] = useState(project?.issuesUrl ?? '');
-  const [wikiUrl, setWikiUrl] = useState(project?.wikiUrl ?? '');
-  const [discordUrl, setDiscordUrl] = useState(project?.discordUrl ?? '');
-  const [loaders, setLoaders] = useState(project?.loaders.join(', ') ?? '');
-  const [gameVersions, setGameVersions] = useState(
-    project?.gameVersions.join(', ') ?? '',
-  );
-  const [categories, setCategories] = useState(
-    project?.categories.join(', ') ?? '',
-  );
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [updated, setUpdated] = useState<string | null>(null);
-
-  function selectProject(slug: string) {
-    const nextProject = projects.find((item) => item.slug === slug);
-    setProjectSlug(slug);
-    setTitle(nextProject?.title ?? '');
-    setSummary(nextProject?.summary ?? '');
-    setDescription(nextProject?.body ?? '');
-    setIconUrl(nextProject?.iconUrl ?? '');
-    setSourceUrl(nextProject?.sourceUrl ?? '');
-    setIssuesUrl(nextProject?.issuesUrl ?? '');
-    setWikiUrl(nextProject?.wikiUrl ?? '');
-    setDiscordUrl(nextProject?.discordUrl ?? '');
-    setLoaders(nextProject?.loaders.join(', ') ?? '');
-    setGameVersions(nextProject?.gameVersions.join(', ') ?? '');
-    setCategories(nextProject?.categories.join(', ') ?? '');
-    setError(null);
-    setUpdated(null);
-  }
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    setUpdated(null);
-
-    try {
-      const project = await updateProject({
-        categories: splitList(categories),
-        description,
-        discordUrl: nullableText(discordUrl),
-        gameVersions: splitList(gameVersions),
-        iconUrl: nullableText(iconUrl),
-        issuesUrl: nullableText(issuesUrl),
-        loaders: splitList(loaders),
-        projectSlug,
-        sourceUrl: nullableText(sourceUrl),
-        summary,
-        title,
-        wikiUrl: nullableText(wikiUrl),
-      });
-      setUpdated(project.title);
-      await onUpdated();
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : 'Project update failed',
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Edit project metadata
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Update project copy, icons, links, and discovery tags.
-        </p>
-      </div>
-
-      <form
-        onSubmit={(event) => void submit(event)}
-        className="mt-4 grid gap-3"
-      >
-        <label className="grid gap-1 text-sm font-bold text-ink">
-          Project
-          <select
-            value={projectSlug}
-            onChange={(event) => selectProject(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
-          >
-            {projects.map((project) => (
-              <option key={project.slug} value={project.slug}>
-                {project.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="grid gap-3 md:grid-cols-2">
-          <DashboardField
-            label="Title"
-            value={title}
-            onChange={setTitle}
-            required
-          />
-          <DashboardField
-            label="Icon URL"
-            value={iconUrl}
-            onChange={setIconUrl}
-          />
-        </div>
-        <DashboardField
-          label="Summary"
-          value={summary}
-          onChange={setSummary}
-          required
-        />
-        <label className="grid gap-1 text-sm font-bold text-ink">
-          Description
-          <textarea
-            required
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            className="min-h-28 rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
-          />
-        </label>
-        <div className="grid gap-3 md:grid-cols-3">
-          <DashboardField
-            label="Loaders"
-            value={loaders}
-            onChange={setLoaders}
-          />
-          <DashboardField
-            label="Game versions"
-            value={gameVersions}
-            onChange={setGameVersions}
-          />
-          <DashboardField
-            label="Categories"
-            value={categories}
-            onChange={setCategories}
-          />
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <DashboardField
-            label="Source URL"
-            value={sourceUrl}
-            onChange={setSourceUrl}
-          />
-          <DashboardField
-            label="Issues URL"
-            value={issuesUrl}
-            onChange={setIssuesUrl}
-          />
-          <DashboardField
-            label="Wiki URL"
-            value={wikiUrl}
-            onChange={setWikiUrl}
-          />
-          <DashboardField
-            label="Discord URL"
-            value={discordUrl}
-            onChange={setDiscordUrl}
-          />
-        </div>
-
-        {error && (
-          <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
-            {error}
-          </p>
-        )}
-        {updated && (
-          <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold text-ink">
-            Updated {updated}.
-          </p>
-        )}
-
-        <div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? 'Saving...' : 'Save project'}
           </button>
         </div>
       </form>
@@ -2050,6 +1898,8 @@ function PublishVersionForm({
   const [fileName, setFileName] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [fileSize, setFileSize] = useState('0');
+  const [sha1, setSha1] = useState('');
+  const [sha256, setSha256] = useState('');
   const [loaders, setLoaders] = useState(projects[0]?.loaders.join(', ') ?? '');
   const [gameVersions, setGameVersions] = useState(
     projects[0]?.gameVersions.join(', ') ?? '',
@@ -2071,6 +1921,7 @@ function PublishVersionForm({
         files: [
           {
             fileName,
+            hashes: versionFileHashes({ sha1, sha256 }),
             primary: true,
             sizeBytes: Number(fileSize),
             url: fileUrl,
@@ -2089,6 +1940,8 @@ function PublishVersionForm({
       setFileName('');
       setFileUrl('');
       setFileSize('0');
+      setSha1('');
+      setSha256('');
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Version creation failed',
@@ -2187,6 +2040,10 @@ function PublishVersionForm({
             onChange={setFileSize}
             required
           />
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <DashboardField label="SHA-1" value={sha1} onChange={setSha1} />
+          <DashboardField label="SHA-256" value={sha256} onChange={setSha256} />
         </div>
         <label className="grid gap-1 text-sm font-bold text-ink">
           Changelog
@@ -2370,6 +2227,19 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
+function versionFileHashes({
+  sha1,
+  sha256,
+}: {
+  sha1: string;
+  sha256: string;
+}): CreateVersionInput['files'][number]['hashes'] {
+  return [
+    { algorithm: 'SHA1', value: sha1.trim() },
+    { algorithm: 'SHA256', value: sha256.trim() },
+  ].filter((hash) => hash.value.length > 0);
+}
+
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
@@ -2399,6 +2269,692 @@ function DashboardField({
         className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
       />
     </label>
+  );
+}
+
+function AdminUsersPanel({ viewerId }: { viewerId: string }) {
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const usersQuery = useQuery({
+    queryFn: ({ signal }) => fetchAdminUsers(signal),
+    queryKey: ['dashboard', 'admin-users'],
+  });
+  const users = usersQuery.data ?? [];
+
+  async function updateAccount(
+    user: AdminUserAccount,
+    input: { role?: string; status?: string },
+  ) {
+    setBusyUserId(user.id);
+    setMessage(null);
+    try {
+      await updateUserAccount({
+        role: input.role ?? null,
+        status: input.status ?? null,
+        userId: user.id,
+      });
+      await usersQuery.refetch();
+      setMessage(`Updated ${user.username}.`);
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'User update failed.',
+      );
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
+  return (
+    <section className="mt-8 rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            User accounts
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Recent accounts and moderation access.
+          </p>
+        </div>
+        <ReportActionButton
+          disabled={usersQuery.isFetching}
+          onClick={() => void usersQuery.refetch()}
+        >
+          Refresh
+        </ReportActionButton>
+      </div>
+      {message && (
+        <p className="mt-3 text-sm font-semibold text-muted">{message}</p>
+      )}
+      {usersQuery.isLoading && (
+        <p className="mt-4 text-sm text-muted">Loading users...</p>
+      )}
+      <div className="mt-4 grid gap-3">
+        {users.map((user) => (
+          <AdminUserRow
+            key={user.id}
+            busy={busyUserId === user.id}
+            self={user.id === viewerId}
+            user={user}
+            onUpdate={updateAccount}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AdminUserRow({
+  busy,
+  onUpdate,
+  self,
+  user,
+}: {
+  busy: boolean;
+  onUpdate: (
+    user: AdminUserAccount,
+    input: { role?: string; status?: string },
+  ) => Promise<void>;
+  self: boolean;
+  user: AdminUserAccount;
+}) {
+  const roles = ['USER', 'MODERATOR', 'ADMIN'];
+  const statuses = ['ACTIVE', 'SUSPENDED', 'DELETED'];
+
+  return (
+    <article className="rounded-lg border border-line bg-raised p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-display text-base font-extrabold text-ink">
+            {user.displayName ?? user.username}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-muted">
+            @{user.username} · {user.role} · {user.status}
+            {self ? ' · you' : ''}
+          </p>
+        </div>
+        <span className="text-xs font-semibold text-muted">
+          {timeAgo(user.createdAt)}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {roles.map((role) => (
+          <ReportActionButton
+            key={role}
+            disabled={busy || user.role === role || (self && role !== 'ADMIN')}
+            tone={user.role === role ? 'strong' : 'default'}
+            onClick={() => void onUpdate(user, { role })}
+          >
+            {role.toLowerCase()}
+          </ReportActionButton>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {statuses.map((status) => (
+          <ReportActionButton
+            key={status}
+            disabled={
+              busy || user.status === status || (self && status !== 'ACTIVE')
+            }
+            tone={user.status === status ? 'strong' : 'default'}
+            onClick={() => void onUpdate(user, { status })}
+          >
+            {status.toLowerCase()}
+          </ReportActionButton>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+const taxonomyProjectKinds: Array<{ label: string; value: ProjectKind | '' }> =
+  [
+    { label: 'Any project kind', value: '' },
+    { label: 'Mod', value: 'MOD' },
+    { label: 'Modpack', value: 'MODPACK' },
+    { label: 'Resource pack', value: 'RESOURCE_PACK' },
+    { label: 'Shader', value: 'SHADER' },
+    { label: 'Plugin', value: 'PLUGIN' },
+    { label: 'Datapack', value: 'DATAPACK' },
+  ];
+
+function TaxonomyPanel() {
+  const [categorySlug, setCategorySlug] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryDescription, setCategoryDescription] = useState('');
+  const [categoryKind, setCategoryKind] = useState<ProjectKind | ''>('');
+  const [gameVersion, setGameVersion] = useState('');
+  const [gameVersionActive, setGameVersionActive] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const categoriesQuery = useQuery({
+    queryFn: ({ signal }) => fetchCategoryTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-categories'],
+  });
+  const gameVersionsQuery = useQuery({
+    queryFn: ({ signal }) => fetchGameVersionTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-game-versions'],
+  });
+  const categories = categoriesQuery.data ?? [];
+  const gameVersions = gameVersionsQuery.data ?? [];
+
+  function fillCategory(category: CategoryTaxonomy) {
+    setCategorySlug(category.slug);
+    setCategoryName(category.name);
+    setCategoryDescription(category.description ?? '');
+    setCategoryKind(category.projectKind ?? '');
+    setMessage(null);
+  }
+
+  async function submitCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const category = await upsertCategory({
+        description: nullableText(categoryDescription),
+        name: categoryName,
+        projectKind: categoryKind === '' ? null : categoryKind,
+        slug: categorySlug,
+      });
+      await categoriesQuery.refetch();
+      setMessage(`Saved category ${category.slug}.`);
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Category failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitGameVersion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const saved = await upsertGameVersion({
+        isActive: gameVersionActive,
+        version: gameVersion,
+      });
+      await gameVersionsQuery.refetch();
+      setMessage(`Saved game version ${saved.version}.`);
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'Game version failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-8 rounded-xl border border-line bg-surface p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            Taxonomy
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Manage category and game version rows used by discovery.
+          </p>
+        </div>
+        <FolderKanban className="size-5 text-accent-icon" />
+      </div>
+      {message && (
+        <p className="mt-3 text-sm font-semibold text-muted">{message}</p>
+      )}
+
+      <div className="mt-4 grid gap-5 lg:grid-cols-2">
+        <form
+          onSubmit={(event) => void submitCategory(event)}
+          className="grid gap-3"
+        >
+          <h3 className="font-display text-base font-extrabold text-ink">
+            Category
+          </h3>
+          <div className="grid gap-3 md:grid-cols-2">
+            <DashboardField
+              label="Slug"
+              value={categorySlug}
+              onChange={setCategorySlug}
+              required
+            />
+            <DashboardField
+              label="Name"
+              value={categoryName}
+              onChange={setCategoryName}
+              required
+            />
+          </div>
+          <label className="grid gap-1 text-sm font-bold text-ink">
+            Project kind
+            <select
+              value={categoryKind}
+              onChange={(event) =>
+                setCategoryKind(event.target.value as ProjectKind | '')
+              }
+              className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            >
+              {taxonomyProjectKinds.map((kind) => (
+                <option key={kind.value} value={kind.value}>
+                  {kind.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <DashboardField
+            label="Description"
+            value={categoryDescription}
+            onChange={setCategoryDescription}
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Save category
+          </button>
+          <TaxonomyCategoryList
+            categories={categories}
+            onSelect={fillCategory}
+          />
+        </form>
+
+        <form
+          onSubmit={(event) => void submitGameVersion(event)}
+          className="grid content-start gap-3"
+        >
+          <h3 className="font-display text-base font-extrabold text-ink">
+            Game version
+          </h3>
+          <DashboardField
+            label="Version"
+            value={gameVersion}
+            onChange={setGameVersion}
+            required
+          />
+          <label className="flex items-center gap-2 text-sm font-bold text-ink">
+            <input
+              type="checkbox"
+              checked={gameVersionActive}
+              onChange={(event) => setGameVersionActive(event.target.checked)}
+              className="size-4 accent-accent"
+            />
+            Active
+          </label>
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex h-9 w-fit items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Save game version
+          </button>
+          <div className="mt-1 grid gap-2">
+            {gameVersions.slice(0, 12).map((item) => (
+              <button
+                key={item.version}
+                type="button"
+                onClick={() => {
+                  setGameVersion(item.version);
+                  setGameVersionActive(item.isActive);
+                }}
+                className="flex items-center justify-between rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
+              >
+                <span>{item.version}</span>
+                <span className="text-xs text-muted">
+                  {item.isActive ? 'active' : 'inactive'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+function TaxonomyCategoryList({
+  categories,
+  onSelect,
+}: {
+  categories: CategoryTaxonomy[];
+  onSelect: (category: CategoryTaxonomy) => void;
+}) {
+  if (categories.length === 0) {
+    return (
+      <p className="text-sm font-semibold text-muted">No categories yet.</p>
+    );
+  }
+
+  return (
+    <div className="mt-1 grid gap-2">
+      {categories.slice(0, 12).map((category) => (
+        <button
+          key={category.slug}
+          type="button"
+          onClick={() => onSelect(category)}
+          className="flex items-center justify-between gap-3 rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
+        >
+          <span>{category.name}</span>
+          <span className="text-xs text-muted">{category.slug}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function FileScanForm({ projects }: { projects: DashboardProject[] }) {
+  const [projectSlug, setProjectSlug] = useState(projects[0]?.slug ?? '');
+  const versionsQuery = useQuery({
+    enabled: projectSlug !== '',
+    queryFn: ({ signal }) => fetchProjectVersions(projectSlug, signal),
+    queryKey: ['dashboard', 'file-scans', projectSlug],
+  });
+  const versions = versionsQuery.data ?? [];
+  const [versionId, setVersionId] = useState('');
+  const selectedVersion =
+    versions.find((version) => version.id === versionId) ?? versions[0] ?? null;
+  const files = selectedVersion?.files ?? [];
+  const [fileId, setFileId] = useState('');
+  const selectedFile = files.find((file) => file.id === fileId) ?? files[0];
+  const [status, setStatus] = useState('COMPLETE');
+  const [verdict, setVerdict] = useState('CLEAN');
+  const [details, setDetails] = useState('{\n  "source": "manual"\n}');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVersionId(versions[0]?.id ?? '');
+  }, [versions]);
+
+  useEffect(() => {
+    setFileId(files[0]?.id ?? '');
+  }, [files]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedFile === undefined) return;
+
+    setBusy(true);
+    setMessage(null);
+    try {
+      const version = await recordFileScan({
+        details: nullableText(details),
+        fileId: selectedFile.id,
+        status,
+        verdict: nullableText(verdict),
+      });
+      await versionsQuery.refetch();
+      setMessage(`Recorded scan for ${version.name}.`);
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Scan failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (projects.length === 0) return null;
+
+  return (
+    <section className="mt-8 border-b border-line pb-8">
+      <div className="flex flex-col gap-1">
+        <h2 className="font-display text-xl font-extrabold text-ink">
+          Record file scan
+        </h2>
+        <p className="text-sm leading-6 text-muted">
+          Attach a moderation scan result to a version file.
+        </p>
+      </div>
+
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="mt-4 grid gap-3"
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="grid gap-1 text-sm font-bold text-ink">
+            Project
+            <select
+              value={projectSlug}
+              onChange={(event) => setProjectSlug(event.target.value)}
+              className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            >
+              {projects.map((project) => (
+                <option key={project.slug} value={project.slug}>
+                  {project.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-bold text-ink">
+            Version
+            <select
+              value={selectedVersion?.id ?? ''}
+              onChange={(event) => setVersionId(event.target.value)}
+              className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            >
+              {versions.map((version) => (
+                <option key={version.id} value={version.id}>
+                  {version.name} {version.version_number}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-bold text-ink">
+            File
+            <select
+              value={selectedFile?.id ?? ''}
+              onChange={(event) => setFileId(event.target.value)}
+              className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            >
+              {files.map((file) => (
+                <option key={file.id} value={file.id}>
+                  {file.filename}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <DashboardField label="Status" value={status} onChange={setStatus} />
+          <DashboardField
+            label="Verdict"
+            value={verdict}
+            onChange={setVerdict}
+          />
+        </div>
+        <label className="grid gap-1 text-sm font-bold text-ink">
+          Details JSON
+          <textarea
+            value={details}
+            onChange={(event) => setDetails(event.target.value)}
+            rows={4}
+            className="rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={busy || selectedFile === undefined}
+            className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Record scan
+          </button>
+          {message && (
+            <span className="text-sm font-semibold text-muted">{message}</span>
+          )}
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function ProjectModerationQueue({
+  onOpenProject,
+}: {
+  onOpenProject: (mod: Mod) => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [busySlug, setBusySlug] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const projectsQuery = useQuery({
+    queryFn: ({ signal }) => fetchModerationProjects(signal),
+    queryKey: ['dashboard', 'moderation-projects'],
+  });
+  const projects = projectsQuery.data ?? [];
+
+  async function act(projectSlug: string, action: string) {
+    setBusySlug(projectSlug);
+    setMessage(null);
+
+    try {
+      await moderateProject({
+        action,
+        projectSlug,
+        reason: nullableText(reason),
+      });
+      await projectsQuery.refetch();
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'Project moderation failed',
+      );
+    } finally {
+      setBusySlug(null);
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
+        <h2 className="font-display text-xl font-extrabold text-ink">
+          Project review
+        </h2>
+        <span className="text-sm font-semibold text-muted">
+          {projects.length.toLocaleString('en-US')} queued
+        </span>
+      </div>
+
+      <label className="mt-4 grid gap-1 text-sm font-bold text-ink">
+        Reason
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          placeholder="Optional moderation note"
+        />
+      </label>
+
+      {projectsQuery.isLoading ? (
+        <div className="mt-4 grid gap-3">
+          <div className="h-24 animate-pulse rounded bg-surface-2" />
+          <div className="h-24 animate-pulse rounded bg-surface-2" />
+        </div>
+      ) : projectsQuery.error ? (
+        <p className="mt-4 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          {projectsQuery.error instanceof Error
+            ? projectsQuery.error.message
+            : 'Project review queue failed to load'}
+        </p>
+      ) : projects.length === 0 ? (
+        <p className="py-8 text-sm text-muted">
+          No projects are waiting on moderation.
+        </p>
+      ) : (
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {projects.map((project) => (
+            <ProjectModerationRow
+              busy={busySlug === project.slug}
+              key={project.slug}
+              onAction={act}
+              onOpenProject={onOpenProject}
+              project={project}
+            />
+          ))}
+        </div>
+      )}
+
+      {message && (
+        <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          {message}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ProjectModerationRow({
+  busy,
+  onAction,
+  onOpenProject,
+  project,
+}: {
+  busy: boolean;
+  onAction: (projectSlug: string, action: string) => Promise<void>;
+  onOpenProject: (mod: Mod) => void;
+  project: DashboardProject;
+}) {
+  const mod = dashboardProjectToMod(project);
+
+  return (
+    <article className="rounded-lg border border-line bg-surface p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <button
+            type="button"
+            onClick={() => onOpenProject(mod)}
+            className="text-left font-display text-lg font-extrabold text-ink transition-colors hover:text-accent"
+          >
+            {project.title}
+          </button>
+          <p className="mt-1 text-sm leading-6 text-muted">{project.summary}</p>
+        </div>
+        <span className="shrink-0 rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted">
+          {project.status.replaceAll('_', ' ')}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {project.categories.slice(0, 4).map((category) => (
+          <span
+            key={category}
+            className="rounded-md bg-control px-2 py-1 text-xs font-bold text-muted"
+          >
+            {category}
+          </span>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <ReportActionButton
+          disabled={busy}
+          tone="strong"
+          onClick={() => void onAction(project.slug, 'APPROVE')}
+        >
+          Approve
+        </ReportActionButton>
+        {project.status !== 'REJECTED' && (
+          <ReportActionButton
+            disabled={busy}
+            onClick={() => void onAction(project.slug, 'REJECT')}
+          >
+            Reject
+          </ReportActionButton>
+        )}
+        {project.status !== 'ARCHIVED' && (
+          <ReportActionButton
+            disabled={busy}
+            onClick={() => void onAction(project.slug, 'ARCHIVE')}
+          >
+            Archive
+          </ReportActionButton>
+        )}
+        {project.status === 'ARCHIVED' && (
+          <ReportActionButton
+            disabled={busy}
+            onClick={() => void onAction(project.slug, 'RESTORE')}
+          >
+            Restore
+          </ReportActionButton>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -2532,7 +3088,109 @@ function ReportRow({
           Close
         </ReportActionButton>
       </div>
+      <ReportThreadPanel reportId={report.id} />
     </article>
+  );
+}
+
+function ReportThreadPanel({ reportId }: { reportId: string }) {
+  const [body, setBody] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const threadQuery = useQuery({
+    queryFn: ({ signal }) => fetchReportThread(reportId, signal),
+    queryKey: ['dashboard', 'report-thread', reportId],
+  });
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await createReportThreadMessage({ body, reportId });
+      setBody('');
+      await threadQuery.refetch();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Reply failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-line pt-4">
+      <h4 className="text-sm font-extrabold text-ink">Discussion</h4>
+      {threadQuery.isLoading ? (
+        <p className="mt-2 text-sm font-semibold text-muted">
+          Loading discussion...
+        </p>
+      ) : threadQuery.error ? (
+        <p className="mt-2 rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          {threadQuery.error instanceof Error
+            ? threadQuery.error.message
+            : 'Discussion failed to load'}
+        </p>
+      ) : threadQuery.data ? (
+        <ThreadMessages thread={threadQuery.data} />
+      ) : (
+        <p className="mt-2 rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          Discussion did not return from the API.
+        </p>
+      )}
+
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="mt-3 grid gap-2"
+      >
+        <textarea
+          required
+          value={body}
+          onChange={(event) => setBody(event.target.value)}
+          className="min-h-20 rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          placeholder="Add a moderation note"
+        />
+        {error && (
+          <p className="rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+            {error}
+          </p>
+        )}
+        <div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? 'Posting...' : 'Post reply'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ThreadMessages({ thread }: { thread: ReportThread }) {
+  if (thread.messages.length === 0) {
+    return (
+      <p className="mt-2 text-sm font-semibold text-muted">No replies yet.</p>
+    );
+  }
+
+  return (
+    <div className="mt-3 grid gap-2">
+      {thread.messages.map((message) => {
+        const author = message.author.displayName ?? message.author.username;
+
+        return (
+          <div key={message.id} className="rounded-lg bg-control px-3 py-2">
+            <p className="text-sm leading-6 text-ink">{message.body}</p>
+            <p className="mt-1 text-xs font-bold text-muted">
+              {author} · {timeAgo(message.createdAt)}
+            </p>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -2722,6 +3380,540 @@ function AccountProfileForm({
         </div>
       </form>
     </section>
+  );
+}
+
+function NotificationPreferencesPanel() {
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const preferencesQuery = useQuery({
+    queryFn: ({ signal }) => fetchNotificationPreferences(signal),
+    queryKey: ['dashboard', 'notification-preferences'],
+  });
+  const preferences = preferencesQuery.data;
+
+  async function toggle(preference: NotificationPreference) {
+    const key = preferenceKey(preference);
+    setBusyKey(key);
+    setMessage(null);
+
+    try {
+      await updateNotificationPreference({
+        channel: preference.channel,
+        enabled: !preference.enabled,
+        type: preference.type,
+      });
+      await preferencesQuery.refetch();
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error
+          ? caught.message
+          : 'Notification preference update failed',
+      );
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  return (
+    <section className="mt-8 border-b border-line pb-8">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            Notification preferences
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Choose where account, team, and moderation updates are delivered.
+          </p>
+        </div>
+        <Bell className="size-5 text-accent-icon" />
+      </div>
+
+      {preferencesQuery.isLoading ? (
+        <p className="mt-4 text-sm font-semibold text-muted">
+          Loading preferences...
+        </p>
+      ) : preferencesQuery.error ? (
+        <p className="mt-4 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          {preferencesQuery.error instanceof Error
+            ? preferencesQuery.error.message
+            : 'Notification preferences failed to load'}
+        </p>
+      ) : preferences === undefined ? (
+        <p className="mt-4 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          Notification preferences did not return from the API.
+        </p>
+      ) : (
+        <NotificationPreferenceGrid
+          busyKey={busyKey}
+          onToggle={toggle}
+          preferences={preferences}
+        />
+      )}
+
+      {message && (
+        <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          {message}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function NotificationPreferenceGrid({
+  busyKey,
+  onToggle,
+  preferences,
+}: {
+  busyKey: string | null;
+  onToggle: (preference: NotificationPreference) => Promise<void>;
+  preferences: NotificationPreference[];
+}) {
+  return (
+    <div className="mt-4 grid gap-2">
+      {preferences.map((preference) => {
+        const key = preferenceKey(preference);
+
+        return (
+          <div
+            key={key}
+            className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="font-display text-base font-extrabold capitalize text-ink">
+                {preference.type}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-muted">
+                {preference.channel === 'EMAIL' ? 'Email' : 'In-app'} updates
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm font-bold text-ink">
+              <input
+                type="checkbox"
+                checked={preference.enabled}
+                disabled={busyKey === key}
+                onChange={() => void onToggle(preference)}
+                className="size-4 accent-accent"
+              />
+              {preference.enabled ? 'Enabled' : 'Disabled'}
+            </label>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function preferenceKey(preference: { channel: string; type: string }): string {
+  return `${preference.type}:${preference.channel}`;
+}
+
+function SendNotificationPanel() {
+  const [username, setUsername] = useState('');
+  const [type, setType] = useState('moderation');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [actionUrl, setActionUrl] = useState('/dashboard');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const notification = await sendNotification({
+        actionUrl: nullableText(actionUrl),
+        body: nullableText(body),
+        title,
+        type,
+        username,
+      });
+      setMessage(`Sent ${notification.title} to ${username}.`);
+      setTitle('');
+      setBody('');
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'Notification failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-8 border-b border-line pb-8">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            Send notification
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Queue a user notification and delivery records.
+          </p>
+        </div>
+        <Bell className="size-5 text-accent-icon" />
+      </div>
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="mt-4 grid gap-3"
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          <DashboardField
+            label="Username"
+            value={username}
+            onChange={setUsername}
+            required
+          />
+          <DashboardField
+            label="Type"
+            value={type}
+            onChange={setType}
+            required
+          />
+          <DashboardField
+            label="Action URL"
+            value={actionUrl}
+            onChange={setActionUrl}
+          />
+        </div>
+        <DashboardField
+          label="Title"
+          value={title}
+          onChange={setTitle}
+          required
+        />
+        <label className="grid gap-1 text-sm font-bold text-ink">
+          Body
+          <textarea
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            rows={4}
+            className="rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Send notification
+          </button>
+          {message && (
+            <span className="text-sm font-semibold text-muted">{message}</span>
+          )}
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function SessionsPanel() {
+  const [busySessionId, setBusySessionId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const sessionsQuery = useQuery({
+    queryFn: ({ signal }) => fetchViewerSessions(signal),
+    queryKey: ['dashboard', 'sessions'],
+  });
+  const sessions = sessionsQuery.data ?? [];
+
+  async function revoke(sessionId: string) {
+    setBusySessionId(sessionId);
+    setMessage(null);
+
+    try {
+      await revokeSession(sessionId);
+      await sessionsQuery.refetch();
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'Session revocation failed',
+      );
+    } finally {
+      setBusySessionId(null);
+    }
+  }
+
+  return (
+    <section className="mt-8 border-b border-line pb-8">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            Sessions
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Revoke browser sessions that should no longer have access.
+          </p>
+        </div>
+        <ShieldCheck className="size-5 text-accent-icon" />
+      </div>
+      {message && (
+        <p className="mt-3 text-sm font-semibold text-muted">{message}</p>
+      )}
+      <SessionList
+        busySessionId={busySessionId}
+        error={
+          sessionsQuery.error instanceof Error
+            ? sessionsQuery.error.message
+            : null
+        }
+        onRevoke={revoke}
+        sessions={sessions}
+      />
+    </section>
+  );
+}
+
+function SessionList({
+  busySessionId,
+  error,
+  onRevoke,
+  sessions,
+}: {
+  busySessionId: string | null;
+  error: string | null;
+  onRevoke: (sessionId: string) => Promise<void>;
+  sessions: SessionSummary[];
+}) {
+  if (error) {
+    return (
+      <p className="mt-4 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+        {error}
+      </p>
+    );
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <p className="mt-4 text-sm font-semibold text-muted">
+        No active sessions.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid gap-2">
+      {sessions.map((session) => (
+        <div
+          key={session.id}
+          className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="min-w-0">
+            <p className="font-display text-base font-extrabold text-ink">
+              {session.userAgent ?? 'Browser session'}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-muted">
+              Created {timeAgo(session.createdAt)} · used{' '}
+              {timeAgo(session.lastUsedAt)} · expires{' '}
+              {timeAgo(session.expiresAt)}
+            </p>
+          </div>
+          {session.revokedAt ? (
+            <span className="text-sm font-bold text-muted">
+              Revoked {timeAgo(session.revokedAt)}
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={busySessionId === session.id}
+              onClick={() => void onRevoke(session.id)}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Revoke
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ApiTokensPanel() {
+  const [name, setName] = useState('');
+  const [scopes, setScopes] = useState('read:projects');
+  const [expiresInDays, setExpiresInDays] = useState('90');
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const tokensQuery = useQuery({
+    queryFn: ({ signal }) => fetchViewerApiTokens(signal),
+    queryKey: ['dashboard', 'api-tokens'],
+  });
+  const tokens = tokensQuery.data ?? [];
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    setCreatedToken(null);
+
+    try {
+      const created = await createApiToken({
+        expiresInDays:
+          expiresInDays.trim() === '' ? null : Number(expiresInDays),
+        name,
+        scopes: splitList(scopes),
+      });
+      setCreatedToken(created.token);
+      setName('');
+      await tokensQuery.refetch();
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'API token creation failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revoke(tokenId: string) {
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await revokeApiToken(tokenId);
+      await tokensQuery.refetch();
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error
+          ? caught.message
+          : 'API token revocation failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-8 border-b border-line pb-8">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            Personal access tokens
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Create bearer tokens for local tools and automation.
+          </p>
+        </div>
+        <KeyRound className="size-5 text-accent-icon" />
+      </div>
+
+      <form
+        onSubmit={(event) => void submit(event)}
+        className="mt-4 grid gap-3"
+      >
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
+          <DashboardField
+            label="Token name"
+            value={name}
+            onChange={setName}
+            required
+          />
+          <DashboardField label="Scopes" value={scopes} onChange={setScopes} />
+          <DashboardField
+            label="Expires in days"
+            value={expiresInDays}
+            onChange={setExpiresInDays}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Create token
+          </button>
+          {message && (
+            <span className="text-sm font-semibold text-muted">{message}</span>
+          )}
+        </div>
+      </form>
+
+      {createdToken && (
+        <div className="mt-4 rounded-lg border border-line bg-control p-3">
+          <p className="text-sm font-bold text-ink">Copy this token now.</p>
+          <code className="mt-2 block overflow-x-auto rounded-md bg-surface px-3 py-2 text-sm text-ink">
+            {createdToken}
+          </code>
+        </div>
+      )}
+
+      <ApiTokenList
+        busy={busy || tokensQuery.isFetching}
+        error={
+          tokensQuery.error instanceof Error ? tokensQuery.error.message : null
+        }
+        onRevoke={revoke}
+        tokens={tokens}
+      />
+    </section>
+  );
+}
+
+function ApiTokenList({
+  busy,
+  error,
+  onRevoke,
+  tokens,
+}: {
+  busy: boolean;
+  error: string | null;
+  onRevoke: (tokenId: string) => Promise<void>;
+  tokens: ApiTokenSummary[];
+}) {
+  if (error) {
+    return (
+      <p className="mt-4 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+        {error}
+      </p>
+    );
+  }
+
+  if (tokens.length === 0) {
+    return (
+      <p className="mt-4 text-sm font-semibold text-muted">
+        No personal access tokens.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid gap-2">
+      {tokens.map((token) => (
+        <div
+          key={token.id}
+          className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="min-w-0">
+            <p className="font-display text-base font-extrabold text-ink">
+              {token.name}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-muted">
+              {token.scopes.length > 0 ? token.scopes.join(', ') : 'No scopes'}{' '}
+              · created {timeAgo(token.createdAt)}
+              {token.lastUsedAt ? ` · used ${timeAgo(token.lastUsedAt)}` : ''}
+              {token.expiresAt ? ` · expires ${timeAgo(token.expiresAt)}` : ''}
+            </p>
+          </div>
+          {token.revokedAt ? (
+            <span className="text-sm font-bold text-muted">
+              Revoked {timeAgo(token.revokedAt)}
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void onRevoke(token.id)}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Revoke
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 

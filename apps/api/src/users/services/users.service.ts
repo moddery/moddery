@@ -1,7 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { type ProjectKind, type ProjectStatus } from '@moddery/shared';
+import { AccountRole, AccountStatus } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type UpdateUserAccountInput } from '../dto/update-user-account.input.js';
 import { type UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
 
 interface UserProjectRow {
@@ -63,6 +69,7 @@ interface UserProfileRow {
   displayName: string | null;
   id: string;
   role: string;
+  status: string;
   teamMemberships: {
     team: {
       project: UserProjectRow | null;
@@ -110,6 +117,53 @@ export class UsersService {
     });
 
     return this.findById(id);
+  }
+
+  async findAdminUsers() {
+    const users = await this.prisma.user.findMany({
+      orderBy: [{ createdAt: 'desc' }],
+      select: userProfileSelect({ includePrivateCollections: true }),
+      take: 50,
+    });
+
+    return users.map(userProfileRowToContract);
+  }
+
+  async updateUserAccount(input: UpdateUserAccountInput, actorId: string) {
+    const role = accountRole(input.role);
+    const status = accountStatus(input.status);
+
+    if (
+      input.userId === actorId &&
+      ((role !== undefined && role !== AccountRole.ADMIN) ||
+        (status !== undefined && status !== AccountStatus.ACTIVE))
+    ) {
+      throw new ForbiddenException('Admins cannot restrict their own account');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      select: { id: true },
+      where: { id: input.userId },
+    });
+
+    if (user === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.prisma.user.update({
+      data: {
+        role,
+        status,
+      },
+      where: { id: input.userId },
+    });
+
+    const updated = await this.findById(input.userId);
+    if (updated === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    return updated;
   }
 }
 
@@ -181,6 +235,7 @@ function userProfileSelect({
     displayName: true,
     id: true,
     role: true,
+    status: true,
     teamMemberships: {
       orderBy: [{ isOwner: 'desc' as const }, { sortOrder: 'asc' as const }],
       select: {
@@ -300,8 +355,31 @@ function userProfileRowToContract(user: UserProfileRow) {
       team.project === null ? [] : [projectRowToContract(team.project)],
     ),
     role: user.role,
+    status: user.status,
     username: user.username,
   };
+}
+
+function accountRole(
+  value: string | null | undefined,
+): AccountRole | undefined {
+  if (value === null || value === undefined) return undefined;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === AccountRole.USER) return AccountRole.USER;
+  if (normalized === AccountRole.MODERATOR) return AccountRole.MODERATOR;
+  if (normalized === AccountRole.ADMIN) return AccountRole.ADMIN;
+  throw new ForbiddenException('Unsupported account role');
+}
+
+function accountStatus(
+  value: string | null | undefined,
+): AccountStatus | undefined {
+  if (value === null || value === undefined) return undefined;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === AccountStatus.ACTIVE) return AccountStatus.ACTIVE;
+  if (normalized === AccountStatus.SUSPENDED) return AccountStatus.SUSPENDED;
+  if (normalized === AccountStatus.DELETED) return AccountStatus.DELETED;
+  throw new ForbiddenException('Unsupported account status');
 }
 
 function projectRowToContract(project: UserProjectRow) {

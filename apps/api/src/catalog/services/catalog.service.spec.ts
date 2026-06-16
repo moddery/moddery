@@ -158,6 +158,126 @@ describe(CatalogService.name, () => {
     );
   });
 
+  test('updates managed project license and extra links', async () => {
+    const operations: unknown[] = [];
+    const tx = {
+      license: {
+        upsert: (query: unknown) => {
+          operations.push({ licenseUpsert: query });
+          return Promise.resolve({ id: 'license-apache' });
+        },
+      },
+      project: {
+        findUniqueOrThrow: () =>
+          Promise.resolve(
+            projectRow({
+              license: {
+                key: 'apache-2.0',
+                name: 'Apache-2.0',
+                url: 'https://example.test/license',
+              },
+              links: [
+                {
+                  kind: 'DONATION',
+                  label: 'Sponsor',
+                  url: 'https://example.test/sponsor',
+                },
+              ],
+              title: 'Updated Project',
+            }),
+          ),
+        update: (query: unknown) => {
+          operations.push({ projectUpdate: query });
+          return Promise.resolve({});
+        },
+      },
+      projectLink: {
+        create: (query: unknown) => {
+          operations.push({ linkCreate: query });
+          return Promise.resolve({});
+        },
+        deleteMany: (query: unknown) => {
+          operations.push({ linkDelete: query });
+          return Promise.resolve({});
+        },
+      },
+    };
+    const service = new CatalogService(
+      {
+        $transaction: (callback: (transaction: typeof tx) => unknown) =>
+          callback(tx),
+        project: {
+          findFirst: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [] }),
+      } as never,
+    );
+
+    const project = await service.updateProject(
+      {
+        licenseKey: ' Apache-2.0 ',
+        licenseName: ' Apache-2.0 ',
+        licenseUrl: ' https://example.test/license ',
+        links: [
+          {
+            kind: 'donation',
+            label: ' Sponsor ',
+            url: ' https://example.test/sponsor ',
+          },
+        ],
+        projectSlug: 'example',
+      },
+      'user-a',
+    );
+
+    expect(project.license).toEqual({
+      id: 'apache-2.0',
+      name: 'Apache-2.0',
+      url: 'https://example.test/license',
+    });
+    expect(project.links).toContainEqual({
+      kind: 'DONATION',
+      label: 'Sponsor',
+      url: 'https://example.test/sponsor',
+    });
+    expect(operations).toContainEqual({
+      licenseUpsert: {
+        create: {
+          key: 'apache-2.0',
+          name: 'Apache-2.0',
+          url: 'https://example.test/license',
+        },
+        update: {
+          name: 'Apache-2.0',
+          url: 'https://example.test/license',
+        },
+        where: { key: 'apache-2.0' },
+      },
+    });
+    expect(operations).toContainEqual({
+      projectUpdate: {
+        data: { license: { connect: { id: 'license-apache' } } },
+        where: { id: 'project-a' },
+      },
+    });
+    expect(operations).toContainEqual({
+      linkDelete: { where: { projectId: 'project-a' } },
+    });
+    expect(operations).toContainEqual({
+      linkCreate: {
+        data: {
+          kind: 'DONATION',
+          label: 'Sponsor',
+          projectId: 'project-a',
+          url: 'https://example.test/sponsor',
+        },
+      },
+    });
+  });
+
   test('searches projects through OpenSearch tags before hydrating rows', async () => {
     const queries: unknown[] = [];
     const searchQueries: unknown[] = [];
@@ -421,6 +541,158 @@ describe(CatalogService.name, () => {
     expect(deletes[0]).toEqual({ where: { id: 'member-b' } });
     expect(members[0]?.owner).toBe(true);
   });
+
+  test('loads projects awaiting moderation', async () => {
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        project: {
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([
+              projectRow({ status: 'PENDING_REVIEW', title: 'Queued' }),
+            ]);
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+    );
+
+    const projects = await service.findProjectsForModeration();
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        take: 50,
+        where: {
+          status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+        },
+      }),
+    );
+    expect(projects[0]?.status).toBe('PENDING_REVIEW');
+  });
+
+  test('approves projects and records moderation actions', async () => {
+    const transactionSteps: unknown[] = [];
+    const indexed: unknown[] = [];
+    const service = new CatalogService(
+      {
+        $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            moderationAction: {
+              create: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+            project: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  projectRow({ status: 'APPROVED', title: 'Ok' }),
+                ),
+              update: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+          }),
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: (projects: unknown[]) => {
+          indexed.push(projects);
+          return Promise.resolve();
+        },
+        searchProjects: () => Promise.resolve({ ids: [] }),
+      } as never,
+    );
+
+    const project = await service.moderateProject(
+      {
+        action: 'approve',
+        projectSlug: 'example',
+        reason: 'Looks good',
+      },
+      'moderator-a',
+    );
+
+    expect(transactionSteps[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          requestedStatus: null,
+          status: 'APPROVED',
+        }),
+        where: { id: 'project-a' },
+      }),
+    );
+    expect(transactionSteps[1]).toEqual({
+      data: {
+        kind: 'APPROVE',
+        moderatorId: 'moderator-a',
+        projectId: 'project-a',
+        reason: 'Looks good',
+      },
+    });
+    expect(indexed).toHaveLength(1);
+    expect(project.status).toBe('APPROVED');
+  });
+
+  test('loads project moderation actions newest first', async () => {
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        moderationAction: {
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([
+              {
+                createdAt: new Date('2026-01-03T00:00:00.000Z'),
+                id: 'action-a',
+                kind: 'APPROVE',
+                moderator: {
+                  displayName: 'Admin',
+                  id: 'user-a',
+                  username: 'admin',
+                },
+                projectId: 'project-a',
+                reason: 'Clean release',
+              },
+            ]);
+          },
+        },
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+    );
+
+    const actions = await service.findProjectModerationActions('example');
+
+    expect(queries[0]).toEqual({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        createdAt: true,
+        id: true,
+        kind: true,
+        moderator: {
+          select: {
+            displayName: true,
+            id: true,
+            username: true,
+          },
+        },
+        projectId: true,
+        reason: true,
+      },
+      take: 25,
+      where: { projectId: 'project-a' },
+    });
+    expect(actions.at(0)?.id).toBe('action-a');
+    expect(actions.at(0)?.kind).toBe('APPROVE');
+    expect(actions.at(0)?.reason).toBe('Clean release');
+  });
 });
 
 function projectMembersRow() {
@@ -446,6 +718,9 @@ function projectMembersRow() {
 
 function projectRow({
   gallery = [],
+  license = { key: 'mit', name: 'MIT', url: null },
+  links = [],
+  status = 'APPROVED',
   title,
 }: {
   gallery?: {
@@ -457,6 +732,9 @@ function projectRow({
     sortOrder: number;
     title: string | null;
   }[];
+  license?: { key: string; name: string; url: string | null };
+  links?: { kind: string; label: string | null; url: string }[];
+  status?: 'APPROVED' | 'PENDING_REVIEW' | 'REJECTED' | 'ARCHIVED';
   title: string;
 }) {
   return {
@@ -471,12 +749,12 @@ function projectRow({
     id: 'project-a',
     issuesUrl: null,
     kind: 'MOD',
-    license: { key: 'mit', name: 'MIT', url: null },
-    links: [],
+    license,
+    links,
     loaders: [{ loader: 'FABRIC' }],
     slug: 'example',
     sourceUrl: 'https://example.test/source',
-    status: 'APPROVED',
+    status,
     summary: 'Updated summary',
     title,
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
