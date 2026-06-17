@@ -23,6 +23,7 @@ describe(VersionsService.name, () => {
                       id: 'dependency-a',
                       targetProject: {
                         id: 'project-b',
+                        kind: 'MOD',
                         slug: 'library',
                         title: 'Library',
                       },
@@ -248,6 +249,7 @@ describe(VersionsService.name, () => {
                     },
                   ],
                   sizeBytes: 1234n,
+                  kind: 'UNIVERSAL',
                   url: 'https://example.test/example.jar',
                 },
               ],
@@ -270,16 +272,25 @@ describe(VersionsService.name, () => {
     );
     expect(versions).toEqual([
       {
+        author: {
+          avatarUrl: null,
+          displayName: 'Release Author',
+          id: 'user-a',
+          username: 'author',
+        },
         changelog: 'Release notes',
         channel: 'RELEASE',
+        createdAt: new Date('2025-12-31T00:00:00.000Z'),
         datePublished: new Date('2026-01-01T00:00:00.000Z'),
         downloads: 42,
         dependencies: [],
+        featured: true,
         files: [
           {
             fileName: 'example.jar',
             hashes: [{ algorithm: 'SHA512', value: 'def456' }],
             id: 'file-a',
+            kind: 'UNIVERSAL',
             primary: true,
             scans: [
               {
@@ -299,7 +310,10 @@ describe(VersionsService.name, () => {
         loaders: ['fabric'],
         name: 'Example 1.0.0',
         projectSlug: 'example',
+        requestedStatus: null,
+        sortOrder: 7,
         status: 'APPROVED',
+        updatedAt: new Date('2026-01-03T00:00:00.000Z'),
         versionNumber: '1.0.0',
       },
     ]);
@@ -386,6 +400,7 @@ function versionRow(
       id: string;
       targetProject: {
         id: string;
+        kind: string;
         slug: string;
         title: string;
       } | null;
@@ -395,6 +410,7 @@ function versionRow(
       } | null;
     }[];
     downloads: number;
+    featured: boolean;
     files: {
       fileName: string;
       hashes?: {
@@ -403,6 +419,7 @@ function versionRow(
       }[];
       id: string;
       isPrimary: boolean;
+      kind?: string;
       scans?: {
         createdAt: Date;
         details: unknown;
@@ -418,12 +435,21 @@ function versionRow(
   }> = {},
 ) {
   return {
+    author: {
+      avatarUrl: null,
+      displayName: 'Release Author',
+      id: 'user-a',
+      username: 'author',
+    },
     changelog: overrides.changelog ?? 'Notes',
     channel: overrides.channel ?? 'RELEASE',
     dependencies: overrides.dependencies ?? [],
     downloads: overrides.downloads ?? 0,
+    featured: overrides.featured ?? true,
+    createdAt: new Date('2025-12-31T00:00:00.000Z'),
     files: (overrides.files ?? []).map((file) => ({
       hashes: file.hashes ?? [],
+      kind: file.kind ?? 'UNIVERSAL',
       scans: file.scans ?? [],
       ...file,
     })),
@@ -433,7 +459,10 @@ function versionRow(
     name: overrides.name ?? 'Example',
     project: { slug: 'example' },
     publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+    requestedStatus: null,
+    sortOrder: 7,
     status: 'APPROVED',
+    updatedAt: new Date('2026-01-03T00:00:00.000Z'),
     versionNumber: overrides.versionNumber ?? '1.0.0',
   };
 }

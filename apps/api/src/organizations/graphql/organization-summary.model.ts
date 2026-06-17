@@ -18,6 +18,24 @@ export class OrganizationOwner {
 }
 
 @ObjectType()
+export class OrganizationMember {
+  @Field(() => Boolean)
+  isOwner!: boolean;
+
+  @Field(() => [String])
+  permissions!: string[];
+
+  @Field(() => String)
+  role!: string;
+
+  @Field(() => Int)
+  sortOrder!: number;
+
+  @Field(() => OrganizationOwner)
+  user!: OrganizationOwner;
+}
+
+@ObjectType()
 export class OrganizationSummary {
   @Field(() => String, { nullable: true })
   color!: string | null;
@@ -36,6 +54,9 @@ export class OrganizationSummary {
 
   @Field(() => Int)
   memberCount!: number;
+
+  @Field(() => [OrganizationMember])
+  members!: OrganizationMember[];
 
   @Field(() => String)
   name!: string;

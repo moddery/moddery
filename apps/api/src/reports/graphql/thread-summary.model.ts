@@ -18,6 +18,18 @@ export class ThreadMessageSummary {
 }
 
 @ObjectType()
+export class ThreadMemberSummary {
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => Date, { nullable: true })
+  lastReadAt!: Date | null;
+
+  @Field(() => ReportUser)
+  user!: ReportUser;
+}
+
+@ObjectType()
 export class ThreadSummary {
   @Field(() => Date)
   createdAt!: Date;
@@ -27,6 +39,9 @@ export class ThreadSummary {
 
   @Field(() => [ThreadMessageSummary])
   messages!: ThreadMessageSummary[];
+
+  @Field(() => [ThreadMemberSummary])
+  members!: ThreadMemberSummary[];
 
   @Field(() => String, { nullable: true })
   reportId!: string | null;

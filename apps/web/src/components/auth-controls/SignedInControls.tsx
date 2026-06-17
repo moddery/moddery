@@ -7,6 +7,7 @@ export function SignedInControls({
   notifications,
   notificationCount,
   onLogout,
+  onOpenNotifications,
   onNotificationRead,
   username,
 }: {
@@ -14,6 +15,7 @@ export function SignedInControls({
   notifications: NotificationItem[];
   notificationCount: number;
   onLogout: () => Promise<void>;
+  onOpenNotifications?: () => void;
   onNotificationRead: (id: string) => Promise<void>;
   username?: string;
 }) {
@@ -29,6 +31,7 @@ export function SignedInControls({
       <NotificationsMenu
         count={notificationCount}
         notifications={notifications}
+        onOpenInbox={onOpenNotifications}
         onRead={onNotificationRead}
       />
       <button type="button" className={controlButton} onClick={onLogout}>

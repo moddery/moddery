@@ -1,5 +1,6 @@
 export interface SearchProjectDocument {
   readonly categories: readonly string[];
+  readonly color: string | null;
   readonly description: string;
   readonly downloads: number;
   readonly followers: number;

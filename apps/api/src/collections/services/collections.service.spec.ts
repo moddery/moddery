@@ -19,6 +19,7 @@ describe(CollectionsService.name, () => {
       {
         color: ' #1d9bf0 ',
         description: '  Example list  ',
+        iconUrl: ' https://cdn.example.test/collection.png ',
         name: 'Example',
         slug: 'example',
         visibility: 'PUBLIC',
@@ -28,14 +29,15 @@ describe(CollectionsService.name, () => {
 
     expect(createCalls[0]).toEqual(
       expect.objectContaining({
-        data: {
+        data: expect.objectContaining({
           color: '#1d9bf0',
           description: 'Example list',
+          iconUrl: 'https://cdn.example.test/collection.png',
           name: 'Example',
           ownerId: 'user-a',
           slug: 'example',
           visibility: 'PUBLIC',
-        },
+        }),
       }),
     );
     expect(collection.projectCount).toBe(1);
@@ -88,6 +90,43 @@ describe(CollectionsService.name, () => {
       }),
     );
     expect(collection.id).toBe('collection-a');
+  });
+
+  test('loads public or unlisted collection details by owner username and slug', async () => {
+    const queries: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(collectionRow());
+        },
+      },
+    } as unknown as PrismaService);
+
+    const collection = await service.findPublicCollectionBySlug(
+      'Creator',
+      'example',
+    );
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          owner: {
+            username: {
+              equals: 'Creator',
+              mode: 'insensitive',
+            },
+          },
+          slug: 'example',
+          visibility: { in: ['PUBLIC', 'UNLISTED'] },
+        },
+      }),
+    );
+    expect(collection.projects).toHaveLength(1);
+    expect(collection.projects[0]?.owner?.username).toBe('creator');
+    expect(collection.projects[0]?.organization?.slug).toBe('example-org');
+    expect(collection.items[0]?.addedBy?.username).toBe('creator');
+    expect(collection.items[0]?.sortOrder).toBe(0);
   });
 
   test('removes projects from collections owned by the current user', async () => {
@@ -163,6 +202,7 @@ describe(CollectionsService.name, () => {
         collectionId: 'collection-a',
         color: '  ',
         description: ' Updated description ',
+        iconUrl: '  ',
         name: ' Updated ',
         slug: 'updated',
         visibility: 'UNLISTED',
@@ -174,6 +214,7 @@ describe(CollectionsService.name, () => {
       data: {
         color: null,
         description: 'Updated description',
+        iconUrl: null,
         name: 'Updated',
         slug: 'updated',
         visibility: 'UNLISTED',
@@ -201,25 +242,57 @@ function collectionRow(overrides: Partial<{ name: string }> = {}) {
     },
     projects: [
       {
+        addedBy: {
+          avatarUrl: null,
+          displayName: null,
+          id: 'user-a',
+          username: 'creator',
+        },
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
         project: {
           categories: [{ category: { slug: 'utility' } }],
           description: 'Body',
+          discordUrl: null,
           downloads: 10,
           followers: 2,
           gallery: [],
           gameVersions: [{ gameVersion: { version: '1.21.6' } }],
           iconUrl: null,
           id: 'project-a',
+          issuesUrl: null,
           kind: 'MOD',
           license: { key: 'mit', name: 'MIT', url: null },
           links: [],
           loaders: [{ loader: 'FABRIC' }],
+          organization: {
+            color: '#1d9bf0',
+            iconUrl: null,
+            id: 'organization-a',
+            name: 'Example Org',
+            slug: 'example-org',
+          },
+          publishedAt: new Date('2025-12-15T00:00:00.000Z'),
+          sourceUrl: null,
+          team: {
+            members: [
+              {
+                user: {
+                  avatarUrl: null,
+                  displayName: null,
+                  id: 'user-a',
+                  username: 'creator',
+                },
+              },
+            ],
+          },
           slug: 'example',
           status: 'APPROVED',
           summary: 'Summary',
           title: 'Example',
           updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+          wikiUrl: null,
         },
+        sortOrder: 0,
       },
     ],
     slug: 'example',

@@ -1,3 +1,5 @@
+import { type NotificationItem } from '../../lib/notifications.ts';
+
 export interface MeQueryData {
   me: {
     isAdmin: boolean;
@@ -19,15 +21,6 @@ export interface NotificationsQueryData {
   viewerNotifications: NotificationItem[];
 }
 
-export interface NotificationItem {
-  actionUrl: string | null;
-  body: string | null;
-  createdAt: string;
-  id: string;
-  readAt: string | null;
-  state: string;
-  title: string;
-  type: string;
-}
+export type { NotificationItem };
 
 export type AuthMode = 'login' | 'register';

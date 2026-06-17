@@ -1,10 +1,12 @@
 export function DashboardField({
+  list,
   label,
   onChange,
   placeholder,
   required,
   value,
 }: {
+  list?: string;
   label: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -15,6 +17,7 @@ export function DashboardField({
     <label className="grid gap-1 text-sm font-bold text-ink">
       {label}
       <input
+        list={list}
         required={required}
         value={value}
         placeholder={placeholder}

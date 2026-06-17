@@ -3,10 +3,12 @@ import { type PublishProjectFieldsProps } from './PublishProjectFields.types.ts'
 
 type IdentityFieldsProps = Pick<
   PublishProjectFieldsProps,
+  | 'color'
   | 'description'
   | 'slug'
   | 'summary'
   | 'title'
+  | 'onColorChange'
   | 'onDescriptionChange'
   | 'onSlugChange'
   | 'onSummaryChange'
@@ -14,10 +16,12 @@ type IdentityFieldsProps = Pick<
 >;
 
 export function PublishProjectIdentityFields({
+  color,
   description,
   slug,
   summary,
   title,
+  onColorChange,
   onDescriptionChange,
   onSlugChange,
   onSummaryChange,
@@ -45,6 +49,7 @@ export function PublishProjectIdentityFields({
         onChange={onSummaryChange}
         required
       />
+      <DashboardField label="Color" value={color} onChange={onColorChange} />
       <label className="grid gap-1 text-sm font-bold text-ink">
         Description
         <textarea

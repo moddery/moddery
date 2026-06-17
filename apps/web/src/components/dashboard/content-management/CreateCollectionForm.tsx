@@ -15,6 +15,7 @@ export function CreateCollectionForm({
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
+  const [iconUrl, setIconUrl] = useState('');
   const [color, setColor] = useState('#1d9bf0');
   const [visibility, setVisibility] = useState<CollectionVisibility>('PRIVATE');
   const [submitting, setSubmitting] = useState(false);
@@ -28,6 +29,7 @@ export function CreateCollectionForm({
     const input: CreateCollectionInput = {
       color: color.trim() || null,
       description: description.trim() || null,
+      iconUrl: iconUrl.trim() || null,
       name,
       slug,
       visibility,
@@ -38,6 +40,7 @@ export function CreateCollectionForm({
       setName('');
       setSlug('');
       setDescription('');
+      setIconUrl('');
       setColor('#1d9bf0');
       setVisibility('PRIVATE');
       await onCreated();
@@ -70,11 +73,16 @@ export function CreateCollectionForm({
           </select>
         </label>
       </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
         <DashboardField
           label="Description"
           value={description}
           onChange={setDescription}
+        />
+        <DashboardField
+          label="Icon URL"
+          value={iconUrl}
+          onChange={setIconUrl}
         />
         <DashboardField label="Color" value={color} onChange={setColor} />
       </div>

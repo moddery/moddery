@@ -9,6 +9,9 @@ export class UpdateOrganizationInput {
   description?: string | null;
 
   @Field(() => String, { nullable: true })
+  iconUrl?: string | null;
+
+  @Field(() => String, { nullable: true })
   name?: string | null;
 
   @Field(() => String)

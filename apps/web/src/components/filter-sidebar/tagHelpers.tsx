@@ -9,6 +9,7 @@ export function tagKey(tag: TagFacetOption): string {
 }
 
 export function tagLabel(tag: TagFacetOption): string {
+  if (tag.label) return tag.label;
   if (tag.kind === 'category') return categoryLabel(tag.value);
   if (tag.kind === 'loader') return loaderLabel(tag.value);
   return tag.value;

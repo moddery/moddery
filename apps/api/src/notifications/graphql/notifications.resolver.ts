@@ -21,6 +21,11 @@ export class NotificationsResolver {
     return this.notificationsService.markRead(user.id, id);
   }
 
+  @Mutation(() => Int)
+  markAllNotificationsRead(@CurrentUser() user: AuthenticatedUser) {
+    return this.notificationsService.markAllRead(user.id);
+  }
+
   @Query(() => Int)
   unreadNotificationCount(@CurrentUser() user: AuthenticatedUser) {
     return this.notificationsService.unreadCount(user.id);

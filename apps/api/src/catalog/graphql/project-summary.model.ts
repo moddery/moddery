@@ -50,9 +50,45 @@ export class ProjectLink {
 }
 
 @ObjectType()
+export class ProjectOwner {
+  @Field(() => String, { nullable: true })
+  avatarUrl!: string | null;
+
+  @Field(() => String, { nullable: true })
+  displayName!: string | null;
+
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  username!: string;
+}
+
+@ObjectType()
+export class ProjectOrganization {
+  @Field(() => String, { nullable: true })
+  color!: string | null;
+
+  @Field(() => String, { nullable: true })
+  iconUrl!: string | null;
+
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  slug!: string;
+}
+
+@ObjectType()
 export class ProjectSummary {
   @Field(() => String)
   body!: string;
+
+  @Field(() => String, { nullable: true })
+  color!: string | null;
 
   @Field(() => [String])
   categories!: string[];
@@ -71,6 +107,27 @@ export class ProjectSummary {
 
   @Field(() => String)
   id!: string;
+
+  @Field(() => ProjectOwner, { nullable: true })
+  owner?: ProjectOwner | null;
+
+  @Field(() => ProjectOrganization, { nullable: true })
+  organization?: ProjectOrganization | null;
+
+  @Field(() => Date, { nullable: true })
+  approvedAt!: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  archivedAt!: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  publishedAt!: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  queuedAt!: Date | null;
+
+  @Field(() => String, { nullable: true })
+  requestedStatus!: ProjectStatus | null;
 
   @Field(() => String, { nullable: true })
   iconUrl!: string | null;
@@ -137,6 +194,9 @@ export class ProjectMemberSummary {
 
   @Field(() => Boolean)
   owner!: boolean;
+
+  @Field(() => [String])
+  permissions!: string[];
 
   @Field(() => String)
   role!: string;

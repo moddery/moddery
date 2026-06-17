@@ -6,12 +6,18 @@ export type AppView =
   | 'discover'
   | 'collections'
   | 'dashboard'
+  | 'notifications'
   | 'organization'
   | 'profile';
 
 export interface SelectedProject {
   slug: string;
   projectType: ProjectType;
+}
+
+export interface SelectedCollection {
+  ownerUsername: string;
+  slug: string;
 }
 
 export function projectFromUrl(): SelectedProject | null {
@@ -26,9 +32,23 @@ export function projectFromUrl(): SelectedProject | null {
   };
 }
 
+export function collectionFromUrl(): SelectedCollection | null {
+  const [resource, ownerUsername, slug] = window.location.pathname
+    .split('/')
+    .filter(Boolean);
+  if (resource !== 'collections' || !ownerUsername || !slug) return null;
+
+  return {
+    ownerUsername: decodeURIComponent(ownerUsername),
+    slug: decodeURIComponent(slug),
+  };
+}
+
 export function viewFromUrl(): AppView {
   if (window.location.pathname === '/dashboard') return 'dashboard';
+  if (window.location.pathname === '/notifications') return 'notifications';
   if (window.location.pathname === '/collections') return 'collections';
+  if (collectionFromUrl()) return 'collections';
   if (window.location.pathname === '/organizations') return 'organization';
   if (organizationFromUrl()) return 'organization';
   if (profileFromUrl()) return 'profile';
@@ -46,8 +66,22 @@ export function writeCollectionsToUrl() {
   writeStaticViewToUrl('/collections');
 }
 
+export function writeCollectionToUrl(collection: SelectedCollection) {
+  const url = new URL(window.location.href);
+  url.pathname = `/collections/${encodeURIComponent(
+    collection.ownerUsername,
+  )}/${encodeURIComponent(collection.slug)}`;
+  clearProjectSearchParams(url);
+
+  window.history.pushState(null, '', url);
+}
+
 export function writeDashboardToUrl() {
   writeStaticViewToUrl('/dashboard');
+}
+
+export function writeNotificationsToUrl() {
+  writeStaticViewToUrl('/notifications');
 }
 
 export function writeOrganizationsToUrl() {

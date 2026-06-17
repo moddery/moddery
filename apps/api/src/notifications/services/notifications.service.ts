@@ -15,6 +15,7 @@ export class NotificationsService {
   findViewerNotifications(userId: string) {
     return this.prisma.notification.findMany({
       orderBy: [{ createdAt: 'desc' }],
+      select: notificationSelect(),
       take: 20,
       where: { userId },
     });
@@ -40,6 +41,21 @@ export class NotificationsService {
         userId,
       },
     });
+  }
+
+  async markAllRead(userId: string) {
+    const result = await this.prisma.notification.updateMany({
+      data: {
+        readAt: new Date(),
+        state: 'READ',
+      },
+      where: {
+        readAt: null,
+        userId,
+      },
+    });
+
+    return result.count;
   }
 
   async findViewerPreferences(userId: string) {
@@ -150,6 +166,32 @@ export class NotificationsService {
       )
       .filter((preference) => preference.enabled);
   }
+}
+
+function notificationSelect() {
+  return {
+    actionUrl: true,
+    body: true,
+    createdAt: true,
+    deliveries: {
+      orderBy: [{ scheduledAt: 'desc' as const }],
+      select: {
+        attempts: true,
+        channel: true,
+        id: true,
+        lastError: true,
+        scheduledAt: true,
+        sentAt: true,
+        state: true,
+      },
+      take: 5,
+    },
+    id: true,
+    readAt: true,
+    state: true,
+    title: true,
+    type: true,
+  };
 }
 
 function defaultPreferences() {

@@ -4,6 +4,7 @@ import { fetchOrganizationProfile } from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
 import { EmptyState } from '../EmptyState.tsx';
 import { OrganizationHeader } from './OrganizationHeader.tsx';
+import { OrganizationMembers } from './OrganizationMembers.tsx';
 import { OrganizationProjectList } from './OrganizationProjectList.tsx';
 import { OrganizationSkeleton } from './OrganizationSkeletons.tsx';
 
@@ -39,6 +40,7 @@ export function OrganizationDetail({
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
       <OrganizationHeader organization={organization} />
+      <OrganizationMembers organization={organization} />
       <OrganizationProjectList
         organization={organization}
         onOpenProject={onOpenProject}

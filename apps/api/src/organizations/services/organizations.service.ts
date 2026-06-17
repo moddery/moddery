@@ -1,13 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { type ProjectKind, type ProjectStatus } from '@moddery/shared';
+import { TeamPermission } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type AddOrganizationTeamMemberInput } from '../dto/add-organization-team-member.input.js';
 import { type AddProjectToOrganizationInput } from '../dto/add-project-to-organization.input.js';
 import { type CreateOrganizationInput } from '../dto/create-organization.input.js';
+import { type RemoveOrganizationTeamMemberInput } from '../dto/remove-organization-team-member.input.js';
 import { type RemoveProjectFromOrganizationInput } from '../dto/remove-project-from-organization.input.js';
 import { type UpdateOrganizationInput } from '../dto/update-organization.input.js';
 
 interface OrganizationProjectRow {
+  approvedAt: Date | null;
+  archivedAt: Date | null;
+  color: string | null;
   categories: { category: { slug: string } }[];
   description: string;
   discordUrl: string | null;
@@ -30,6 +40,19 @@ interface OrganizationProjectRow {
   license: { key: string; name: string; url: string | null } | null;
   links: { kind: string; label: string | null; url: string }[];
   loaders: { loader: string }[];
+  publishedAt: Date | null;
+  queuedAt: Date | null;
+  requestedStatus: ProjectStatus | null;
+  team: {
+    members: {
+      user: {
+        avatarUrl: string | null;
+        displayName: string | null;
+        id: string;
+        username: string;
+      };
+    }[];
+  };
   slug: string;
   sourceUrl: string | null;
   status: ProjectStatus;
@@ -61,6 +84,18 @@ interface OrganizationRow {
     _count: {
       members: number;
     };
+    members: {
+      isOwner: boolean;
+      permissions: string[];
+      role: string;
+      sortOrder: number;
+      user: {
+        avatarUrl: string | null;
+        displayName: string | null;
+        id: string;
+        username: string;
+      };
+    }[];
   };
   updatedAt: Date;
 }
@@ -115,6 +150,7 @@ export class OrganizationsService {
   async createOrganization(input: CreateOrganizationInput, ownerId: string) {
     const color = input.color?.trim() ?? '';
     const description = input.description?.trim() ?? '';
+    const iconUrl = input.iconUrl?.trim() ?? '';
 
     const organization = await this.prisma.$transaction(async (tx) => {
       const team = await tx.team.create({
@@ -142,6 +178,7 @@ export class OrganizationsService {
         data: {
           color: color.length === 0 ? null : color,
           description: description.length === 0 ? null : description,
+          iconUrl: iconUrl.length === 0 ? null : iconUrl,
           name: input.name.trim(),
           ownerId,
           slug: input.slug.trim(),
@@ -152,6 +189,47 @@ export class OrganizationsService {
     });
 
     return organizationRowToContract(organization);
+  }
+
+  async addOrganizationTeamMember(
+    input: AddOrganizationTeamMemberInput,
+    userId: string,
+  ) {
+    const organization = await this.findOrganizationForMemberManagement(
+      input.organizationId,
+      userId,
+    );
+    const user = await this.prisma.user.findFirst({
+      select: { id: true },
+      where: { username: { equals: input.username, mode: 'insensitive' } },
+    });
+
+    if (user === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.prisma.teamMember.upsert({
+      create: {
+        acceptedAt: new Date(),
+        permissions: organizationMemberPermissions(input.permissions),
+        role: input.role.trim() || 'Member',
+        teamId: organization.teamId,
+        userId: user.id,
+      },
+      update: {
+        acceptedAt: new Date(),
+        permissions: organizationMemberPermissions(input.permissions),
+        role: input.role.trim() || 'Member',
+      },
+      where: {
+        teamId_userId: {
+          teamId: organization.teamId,
+          userId: user.id,
+        },
+      },
+    });
+
+    return this.findViewerOrganization(organization.id, userId);
   }
 
   async findPublicOrganizations() {
@@ -233,6 +311,38 @@ export class OrganizationsService {
     return this.findViewerOrganization(organization.id, ownerId);
   }
 
+  async removeOrganizationTeamMember(
+    input: RemoveOrganizationTeamMemberInput,
+    userId: string,
+  ) {
+    const organization = await this.findOrganizationForMemberManagement(
+      input.organizationId,
+      userId,
+    );
+    const member = await this.prisma.teamMember.findFirst({
+      select: {
+        id: true,
+        isOwner: true,
+      },
+      where: {
+        teamId: organization.teamId,
+        user: { username: { equals: input.username, mode: 'insensitive' } },
+      },
+    });
+
+    if (member === null) {
+      throw new NotFoundException('Team member not found');
+    }
+
+    if (member.isOwner) {
+      throw new ForbiddenException('Organization owner cannot be removed');
+    }
+
+    await this.prisma.teamMember.delete({ where: { id: member.id } });
+
+    return this.findViewerOrganization(organization.id, userId);
+  }
+
   async updateOrganization(input: UpdateOrganizationInput, ownerId: string) {
     const organization = await this.prisma.organization.findFirst({
       select: { id: true },
@@ -254,6 +364,8 @@ export class OrganizationsService {
           input.description === undefined
             ? undefined
             : nullableTrim(input.description),
+        iconUrl:
+          input.iconUrl === undefined ? undefined : nullableTrim(input.iconUrl),
         name: input.name == null ? undefined : input.name.trim(),
         slug: input.slug == null ? undefined : input.slug.trim(),
       },
@@ -281,11 +393,61 @@ export class OrganizationsService {
 
     return organizationRowToContract(organization);
   }
+
+  private async findOrganizationForMemberManagement(
+    organizationId: string,
+    userId: string,
+  ) {
+    const organization = await this.prisma.organization.findFirst({
+      select: {
+        id: true,
+        teamId: true,
+      },
+      where: {
+        id: organizationId,
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: 'MANAGE_MEMBERS' } },
+              ],
+              userId,
+            },
+          },
+        },
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return organization;
+  }
 }
 
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed;
+}
+
+function organizationMemberPermissions(
+  permissions: readonly string[] | null | undefined,
+): TeamPermission[] {
+  const allowed = new Set<TeamPermission>([
+    TeamPermission.MANAGE_DETAILS,
+    TeamPermission.MANAGE_MEMBERS,
+    TeamPermission.MANAGE_SETTINGS,
+    TeamPermission.VIEW_ANALYTICS,
+  ]);
+
+  return [...new Set(permissions ?? [])].flatMap((permission) =>
+    allowed.has(permission as TeamPermission)
+      ? [permission as TeamPermission]
+      : [],
+  );
 }
 
 function organizationSelect(
@@ -332,6 +494,28 @@ function organizationSelect(
             members: { where: { acceptedAt: { not: null } } },
           },
         },
+        members: {
+          orderBy: [
+            { isOwner: 'desc' as const },
+            { sortOrder: 'asc' as const },
+          ],
+          select: {
+            isOwner: true,
+            permissions: true,
+            role: true,
+            sortOrder: true,
+            user: {
+              select: {
+                avatarUrl: true,
+                displayName: true,
+                id: true,
+                username: true,
+              },
+            },
+          },
+          take: 12,
+          where: { acceptedAt: { not: null } },
+        },
       },
     },
     updatedAt: true,
@@ -340,6 +524,9 @@ function organizationSelect(
 
 function projectSelect() {
   return {
+    approvedAt: true,
+    archivedAt: true,
+    color: true,
     categories: {
       select: {
         category: {
@@ -391,6 +578,31 @@ function projectSelect() {
     loaders: {
       select: { loader: true },
     },
+    publishedAt: true,
+    queuedAt: true,
+    requestedStatus: true,
+    team: {
+      select: {
+        members: {
+          orderBy: [
+            { isOwner: 'desc' as const },
+            { sortOrder: 'asc' as const },
+          ],
+          select: {
+            user: {
+              select: {
+                avatarUrl: true,
+                displayName: true,
+                id: true,
+                username: true,
+              },
+            },
+          },
+          take: 1,
+          where: { acceptedAt: { not: null } },
+        },
+      },
+    },
     slug: true,
     sourceUrl: true,
     status: true,
@@ -409,6 +621,13 @@ function organizationRowToContract(organization: OrganizationRow) {
     iconUrl: organization.iconUrl,
     id: organization.id,
     memberCount: organization.team._count.members,
+    members: organization.team.members.map((member) => ({
+      isOwner: member.isOwner,
+      permissions: member.permissions,
+      role: member.role,
+      sortOrder: member.sortOrder,
+      user: member.user,
+    })),
     name: organization.name,
     owner: organization.owner,
     projectCount: organization._count.projects,
@@ -420,8 +639,11 @@ function organizationRowToContract(organization: OrganizationRow) {
 
 function projectRowToContract(project: OrganizationProjectRow) {
   return {
+    approvedAt: project.approvedAt,
+    archivedAt: project.archivedAt,
     body: project.description,
     categories: project.categories.map(({ category }) => category.slug),
+    color: project.color,
     discordUrl: project.discordUrl,
     downloads: project.downloads,
     followers: project.followers,
@@ -443,6 +665,10 @@ function projectRowToContract(project: OrganizationProjectRow) {
     },
     links: project.links,
     loaders: project.loaders.map(({ loader }) => loader),
+    owner: project.team.members[0]?.user ?? null,
+    publishedAt: project.publishedAt,
+    queuedAt: project.queuedAt,
+    requestedStatus: project.requestedStatus,
     slug: project.slug,
     sourceUrl: project.sourceUrl,
     status: project.status,

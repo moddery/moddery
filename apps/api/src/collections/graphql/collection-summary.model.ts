@@ -18,6 +18,21 @@ export class CollectionOwner {
 }
 
 @ObjectType()
+export class CollectionProjectItem {
+  @Field(() => CollectionOwner, { nullable: true })
+  addedBy!: CollectionOwner | null;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => ProjectSummary)
+  project!: ProjectSummary;
+
+  @Field(() => Int)
+  sortOrder!: number;
+}
+
+@ObjectType()
 export class CollectionSummary {
   @Field(() => String, { nullable: true })
   color!: string | null;
@@ -42,6 +57,9 @@ export class CollectionSummary {
 
   @Field(() => Int)
   projectCount!: number;
+
+  @Field(() => [CollectionProjectItem])
+  items!: CollectionProjectItem[];
 
   @Field(() => [ProjectSummary])
   projects!: ProjectSummary[];

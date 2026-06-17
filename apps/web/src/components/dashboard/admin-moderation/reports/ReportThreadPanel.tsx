@@ -47,7 +47,10 @@ export function ReportThreadPanel({ reportId }: { reportId: string }) {
             : 'Discussion failed to load'}
         </p>
       ) : threadQuery.data ? (
-        <ThreadMessages thread={threadQuery.data} />
+        <>
+          <ThreadMembers thread={threadQuery.data} />
+          <ThreadMessages thread={threadQuery.data} />
+        </>
       ) : (
         <p className="mt-2 rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
           Discussion did not return from the API.
@@ -80,6 +83,34 @@ export function ReportThreadPanel({ reportId }: { reportId: string }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function ThreadMembers({ thread }: { thread: ReportThread }) {
+  if (thread.members.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {thread.members.map((member) => {
+        const name = member.user.displayName ?? member.user.username;
+        const readState =
+          member.lastReadAt === null
+            ? 'Unread'
+            : `Read ${timeAgo(member.lastReadAt)}`;
+
+        return (
+          <div
+            key={member.user.id}
+            className="rounded-md border border-line bg-control px-2.5 py-1.5"
+          >
+            <p className="text-xs font-extrabold text-ink">{name}</p>
+            <p className="text-[11px] font-bold text-muted">{readState}</p>
+          </div>
+        );
+      })}
     </div>
   );
 }

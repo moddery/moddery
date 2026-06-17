@@ -5,6 +5,7 @@ import { type Layout } from '../ModCard.tsx';
 import { type TagFacetOption } from '../FilterSidebar.tsx';
 import {
   buildOptions,
+  buildCategoryOptions,
   buildTagOptions,
   selectedCategoriesToTags,
   selectedLoadersToTags,
@@ -47,7 +48,10 @@ export function useDiscoverFilters({ filterTags }: { filterTags: FilterTags }) {
     return {
       versionOptions: buildOptions(filterTags.versions, selectedVersions),
       loaderOptions: buildOptions(filterTags.loaders, selectedLoaders),
-      categoryOptions: buildOptions(filterTags.categories, selectedCategories),
+      categoryOptions: buildCategoryOptions(
+        filterTags.categories,
+        selectedCategories,
+      ),
     };
   }, [filterTags, selectedVersions, selectedLoaders, selectedCategories]);
   const tagOptions = useMemo(

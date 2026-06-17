@@ -1,5 +1,5 @@
 import { Clock, Download, Heart } from 'lucide-react';
-import type { Mod } from '../../types.ts';
+import type { Mod, ProjectType } from '../../types.ts';
 import { environmentOf } from '../../types.ts';
 import { cn } from '../../lib/cn.ts';
 import { formatCount, timeAgo } from '../../lib/format.ts';
@@ -8,8 +8,65 @@ import { CategoryTag, EnvTag, LoaderTag } from '../Chips.tsx';
 import type { SearchTag } from '../ModCard.tsx';
 
 export function projectHref(mod: Mod) {
-  const meta = projectTypeMeta(mod.projectType ?? 'mod');
-  return `/?type=${encodeURIComponent(meta.type)}&project=${encodeURIComponent(mod.slug)}`;
+  return projectPath(mod.projectType ?? 'mod', mod.slug);
+}
+
+export function projectPath(projectType: ProjectType, slug: string) {
+  const meta = projectTypeMeta(projectType);
+  return `/?type=${encodeURIComponent(meta.type)}&project=${encodeURIComponent(slug)}`;
+}
+
+export function authorHref(username: string) {
+  return `/users/${encodeURIComponent(username)}`;
+}
+
+export function organizationHref(slug: string) {
+  return `/organizations/${encodeURIComponent(slug)}`;
+}
+
+export function AuthorLink({
+  mod,
+  className,
+}: {
+  mod: Mod;
+  className?: string;
+}) {
+  const content = `by ${mod.author}`;
+  if (mod.organization) {
+    return (
+      <p className={cn('truncate text-xs font-medium text-muted', className)}>
+        by{' '}
+        <a
+          href={organizationHref(mod.organization.slug)}
+          onClick={(event) => event.stopPropagation()}
+          className="pointer-events-auto relative z-20 text-muted transition-colors hover:text-accent"
+        >
+          {mod.organization.name}
+        </a>
+      </p>
+    );
+  }
+
+  if (!mod.authorUsername) {
+    return (
+      <p className={cn('truncate text-xs font-medium text-muted', className)}>
+        {content}
+      </p>
+    );
+  }
+
+  return (
+    <p className={cn('truncate text-xs font-medium text-muted', className)}>
+      by{' '}
+      <a
+        href={authorHref(mod.authorUsername)}
+        onClick={(event) => event.stopPropagation()}
+        className="pointer-events-auto relative z-20 text-muted transition-colors hover:text-accent"
+      >
+        {mod.author}
+      </a>
+    </p>
+  );
 }
 
 export function ProjectIcon({

@@ -12,6 +12,14 @@ import {
 } from '../../../../lib/catalog.ts';
 import { nullableText } from '../shared.tsx';
 
+export interface DependencyDraft {
+  dependencyKind: DependencyKind;
+  externalFileName: string;
+  key: string;
+  targetProjectSlug: string;
+  targetVersionId: string;
+}
+
 export function useVersionDependencyFormState(
   projects: DashboardData['projects'],
 ) {
@@ -24,11 +32,9 @@ export function useVersionDependencyFormState(
   const [versionId, setVersionId] = useState('');
   const selectedVersion =
     versions.find((version) => version.id === versionId) ?? versions[0] ?? null;
-  const [dependencyKind, setDependencyKind] =
-    useState<DependencyKind>('REQUIRED');
-  const [targetProjectSlug, setTargetProjectSlug] = useState('');
-  const [targetVersionId, setTargetVersionId] = useState('');
-  const [externalFileName, setExternalFileName] = useState('');
+  const [dependencies, setDependencies] = useState<DependencyDraft[]>([
+    createDependencyDraft(),
+  ]);
 
   useEffect(() => {
     if (versionId === '' && versions[0]) {
@@ -47,44 +53,70 @@ export function useVersionDependencyFormState(
   }
 
   function fillDependencyForm(version: ProjectVersion | null) {
-    const dependency = version?.dependencies[0];
     setVersionId(version?.id ?? '');
-    setDependencyKind(dependency?.dependencyKind ?? 'REQUIRED');
-    setTargetProjectSlug(dependency?.targetProject?.slug ?? '');
-    setTargetVersionId(dependency?.targetVersion?.id ?? '');
-    setExternalFileName(dependency?.externalFileName ?? '');
+    setDependencies(
+      version?.dependencies.length
+        ? version.dependencies.map((dependency) =>
+            createDependencyDraft({
+              dependencyKind: dependency.dependencyKind,
+              externalFileName: dependency.externalFileName ?? '',
+              key: dependency.id,
+              targetProjectSlug: dependency.targetProject?.slug ?? '',
+              targetVersionId: dependency.targetVersion?.id ?? '',
+            }),
+          )
+        : [createDependencyDraft()],
+    );
+  }
+
+  function addDependency() {
+    setDependencies((current) => [...current, createDependencyDraft()]);
+  }
+
+  function removeDependency(key: string) {
+    setDependencies((current) => {
+      const next = current.filter((dependency) => dependency.key !== key);
+      return next.length > 0 ? next : [createDependencyDraft()];
+    });
+  }
+
+  function updateDependency(
+    key: string,
+    patch: Partial<Omit<DependencyDraft, 'key'>>,
+  ) {
+    setDependencies((current) =>
+      current.map((dependency) =>
+        dependency.key === key ? { ...dependency, ...patch } : dependency,
+      ),
+    );
   }
 
   const fields = {
-    dependencyKind,
-    externalFileName,
-    targetProjectSlug,
-    targetVersionId,
-    onDependencyKindChange: setDependencyKind,
-    onExternalFileNameChange: setExternalFileName,
-    onTargetProjectSlugChange: setTargetProjectSlug,
-    onTargetVersionIdChange: setTargetVersionId,
+    dependencies,
+    onAddDependency: addDependency,
+    onRemoveDependency: removeDependency,
+    onUpdateDependency: updateDependency,
   };
 
   function buildInput(): UpdateVersionDependenciesInput | null {
     if (selectedVersion === null) return null;
 
-    const hasDependency =
-      targetProjectSlug.trim() !== '' ||
-      targetVersionId.trim() !== '' ||
-      externalFileName.trim() !== '';
+    const filledDependencies = dependencies
+      .map((dependency) => ({
+        dependencyKind: dependency.dependencyKind,
+        externalFileName: nullableText(dependency.externalFileName),
+        targetProjectSlug: nullableText(dependency.targetProjectSlug),
+        targetVersionId: nullableText(dependency.targetVersionId),
+      }))
+      .filter(
+        (dependency) =>
+          dependency.externalFileName !== null ||
+          dependency.targetProjectSlug !== null ||
+          dependency.targetVersionId !== null,
+      );
 
     return {
-      dependencies: hasDependency
-        ? [
-            {
-              dependencyKind,
-              externalFileName: nullableText(externalFileName),
-              targetProjectSlug: nullableText(targetProjectSlug),
-              targetVersionId: nullableText(targetVersionId),
-            },
-          ]
-        : [],
+      dependencies: filledDependencies,
       versionId: selectedVersion.id,
     };
   }
@@ -98,5 +130,20 @@ export function useVersionDependencyFormState(
     selectVersion,
     versions,
     versionsQuery,
+  };
+}
+
+function createDependencyDraft(
+  overrides: Partial<DependencyDraft> = {},
+): DependencyDraft {
+  return {
+    dependencyKind: 'REQUIRED',
+    externalFileName: '',
+    key: `dependency-${String(Date.now())}-${Math.random()
+      .toString(36)
+      .slice(2)}`,
+    targetProjectSlug: '',
+    targetVersionId: '',
+    ...overrides,
   };
 }

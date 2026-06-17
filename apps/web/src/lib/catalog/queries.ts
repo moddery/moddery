@@ -4,7 +4,26 @@ export const PROJECTS_QUERY = gql`
   query CatalogProjects($query: CatalogQueryInput) {
     projects(query: $query) {
       body
+      color
       id
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      organization {
+        color
+        iconUrl
+        id
+        name
+        slug
+      }
+      approvedAt
+      archivedAt
+      publishedAt
+      queuedAt
+      requestedStatus
       slug
       title
       summary
@@ -48,7 +67,89 @@ export const PROJECT_BY_SLUG_QUERY = gql`
   query CatalogProjectBySlug($slug: String!) {
     projectBySlug(slug: $slug) {
       body
+      color
       id
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      organization {
+        color
+        iconUrl
+        id
+        name
+        slug
+      }
+      approvedAt
+      archivedAt
+      publishedAt
+      queuedAt
+      requestedStatus
+      slug
+      title
+      summary
+      kind
+      status
+      categories
+      discordUrl
+      downloads
+      followers
+      gameVersions
+      iconUrl
+      issuesUrl
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
+      loaders
+      sourceUrl
+      gallery {
+        createdAt
+        description
+        displayUrl
+        featured
+        rawUrl
+        sortOrder
+        title
+      }
+      updatedAt
+      wikiUrl
+    }
+  }
+`;
+
+export const VIEWER_FOLLOWED_PROJECTS_QUERY = gql`
+  query ViewerFollowedProjects {
+    viewerFollowedProjects {
+      body
+      color
+      id
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      organization {
+        color
+        iconUrl
+        id
+        name
+        slug
+      }
+      approvedAt
+      archivedAt
+      publishedAt
+      queuedAt
+      requestedStatus
       slug
       title
       summary
@@ -92,10 +193,18 @@ export const PLATFORM_METADATA_QUERY = gql`
   query CatalogPlatformMetadata {
     platformMetadata {
       categories {
+        description
+        name
+        projectKind
         slug
       }
       gameVersions
       loaders
+      licenses {
+        key
+        name
+        url
+      }
     }
   }
 `;
@@ -103,8 +212,15 @@ export const PLATFORM_METADATA_QUERY = gql`
 export const VERSIONS_FOR_PROJECT_QUERY = gql`
   query VersionsForProject($projectSlug: String!) {
     versionsForProject(projectSlug: $projectSlug) {
+      author {
+        avatarUrl
+        displayName
+        id
+        username
+      }
       changelog
       channel
+      createdAt
       datePublished
       dependencies {
         dependencyKind
@@ -112,6 +228,7 @@ export const VERSIONS_FOR_PROJECT_QUERY = gql`
         id
         targetProject {
           id
+          kind
           slug
           title
         }
@@ -121,6 +238,7 @@ export const VERSIONS_FOR_PROJECT_QUERY = gql`
         }
       }
       downloads
+      featured
       files {
         fileName
         hashes {
@@ -128,6 +246,7 @@ export const VERSIONS_FOR_PROJECT_QUERY = gql`
           value
         }
         id
+        kind
         primary
         scans {
           createdAt
@@ -143,6 +262,10 @@ export const VERSIONS_FOR_PROJECT_QUERY = gql`
       id
       loaders
       name
+      requestedStatus
+      sortOrder
+      status
+      updatedAt
       versionNumber
     }
   }
@@ -153,6 +276,7 @@ export const PROJECT_MEMBERS_QUERY = gql`
     projectMembers(projectSlug: $projectSlug) {
       accepted
       owner
+      permissions
       role
       sortOrder
       user {
@@ -237,6 +361,7 @@ export const CREATE_PROJECT_REPORT_MUTATION = gql`
   mutation CreateProjectReport($input: CreateProjectReportInput!) {
     createProjectReport(input: $input) {
       body
+      closedAt
       createdAt
       id
       projectId
@@ -252,6 +377,7 @@ export const CREATE_VERSION_REPORT_MUTATION = gql`
   mutation CreateVersionReport($input: CreateVersionReportInput!) {
     createVersionReport(input: $input) {
       body
+      closedAt
       createdAt
       id
       projectId
@@ -278,10 +404,246 @@ export const PUBLIC_COLLECTIONS_QUERY = gql`
         id
         username
       }
+      items {
+        addedBy {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        createdAt
+        project {
+          body
+          color
+          id
+          owner {
+            avatarUrl
+            displayName
+            id
+            username
+          }
+          organization {
+            color
+            iconUrl
+            id
+            name
+            slug
+          }
+          approvedAt
+          archivedAt
+          publishedAt
+          queuedAt
+          requestedStatus
+          slug
+          title
+          summary
+          kind
+          status
+          categories
+          discordUrl
+          downloads
+          followers
+          gameVersions
+          iconUrl
+          issuesUrl
+          license {
+            id
+            name
+            url
+          }
+          links {
+            kind
+            label
+            url
+          }
+          loaders
+          sourceUrl
+          gallery {
+            createdAt
+            description
+            displayUrl
+            featured
+            rawUrl
+            sortOrder
+            title
+          }
+          updatedAt
+          wikiUrl
+        }
+        sortOrder
+      }
       projectCount
       projects {
         body
+        color
         id
+        owner {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        organization {
+          color
+          iconUrl
+          id
+          name
+          slug
+        }
+        approvedAt
+        archivedAt
+        publishedAt
+        queuedAt
+        requestedStatus
+        slug
+        title
+        summary
+        kind
+        status
+        categories
+        discordUrl
+        downloads
+        followers
+        gameVersions
+        iconUrl
+        issuesUrl
+        license {
+          id
+          name
+          url
+        }
+        links {
+          kind
+          label
+          url
+        }
+        loaders
+        sourceUrl
+        gallery {
+          createdAt
+          description
+          displayUrl
+          featured
+          rawUrl
+          sortOrder
+          title
+        }
+        updatedAt
+        wikiUrl
+      }
+      slug
+      updatedAt
+      visibility
+    }
+  }
+`;
+
+export const PUBLIC_COLLECTION_BY_SLUG_QUERY = gql`
+  query PublicCollectionBySlug($ownerUsername: String!, $slug: String!) {
+    publicCollectionBySlug(ownerUsername: $ownerUsername, slug: $slug) {
+      color
+      createdAt
+      description
+      iconUrl
+      id
+      name
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      items {
+        addedBy {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        createdAt
+        project {
+          body
+          color
+          id
+          owner {
+            avatarUrl
+            displayName
+            id
+            username
+          }
+          organization {
+            color
+            iconUrl
+            id
+            name
+            slug
+          }
+          approvedAt
+          archivedAt
+          publishedAt
+          queuedAt
+          requestedStatus
+          slug
+          title
+          summary
+          kind
+          status
+          categories
+          discordUrl
+          downloads
+          followers
+          gameVersions
+          iconUrl
+          issuesUrl
+          license {
+            id
+            name
+            url
+          }
+          links {
+            kind
+            label
+            url
+          }
+          loaders
+          sourceUrl
+          gallery {
+            createdAt
+            description
+            displayUrl
+            featured
+            rawUrl
+            sortOrder
+            title
+          }
+          updatedAt
+          wikiUrl
+        }
+        sortOrder
+      }
+      projectCount
+      projects {
+        body
+        color
+        id
+        owner {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        organization {
+          color
+          iconUrl
+          id
+          name
+          slug
+        }
+        approvedAt
+        archivedAt
+        publishedAt
+        queuedAt
+        requestedStatus
         slug
         title
         summary

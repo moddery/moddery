@@ -9,10 +9,12 @@ import { type NotificationItem } from './types.ts';
 export function NotificationsMenu({
   count,
   notifications,
+  onOpenInbox,
   onRead,
 }: {
   count: number;
   notifications: NotificationItem[];
+  onOpenInbox?: () => void;
   onRead: (id: string) => Promise<void>;
 }) {
   return (
@@ -80,6 +82,17 @@ export function NotificationsMenu({
                 ))
               )}
             </div>
+            <a
+              href="/notifications"
+              onClick={(event) => {
+                if (!onOpenInbox) return;
+                event.preventDefault();
+                onOpenInbox();
+              }}
+              className="mt-3 block rounded-md border border-line px-3 py-2 text-center text-sm font-bold text-ink transition-colors hover:bg-control-hover"
+            >
+              View all notifications
+            </a>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

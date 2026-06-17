@@ -18,7 +18,11 @@ import {
   type NotificationsQueryData,
 } from './auth-controls/types.ts';
 
-export function AuthControls() {
+export function AuthControls({
+  onOpenNotifications,
+}: {
+  onOpenNotifications?: () => void;
+}) {
   const [token, setToken] = useState(() =>
     localStorage.getItem(authTokenStorageKey),
   );
@@ -93,6 +97,7 @@ export function AuthControls() {
         }
         notifications={notificationsQuery.data?.viewerNotifications ?? []}
         onLogout={logout}
+        onOpenNotifications={onOpenNotifications}
         onNotificationRead={async (id) => {
           await markNotificationRead({ variables: { id } });
           await notificationsQuery.refetch();

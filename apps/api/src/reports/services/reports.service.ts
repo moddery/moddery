@@ -303,6 +303,7 @@ export class ReportsService {
 function reportSelect() {
   return {
     body: true,
+    closedAt: true,
     createdAt: true,
     id: true,
     project: {
@@ -330,12 +331,40 @@ function reportSelect() {
       },
     },
     userTargetId: true,
+    version: {
+      select: {
+        id: true,
+        name: true,
+        project: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+          },
+        },
+        versionNumber: true,
+      },
+    },
     versionId: true,
   };
 }
 
 function threadInclude() {
   return {
+    members: {
+      orderBy: [{ createdAt: 'asc' as const }],
+      select: {
+        createdAt: true,
+        lastReadAt: true,
+        user: {
+          select: {
+            displayName: true,
+            id: true,
+            username: true,
+          },
+        },
+      },
+    },
     messages: {
       orderBy: { createdAt: 'asc' as const },
       select: {

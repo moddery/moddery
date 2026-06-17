@@ -44,6 +44,7 @@ export function TagsPanel({
             key={tagKey(tag)}
             checked={selected.has(tagKey(tag))}
             onToggle={() => onToggle(tag)}
+            description={tag.description}
             label={tagLabel(tag)}
             icon={tagIcon(tag)}
           />

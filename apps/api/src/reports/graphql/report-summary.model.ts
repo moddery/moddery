@@ -13,6 +13,21 @@ export class ReportProjectTarget {
 }
 
 @ObjectType()
+export class ReportVersionTarget {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => ReportProjectTarget)
+  project!: ReportProjectTarget;
+
+  @Field(() => String)
+  versionNumber!: string;
+}
+
+@ObjectType()
 export class ReportUser {
   @Field(() => String, { nullable: true })
   displayName!: string | null;
@@ -31,6 +46,9 @@ export class ReportSummary {
 
   @Field(() => Date)
   createdAt!: Date;
+
+  @Field(() => Date, { nullable: true })
+  closedAt!: Date | null;
 
   @Field(() => String)
   id!: string;
@@ -52,6 +70,9 @@ export class ReportSummary {
 
   @Field(() => ReportUser, { nullable: true })
   userTarget?: ReportUser | null;
+
+  @Field(() => ReportVersionTarget, { nullable: true })
+  version?: ReportVersionTarget | null;
 
   @Field(() => String, { nullable: true })
   userTargetId!: string | null;

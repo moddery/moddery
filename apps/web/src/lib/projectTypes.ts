@@ -76,3 +76,20 @@ export function projectTypeFromKind(kind: ProjectKind): ProjectType {
       return 'mod';
   }
 }
+
+export function projectKindFromType(projectType: ProjectType): ProjectKind {
+  switch (projectType) {
+    case 'datapack':
+      return 'DATAPACK';
+    case 'modpack':
+      return 'MODPACK';
+    case 'plugin':
+      return 'PLUGIN';
+    case 'resourcepack':
+      return 'RESOURCE_PACK';
+    case 'shader':
+      return 'SHADER';
+    case 'mod':
+      return 'MOD';
+  }
+}

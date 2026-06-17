@@ -6,7 +6,11 @@ export const UPDATE_VIEWER_PROFILE_MUTATION = gql`
       avatarUrl
       bio
       displayName
+      email
+      emailVerifiedAt
       id
+      newsletterOptIn
+      twoFactorEnabled
       username
     }
   }

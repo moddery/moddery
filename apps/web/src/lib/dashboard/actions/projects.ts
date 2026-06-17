@@ -121,17 +121,23 @@ export async function updateProject(
 }
 
 export function dashboardProjectToMod(project: DashboardProject): Mod {
+  const organizationName = project.organization?.name.trim() ?? '';
+  const ownerName =
+    project.owner?.displayName ?? project.owner?.username ?? 'Unknown user';
+
   return {
-    author: 'Moddery',
+    author: organizationName || ownerName,
+    authorUsername: project.owner?.username ?? null,
     categories: project.categories,
     client: 'optional',
-    color: '#1d9bf0',
+    color: project.color,
     description: project.summary,
     downloads: project.downloads,
     follows: project.followers,
     gameVersions: project.gameVersions,
     icon: project.iconUrl,
     loaders: project.loaders.map((loader) => loader.toLowerCase()),
+    organization: project.organization ?? null,
     projectType: projectTypeFromKind(project.kind),
     server: 'optional',
     slug: project.slug,

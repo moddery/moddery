@@ -1,164 +1,55 @@
 import { gql } from '@apollo/client';
+import {
+  DASHBOARD_PROJECT_FIELDS,
+  DASHBOARD_PROJECT_MEMBER_FIELDS,
+} from './fragments.js';
 
 export const CREATE_PROJECT_MUTATION = gql`
+  ${DASHBOARD_PROJECT_FIELDS}
+
   mutation CreateProject($input: CreateProjectInput!) {
     createProject(input: $input) {
-      body
-      categories
-      discordUrl
-      downloads
-      followers
-      gallery {
-        createdAt
-        description
-        displayUrl
-        featured
-        rawUrl
-        sortOrder
-        title
-      }
-      gameVersions
-      iconUrl
-      issuesUrl
-      kind
-      license {
-        id
-        name
-        url
-      }
-      links {
-        kind
-        label
-        url
-      }
-      loaders
-      slug
-      sourceUrl
-      status
-      summary
-      title
-      updatedAt
-      wikiUrl
+      ...DashboardProjectFields
     }
   }
 `;
 
 export const ADD_PROJECT_GALLERY_IMAGE_MUTATION = gql`
+  ${DASHBOARD_PROJECT_FIELDS}
+
   mutation AddProjectGalleryImage($input: AddProjectGalleryImageInput!) {
     addProjectGalleryImage(input: $input) {
-      body
-      categories
-      discordUrl
-      downloads
-      followers
-      gallery {
-        createdAt
-        description
-        displayUrl
-        featured
-        rawUrl
-        sortOrder
-        title
-      }
-      gameVersions
-      iconUrl
-      issuesUrl
-      kind
-      license {
-        id
-        name
-        url
-      }
-      links {
-        kind
-        label
-        url
-      }
-      loaders
-      slug
-      sourceUrl
-      status
-      summary
-      title
-      updatedAt
-      wikiUrl
+      ...DashboardProjectFields
     }
   }
 `;
 
 export const ADD_PROJECT_TEAM_MEMBER_MUTATION = gql`
+  ${DASHBOARD_PROJECT_MEMBER_FIELDS}
+
   mutation AddProjectTeamMember($input: AddProjectTeamMemberInput!) {
     addProjectTeamMember(input: $input) {
-      accepted
-      owner
-      role
-      sortOrder
-      user {
-        avatarUrl
-        displayName
-        id
-        username
-      }
+      ...DashboardProjectMemberFields
     }
   }
 `;
 
 export const REMOVE_PROJECT_TEAM_MEMBER_MUTATION = gql`
+  ${DASHBOARD_PROJECT_MEMBER_FIELDS}
+
   mutation RemoveProjectTeamMember($input: RemoveProjectTeamMemberInput!) {
     removeProjectTeamMember(input: $input) {
-      accepted
-      owner
-      role
-      sortOrder
-      user {
-        avatarUrl
-        displayName
-        id
-        username
-      }
+      ...DashboardProjectMemberFields
     }
   }
 `;
 
 export const UPDATE_PROJECT_MUTATION = gql`
+  ${DASHBOARD_PROJECT_FIELDS}
+
   mutation UpdateProject($input: UpdateProjectInput!) {
     updateProject(input: $input) {
-      body
-      categories
-      discordUrl
-      downloads
-      followers
-      gallery {
-        createdAt
-        description
-        displayUrl
-        featured
-        rawUrl
-        sortOrder
-        title
-      }
-      gameVersions
-      iconUrl
-      issuesUrl
-      kind
-      license {
-        id
-        name
-        url
-      }
-      links {
-        kind
-        label
-        url
-      }
-      loaders
-      slug
-      sourceUrl
-      status
-      summary
-      title
-      updatedAt
-      wikiUrl
+      ...DashboardProjectFields
     }
   }
 `;

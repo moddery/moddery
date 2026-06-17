@@ -125,6 +125,7 @@ describe(CatalogService.name, () => {
     const project = await service.updateProject(
       {
         categories: ['utility'],
+        color: ' #f97316 ',
         description: 'Updated body',
         gameVersions: ['1.21.6'],
         iconUrl: 'https://example.test/icon.png',
@@ -138,9 +139,13 @@ describe(CatalogService.name, () => {
     );
 
     expect(project.title).toBe('Updated Project');
+    expect(project.color).toBe('#f97316');
+    expect(project.owner?.username).toBe('creator');
+    expect(project.organization?.slug).toBe('example-org');
     expect(operations[0]).toContain(
       '"iconUrl":"https://example.test/icon.png"',
     );
+    expect(operations[0]).toContain('"color":"#f97316"');
     expect(operations).toContain(
       'categories-delete:{"where":{"projectId":"project-a"}}',
     );
@@ -152,6 +157,7 @@ describe(CatalogService.name, () => {
     );
     expect(indexed[0]).toEqual(
       expect.objectContaining({
+        color: '#f97316',
         id: 'project-a',
         title: 'Updated Project',
       }),
@@ -322,6 +328,39 @@ describe(CatalogService.name, () => {
     );
   });
 
+  test('loads viewer followed projects newest first', async () => {
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        projectFollow: {
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([
+              { project: projectRow({ title: 'Followed Project' }) },
+            ]);
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        searchProjects: () => Promise.resolve({ ids: [] }),
+      } as never,
+    );
+
+    const projects = await service.findViewerFollowedProjects('user-a');
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        where: {
+          project: { status: 'APPROVED' },
+          userId: 'user-a',
+        },
+      }),
+    );
+    expect(projects[0]?.title).toBe('Followed Project');
+  });
+
   test('loads project team members by project slug', async () => {
     const queries: unknown[] = [];
     const service = new CatalogService(
@@ -335,6 +374,7 @@ describe(CatalogService.name, () => {
                   {
                     acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
                     isOwner: true,
+                    permissions: ['MANAGE_VERSIONS'],
                     role: 'Owner',
                     sortOrder: 0,
                     user: {
@@ -364,6 +404,7 @@ describe(CatalogService.name, () => {
       {
         accepted: true,
         owner: true,
+        permissions: ['MANAGE_VERSIONS'],
         role: 'Owner',
         sortOrder: 0,
         user: {
@@ -702,6 +743,7 @@ function projectMembersRow() {
         {
           acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
           isOwner: true,
+          permissions: ['MANAGE_VERSIONS'],
           role: 'Owner',
           sortOrder: 0,
           user: {
@@ -739,6 +781,7 @@ function projectRow({
 }) {
   return {
     categories: [{ category: { slug: 'utility' } }],
+    color: '#f97316',
     description: 'Updated body',
     discordUrl: null,
     downloads: 10,
@@ -752,10 +795,30 @@ function projectRow({
     license,
     links,
     loaders: [{ loader: 'FABRIC' }],
+    organization: {
+      color: '#1d9bf0',
+      iconUrl: 'https://example.test/org.png',
+      id: 'organization-a',
+      name: 'Example Org',
+      slug: 'example-org',
+    },
+    publishedAt: new Date('2025-12-15T00:00:00.000Z'),
     slug: 'example',
     sourceUrl: 'https://example.test/source',
     status,
     summary: 'Updated summary',
+    team: {
+      members: [
+        {
+          user: {
+            avatarUrl: null,
+            displayName: 'Project Creator',
+            id: 'user-owner',
+            username: 'creator',
+          },
+        },
+      ],
+    },
     title,
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     wikiUrl: null,

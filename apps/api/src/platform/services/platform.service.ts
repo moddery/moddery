@@ -9,25 +9,28 @@ import { ProjectKind as PrismaProjectKind } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type UpsertCategoryInput } from '../dto/upsert-category.input.js';
 import { type UpsertGameVersionInput } from '../dto/upsert-game-version.input.js';
+import { type UpsertLicenseInput } from '../dto/upsert-license.input.js';
 
 @Injectable()
 export class PlatformService {
   constructor(private readonly prisma: PrismaService) {}
 
   async metadata() {
-    const [categories, gameVersions] = await Promise.all([
+    const [categories, gameVersions, licenses] = await Promise.all([
       this.findCategories(),
       this.prisma.gameVersion.findMany({
         orderBy: { version: 'desc' },
         select: { version: true },
         where: { isActive: true },
       }),
+      this.findLicenses(),
     ]);
 
     return {
       categories,
       gameVersions: gameVersions.map((gameVersion) => gameVersion.version),
       loaders: [...SUPPORTED_LOADERS],
+      licenses,
       projectKinds: [...PROJECT_KINDS],
     };
   }
@@ -50,6 +53,17 @@ export class PlatformService {
       select: {
         isActive: true,
         version: true,
+      },
+    });
+  }
+
+  findLicenses() {
+    return this.prisma.license.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        key: true,
+        name: true,
+        url: true,
       },
     });
   }
@@ -89,11 +103,43 @@ export class PlatformService {
       where: { version },
     });
   }
+
+  upsertLicense(input: UpsertLicenseInput) {
+    const key = requiredTrim(input.key, 'License key is required');
+    const name = requiredTrim(input.name, 'License name is required');
+
+    return this.prisma.license.upsert({
+      create: {
+        key: key.toLowerCase(),
+        name,
+        url: optionalUrl(input.url),
+      },
+      update: {
+        name,
+        url: optionalUrl(input.url),
+      },
+      where: { key: key.toLowerCase() },
+    });
+  }
 }
 
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function optionalUrl(value: string | null | undefined): string | null {
+  const url = nullableTrim(value);
+  if (url === null) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('Unsupported protocol');
+    }
+    return parsed.toString();
+  } catch {
+    throw new BadRequestException('License URL must be a valid HTTP URL');
+  }
 }
 
 function requiredTrim(value: string, message: string): string {

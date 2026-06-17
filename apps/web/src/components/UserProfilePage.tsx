@@ -10,9 +10,14 @@ import { UserModerationNotes } from './user-profile/UserModerationNotes.tsx';
 import { UserProfileSkeleton } from './user-profile/UserProfileSkeleton.tsx';
 
 export function UserProfilePage({
+  onOpenCollection,
   username,
   onOpenProject,
 }: {
+  onOpenCollection?: (collection: {
+    ownerUsername: string;
+    slug: string;
+  }) => void;
   username: string;
   onOpenProject: (mod: Mod) => void;
 }) {
@@ -33,10 +38,12 @@ export function UserProfilePage({
     );
   }
 
+  const profile = profileQuery.data;
+
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
-      <ProfileHeader profile={profileQuery.data} />
-      <UserModerationNotes username={profileQuery.data.username} />
+      <ProfileHeader profile={profile} />
+      <UserModerationNotes username={profile.username} />
 
       <section className="mt-8">
         <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
@@ -44,15 +51,15 @@ export function UserProfilePage({
             Projects
           </h2>
           <span className="text-sm font-semibold text-muted">
-            {profileQuery.data.projectCount.toLocaleString('en-US')} total
+            {profile.projectCount.toLocaleString('en-US')} total
           </span>
         </div>
 
-        {profileQuery.data.projects.length === 0 ? (
+        {profile.projects.length === 0 ? (
           <p className="py-8 text-sm text-muted">No public projects yet.</p>
         ) : (
           <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {profileQuery.data.projects.map((project) => {
+            {profile.projects.map((project) => {
               const mod = userProjectToMod(project);
               return (
                 <ModCard
@@ -73,18 +80,20 @@ export function UserProfilePage({
             Collections
           </h2>
           <span className="text-sm font-semibold text-muted">
-            {profileQuery.data.collectionCount.toLocaleString('en-US')} total
+            {profile.collectionCount.toLocaleString('en-US')} total
           </span>
         </div>
 
-        {profileQuery.data.collections.length === 0 ? (
+        {profile.collections.length === 0 ? (
           <p className="py-8 text-sm text-muted">No public collections yet.</p>
         ) : (
           <div className="mt-4 grid gap-5">
-            {profileQuery.data.collections.map((collection) => (
+            {profile.collections.map((collection) => (
               <CollectionPreview
                 key={collection.id}
                 collection={collection}
+                ownerUsername={profile.username}
+                onOpenCollection={onOpenCollection}
                 onOpenProject={onOpenProject}
               />
             ))}

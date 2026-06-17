@@ -2,7 +2,9 @@ import { DashboardField } from '../shared.tsx';
 import { type ProjectMetadataFieldsProps } from '../ProjectMetadataFields.types.ts';
 
 export function ProjectIdentityFields({
+  color,
   iconUrl,
+  onColorChange,
   onIconUrlChange,
   onSummaryChange,
   onTitleChange,
@@ -10,7 +12,9 @@ export function ProjectIdentityFields({
   title,
 }: Pick<
   ProjectMetadataFieldsProps,
+  | 'color'
   | 'iconUrl'
+  | 'onColorChange'
   | 'onIconUrlChange'
   | 'onSummaryChange'
   | 'onTitleChange'
@@ -32,6 +36,7 @@ export function ProjectIdentityFields({
           onChange={onIconUrlChange}
         />
       </div>
+      <DashboardField label="Color" value={color} onChange={onColorChange} />
       <DashboardField
         label="Summary"
         value={summary}

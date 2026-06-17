@@ -22,6 +22,7 @@ export function EditCollectionForm({
   const [name, setName] = useState(selected?.name ?? '');
   const [slug, setSlug] = useState(selected?.slug ?? '');
   const [description, setDescription] = useState(selected?.description ?? '');
+  const [iconUrl, setIconUrl] = useState(selected?.iconUrl ?? '');
   const [color, setColor] = useState(selected?.color ?? '#1d9bf0');
   const [visibility, setVisibility] = useState<CollectionVisibility>(
     selected?.visibility ?? 'PRIVATE',
@@ -40,6 +41,7 @@ export function EditCollectionForm({
     setName(next.name);
     setSlug(next.slug);
     setDescription(next.description ?? '');
+    setIconUrl(next.iconUrl ?? '');
     setColor(next.color ?? '#1d9bf0');
     setVisibility(next.visibility);
   }, [collectionId, collections]);
@@ -53,6 +55,7 @@ export function EditCollectionForm({
       collectionId,
       color: color.trim() || null,
       description: description.trim() || null,
+      iconUrl: iconUrl.trim() || null,
       name,
       slug,
       visibility,
@@ -93,11 +96,16 @@ export function EditCollectionForm({
         <DashboardField label="Name" value={name} onChange={setName} required />
         <DashboardField label="Slug" value={slug} onChange={setSlug} required />
       </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_10rem_12rem]">
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem_12rem]">
         <DashboardField
           label="Description"
           value={description}
           onChange={setDescription}
+        />
+        <DashboardField
+          label="Icon URL"
+          value={iconUrl}
+          onChange={setIconUrl}
         />
         <DashboardField label="Color" value={color} onChange={setColor} />
         <label className="grid gap-1 text-sm font-bold text-ink">

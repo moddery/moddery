@@ -3,6 +3,7 @@ import { type SearchTag } from '../../ModCard.tsx';
 import { CategoryTag, Chip, LoaderTag } from '../../Chips.tsx';
 import { type ProjectDetails } from '../../../lib/catalog.ts';
 import { projectTypeMeta } from '../../../lib/projectTypes.ts';
+import { authorHref, organizationHref } from '../../mod-card/ModCardParts.tsx';
 
 export function ProjectHero({
   categories,
@@ -40,11 +41,31 @@ export function ProjectHero({
             <h1 className="font-display text-3xl font-extrabold leading-tight text-ink">
               {project.title}
             </h1>
-            {project.author && (
+            {project.organization ? (
               <span className="text-sm font-medium text-muted">
-                by {project.author}
+                by{' '}
+                <a
+                  href={organizationHref(project.organization.slug)}
+                  className="text-muted transition-colors hover:text-accent"
+                >
+                  {project.organization.name}
+                </a>
               </span>
-            )}
+            ) : project.author ? (
+              <span className="text-sm font-medium text-muted">
+                by{' '}
+                {project.authorUsername ? (
+                  <a
+                    href={authorHref(project.authorUsername)}
+                    className="text-muted transition-colors hover:text-accent"
+                  >
+                    {project.author}
+                  </a>
+                ) : (
+                  project.author
+                )}
+              </span>
+            ) : null}
           </div>
 
           <p className="mt-3 max-w-3xl text-pretty text-base leading-7 text-muted">

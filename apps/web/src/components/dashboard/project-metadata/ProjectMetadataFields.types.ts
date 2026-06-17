@@ -1,7 +1,9 @@
 import { type DashboardProject } from '../../../lib/dashboard.ts';
+import { type LicenseTaxonomy } from '../../../lib/dashboard.ts';
 
 export interface ProjectMetadataFieldsProps {
   categories: string;
+  color: string;
   description: string;
   discordUrl: string;
   extraLinks: string;
@@ -11,8 +13,10 @@ export interface ProjectMetadataFieldsProps {
   licenseKey: string;
   licenseName: string;
   licenseUrl: string;
+  licenses: LicenseTaxonomy[];
   loaders: string;
   onCategoriesChange: (value: string) => void;
+  onColorChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onDiscordUrlChange: (value: string) => void;
   onExtraLinksChange: (value: string) => void;
@@ -22,6 +26,7 @@ export interface ProjectMetadataFieldsProps {
   onLicenseKeyChange: (value: string) => void;
   onLicenseNameChange: (value: string) => void;
   onLicenseUrlChange: (value: string) => void;
+  onLicenseSelect: (key: string) => void;
   onLoadersChange: (value: string) => void;
   onProjectChange: (value: string) => void;
   onSourceUrlChange: (value: string) => void;

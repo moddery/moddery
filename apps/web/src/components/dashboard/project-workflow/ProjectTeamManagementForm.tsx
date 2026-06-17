@@ -1,5 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
+
+import { fetchProjectMembers } from '../../../lib/catalog.ts';
 import { type DashboardProject } from '../../../lib/dashboard.ts';
 import { ProjectTeamFields } from './team-management/ProjectTeamFields.tsx';
+import { ProjectTeamMembersList } from './team-management/ProjectTeamMembersList.tsx';
 import { useProjectTeamManagementState } from './team-management/useProjectTeamManagementState.ts';
 
 export function ProjectTeamManagementForm({
@@ -8,6 +12,21 @@ export function ProjectTeamManagementForm({
   projects: DashboardProject[];
 }) {
   const state = useProjectTeamManagementState(projects);
+  const membersQuery = useQuery({
+    enabled: state.projectSlug.length > 0,
+    queryFn: ({ signal }) => fetchProjectMembers(state.projectSlug, signal),
+    queryKey: ['dashboard', 'project-team-members', state.projectSlug],
+  });
+
+  async function addMember(event: React.FormEvent<HTMLFormElement>) {
+    await state.addMember(event);
+    await membersQuery.refetch();
+  }
+
+  async function removeMember() {
+    await state.removeMember();
+    await membersQuery.refetch();
+  }
 
   return (
     <section className="mt-8 border-b border-line pb-8">
@@ -21,7 +40,7 @@ export function ProjectTeamManagementForm({
       </div>
 
       <form
-        onSubmit={(event) => void state.addMember(event)}
+        onSubmit={(event) => void addMember(event)}
         className="mt-4 grid gap-3"
       >
         <ProjectTeamFields
@@ -53,12 +72,17 @@ export function ProjectTeamManagementForm({
           <button
             type="button"
             disabled={state.submitting || state.username.trim() === ''}
-            onClick={() => void state.removeMember()}
+            onClick={() => void removeMember()}
             className="inline-flex h-10 items-center rounded-lg border border-line bg-control px-4 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             Remove member
           </button>
         </div>
+
+        <ProjectTeamMembersList
+          isLoading={membersQuery.isLoading}
+          members={membersQuery.data ?? []}
+        />
       </form>
     </section>
   );

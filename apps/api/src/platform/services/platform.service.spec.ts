@@ -20,12 +20,17 @@ describe(PlatformService.name, () => {
       gameVersion: {
         findMany: () => Promise.resolve([{ version: '1.21.6' }]),
       },
+      license: {
+        findMany: () =>
+          Promise.resolve([{ key: 'mit', name: 'MIT', url: null }]),
+      },
     } as unknown as PrismaService);
 
     const metadata = await service.metadata();
 
     expect(metadata.categories[0]?.slug).toBe('optimization');
     expect(metadata.gameVersions).toEqual(['1.21.6']);
+    expect(metadata.licenses).toEqual([{ key: 'mit', name: 'MIT', url: null }]);
     expect(metadata.loaders).toContain('fabric');
   });
 
@@ -96,5 +101,41 @@ describe(PlatformService.name, () => {
       where: { version: '1.21.6' },
     });
     expect(gameVersion.version).toBe('1.21.6');
+  });
+
+  test('upserts license taxonomy rows', async () => {
+    const upserts: unknown[] = [];
+    const service = new PlatformService({
+      license: {
+        upsert: (query: unknown) => {
+          upserts.push(query);
+          return Promise.resolve({
+            key: 'apache-2.0',
+            name: 'Apache-2.0',
+            url: 'https://example.test/license',
+          });
+        },
+      },
+    } as unknown as PrismaService);
+
+    const license = await service.upsertLicense({
+      key: ' Apache-2.0 ',
+      name: ' Apache-2.0 ',
+      url: ' https://example.test/license ',
+    });
+
+    expect(upserts[0]).toEqual({
+      create: {
+        key: 'apache-2.0',
+        name: 'Apache-2.0',
+        url: 'https://example.test/license',
+      },
+      update: {
+        name: 'Apache-2.0',
+        url: 'https://example.test/license',
+      },
+      where: { key: 'apache-2.0' },
+    });
+    expect(license.key).toBe('apache-2.0');
   });
 });

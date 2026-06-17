@@ -7,13 +7,15 @@ import {
 } from '../lib/catalog.ts';
 import { timeAgo } from '../lib/format.ts';
 import type { Mod } from '../types.ts';
-import { ModCard } from './ModCard.tsx';
+import { CollectionProjectItem } from './collection/CollectionProjectItem.tsx';
 import type { SearchTag } from './ModCard.tsx';
 
 export function CollectionsPage({
+  onOpenCollection,
   onOpenProject,
   onTagSearch,
 }: {
+  onOpenCollection?: (collection: PublicCollection) => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
@@ -55,6 +57,7 @@ export function CollectionsPage({
             <CollectionSection
               key={collection.id}
               collection={collection}
+              onOpenCollection={onOpenCollection}
               onOpenProject={onOpenProject}
               onTagSearch={onTagSearch}
             />
@@ -67,10 +70,12 @@ export function CollectionsPage({
 
 function CollectionSection({
   collection,
+  onOpenCollection,
   onOpenProject,
   onTagSearch,
 }: {
   collection: PublicCollection;
+  onOpenCollection?: (collection: PublicCollection) => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
@@ -86,9 +91,19 @@ function CollectionSection({
               className="size-3 rounded-full"
               style={{ backgroundColor: collection.color ?? '#1d9bf0' }}
             />
-            <h2 className="truncate font-display text-xl font-extrabold text-ink">
-              {collection.name}
-            </h2>
+            <a
+              href={collectionHref(collection)}
+              onClick={(event) => {
+                if (!onOpenCollection) return;
+                event.preventDefault();
+                onOpenCollection(collection);
+              }}
+              className="min-w-0 text-ink transition-colors hover:text-accent"
+            >
+              <h2 className="truncate font-display text-xl font-extrabold">
+                {collection.name}
+              </h2>
+            </a>
           </div>
           {collection.description && (
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
@@ -109,18 +124,23 @@ function CollectionSection({
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {collection.projects.map((mod) => (
-          <ModCard
-            key={mod.slug}
-            mod={mod}
-            layout="list"
-            onOpen={onOpenProject}
+        {collection.items.map((item) => (
+          <CollectionProjectItem
+            key={item.project.slug}
+            item={item}
+            onOpenProject={onOpenProject}
             onTagSearch={onTagSearch}
           />
         ))}
       </div>
     </section>
   );
+}
+
+function collectionHref(collection: PublicCollection): string {
+  return `/collections/${encodeURIComponent(
+    collection.owner.username,
+  )}/${encodeURIComponent(collection.slug)}`;
 }
 
 function CollectionsSkeleton() {

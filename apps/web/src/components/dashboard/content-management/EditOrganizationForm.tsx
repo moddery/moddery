@@ -23,6 +23,7 @@ export function EditOrganizationForm({
   const [name, setName] = useState(selected?.name ?? '');
   const [slug, setSlug] = useState(selected?.slug ?? '');
   const [description, setDescription] = useState(selected?.description ?? '');
+  const [iconUrl, setIconUrl] = useState(selected?.iconUrl ?? '');
   const [color, setColor] = useState(selected?.color ?? '#1d9bf0');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,7 @@ export function EditOrganizationForm({
     setName(next.name);
     setSlug(next.slug);
     setDescription(next.description ?? '');
+    setIconUrl(next.iconUrl ?? '');
     setColor(next.color ?? '#1d9bf0');
   }, [organizationId, organizations]);
 
@@ -50,6 +52,7 @@ export function EditOrganizationForm({
     const input: UpdateOrganizationInput = {
       color: color.trim() || null,
       description: description.trim() || null,
+      iconUrl: iconUrl.trim() || null,
       name,
       organizationId,
       slug,
@@ -90,11 +93,16 @@ export function EditOrganizationForm({
         <DashboardField label="Name" value={name} onChange={setName} required />
         <DashboardField label="Slug" value={slug} onChange={setSlug} required />
       </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
         <DashboardField
           label="Description"
           value={description}
           onChange={setDescription}
+        />
+        <DashboardField
+          label="Icon URL"
+          value={iconUrl}
+          onChange={setIconUrl}
         />
         <DashboardField label="Color" value={color} onChange={setColor} />
       </div>

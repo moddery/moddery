@@ -1,6 +1,7 @@
 import { type ProjectKind } from '@moddery/shared';
 import {
   type AddProjectGalleryImageInput,
+  type AddOrganizationTeamMemberInput,
   type AddProjectTeamMemberInput,
   type AdminUserAccount,
   type ApiTokenSummary,
@@ -17,9 +18,11 @@ import {
   type DashboardProjectMember,
   type DashboardVersion,
   type GameVersionTaxonomy,
+  type LicenseTaxonomy,
   type ModerationReport,
   type ModerationReportState,
   type NotificationPreference,
+  type RemoveOrganizationTeamMemberInput,
   type RemoveProjectTeamMemberInput,
   type ReportThread,
   type SessionSummary,
@@ -127,6 +130,10 @@ export interface GameVersionTaxonomyQueryData {
   gameVersions: GameVersionTaxonomy[];
 }
 
+export interface LicenseTaxonomyQueryData {
+  licenses: LicenseTaxonomy[];
+}
+
 export interface UpsertCategoryMutationData {
   upsertCategory: CategoryTaxonomy;
 }
@@ -148,6 +155,18 @@ export interface UpsertGameVersionMutationVariables {
   input: {
     isActive: boolean;
     version: string;
+  };
+}
+
+export interface UpsertLicenseMutationData {
+  upsertLicense: LicenseTaxonomy;
+}
+
+export interface UpsertLicenseMutationVariables {
+  input: {
+    key: string;
+    name: string;
+    url: string | null;
   };
 }
 
@@ -266,6 +285,14 @@ export interface RemoveProjectFromOrganizationMutationData {
   removeProjectFromOrganization: DashboardOrganization;
 }
 
+export interface AddOrganizationTeamMemberMutationData {
+  addOrganizationTeamMember: DashboardOrganization;
+}
+
+export interface RemoveOrganizationTeamMemberMutationData {
+  removeOrganizationTeamMember: DashboardOrganization;
+}
+
 export interface AddProjectToOrganizationMutationVariables {
   input: {
     organizationId: string;
@@ -278,6 +305,14 @@ export interface RemoveProjectFromOrganizationMutationVariables {
     organizationId: string;
     projectSlug: string;
   };
+}
+
+export interface AddOrganizationTeamMemberMutationVariables {
+  input: AddOrganizationTeamMemberInput;
+}
+
+export interface RemoveOrganizationTeamMemberMutationVariables {
+  input: RemoveOrganizationTeamMemberInput;
 }
 
 export interface AddProjectToCollectionMutationData {

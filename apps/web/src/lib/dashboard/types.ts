@@ -10,14 +10,18 @@ export interface DashboardData {
   collectionCount: number;
   collections: DashboardCollection[];
   displayName: string | null;
+  email: string | null;
+  emailVerifiedAt: string | null;
   followedProjectCount: number;
   id: string;
   isAdmin: boolean;
+  newsletterOptIn: boolean;
   organizations: DashboardOrganization[];
   projectCount: number;
   projects: DashboardProject[];
   role: string;
   status: string;
+  twoFactorEnabled: boolean;
   username: string;
 }
 
@@ -34,7 +38,9 @@ export interface AdminUserAccount {
 export interface DashboardCollection {
   color: string | null;
   description: string | null;
+  iconUrl: string | null;
   id: string;
+  items: DashboardCollectionItem[];
   name: string;
   projectCount: number;
   slug: string;
@@ -42,8 +48,23 @@ export interface DashboardCollection {
   visibility: CollectionVisibility;
 }
 
+export interface DashboardCollectionItem {
+  createdAt: string;
+  project: {
+    iconUrl: string | null;
+    kind: ProjectKind;
+    slug: string;
+    summary: string;
+    title: string;
+  };
+  sortOrder: number;
+}
+
 export interface DashboardProject {
+  approvedAt?: string | null;
+  archivedAt?: string | null;
   body: string;
+  color: string | null;
   categories: string[];
   discordUrl: string | null;
   downloads: number;
@@ -60,6 +81,22 @@ export interface DashboardProject {
   };
   links: DashboardProjectLink[];
   loaders: string[];
+  owner?: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
+  organization?: {
+    color: string | null;
+    iconUrl: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  publishedAt?: string | null;
+  queuedAt?: string | null;
+  requestedStatus?: string | null;
   slug: string;
   sourceUrl: string | null;
   status: string;
@@ -78,6 +115,7 @@ export interface DashboardProjectLink {
 export interface DashboardProjectMember {
   accepted: boolean;
   owner: boolean;
+  permissions: string[];
   role: string;
   sortOrder: number;
   user: {
@@ -131,6 +169,12 @@ export interface GameVersionTaxonomy {
   version: string;
 }
 
+export interface LicenseTaxonomy {
+  key: string;
+  name: string;
+  url: string | null;
+}
+
 export interface DashboardGalleryImage {
   createdAt: string;
   description: string | null;
@@ -144,16 +188,32 @@ export interface DashboardGalleryImage {
 export interface DashboardOrganization {
   color: string | null;
   description: string | null;
+  iconUrl: string | null;
   id: string;
   memberCount: number;
+  members: DashboardOrganizationMember[];
   name: string;
   projectCount: number;
   slug: string;
   updatedAt: string;
 }
 
+export interface DashboardOrganizationMember {
+  isOwner: boolean;
+  permissions: string[];
+  role: string;
+  sortOrder: number;
+  user: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+}
+
 export interface CreateProjectInput {
   categories: string[];
+  color: string | null;
   description: string;
   gameVersions: string[];
   kind: ProjectKind;
@@ -166,6 +226,7 @@ export interface CreateProjectInput {
 export interface CreateCollectionInput {
   color: string | null;
   description: string | null;
+  iconUrl: string | null;
   name: string;
   slug: string;
   visibility: CollectionVisibility;
@@ -175,6 +236,7 @@ export interface UpdateCollectionInput {
   collectionId: string;
   color: string | null;
   description: string | null;
+  iconUrl: string | null;
   name: string;
   slug: string;
   visibility: CollectionVisibility;
@@ -183,6 +245,7 @@ export interface UpdateCollectionInput {
 export interface CreateOrganizationInput {
   color: string | null;
   description: string | null;
+  iconUrl: string | null;
   name: string;
   slug: string;
 }
@@ -190,13 +253,27 @@ export interface CreateOrganizationInput {
 export interface UpdateOrganizationInput {
   color: string | null;
   description: string | null;
+  iconUrl: string | null;
   name: string;
   organizationId: string;
   slug: string;
 }
 
+export interface AddOrganizationTeamMemberInput {
+  organizationId: string;
+  permissions: string[];
+  role: string;
+  username: string;
+}
+
+export interface RemoveOrganizationTeamMemberInput {
+  organizationId: string;
+  username: string;
+}
+
 export interface UpdateProjectInput {
   categories: string[];
+  color: string | null;
   description: string;
   discordUrl: string | null;
   gameVersions: string[];
@@ -218,13 +295,19 @@ export interface UpdateViewerProfileInput {
   avatarUrl: string | null;
   bio: string | null;
   displayName: string | null;
+  email: string | null;
+  newsletterOptIn: boolean;
 }
 
 export interface ViewerProfileUpdate {
   avatarUrl: string | null;
   bio: string | null;
   displayName: string | null;
+  email: string | null;
+  emailVerifiedAt: string | null;
   id: string;
+  newsletterOptIn: boolean;
+  twoFactorEnabled: boolean;
   username: string;
 }
 
@@ -321,6 +404,7 @@ export interface UpdateVersionInput {
 
 export interface ModerationReport {
   body: string;
+  closedAt: string | null;
   createdAt: string;
   id: string;
   project: {
@@ -342,6 +426,16 @@ export interface ModerationReport {
     username: string;
   } | null;
   userTargetId: string | null;
+  version: {
+    id: string;
+    name: string;
+    project: {
+      id: string;
+      slug: string;
+      title: string;
+    };
+    versionNumber: string;
+  } | null;
   versionId: string | null;
 }
 
@@ -358,9 +452,20 @@ export interface ReportThreadMessage {
   id: string;
 }
 
+export interface ReportThreadMember {
+  createdAt: string;
+  lastReadAt: string | null;
+  user: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+}
+
 export interface ReportThread {
   createdAt: string;
   id: string;
+  members: ReportThreadMember[];
   messages: ReportThreadMessage[];
   reportId: string | null;
   subject: string;

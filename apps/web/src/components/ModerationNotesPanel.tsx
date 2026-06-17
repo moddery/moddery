@@ -60,6 +60,7 @@ export function ModerationNotesPanel({
               <p className="mt-1 text-xs font-bold text-muted">
                 {note.author.displayName ?? note.author.username} ·{' '}
                 {timeAgo(note.createdAt)}
+                {isEdited(note) ? ` · edited ${timeAgo(note.updatedAt)}` : ''}
               </p>
             </div>
           ))}
@@ -94,5 +95,11 @@ export function ModerationNotesPanel({
         </div>
       </form>
     </section>
+  );
+}
+
+function isEdited(note: ModerationNote): boolean {
+  return (
+    new Date(note.updatedAt).getTime() > new Date(note.createdAt).getTime()
   );
 }

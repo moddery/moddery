@@ -23,6 +23,9 @@ import { type RemoveProjectTeamMemberInput } from '../dto/remove-project-team-me
 import { type UpdateProjectInput } from '../dto/update-project.input.js';
 
 interface ProjectRow {
+  approvedAt: Date | null;
+  archivedAt: Date | null;
+  color: string | null;
   description: string;
   categories: { category: { slug: string } }[];
   downloads: number;
@@ -43,6 +46,26 @@ interface ProjectRow {
   license: { key: string; name: string; url: string | null } | null;
   links: { kind: string; label: string | null; url: string }[];
   loaders: { loader: ProjectSummaryContract['loaders'][number] }[];
+  organization: {
+    color: string | null;
+    iconUrl: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  publishedAt: Date | null;
+  queuedAt: Date | null;
+  requestedStatus: ProjectSummaryContract['status'] | null;
+  team: {
+    members: {
+      user: {
+        avatarUrl: string | null;
+        displayName: string | null;
+        id: string;
+        username: string;
+      };
+    }[];
+  };
   discordUrl: string | null;
   issuesUrl: string | null;
   sourceUrl: string | null;
@@ -57,6 +80,7 @@ interface ProjectRow {
 interface ProjectMemberRow {
   acceptedAt: Date | null;
   isOwner: boolean;
+  permissions: string[];
   role: string;
   sortOrder: number;
   user: {
@@ -70,6 +94,7 @@ interface ProjectMemberRow {
 export interface ProjectMemberContract {
   accepted: boolean;
   owner: boolean;
+  permissions: string[];
   role: string;
   sortOrder: number;
   user: {
@@ -152,6 +177,26 @@ export class CatalogService {
     return undefined;
   }
 
+  async findViewerFollowedProjects(
+    userId: string,
+  ): Promise<ProjectSummaryContract[]> {
+    const follows = await this.prisma.projectFollow.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        project: {
+          select: projectSelect(),
+        },
+      },
+      take: 50,
+      where: {
+        project: { status: 'APPROVED' },
+        userId,
+      },
+    });
+
+    return follows.map((follow) => projectRowToContract(follow.project));
+  }
+
   async createProject(
     input: CreateProjectInput,
     ownerId: string,
@@ -192,6 +237,7 @@ export class CatalogService {
       const created = await tx.project.create({
         data: {
           approvedAt: now,
+          color: nullableTrim(input.color),
           description: input.description.trim(),
           kind: input.kind,
           licenseId: license.id,
@@ -458,6 +504,7 @@ export class CatalogService {
               select: {
                 acceptedAt: true,
                 isOwner: true,
+                permissions: true,
                 role: true,
                 sortOrder: true,
                 user: {
@@ -647,6 +694,8 @@ export class CatalogService {
 
 function projectSelect() {
   return {
+    approvedAt: true,
+    archivedAt: true,
     categories: {
       select: {
         category: {
@@ -654,6 +703,7 @@ function projectSelect() {
         },
       },
     },
+    color: true,
     description: true,
     downloads: true,
     followers: true,
@@ -695,6 +745,40 @@ function projectSelect() {
     },
     loaders: {
       select: { loader: true },
+    },
+    organization: {
+      select: {
+        color: true,
+        iconUrl: true,
+        id: true,
+        name: true,
+        slug: true,
+      },
+    },
+    publishedAt: true,
+    queuedAt: true,
+    requestedStatus: true,
+    team: {
+      select: {
+        members: {
+          orderBy: [
+            { isOwner: 'desc' as const },
+            { sortOrder: 'asc' as const },
+          ],
+          select: {
+            user: {
+              select: {
+                avatarUrl: true,
+                displayName: true,
+                id: true,
+                username: true,
+              },
+            },
+          },
+          take: 1,
+          where: { acceptedAt: { not: null } },
+        },
+      },
     },
     discordUrl: true,
     issuesUrl: true,
@@ -834,6 +918,7 @@ function projectUpdateData(
   licenseId: string | undefined,
 ): Prisma.ProjectUpdateInput {
   return {
+    ...(input.color === undefined ? {} : { color: nullableTrim(input.color) }),
     ...(input.description === undefined
       ? {}
       : { description: input.description?.trim() ?? '' }),
@@ -944,8 +1029,11 @@ function moderationProjectData(
 
 function projectRowToContract(project: ProjectRow): ProjectSummaryContract {
   return {
+    approvedAt: project.approvedAt?.toISOString() ?? null,
+    archivedAt: project.archivedAt?.toISOString() ?? null,
     body: project.description,
     categories: project.categories.map(({ category }) => category.slug),
+    color: project.color,
     discordUrl: project.discordUrl,
     downloads: project.downloads,
     followers: project.followers,
@@ -967,6 +1055,11 @@ function projectRowToContract(project: ProjectRow): ProjectSummaryContract {
     },
     links: projectLinksToContract(project),
     loaders: project.loaders.map(({ loader }) => loader),
+    organization: project.organization,
+    owner: project.team.members[0]?.user ?? null,
+    publishedAt: project.publishedAt?.toISOString() ?? null,
+    queuedAt: project.queuedAt?.toISOString() ?? null,
+    requestedStatus: project.requestedStatus,
     slug: project.slug,
     sourceUrl: project.sourceUrl,
     status: project.status,
@@ -1003,6 +1096,7 @@ function projectMemberRowToContract(
   return {
     accepted: member.acceptedAt !== null,
     owner: member.isOwner,
+    permissions: member.permissions,
     role: member.role,
     sortOrder: member.sortOrder,
     user: member.user,
@@ -1031,6 +1125,7 @@ export function projectSearchTags(project: ProjectSummaryContract): string[] {
 function projectContractToSearch(project: ProjectSummaryContract) {
   return {
     categories: [...project.categories],
+    color: project.color ?? null,
     description: project.body,
     downloads: project.downloads,
     followers: project.followers,

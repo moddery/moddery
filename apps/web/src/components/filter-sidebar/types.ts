@@ -1,8 +1,25 @@
 export interface FacetOption {
+  description?: string | null;
+  label?: string;
   value: string;
 }
 
 export type TagFacetOption =
-  | { kind: 'category'; value: string }
-  | { kind: 'loader'; value: string }
-  | { kind: 'version'; value: string };
+  | {
+      description?: string | null;
+      kind: 'category';
+      label?: string;
+      value: string;
+    }
+  | {
+      description?: string | null;
+      kind: 'loader';
+      label?: string;
+      value: string;
+    }
+  | {
+      description?: string | null;
+      kind: 'version';
+      label?: string;
+      value: string;
+    };

@@ -21,12 +21,20 @@ export function ReportRow({
     report.reporter?.displayName ?? report.reporter?.username ?? 'Unknown user';
   const target =
     report.project?.title ??
+    report.version?.name ??
     report.userTarget?.displayName ??
     report.userTarget?.username ??
     report.versionId ??
     report.projectId ??
     report.userTargetId ??
     'Unknown target';
+  const targetHref = report.project
+    ? `/mods/${report.project.slug}`
+    : report.version
+      ? `/mods/${report.version.project.slug}`
+      : report.userTarget
+        ? `/users/${report.userTarget.username}`
+        : null;
 
   return (
     <article className="rounded-lg border border-line bg-surface p-4">
@@ -34,13 +42,28 @@ export function ReportRow({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Flag className="size-4 text-accent-icon" />
-            <h3 className="font-display text-lg font-extrabold text-ink">
-              {target}
-            </h3>
+            {targetHref ? (
+              <a
+                href={targetHref}
+                className="font-display text-lg font-extrabold text-ink transition-colors hover:text-accent"
+              >
+                {target}
+              </a>
+            ) : (
+              <h3 className="font-display text-lg font-extrabold text-ink">
+                {target}
+              </h3>
+            )}
             <span className="rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted">
               {report.reason.replaceAll('_', ' ')}
             </span>
           </div>
+          {report.version && (
+            <p className="mt-1 text-xs font-bold text-muted">
+              Version {report.version.versionNumber} for{' '}
+              {report.version.project.title}
+            </p>
+          )}
           <p className="mt-2 text-sm leading-6 text-ink">{report.body}</p>
           <p className="mt-3 text-sm font-semibold text-muted">
             Reported by{' '}
@@ -55,6 +78,7 @@ export function ReportRow({
               reporterName
             )}{' '}
             · {timeAgo(report.createdAt)}
+            {report.closedAt ? ` · closed ${timeAgo(report.closedAt)}` : ''}
           </p>
         </div>
         <span className="shrink-0 rounded-md bg-accent-soft px-2 py-1 text-xs font-bold uppercase text-accent">

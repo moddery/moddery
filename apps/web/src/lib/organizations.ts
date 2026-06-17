@@ -12,6 +12,7 @@ export interface OrganizationProfile {
   iconUrl: string | null;
   id: string;
   memberCount: number;
+  members: OrganizationMember[];
   name: string;
   owner: {
     avatarUrl: string | null;
@@ -25,14 +26,34 @@ export interface OrganizationProfile {
   updatedAt: string;
 }
 
+export interface OrganizationMember {
+  isOwner: boolean;
+  permissions: string[];
+  role: string;
+  sortOrder: number;
+  user: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+}
+
 export interface OrganizationProjectPreview {
   categories: string[];
+  color: string | null;
   downloads: number;
   followers: number;
   gameVersions: string[];
   iconUrl: string | null;
   kind: ProjectKind;
   loaders: string[];
+  owner?: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
   slug: string;
   summary: string;
   title: string;
@@ -60,6 +81,18 @@ const ORGANIZATION_BY_SLUG_QUERY = gql`
       iconUrl
       id
       memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
       name
       owner {
         avatarUrl
@@ -70,12 +103,19 @@ const ORGANIZATION_BY_SLUG_QUERY = gql`
       projectCount
       projects {
         categories
+        color
         downloads
         followers
         gameVersions
         iconUrl
         kind
         loaders
+        owner {
+          avatarUrl
+          displayName
+          id
+          username
+        }
         slug
         summary
         title
@@ -96,6 +136,18 @@ const PUBLIC_ORGANIZATIONS_QUERY = gql`
       iconUrl
       id
       memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
       name
       owner {
         avatarUrl
@@ -106,12 +158,19 @@ const PUBLIC_ORGANIZATIONS_QUERY = gql`
       projectCount
       projects {
         categories
+        color
         downloads
         followers
         gameVersions
         iconUrl
         kind
         loaders
+        owner {
+          avatarUrl
+          displayName
+          id
+          username
+        }
         slug
         summary
         title
@@ -156,10 +215,12 @@ export function organizationProjectToMod(
   project: OrganizationProjectPreview,
 ): Mod {
   return {
-    author: 'Moddery',
+    author:
+      project.owner?.displayName ?? project.owner?.username ?? 'Unknown user',
+    authorUsername: project.owner?.username ?? null,
     categories: project.categories,
     client: 'optional',
-    color: '#1d9bf0',
+    color: project.color,
     description: project.summary,
     downloads: project.downloads,
     follows: project.followers,

@@ -14,6 +14,7 @@ describe(fetchProjectDetails.name, () => {
         projectBySlug: {
           body: 'Project body',
           categories: ['utility'],
+          color: '#f97316',
           downloads: 42,
           followers: 12,
           gallery: [],
@@ -28,6 +29,7 @@ describe(fetchProjectDetails.name, () => {
           },
           links: [],
           loaders: ['fabric'],
+          publishedAt: '2025-12-15T00:00:00.000Z',
           slug: 'example',
           status: 'APPROVED',
           summary: 'Project summary',
@@ -40,5 +42,7 @@ describe(fetchProjectDetails.name, () => {
     const project = await fetchProjectDetails('example');
 
     expect(project.followers).toBe(12);
+    expect(project.published).toBe('2025-12-15T00:00:00.000Z');
+    expect(project.color).toBe(0xf97316);
   });
 });

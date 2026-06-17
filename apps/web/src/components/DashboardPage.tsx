@@ -16,6 +16,7 @@ import {
 import {
   CollectionManagement,
   CreateOrganizationForm,
+  OrganizationTeamManagementForm,
 } from './dashboard/ContentManagementPanels.tsx';
 import { DashboardHeader } from './dashboard/overview/DashboardHeader.tsx';
 import { DashboardSkeleton } from './dashboard/overview/DashboardSkeleton.tsx';
@@ -32,8 +33,13 @@ import {
 } from './dashboard/ProjectWorkflowPanels.tsx';
 
 export function DashboardPage({
+  onOpenCollection,
   onOpenProject,
 }: {
+  onOpenCollection?: (collection: {
+    ownerUsername: string;
+    slug: string;
+  }) => void;
   onOpenProject: (mod: Mod) => void;
 }) {
   const { canAdmin, canModerate, dashboard, dashboardQuery, refreshDashboard } =
@@ -83,6 +89,13 @@ export function DashboardPage({
         onCreated={refreshDashboard}
       />
 
+      {dashboard.organizations.length > 0 && (
+        <OrganizationTeamManagementForm
+          organizations={dashboard.organizations}
+          onChanged={refreshDashboard}
+        />
+      )}
+
       <PublishProjectForm onCreated={refreshDashboard} />
 
       {dashboard.projects.length > 0 && (
@@ -124,6 +137,7 @@ export function DashboardPage({
 
       <DashboardSummarySections
         dashboard={dashboard}
+        onOpenCollection={onOpenCollection}
         onOpenProject={onOpenProject}
       />
     </main>

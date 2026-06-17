@@ -16,7 +16,14 @@ export type SortKey =
 export interface FilterTags {
   versions: string[];
   loaders: string[];
-  categories: string[];
+  categories: CategoryFilterTag[];
+}
+
+export interface CategoryFilterTag {
+  description: string | null;
+  name: string;
+  projectKind: ProjectKind | null;
+  slug: string;
 }
 
 export interface SearchProjectsParams {
@@ -49,11 +56,24 @@ export interface PublicCollection {
     id: string;
     username: string;
   };
+  items: PublicCollectionItem[];
   projectCount: number;
   projects: Mod[];
   slug: string;
   updatedAt: string;
   visibility: string;
+}
+
+export interface PublicCollectionItem {
+  addedBy: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
+  createdAt: string;
+  project: Mod;
+  sortOrder: number;
 }
 
 export interface ProjectFollowState {
@@ -64,6 +84,7 @@ export interface ProjectFollowState {
 
 export interface ReportSummary {
   body: string;
+  closedAt: string | null;
   createdAt: string;
   id: string;
   projectId: string | null;
@@ -79,6 +100,15 @@ export interface ProjectDetails {
   project_type: ProjectType;
   title: string;
   author: string;
+  authorUsername?: string | null;
+  color: number | null;
+  organization?: {
+    color: string | null;
+    iconUrl: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
   description: string;
   body: string;
   published: string;
@@ -101,7 +131,6 @@ export interface ProjectDetails {
   discord_url: string | null;
   donation_urls: { id: string; platform: string; url: string }[];
   gallery: ProjectGalleryImage[];
-  color: number | null;
 }
 
 export interface ProjectGalleryImage {
@@ -121,6 +150,7 @@ export interface ProjectFile {
     algorithm: string;
     value: string;
   }[];
+  kind: 'UNIVERSAL' | 'CLIENT' | 'SERVER';
   url: string;
   size: number;
   primary: boolean;
@@ -134,17 +164,29 @@ export interface ProjectFile {
 }
 
 export interface ProjectVersion {
+  author: {
+    avatar_url: string | null;
+    display_name: string | null;
+    id: string;
+    username: string;
+  } | null;
   id: string;
   name: string;
   version_number: string;
   version_type: 'release' | 'beta' | 'alpha';
+  created_at: string;
   date_published: string;
   downloads: number;
+  featured: boolean;
   dependencies: VersionDependency[];
   changelog: string | null;
   game_versions: string[];
   loaders: string[];
   files: ProjectFile[];
+  requested_status: string | null;
+  sort_order: number;
+  status: string;
+  updated_at: string;
 }
 
 export interface VersionDependency {
@@ -153,6 +195,7 @@ export interface VersionDependency {
   id: string;
   targetProject: {
     id: string;
+    kind: ProjectKind;
     slug: string;
     title: string;
   } | null;
@@ -166,6 +209,7 @@ export interface ProjectMember {
   role: string;
   accepted: boolean;
   owner: boolean;
+  permissions: string[];
   sortOrder: number;
   user: {
     id: string;
@@ -192,6 +236,7 @@ export interface ProjectAnalyticsDay {
 
 export interface ProjectSummary {
   body: string;
+  color: string | null;
   id: string;
   slug: string;
   title: string;
@@ -204,6 +249,24 @@ export interface ProjectSummary {
   followers: number;
   gameVersions: string[];
   iconUrl: string | null;
+  owner?: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
+  organization?: {
+    color: string | null;
+    iconUrl: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  approvedAt: string | null;
+  archivedAt: string | null;
+  publishedAt: string | null;
+  queuedAt: string | null;
+  requestedStatus: string | null;
   issuesUrl: string | null;
   license: {
     id: string;
@@ -232,16 +295,23 @@ export interface ProjectSummary {
 
 export interface PlatformMetadataQueryData {
   platformMetadata: {
-    categories: {
-      slug: string;
-    }[];
+    categories: CategoryFilterTag[];
     gameVersions: string[];
     loaders: string[];
+    licenses: {
+      key: string;
+      name: string;
+      url: string | null;
+    }[];
   };
 }
 
 export interface ProjectsQueryData {
   projects: ProjectSummary[];
+}
+
+export interface ViewerFollowedProjectsQueryData {
+  viewerFollowedProjects: ProjectSummary[];
 }
 
 export interface ProjectsQueryVariables {
@@ -264,6 +334,15 @@ export interface PublicCollectionsQueryData {
   publicCollections: PublicCollectionSummary[];
 }
 
+export interface PublicCollectionBySlugQueryData {
+  publicCollectionBySlug: PublicCollectionSummary;
+}
+
+export interface PublicCollectionBySlugQueryVariables {
+  ownerUsername: string;
+  slug: string;
+}
+
 export interface PublicCollectionSummary {
   color: string | null;
   createdAt: string;
@@ -277,11 +356,24 @@ export interface PublicCollectionSummary {
     id: string;
     username: string;
   };
+  items: PublicCollectionItemSummary[];
   projectCount: number;
   projects: ProjectSummary[];
   slug: string;
   updatedAt: string;
   visibility: string;
+}
+
+export interface PublicCollectionItemSummary {
+  addedBy: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
+  createdAt: string;
+  project: ProjectSummary;
+  sortOrder: number;
 }
 
 export interface VersionsForProjectQueryData {
@@ -373,6 +465,7 @@ export interface CreateVersionReportMutationVariables {
 export interface ProjectMemberSummary {
   accepted: boolean;
   owner: boolean;
+  permissions: string[];
   role: string;
   sortOrder: number;
   user: {
@@ -384,11 +477,19 @@ export interface ProjectMemberSummary {
 }
 
 export interface VersionSummary {
+  author: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
   changelog: string | null;
   channel: 'RELEASE' | 'BETA' | 'ALPHA';
+  createdAt: string;
   datePublished: string | null;
   dependencies: VersionDependency[];
   downloads: number;
+  featured: boolean;
   files: {
     fileName: string;
     hashes: {
@@ -396,6 +497,7 @@ export interface VersionSummary {
       value: string;
     }[];
     id: string;
+    kind: 'UNIVERSAL' | 'CLIENT' | 'SERVER';
     primary: boolean;
     scans: {
       createdAt: string;
@@ -411,5 +513,9 @@ export interface VersionSummary {
   id: string;
   loaders: string[];
   name: string;
+  requestedStatus: string | null;
+  sortOrder: number;
+  status: string;
+  updatedAt: string;
   versionNumber: string;
 }

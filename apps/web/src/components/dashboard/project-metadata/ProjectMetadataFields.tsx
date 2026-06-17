@@ -8,6 +8,7 @@ import { DashboardTextarea } from './shared.tsx';
 
 export function ProjectMetadataFields({
   categories,
+  color,
   description,
   discordUrl,
   extraLinks,
@@ -17,8 +18,10 @@ export function ProjectMetadataFields({
   licenseKey,
   licenseName,
   licenseUrl,
+  licenses,
   loaders,
   onCategoriesChange,
+  onColorChange,
   onDescriptionChange,
   onDiscordUrlChange,
   onExtraLinksChange,
@@ -28,6 +31,7 @@ export function ProjectMetadataFields({
   onLicenseKeyChange,
   onLicenseNameChange,
   onLicenseUrlChange,
+  onLicenseSelect,
   onLoadersChange,
   onProjectChange,
   onSourceUrlChange,
@@ -49,9 +53,11 @@ export function ProjectMetadataFields({
         onProjectChange={onProjectChange}
       />
       <ProjectIdentityFields
+        color={color}
         iconUrl={iconUrl}
         summary={summary}
         title={title}
+        onColorChange={onColorChange}
         onIconUrlChange={onIconUrlChange}
         onSummaryChange={onSummaryChange}
         onTitleChange={onTitleChange}
@@ -84,9 +90,11 @@ export function ProjectMetadataFields({
         licenseKey={licenseKey}
         licenseName={licenseName}
         licenseUrl={licenseUrl}
+        licenses={licenses}
         onLicenseKeyChange={onLicenseKeyChange}
         onLicenseNameChange={onLicenseNameChange}
         onLicenseUrlChange={onLicenseUrlChange}
+        onLicenseSelect={onLicenseSelect}
       />
       <DashboardTextarea
         label="Extra links"

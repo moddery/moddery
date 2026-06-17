@@ -13,6 +13,7 @@ describe(ReportsService.name, () => {
           return Promise.resolve([
             {
               body: 'Suspicious upload',
+              closedAt: null,
               createdAt: new Date('2026-01-01T00:00:00.000Z'),
               id: 'report-a',
               project: {
@@ -30,6 +31,16 @@ describe(ReportsService.name, () => {
               state: 'OPEN',
               userTarget: null,
               userTargetId: null,
+              version: {
+                id: 'version-a',
+                name: 'Iris 1.0.0',
+                project: {
+                  id: 'project-a',
+                  slug: 'iris',
+                  title: 'Iris',
+                },
+                versionNumber: '1.0.0',
+              },
               versionId: null,
             },
           ]);
@@ -47,6 +58,7 @@ describe(ReportsService.name, () => {
     );
     expect(reports[0]?.project?.slug).toBe('iris');
     expect(reports[0]?.reporter.username).toBe('reporter');
+    expect(reports[0]?.version?.project.slug).toBe('iris');
   });
 
   test('updates report state and closes reports with a timestamp', async () => {
@@ -57,6 +69,7 @@ describe(ReportsService.name, () => {
           updates.push(query);
           return Promise.resolve({
             body: 'Resolved report',
+            closedAt: new Date('2026-01-02T00:00:00.000Z'),
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             id: 'report-a',
             project: null,
@@ -91,6 +104,7 @@ describe(ReportsService.name, () => {
       }),
     );
     expect(report.state).toBe('CLOSED');
+    expect(report.closedAt).toEqual(new Date('2026-01-02T00:00:00.000Z'));
   });
 
   test('creates project reports against existing projects', async () => {
@@ -104,6 +118,7 @@ describe(ReportsService.name, () => {
           creates.push(query);
           return Promise.resolve({
             body: 'Broken file',
+            closedAt: null,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             id: 'report-a',
             projectId: 'project-a',
@@ -143,6 +158,7 @@ describe(ReportsService.name, () => {
           creates.push(query);
           return Promise.resolve({
             body: 'Impersonating staff',
+            closedAt: null,
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             id: 'report-a',
             project: null,
@@ -200,6 +216,7 @@ describe(ReportsService.name, () => {
           return Promise.resolve({
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             id: 'thread-a',
+            members: [],
             messages: [],
             reportId: 'report-a',
             subject: 'Report report-a',
@@ -235,6 +252,17 @@ describe(ReportsService.name, () => {
           Promise.resolve({
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             id: 'thread-a',
+            members: [
+              {
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                lastReadAt: new Date('2026-01-01T00:05:00.000Z'),
+                user: {
+                  displayName: 'Moderator',
+                  id: 'user-a',
+                  username: 'moderator',
+                },
+              },
+            ],
             messages: [
               {
                 author: {
@@ -291,6 +319,7 @@ describe(ReportsService.name, () => {
       }),
     );
     expect(thread.messages[0]?.body).toBe('We are checking this.');
+    expect(thread.members[0]?.user.username).toBe('moderator');
   });
 
   test('creates project moderation notes', async () => {

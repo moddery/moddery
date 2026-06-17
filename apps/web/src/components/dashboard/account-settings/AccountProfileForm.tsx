@@ -18,6 +18,10 @@ export function AccountProfileForm({
   const [displayName, setDisplayName] = useState(dashboard.displayName ?? '');
   const [bio, setBio] = useState(dashboard.bio ?? '');
   const [avatarUrl, setAvatarUrl] = useState(dashboard.avatarUrl ?? '');
+  const [email, setEmail] = useState(dashboard.email ?? '');
+  const [newsletterOptIn, setNewsletterOptIn] = useState(
+    dashboard.newsletterOptIn,
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -25,7 +29,15 @@ export function AccountProfileForm({
     setDisplayName(dashboard.displayName ?? '');
     setBio(dashboard.bio ?? '');
     setAvatarUrl(dashboard.avatarUrl ?? '');
-  }, [dashboard.avatarUrl, dashboard.bio, dashboard.displayName]);
+    setEmail(dashboard.email ?? '');
+    setNewsletterOptIn(dashboard.newsletterOptIn);
+  }, [
+    dashboard.avatarUrl,
+    dashboard.bio,
+    dashboard.displayName,
+    dashboard.email,
+    dashboard.newsletterOptIn,
+  ]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,6 +48,8 @@ export function AccountProfileForm({
       avatarUrl,
       bio,
       displayName,
+      email,
+      newsletterOptIn,
     };
 
     try {
@@ -88,6 +102,39 @@ export function AccountProfileForm({
               onChange={setAvatarUrl}
               placeholder="https://..."
             />
+            <DashboardField
+              label="Email"
+              value={email}
+              onChange={setEmail}
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div className="grid gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
+            <label className="flex items-center gap-2 font-bold text-ink">
+              <input
+                type="checkbox"
+                checked={newsletterOptIn}
+                onChange={(event) => setNewsletterOptIn(event.target.checked)}
+                className="size-4 accent-accent"
+              />
+              Newsletter opt-in
+            </label>
+            <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted">
+              <span>
+                Email{' '}
+                {dashboard.emailVerifiedAt
+                  ? `verified ${new Date(
+                      dashboard.emailVerifiedAt,
+                    ).toLocaleDateString('en-US')}`
+                  : 'not verified'}
+              </span>
+              <span>·</span>
+              <span>
+                Two-factor authentication{' '}
+                {dashboard.twoFactorEnabled ? 'enabled' : 'disabled'}
+              </span>
+            </div>
           </div>
 
           <label className="block text-sm font-bold text-ink">

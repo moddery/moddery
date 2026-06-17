@@ -20,6 +20,18 @@ export class CollectionsResolver {
     return this.collectionsService.findPublicCollections();
   }
 
+  @Public()
+  @Query(() => CollectionSummary)
+  publicCollectionBySlug(
+    @Args('ownerUsername') ownerUsername: string,
+    @Args('slug') slug: string,
+  ) {
+    return this.collectionsService.findPublicCollectionBySlug(
+      ownerUsername,
+      slug,
+    );
+  }
+
   @Mutation(() => CollectionSummary)
   addProjectToCollection(
     @Args('input') input: AddProjectToCollectionInput,

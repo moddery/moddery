@@ -2,18 +2,23 @@ import { useState } from 'react';
 
 import {
   type DashboardProject,
+  type LicenseTaxonomy,
   type UpdateProjectInput,
 } from '../../../lib/dashboard.ts';
 import { parseProjectLinks, projectLinksText } from './projectLinks.ts';
 import { nullableText, splitList } from './shared.tsx';
 
-export function useProjectMetadataFormState(projects: DashboardProject[]) {
+export function useProjectMetadataFormState(
+  projects: DashboardProject[],
+  licenses: LicenseTaxonomy[],
+) {
   const [projectSlug, setProjectSlug] = useState(projects[0]?.slug ?? '');
   const selectedProject =
     projects.find((item) => item.slug === projectSlug) ?? projects[0];
   const [title, setTitle] = useState(selectedProject?.title ?? '');
   const [summary, setSummary] = useState(selectedProject?.summary ?? '');
   const [description, setDescription] = useState(selectedProject?.body ?? '');
+  const [color, setColor] = useState(selectedProject?.color ?? '');
   const [iconUrl, setIconUrl] = useState(selectedProject?.iconUrl ?? '');
   const [sourceUrl, setSourceUrl] = useState(selectedProject?.sourceUrl ?? '');
   const [issuesUrl, setIssuesUrl] = useState(selectedProject?.issuesUrl ?? '');
@@ -49,6 +54,7 @@ export function useProjectMetadataFormState(projects: DashboardProject[]) {
     setTitle(nextProject?.title ?? '');
     setSummary(nextProject?.summary ?? '');
     setDescription(nextProject?.body ?? '');
+    setColor(nextProject?.color ?? '');
     setIconUrl(nextProject?.iconUrl ?? '');
     setSourceUrl(nextProject?.sourceUrl ?? '');
     setIssuesUrl(nextProject?.issuesUrl ?? '');
@@ -63,8 +69,18 @@ export function useProjectMetadataFormState(projects: DashboardProject[]) {
     setCategories(nextProject?.categories.join(', ') ?? '');
   }
 
+  function selectLicense(key: string) {
+    const license = licenses.find((item) => item.key === key.trim());
+    if (!license) return;
+
+    setLicenseKey(license.key);
+    setLicenseName(license.name);
+    setLicenseUrl(license.url ?? '');
+  }
+
   const fields = {
     categories,
+    color,
     description,
     discordUrl,
     extraLinks,
@@ -74,6 +90,7 @@ export function useProjectMetadataFormState(projects: DashboardProject[]) {
     licenseKey,
     licenseName,
     licenseUrl,
+    licenses,
     loaders,
     projectSlug,
     projects,
@@ -82,6 +99,7 @@ export function useProjectMetadataFormState(projects: DashboardProject[]) {
     title,
     wikiUrl,
     onCategoriesChange: setCategories,
+    onColorChange: setColor,
     onDescriptionChange: setDescription,
     onDiscordUrlChange: setDiscordUrl,
     onExtraLinksChange: setExtraLinks,
@@ -91,6 +109,7 @@ export function useProjectMetadataFormState(projects: DashboardProject[]) {
     onLicenseKeyChange: setLicenseKey,
     onLicenseNameChange: setLicenseName,
     onLicenseUrlChange: setLicenseUrl,
+    onLicenseSelect: selectLicense,
     onLoadersChange: setLoaders,
     onProjectChange: selectProject,
     onSourceUrlChange: setSourceUrl,
@@ -102,6 +121,7 @@ export function useProjectMetadataFormState(projects: DashboardProject[]) {
   function buildInput(): UpdateProjectInput {
     return {
       categories: splitList(categories),
+      color: nullableText(color),
       description,
       discordUrl: nullableText(discordUrl),
       gameVersions: splitList(gameVersions),

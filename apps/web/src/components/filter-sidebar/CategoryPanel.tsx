@@ -25,7 +25,8 @@ export function CategoryPanel({
               key={o.value}
               checked={selected.has(o.value)}
               onToggle={() => onToggle(o.value)}
-              label={categoryLabel(o.value)}
+              description={o.description}
+              label={o.label ?? categoryLabel(o.value)}
               icon={<Icon className="size-4 text-accent-icon" />}
             />
           );

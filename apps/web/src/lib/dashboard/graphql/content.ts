@@ -5,7 +5,19 @@ export const CREATE_COLLECTION_MUTATION = gql`
     createCollection(input: $input) {
       color
       description
+      iconUrl
       id
+      items {
+        createdAt
+        project {
+          iconUrl
+          kind
+          slug
+          summary
+          title
+        }
+        sortOrder
+      }
       name
       projectCount
       slug
@@ -20,7 +32,19 @@ export const UPDATE_COLLECTION_MUTATION = gql`
     updateCollection(input: $input) {
       color
       description
+      iconUrl
       id
+      items {
+        createdAt
+        project {
+          iconUrl
+          kind
+          slug
+          summary
+          title
+        }
+        sortOrder
+      }
       name
       projectCount
       slug
@@ -35,8 +59,21 @@ export const CREATE_ORGANIZATION_MUTATION = gql`
     createOrganization(input: $input) {
       color
       description
+      iconUrl
       id
       memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
       name
       projectCount
       slug
@@ -50,8 +87,21 @@ export const UPDATE_ORGANIZATION_MUTATION = gql`
     updateOrganization(input: $input) {
       color
       description
+      iconUrl
       id
       memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
       name
       projectCount
       slug
@@ -65,8 +115,21 @@ export const ADD_PROJECT_TO_ORGANIZATION_MUTATION = gql`
     addProjectToOrganization(input: $input) {
       color
       description
+      iconUrl
       id
       memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
       name
       projectCount
       slug
@@ -82,8 +145,79 @@ export const REMOVE_PROJECT_FROM_ORGANIZATION_MUTATION = gql`
     removeProjectFromOrganization(input: $input) {
       color
       description
+      iconUrl
       id
       memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
+      name
+      projectCount
+      slug
+      updatedAt
+    }
+  }
+`;
+
+export const ADD_ORGANIZATION_TEAM_MEMBER_MUTATION = gql`
+  mutation AddOrganizationTeamMember($input: AddOrganizationTeamMemberInput!) {
+    addOrganizationTeamMember(input: $input) {
+      color
+      description
+      iconUrl
+      id
+      memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
+      name
+      projectCount
+      slug
+      updatedAt
+    }
+  }
+`;
+
+export const REMOVE_ORGANIZATION_TEAM_MEMBER_MUTATION = gql`
+  mutation RemoveOrganizationTeamMember(
+    $input: RemoveOrganizationTeamMemberInput!
+  ) {
+    removeOrganizationTeamMember(input: $input) {
+      color
+      description
+      iconUrl
+      id
+      memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
       name
       projectCount
       slug
@@ -98,10 +232,22 @@ export const ADD_PROJECT_TO_COLLECTION_MUTATION = gql`
       color
       description
       id
+      items {
+        createdAt
+        project {
+          iconUrl
+          kind
+          slug
+          summary
+          title
+        }
+        sortOrder
+      }
       name
       projectCount
       slug
       updatedAt
+      visibility
     }
   }
 `;
@@ -114,6 +260,17 @@ export const REMOVE_PROJECT_FROM_COLLECTION_MUTATION = gql`
       color
       description
       id
+      items {
+        createdAt
+        project {
+          iconUrl
+          kind
+          slug
+          summary
+          title
+        }
+        sortOrder
+      }
       name
       projectCount
       slug

@@ -20,6 +20,16 @@ export const GAME_VERSION_TAXONOMY_QUERY = gql`
   }
 `;
 
+export const LICENSE_TAXONOMY_QUERY = gql`
+  query LicenseTaxonomy {
+    licenses {
+      key
+      name
+      url
+    }
+  }
+`;
+
 export const UPSERT_CATEGORY_MUTATION = gql`
   mutation UpsertCategory($input: UpsertCategoryInput!) {
     upsertCategory(input: $input) {
@@ -36,6 +46,16 @@ export const UPSERT_GAME_VERSION_MUTATION = gql`
     upsertGameVersion(input: $input) {
       isActive
       version
+    }
+  }
+`;
+
+export const UPSERT_LICENSE_MUTATION = gql`
+  mutation UpsertLicense($input: UpsertLicenseInput!) {
+    upsertLicense(input: $input) {
+      key
+      name
+      url
     }
   }
 `;

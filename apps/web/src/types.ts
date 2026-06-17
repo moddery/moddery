@@ -12,6 +12,14 @@ export interface Mod {
   slug: string;
   title: string;
   author: string;
+  authorUsername?: string | null;
+  organization?: {
+    color: string | null;
+    iconUrl: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
   description: string;
   icon: string | null;
   downloads: number;
@@ -22,7 +30,7 @@ export interface Mod {
   gameVersions: string[];
   client: Side;
   server: Side;
-  color: string;
+  color: string | null;
 }
 
 export type Environment = 'client' | 'server' | 'both';

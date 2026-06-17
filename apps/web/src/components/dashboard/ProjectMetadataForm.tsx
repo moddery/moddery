@@ -1,6 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 
-import { updateProject, type DashboardProject } from '../../lib/dashboard.ts';
+import {
+  fetchLicenseTaxonomy,
+  updateProject,
+  type DashboardProject,
+} from '../../lib/dashboard.ts';
 import { ProjectMetadataFields } from './project-metadata/ProjectMetadataFields.tsx';
 import { useProjectMetadataFormState } from './project-metadata/useProjectMetadataFormState.ts';
 
@@ -11,7 +16,14 @@ export function ProjectMetadataForm({
   onUpdated: () => Promise<void>;
   projects: DashboardProject[];
 }) {
-  const metadataForm = useProjectMetadataFormState(projects);
+  const licensesQuery = useQuery({
+    queryFn: ({ signal }) => fetchLicenseTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-licenses'],
+  });
+  const metadataForm = useProjectMetadataFormState(
+    projects,
+    licensesQuery.data ?? [],
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updated, setUpdated] = useState<string | null>(null);

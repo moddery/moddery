@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../decorators/current-user.decorator.js';
 import { CreateApiTokenInput } from '../dto/create-api-token.input.js';
@@ -24,8 +24,8 @@ export class AuthResolver {
 
   @Public()
   @Mutation(() => AuthPayload)
-  login(@Args('input') input: LoginInput) {
-    return this.authService.login(input);
+  login(@Args('input') input: LoginInput, @Context('req') request: GqlRequest) {
+    return this.authService.login(input, requestMetadata(request));
   }
 
   @Query(() => AuthUser)
@@ -43,8 +43,11 @@ export class AuthResolver {
 
   @Public()
   @Mutation(() => AuthPayload)
-  register(@Args('input') input: RegisterInput) {
-    return this.authService.register(input);
+  register(
+    @Args('input') input: RegisterInput,
+    @Context('req') request: GqlRequest,
+  ) {
+    return this.authService.register(input, requestMetadata(request));
   }
 
   @Query(() => [ApiTokenSummary])
@@ -91,4 +94,38 @@ export class AuthResolver {
       userId: user.id,
     });
   }
+}
+
+interface GqlRequest {
+  readonly headers?: Record<string, string | string[] | undefined>;
+  readonly ip?: string;
+  readonly socket?: {
+    readonly remoteAddress?: string;
+  };
+}
+
+function requestMetadata(request: GqlRequest) {
+  return {
+    ipAddress: firstPresent(
+      firstHeader(request.headers?.['x-forwarded-for'])?.split(',')[0],
+      request.ip,
+      request.socket?.remoteAddress,
+    ),
+    userAgent: firstHeader(request.headers?.['user-agent']) ?? null,
+  };
+}
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function firstPresent(...values: (string | undefined)[]): string | null {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed !== undefined && trimmed.length > 0) {
+      return trimmed;
+    }
+  }
+
+  return null;
 }

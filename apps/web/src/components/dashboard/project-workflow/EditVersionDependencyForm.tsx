@@ -58,8 +58,8 @@ export function EditVersionDependencyForm({
           Edit version dependency
         </h2>
         <p className="text-sm leading-6 text-muted">
-          Replace the dependency list for a version with a project, version, or
-          external file dependency.
+          Replace the dependency list for a version with project, version, or
+          external file dependencies.
         </p>
       </div>
 

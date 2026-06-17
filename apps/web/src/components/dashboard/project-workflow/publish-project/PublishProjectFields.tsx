@@ -6,10 +6,12 @@ export function PublishProjectFields(props: PublishProjectFieldsProps) {
   return (
     <>
       <PublishProjectIdentityFields
+        color={props.color}
         description={props.description}
         slug={props.slug}
         summary={props.summary}
         title={props.title}
+        onColorChange={props.onColorChange}
         onDescriptionChange={props.onDescriptionChange}
         onSlugChange={props.onSlugChange}
         onSummaryChange={props.onSummaryChange}

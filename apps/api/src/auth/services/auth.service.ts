@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { compare, hash } from 'bcryptjs';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type LoginInput } from '../dto/login.input.js';
@@ -21,7 +21,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async login(input: LoginInput) {
+  async login(input: LoginInput, metadata: AuthRequestMetadata = {}) {
     const identifier = input.identifier.trim();
     const user = await this.prisma.user.findFirst({
       include: { passwordCredential: true },
@@ -49,14 +49,17 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return this.createAuthPayload({
-      id: user.id,
-      role: user.role,
-      username: user.username,
-    });
+    return this.createAuthPayload(
+      {
+        id: user.id,
+        role: user.role,
+        username: user.username,
+      },
+      metadata,
+    );
   }
 
-  async register(input: RegisterInput) {
+  async register(input: RegisterInput, metadata: AuthRequestMetadata = {}) {
     const username = input.username.trim();
     const email = input.email.trim().toLowerCase();
     const existing = await this.prisma.user.findFirst({
@@ -84,21 +87,29 @@ export class AuthService {
       },
     });
 
-    return this.createAuthPayload({
-      id: user.id,
-      role: user.role,
-      username: user.username,
-    });
+    return this.createAuthPayload(
+      {
+        id: user.id,
+        role: user.role,
+        username: user.username,
+      },
+      metadata,
+    );
   }
 
-  private async createAuthPayload(user: AuthenticatedUser) {
+  private async createAuthPayload(
+    user: AuthenticatedUser,
+    metadata: AuthRequestMetadata,
+  ) {
     const expiresAt = new Date(
       Date.now() + this.authTokenService.accessTokenTtlSeconds() * 1000,
     );
     const session = await this.prisma.session.create({
       data: {
         expiresAt,
+        ipHash: metadata.ipAddress ? hashIpAddress(metadata.ipAddress) : null,
         tokenHash: `pending:${randomUUID()}`,
+        userAgent: metadata.userAgent ?? null,
         userId: user.id,
       },
       select: { id: true },
@@ -157,6 +168,15 @@ export class AuthService {
       where: { id: sessionId },
     });
   }
+}
+
+export interface AuthRequestMetadata {
+  readonly ipAddress?: string | null;
+  readonly userAgent?: string | null;
+}
+
+function hashIpAddress(ipAddress: string): string {
+  return createHash('sha256').update(ipAddress).digest('hex');
 }
 
 function sessionSelect() {

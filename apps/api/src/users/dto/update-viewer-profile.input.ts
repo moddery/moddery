@@ -1,5 +1,11 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 @InputType()
 export class UpdateViewerProfileInput {
@@ -20,4 +26,14 @@ export class UpdateViewerProfileInput {
   @IsString()
   @MaxLength(80)
   displayName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @IsEmail()
+  email?: string | null;
+
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  newsletterOptIn?: boolean | null;
 }

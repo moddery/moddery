@@ -43,6 +43,15 @@ export class CatalogResolver {
   }
 
   @Query(() => [ProjectSummary])
+  async viewerFollowedProjects(@CurrentUser() user: AuthenticatedUser) {
+    const projects = await this.catalogService.findViewerFollowedProjects(
+      user.id,
+    );
+
+    return projects.map(projectToGraphql);
+  }
+
+  @Query(() => [ProjectSummary])
   async moderationProjects(@CurrentUser() user: AuthenticatedUser) {
     assertCanModerate(user);
     const projects = await this.catalogService.findProjectsForModeration();

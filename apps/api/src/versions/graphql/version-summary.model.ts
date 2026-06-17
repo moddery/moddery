@@ -1,9 +1,27 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
+export class VersionAuthorSummary {
+  @Field(() => String, { nullable: true })
+  avatarUrl!: string | null;
+
+  @Field(() => String, { nullable: true })
+  displayName!: string | null;
+
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  username!: string;
+}
+
+@ObjectType()
 export class VersionDependencyProjectSummary {
   @Field(() => String)
   id!: string;
+
+  @Field(() => String)
+  kind!: string;
 
   @Field(() => String)
   slug!: string;
@@ -77,6 +95,9 @@ export class VersionFileSummary {
   @Field(() => String)
   id!: string;
 
+  @Field(() => String)
+  kind!: string;
+
   @Field(() => Boolean)
   primary!: boolean;
 
@@ -92,11 +113,17 @@ export class VersionFileSummary {
 
 @ObjectType()
 export class VersionSummary {
+  @Field(() => VersionAuthorSummary, { nullable: true })
+  author!: VersionAuthorSummary | null;
+
   @Field(() => String, { nullable: true })
   changelog!: string | null;
 
   @Field(() => String)
   channel!: string;
+
+  @Field(() => Date)
+  createdAt!: Date;
 
   @Field(() => Date, { nullable: true })
   datePublished!: Date | null;
@@ -109,6 +136,9 @@ export class VersionSummary {
 
   @Field(() => [VersionFileSummary])
   files!: VersionFileSummary[];
+
+  @Field(() => Boolean)
+  featured!: boolean;
 
   @Field(() => [String])
   gameVersions!: string[];
@@ -125,8 +155,17 @@ export class VersionSummary {
   @Field(() => String)
   projectSlug!: string;
 
+  @Field(() => String, { nullable: true })
+  requestedStatus!: string | null;
+
+  @Field(() => Int)
+  sortOrder!: number;
+
   @Field(() => String)
   status!: string;
+
+  @Field(() => Date)
+  updatedAt!: Date;
 
   @Field(() => String)
   versionNumber!: string;

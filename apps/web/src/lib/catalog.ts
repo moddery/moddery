@@ -1,7 +1,7 @@
 import { type ReportReason } from '@moddery/shared';
 
 import { apolloClient, authTokenStorageKey } from '../apollo.js';
-import { type ProjectType } from '../types.js';
+import { type Mod, type ProjectType } from '../types.js';
 import {
   collectionFromSummary,
   memberFromSummary,
@@ -11,6 +11,7 @@ import {
   sortByName,
   versionFromSummary,
 } from './catalog/mappers.js';
+import { projectKindFromType } from './projectTypes.js';
 import {
   CREATE_PROJECT_REPORT_MUTATION,
   CREATE_VERSION_REPORT_MUTATION,
@@ -20,11 +21,13 @@ import {
   PROJECT_ANALYTICS_QUERY,
   PROJECT_BY_SLUG_QUERY,
   PROJECT_MEMBERS_QUERY,
+  PUBLIC_COLLECTION_BY_SLUG_QUERY,
   PUBLIC_COLLECTIONS_QUERY,
   RECORD_DOWNLOAD_MUTATION,
   RECORD_PROJECT_VIEW_MUTATION,
   UNFOLLOW_PROJECT_MUTATION,
   VERSIONS_FOR_PROJECT_QUERY,
+  VIEWER_FOLLOWED_PROJECTS_QUERY,
   VIEWER_PROJECT_FOLLOW_STATE_QUERY,
 } from './catalog/queries.js';
 import {
@@ -50,6 +53,8 @@ import {
   type ProjectsQueryVariables,
   type ProjectVersion,
   type PublicCollection,
+  type PublicCollectionBySlugQueryData,
+  type PublicCollectionBySlugQueryVariables,
   type PublicCollectionsQueryData,
   type RecordDownloadMutationData,
   type RecordDownloadMutationVariables,
@@ -61,9 +66,11 @@ import {
   type SortKey,
   type VersionsForProjectQueryData,
   type VersionsForProjectQueryVariables,
+  type ViewerFollowedProjectsQueryData,
 } from './catalog/types.js';
 
 export type {
+  CategoryFilterTag,
   FilterTags,
   ProjectAnalytics,
   ProjectAnalyticsDay,
@@ -74,6 +81,7 @@ export type {
   ProjectMember,
   ProjectVersion,
   PublicCollection,
+  PublicCollectionItem,
   ReportSummary,
   SearchProjectsParams,
   SearchProjectsResult,
@@ -130,7 +138,6 @@ export async function fetchFilterTags(
   projectType: ProjectType,
   signal?: AbortSignal,
 ): Promise<FilterTags> {
-  void projectType;
   throwIfAborted(signal);
 
   const { data } = await apolloClient.query<PlatformMetadataQueryData>({
@@ -140,9 +147,12 @@ export async function fetchFilterTags(
 
   throwIfAborted(signal);
 
+  const projectKind = projectKindFromType(projectType);
+
   return {
-    categories: data.platformMetadata.categories.map(
-      (category) => category.slug,
+    categories: data.platformMetadata.categories.filter(
+      (category) =>
+        category.projectKind === null || category.projectKind === projectKind,
     ),
     loaders: data.platformMetadata.loaders,
     versions: data.platformMetadata.gameVersions,
@@ -162,6 +172,44 @@ export async function fetchPublicCollections(
   throwIfAborted(signal);
 
   return data.publicCollections.map(collectionFromSummary);
+}
+
+export async function fetchPublicCollectionBySlug(
+  ownerUsername: string,
+  slug: string,
+  signal?: AbortSignal,
+): Promise<PublicCollection> {
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<
+    PublicCollectionBySlugQueryData,
+    PublicCollectionBySlugQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: PUBLIC_COLLECTION_BY_SLUG_QUERY,
+    variables: { ownerUsername, slug },
+  });
+
+  throwIfAborted(signal);
+
+  return collectionFromSummary(data.publicCollectionBySlug);
+}
+
+export async function fetchViewerFollowedProjects(
+  signal?: AbortSignal,
+): Promise<Mod[]> {
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<ViewerFollowedProjectsQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_FOLLOWED_PROJECTS_QUERY,
+  });
+
+  throwIfAborted(signal);
+
+  return data.viewerFollowedProjects.map(projectFromSummary);
 }
 
 export async function fetchProjectDetails(

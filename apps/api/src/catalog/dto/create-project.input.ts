@@ -6,6 +6,9 @@ export class CreateProjectInput {
   @Field(() => [String], { nullable: true })
   categories?: string[];
 
+  @Field(() => String, { nullable: true })
+  color?: string | null;
+
   @Field(() => String)
   description!: string;
 

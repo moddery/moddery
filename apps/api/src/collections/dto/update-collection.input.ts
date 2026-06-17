@@ -13,6 +13,9 @@ export class UpdateCollectionInput {
   description?: string | null;
 
   @Field(() => String, { nullable: true })
+  iconUrl?: string | null;
+
+  @Field(() => String, { nullable: true })
   name?: string | null;
 
   @Field(() => String, { nullable: true })

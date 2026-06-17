@@ -23,6 +23,12 @@ export class UserProfile {
   @Field(() => String, { nullable: true })
   displayName!: string | null;
 
+  @Field(() => String, { nullable: true })
+  email!: string | null;
+
+  @Field(() => Date, { nullable: true })
+  emailVerifiedAt!: Date | null;
+
   @Field(() => String)
   id!: string;
 
@@ -35,6 +41,9 @@ export class UserProfile {
   @Field(() => String)
   status!: string;
 
+  @Field(() => Boolean)
+  newsletterOptIn!: boolean;
+
   @Field(() => Int)
   followedProjectCount!: number;
 
@@ -46,4 +55,7 @@ export class UserProfile {
 
   @Field(() => String)
   username!: string;
+
+  @Field(() => Boolean)
+  twoFactorEnabled!: boolean;
 }

@@ -11,6 +11,9 @@ import { type UpdateUserAccountInput } from '../dto/update-user-account.input.js
 import { type UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
 
 interface UserProjectRow {
+  approvedAt: Date | null;
+  archivedAt: Date | null;
+  color: string | null;
   categories: { category: { slug: string } }[];
   description: string;
   discordUrl: string | null;
@@ -33,6 +36,26 @@ interface UserProjectRow {
   license: { key: string; name: string; url: string | null } | null;
   links: { kind: string; label: string | null; url: string }[];
   loaders: { loader: string }[];
+  organization: {
+    color: string | null;
+    iconUrl: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  publishedAt: Date | null;
+  queuedAt: Date | null;
+  requestedStatus: ProjectStatus | null;
+  team: {
+    members: {
+      user: {
+        avatarUrl: string | null;
+        displayName: string | null;
+        id: string;
+        username: string;
+      };
+    }[];
+  };
   slug: string;
   sourceUrl: string | null;
   status: ProjectStatus;
@@ -60,14 +83,27 @@ interface UserProfileRow {
     iconUrl: string | null;
     id: string;
     name: string;
-    projects: { project: UserProjectRow }[];
+    projects: {
+      addedBy: {
+        avatarUrl: string | null;
+        displayName: string | null;
+        id: string;
+        username: string;
+      } | null;
+      createdAt: Date;
+      project: UserProjectRow;
+      sortOrder: number;
+    }[];
     slug: string;
     updatedAt: Date;
     visibility: string;
   }[];
   createdAt: Date;
   displayName: string | null;
+  email: string | null;
+  emailVerifiedAt: Date | null;
   id: string;
+  newsletterOptIn: boolean;
   role: string;
   status: string;
   teamMemberships: {
@@ -75,6 +111,7 @@ interface UserProfileRow {
       project: UserProjectRow | null;
     };
   }[];
+  twoFactorEnabled: boolean;
   username: string;
 }
 
@@ -84,20 +121,30 @@ export class UsersService {
 
   async findById(id: string) {
     const user = await this.prisma.user.findUnique({
-      select: userProfileSelect({ includePrivateCollections: true }),
+      select: userProfileSelect({
+        includePrivateAccountFields: true,
+        includePrivateCollections: true,
+      }),
       where: { id },
     });
 
-    return user === null ? null : userProfileRowToContract(user);
+    return user === null
+      ? null
+      : userProfileRowToContract(user, { includePrivateAccountFields: true });
   }
 
   async findByUsername(username: string) {
     const user = await this.prisma.user.findFirst({
-      select: userProfileSelect({ includePrivateCollections: false }),
+      select: userProfileSelect({
+        includePrivateAccountFields: false,
+        includePrivateCollections: false,
+      }),
       where: { username: { equals: username, mode: 'insensitive' } },
     });
 
-    return user === null ? null : userProfileRowToContract(user);
+    return user === null
+      ? null
+      : userProfileRowToContract(user, { includePrivateAccountFields: false });
   }
 
   async updateViewerProfile(id: string, input: UpdateViewerProfileInput) {
@@ -112,6 +159,9 @@ export class UsersService {
           input.displayName === undefined
             ? undefined
             : nullableTrim(input.displayName),
+        email:
+          input.email === undefined ? undefined : nullableTrim(input.email),
+        newsletterOptIn: input.newsletterOptIn ?? undefined,
       },
       where: { id },
     });
@@ -122,11 +172,16 @@ export class UsersService {
   async findAdminUsers() {
     const users = await this.prisma.user.findMany({
       orderBy: [{ createdAt: 'desc' }],
-      select: userProfileSelect({ includePrivateCollections: true }),
+      select: userProfileSelect({
+        includePrivateAccountFields: true,
+        includePrivateCollections: true,
+      }),
       take: 50,
     });
 
-    return users.map(userProfileRowToContract);
+    return users.map((user) =>
+      userProfileRowToContract(user, { includePrivateAccountFields: true }),
+    );
   }
 
   async updateUserAccount(input: UpdateUserAccountInput, actorId: string) {
@@ -173,8 +228,10 @@ function nullableTrim(value: string | null | undefined): string | null {
 }
 
 function userProfileSelect({
+  includePrivateAccountFields,
   includePrivateCollections,
 }: {
+  includePrivateAccountFields: boolean;
   includePrivateCollections: boolean;
 }) {
   const collectionVisibilityFilter = includePrivateCollections
@@ -218,9 +275,19 @@ function userProfileSelect({
             { createdAt: 'desc' as const },
           ],
           select: {
+            addedBy: {
+              select: {
+                avatarUrl: true,
+                displayName: true,
+                id: true,
+                username: true,
+              },
+            },
+            createdAt: true,
             project: {
               select: projectSelect(),
             },
+            sortOrder: true,
           },
           take: 4,
         },
@@ -233,7 +300,10 @@ function userProfileSelect({
     },
     createdAt: true,
     displayName: true,
+    email: includePrivateAccountFields,
+    emailVerifiedAt: includePrivateAccountFields,
     id: true,
+    newsletterOptIn: includePrivateAccountFields,
     role: true,
     status: true,
     teamMemberships: {
@@ -253,12 +323,16 @@ function userProfileSelect({
         team: { project: { is: { status: 'APPROVED' as const } } },
       },
     },
+    twoFactorEnabled: includePrivateAccountFields,
     username: true,
   };
 }
 
 function projectSelect() {
   return {
+    approvedAt: true,
+    archivedAt: true,
+    color: true,
     categories: {
       select: {
         category: {
@@ -310,6 +384,40 @@ function projectSelect() {
     loaders: {
       select: { loader: true },
     },
+    organization: {
+      select: {
+        color: true,
+        iconUrl: true,
+        id: true,
+        name: true,
+        slug: true,
+      },
+    },
+    publishedAt: true,
+    queuedAt: true,
+    requestedStatus: true,
+    team: {
+      select: {
+        members: {
+          orderBy: [
+            { isOwner: 'desc' as const },
+            { sortOrder: 'asc' as const },
+          ],
+          select: {
+            user: {
+              select: {
+                avatarUrl: true,
+                displayName: true,
+                id: true,
+                username: true,
+              },
+            },
+          },
+          take: 1,
+          where: { acceptedAt: { not: null } },
+        },
+      },
+    },
     slug: true,
     sourceUrl: true,
     status: true,
@@ -320,17 +428,29 @@ function projectSelect() {
   };
 }
 
-function userProfileRowToContract(user: UserProfileRow) {
-  return {
-    avatarUrl: user.avatarUrl,
-    bio: user.bio,
-    collectionCount: user._count.collections,
-    collections: user.collections.map((collection) => ({
+function userProfileRowToContract(
+  user: UserProfileRow,
+  {
+    includePrivateAccountFields,
+  }: {
+    includePrivateAccountFields: boolean;
+  },
+) {
+  const collections = user.collections.map((collection) => {
+    const items = collection.projects.map((item) => ({
+      addedBy: item.addedBy,
+      createdAt: item.createdAt,
+      project: projectRowToContract(item.project),
+      sortOrder: item.sortOrder,
+    }));
+
+    return {
       color: collection.color,
       createdAt: collection.createdAt,
       description: collection.description,
       iconUrl: collection.iconUrl,
       id: collection.id,
+      items,
       name: collection.name,
       owner: {
         avatarUrl: user.avatarUrl,
@@ -339,23 +459,34 @@ function userProfileRowToContract(user: UserProfileRow) {
         username: user.username,
       },
       projectCount: collection._count.projects,
-      projects: collection.projects.map(({ project }) =>
-        projectRowToContract(project),
-      ),
+      projects: items.map((item) => item.project),
       slug: collection.slug,
       updatedAt: collection.updatedAt,
       visibility: collection.visibility,
-    })),
+    };
+  });
+
+  return {
+    avatarUrl: user.avatarUrl,
+    bio: user.bio,
+    collectionCount: user._count.collections,
+    collections,
     createdAt: user.createdAt,
     displayName: user.displayName,
+    email: includePrivateAccountFields ? user.email : null,
+    emailVerifiedAt: includePrivateAccountFields ? user.emailVerifiedAt : null,
     followedProjectCount: user._count.projectFollows,
     id: user.id,
+    newsletterOptIn: includePrivateAccountFields ? user.newsletterOptIn : false,
     projectCount: user._count.teamMemberships,
     projects: user.teamMemberships.flatMap(({ team }) =>
       team.project === null ? [] : [projectRowToContract(team.project)],
     ),
     role: user.role,
     status: user.status,
+    twoFactorEnabled: includePrivateAccountFields
+      ? user.twoFactorEnabled
+      : false,
     username: user.username,
   };
 }
@@ -384,8 +515,11 @@ function accountStatus(
 
 function projectRowToContract(project: UserProjectRow) {
   return {
+    approvedAt: project.approvedAt,
+    archivedAt: project.archivedAt,
     body: project.description,
     categories: project.categories.map(({ category }) => category.slug),
+    color: project.color,
     discordUrl: project.discordUrl,
     downloads: project.downloads,
     followers: project.followers,
@@ -407,6 +541,11 @@ function projectRowToContract(project: UserProjectRow) {
     },
     links: project.links,
     loaders: project.loaders.map(({ loader }) => loader),
+    organization: project.organization,
+    owner: project.team.members[0]?.user ?? null,
+    publishedAt: project.publishedAt,
+    queuedAt: project.queuedAt,
+    requestedStatus: project.requestedStatus,
     slug: project.slug,
     sourceUrl: project.sourceUrl,
     status: project.status,

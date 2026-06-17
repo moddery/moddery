@@ -2,6 +2,7 @@ import {
   dashboardProjectToMod,
   type DashboardProject,
 } from '../../../../lib/dashboard.ts';
+import { timeAgo } from '../../../../lib/format.ts';
 import { type Mod } from '../../../../types.ts';
 import { ReportActionButton } from '../shared.tsx';
 
@@ -45,6 +46,7 @@ export function ProjectModerationRow({
           </span>
         ))}
       </div>
+      <ProjectLifecycle project={project} />
       <ProjectModerationActions
         busy={busy}
         project={project}
@@ -52,6 +54,43 @@ export function ProjectModerationRow({
       />
     </article>
   );
+}
+
+function ProjectLifecycle({ project }: { project: DashboardProject }) {
+  const rows = [
+    { label: 'Queued', value: project.queuedAt },
+    { label: 'Requested', value: project.requestedStatus },
+    { label: 'Published', value: project.publishedAt },
+    { label: 'Approved', value: project.approvedAt },
+    { label: 'Archived', value: project.archivedAt },
+  ].filter((row) => row.value !== null && row.value !== undefined);
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+      {rows.map((row) => (
+        <div key={row.label} className="rounded-md bg-control px-2 py-1.5">
+          <dt className="font-bold uppercase text-faint">{row.label}</dt>
+          <dd className="mt-0.5 font-semibold text-muted">
+            {formatLifecycleValue(row.value)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function formatLifecycleValue(value: string | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return /^\d{4}-\d{2}-\d{2}T/.test(value)
+    ? timeAgo(value)
+    : value.replaceAll('_', ' ');
 }
 
 function ProjectModerationActions({

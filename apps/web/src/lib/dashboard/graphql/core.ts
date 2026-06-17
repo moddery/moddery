@@ -1,6 +1,9 @@
 import { gql } from '@apollo/client';
+import { DASHBOARD_PROJECT_FIELDS } from './fragments.js';
 
 export const DASHBOARD_QUERY = gql`
+  ${DASHBOARD_PROJECT_FIELDS}
+
   query Dashboard {
     viewer {
       avatarUrl
@@ -9,7 +12,19 @@ export const DASHBOARD_QUERY = gql`
       collections {
         color
         description
+        iconUrl
         id
+        items {
+          createdAt
+          project {
+            iconUrl
+            kind
+            slug
+            summary
+            title
+          }
+          sortOrder
+        }
         name
         projectCount
         slug
@@ -17,62 +32,43 @@ export const DASHBOARD_QUERY = gql`
         visibility
       }
       displayName
+      email
+      emailVerifiedAt
       followedProjectCount
       id
       isAdmin
+      newsletterOptIn
       projectCount
       projects {
-        body
-        categories
-        discordUrl
-        downloads
-        followers
-        gallery {
-          createdAt
-          description
-          displayUrl
-          featured
-          rawUrl
-          sortOrder
-          title
-        }
-        gameVersions
-        iconUrl
-        issuesUrl
-        kind
-        license {
-          id
-          name
-          url
-        }
-        links {
-          kind
-          label
-          url
-        }
-        loaders
-        slug
-        sourceUrl
-        status
-        summary
-        title
-        updatedAt
-        wikiUrl
+        ...DashboardProjectFields
       }
       role
       status
+      twoFactorEnabled
       username
     }
     viewerOrganizations {
       color
       description
+      iconUrl
       id
       memberCount
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
       name
       projectCount
       slug
       updatedAt
-      visibility
     }
   }
 `;

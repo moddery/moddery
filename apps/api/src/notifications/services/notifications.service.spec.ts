@@ -4,6 +4,54 @@ import { type PrismaService } from '../../prisma/prisma.service.js';
 import { NotificationsService } from './notifications.service.js';
 
 describe(NotificationsService.name, () => {
+  test('loads viewer notifications with delivery state', async () => {
+    const queries: unknown[] = [];
+    const service = new NotificationsService({
+      notification: {
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            {
+              actionUrl: '/dashboard',
+              body: 'Ready for review',
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              deliveries: [
+                {
+                  attempts: 1,
+                  channel: 'EMAIL',
+                  id: 'delivery-a',
+                  lastError: null,
+                  scheduledAt: new Date('2026-01-01T00:00:00.000Z'),
+                  sentAt: new Date('2026-01-01T00:01:00.000Z'),
+                  state: 'SENT',
+                },
+              ],
+              id: 'notification-a',
+              readAt: null,
+              state: 'PENDING',
+              title: 'Project update',
+              type: 'project',
+            },
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const notifications = await service.findViewerNotifications('user-a');
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          deliveries: expect.objectContaining({
+            take: 5,
+          }),
+        }),
+        where: { userId: 'user-a' },
+      }),
+    );
+    expect(notifications[0]?.deliveries[0]?.channel).toBe('EMAIL');
+  });
+
   test('marks viewer notifications as read by id and user', async () => {
     const updates: unknown[] = [];
     const service = new NotificationsService({
@@ -31,6 +79,31 @@ describe(NotificationsService.name, () => {
       }),
     );
     expect(result.state).toBe('READ');
+  });
+
+  test('marks all unread viewer notifications as read', async () => {
+    const updates: unknown[] = [];
+    const service = new NotificationsService({
+      notification: {
+        updateMany: (query: unknown) => {
+          updates.push(query);
+          return Promise.resolve({ count: 3 });
+        },
+      },
+    } as unknown as PrismaService);
+
+    const count = await service.markAllRead('user-a');
+
+    expect(updates[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({ state: 'READ' }),
+        where: {
+          readAt: null,
+          userId: 'user-a',
+        },
+      }),
+    );
+    expect(count).toBe(3);
   });
 
   test('loads saved notification preferences with defaults', async () => {

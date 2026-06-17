@@ -31,8 +31,11 @@ export const UPDATE_USER_ACCOUNT_MUTATION = gql`
 export const MODERATION_PROJECTS_QUERY = gql`
   query ModerationProjects {
     moderationProjects {
+      approvedAt
+      archivedAt
       body
       categories
+      color
       discordUrl
       downloads
       followers
@@ -60,6 +63,22 @@ export const MODERATION_PROJECTS_QUERY = gql`
         url
       }
       loaders
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      organization {
+        color
+        iconUrl
+        id
+        name
+        slug
+      }
+      publishedAt
+      queuedAt
+      requestedStatus
       slug
       sourceUrl
       status
@@ -74,8 +93,11 @@ export const MODERATION_PROJECTS_QUERY = gql`
 export const MODERATE_PROJECT_MUTATION = gql`
   mutation ModerateProject($input: ModerateProjectInput!) {
     moderateProject(input: $input) {
+      approvedAt
+      archivedAt
       body
       categories
+      color
       discordUrl
       downloads
       followers
@@ -103,6 +125,22 @@ export const MODERATE_PROJECT_MUTATION = gql`
         url
       }
       loaders
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      organization {
+        color
+        iconUrl
+        id
+        name
+        slug
+      }
+      publishedAt
+      queuedAt
+      requestedStatus
       slug
       sourceUrl
       status
@@ -118,6 +156,7 @@ export const MODERATION_REPORTS_QUERY = gql`
   query ModerationReports {
     moderationReports {
       body
+      closedAt
       createdAt
       id
       project {
@@ -139,6 +178,16 @@ export const MODERATION_REPORTS_QUERY = gql`
         username
       }
       userTargetId
+      version {
+        id
+        name
+        project {
+          id
+          slug
+          title
+        }
+        versionNumber
+      }
       versionId
     }
   }
@@ -148,6 +197,7 @@ export const UPDATE_REPORT_STATE_MUTATION = gql`
   mutation UpdateReportState($input: UpdateReportStateInput!) {
     updateReportState(input: $input) {
       body
+      closedAt
       createdAt
       id
       project {
@@ -169,6 +219,16 @@ export const UPDATE_REPORT_STATE_MUTATION = gql`
         username
       }
       userTargetId
+      version {
+        id
+        name
+        project {
+          id
+          slug
+          title
+        }
+        versionNumber
+      }
       versionId
     }
   }
@@ -179,6 +239,15 @@ export const REPORT_THREAD_QUERY = gql`
     reportThread(reportId: $reportId) {
       createdAt
       id
+      members {
+        createdAt
+        lastReadAt
+        user {
+          displayName
+          id
+          username
+        }
+      }
       messages {
         author {
           displayName
@@ -201,6 +270,15 @@ export const CREATE_REPORT_THREAD_MESSAGE_MUTATION = gql`
     createReportThreadMessage(input: $input) {
       createdAt
       id
+      members {
+        createdAt
+        lastReadAt
+        user {
+          displayName
+          id
+          username
+        }
+      }
       messages {
         author {
           displayName

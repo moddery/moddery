@@ -1,10 +1,12 @@
 import { useAppShellState } from './app/useAppShellState.ts';
 import { AuthControls } from './components/AuthControls.tsx';
+import { CollectionDetailPage } from './components/CollectionDetailPage.tsx';
 import { CollectionsPage } from './components/CollectionsPage.tsx';
 import { DashboardPage } from './components/DashboardPage.tsx';
 import { DiscoverPage } from './components/discover/DiscoverPage.tsx';
 import { HomePage } from './components/HomePage.tsx';
 import { NavBar } from './components/NavBar.tsx';
+import { NotificationsPage } from './components/NotificationsPage.tsx';
 import { OrganizationPage } from './components/OrganizationPage.tsx';
 import { ProjectPage } from './components/ProjectPage.tsx';
 import { UserProfilePage } from './components/UserProfilePage.tsx';
@@ -15,7 +17,19 @@ export function App() {
   const meta = projectTypeMeta(app.projectType);
 
   if (app.appView === 'home' && !app.selectedProject) {
-    return <HomePage onDiscover={app.openDiscover} />;
+    return (
+      <HomePage
+        onDiscover={app.openDiscover}
+        onOpenCollection={(collection) =>
+          app.openCollection({
+            ownerUsername: collection.owner.username,
+            slug: collection.slug,
+          })
+        }
+        onOpenProject={app.openProject}
+        onTagSearch={app.searchByTag}
+      />
+    );
   }
 
   return (
@@ -36,7 +50,9 @@ export function App() {
         showContentTabs={
           app.appView === 'discover' || Boolean(app.selectedProject)
         }
-        accountSlot={<AuthControls />}
+        accountSlot={
+          <AuthControls onOpenNotifications={app.openNotifications} />
+        }
       />
 
       {app.selectedProject ? (
@@ -47,12 +63,33 @@ export function App() {
           onTagSearch={app.searchByTag}
         />
       ) : app.appView === 'collections' ? (
-        <CollectionsPage
-          onOpenProject={app.openProject}
-          onTagSearch={app.searchByTag}
-        />
+        app.selectedCollection ? (
+          <CollectionDetailPage
+            ownerUsername={app.selectedCollection.ownerUsername}
+            slug={app.selectedCollection.slug}
+            onBack={app.openCollections}
+            onOpenProject={app.openProject}
+            onTagSearch={app.searchByTag}
+          />
+        ) : (
+          <CollectionsPage
+            onOpenCollection={(collection) =>
+              app.openCollection({
+                ownerUsername: collection.owner.username,
+                slug: collection.slug,
+              })
+            }
+            onOpenProject={app.openProject}
+            onTagSearch={app.searchByTag}
+          />
+        )
       ) : app.appView === 'dashboard' ? (
-        <DashboardPage onOpenProject={app.openProject} />
+        <DashboardPage
+          onOpenCollection={app.openCollection}
+          onOpenProject={app.openProject}
+        />
+      ) : app.appView === 'notifications' ? (
+        <NotificationsPage />
       ) : app.appView === 'organization' ? (
         <OrganizationPage
           slug={app.selectedOrganization}
@@ -61,6 +98,7 @@ export function App() {
       ) : app.appView === 'profile' && app.selectedUsername ? (
         <UserProfilePage
           username={app.selectedUsername}
+          onOpenCollection={app.openCollection}
           onOpenProject={app.openProject}
         />
       ) : (

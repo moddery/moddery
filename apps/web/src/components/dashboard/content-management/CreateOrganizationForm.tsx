@@ -22,6 +22,7 @@ export function CreateOrganizationForm({
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
+  const [iconUrl, setIconUrl] = useState('');
   const [color, setColor] = useState('#1d9bf0');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +35,7 @@ export function CreateOrganizationForm({
     const input: CreateOrganizationInput = {
       color: color.trim() || null,
       description: description.trim() || null,
+      iconUrl: iconUrl.trim() || null,
       name,
       slug,
     };
@@ -43,6 +45,7 @@ export function CreateOrganizationForm({
       setName('');
       setSlug('');
       setDescription('');
+      setIconUrl('');
       setColor('#1d9bf0');
       await onCreated();
     } catch (caught) {
@@ -85,11 +88,16 @@ export function CreateOrganizationForm({
             required
           />
         </div>
-        <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
           <DashboardField
             label="Description"
             value={description}
             onChange={setDescription}
+          />
+          <DashboardField
+            label="Icon URL"
+            value={iconUrl}
+            onChange={setIconUrl}
           />
           <DashboardField label="Color" value={color} onChange={setColor} />
         </div>

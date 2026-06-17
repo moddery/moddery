@@ -103,6 +103,7 @@ function projectIndexMapping() {
   return {
     properties: {
       categories: { type: 'keyword' },
+      color: { type: 'keyword', index: false },
       description: { type: 'text' },
       downloads: { type: 'integer' },
       followers: { type: 'integer' },

@@ -20,10 +20,14 @@ describe(UsersService.name, () => {
             collections: [],
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             displayName: 'Creator',
+            email: 'creator@example.test',
+            emailVerifiedAt: null,
             id: 'user-a',
+            newsletterOptIn: true,
             role: 'USER',
             status: 'ACTIVE',
             teamMemberships: [],
+            twoFactorEnabled: false,
             username: 'creator',
           }),
         update: (query: unknown) => {
@@ -37,6 +41,8 @@ describe(UsersService.name, () => {
       avatarUrl: ' https://example.test/avatar.png ',
       bio: '   ',
       displayName: ' Creator ',
+      email: ' creator@example.test ',
+      newsletterOptIn: true,
     });
 
     expect(updates[0]).toEqual({
@@ -44,11 +50,15 @@ describe(UsersService.name, () => {
         avatarUrl: 'https://example.test/avatar.png',
         bio: null,
         displayName: 'Creator',
+        email: 'creator@example.test',
+        newsletterOptIn: true,
       },
       where: { id: 'user-a' },
     });
     expect(profile?.displayName).toBe('Creator');
     expect(profile?.bio).toBeNull();
+    expect(profile?.email).toBe('creator@example.test');
+    expect(profile?.newsletterOptIn).toBe(true);
   });
 
   test('updates user account role and status for admins', async () => {
@@ -67,10 +77,14 @@ describe(UsersService.name, () => {
             collections: [],
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             displayName: null,
+            email: 'moderator@example.test',
+            emailVerifiedAt: null,
             id: where.id,
+            newsletterOptIn: false,
             role: 'MODERATOR',
             status: 'SUSPENDED',
             teamMemberships: [],
+            twoFactorEnabled: false,
             username: 'moderator',
           }),
         update: (query: unknown) => {

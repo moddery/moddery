@@ -8,9 +8,16 @@ import { ModCard } from '../ModCard.tsx';
 
 export function CollectionPreview({
   collection,
+  ownerUsername,
+  onOpenCollection,
   onOpenProject,
 }: {
   collection: UserCollectionPreview;
+  ownerUsername: string;
+  onOpenCollection?: (collection: {
+    ownerUsername: string;
+    slug: string;
+  }) => void;
   onOpenProject: (mod: Mod) => void;
 }) {
   return (
@@ -21,9 +28,19 @@ export function CollectionPreview({
           className="size-3 rounded-full"
           style={{ backgroundColor: collection.color ?? '#1d9bf0' }}
         />
-        <h3 className="font-display text-lg font-extrabold text-ink">
-          {collection.name}
-        </h3>
+        <a
+          href={collectionHref(ownerUsername, collection.slug)}
+          onClick={(event) => {
+            if (!onOpenCollection) return;
+            event.preventDefault();
+            onOpenCollection({ ownerUsername, slug: collection.slug });
+          }}
+          className="text-ink transition-colors hover:text-accent"
+        >
+          <h3 className="font-display text-lg font-extrabold">
+            {collection.name}
+          </h3>
+        </a>
         <span className="text-sm font-semibold text-muted">
           {collection.projectCount.toLocaleString('en-US')} projects · updated{' '}
           {timeAgo(collection.updatedAt)}
@@ -49,4 +66,10 @@ export function CollectionPreview({
       </div>
     </section>
   );
+}
+
+function collectionHref(ownerUsername: string, slug: string): string {
+  return `/collections/${encodeURIComponent(
+    ownerUsername,
+  )}/${encodeURIComponent(slug)}`;
 }

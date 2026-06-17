@@ -34,12 +34,26 @@ export interface UserCollectionPreview {
 
 export interface UserProjectPreview {
   categories: string[];
+  color: string | null;
   downloads: number;
   followers: number;
   gameVersions: string[];
   iconUrl: string | null;
   kind: ProjectKind;
   loaders: string[];
+  owner?: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
+  organization?: {
+    color: string | null;
+    iconUrl: string | null;
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
   slug: string;
   summary: string;
   title: string;
@@ -48,6 +62,7 @@ export interface UserProjectPreview {
 
 export interface UserReportSummary {
   body: string;
+  closedAt: string | null;
   createdAt: string;
   id: string;
   projectId: string | null;
@@ -91,12 +106,26 @@ const USER_BY_USERNAME_QUERY = gql`
         projectCount
         projects {
           categories
+          color
           downloads
           followers
           gameVersions
           iconUrl
           kind
           loaders
+          owner {
+            avatarUrl
+            displayName
+            id
+            username
+          }
+          organization {
+            color
+            iconUrl
+            id
+            name
+            slug
+          }
           slug
           summary
           title
@@ -113,12 +142,26 @@ const USER_BY_USERNAME_QUERY = gql`
       projectCount
       projects {
         categories
+        color
         downloads
         followers
         gameVersions
         iconUrl
         kind
         loaders
+        owner {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        organization {
+          color
+          iconUrl
+          id
+          name
+          slug
+        }
         slug
         summary
         title
@@ -134,6 +177,7 @@ const CREATE_USER_REPORT_MUTATION = gql`
   mutation CreateUserReport($input: CreateUserReportInput!) {
     createUserReport(input: $input) {
       body
+      closedAt
       createdAt
       id
       projectId
@@ -183,17 +227,23 @@ export async function createUserReport(input: {
 }
 
 export function userProjectToMod(project: UserProjectPreview): Mod {
+  const organizationName = project.organization?.name.trim() ?? '';
+  const ownerName =
+    project.owner?.displayName ?? project.owner?.username ?? 'Unknown user';
+
   return {
-    author: 'Moddery',
+    author: organizationName || ownerName,
+    authorUsername: project.owner?.username ?? null,
     categories: project.categories,
     client: 'optional',
-    color: '#1d9bf0',
+    color: project.color,
     description: project.summary,
     downloads: project.downloads,
     follows: project.followers,
     gameVersions: project.gameVersions,
     icon: project.iconUrl,
     loaders: project.loaders.map((loader) => loader.toLowerCase()),
+    organization: project.organization ?? null,
     projectType: projectTypeFromKind(project.kind),
     server: 'optional',
     slug: project.slug,

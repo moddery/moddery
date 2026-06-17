@@ -18,6 +18,9 @@ export class UpdateProjectInput {
   categories?: string[] | null;
 
   @Field(() => String, { nullable: true })
+  color?: string | null;
+
+  @Field(() => String, { nullable: true })
   description?: string | null;
 
   @Field(() => String, { nullable: true })

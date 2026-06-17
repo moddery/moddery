@@ -1,7 +1,5 @@
-import { type ProjectKind } from '@moddery/shared';
-
 import { type Mod, type ProjectType } from '../../types.js';
-import { projectTypeFromKind } from '../projectTypes.js';
+import { projectKindFromType, projectTypeFromKind } from '../projectTypes.js';
 import {
   type ProjectDetails,
   type ProjectMember,
@@ -14,17 +12,23 @@ import {
 } from './types.js';
 
 export function projectFromSummary(project: ProjectSummary): Mod {
+  const organizationName = project.organization?.name.trim() ?? '';
+  const ownerName =
+    project.owner?.displayName ?? project.owner?.username ?? 'Unknown user';
+
   return {
-    author: 'Moddery',
+    author: organizationName || ownerName,
+    authorUsername: project.owner?.username ?? null,
     categories: project.categories,
     client: 'optional',
-    color: '#1d9bf0',
+    color: project.color,
     description: project.summary,
     downloads: project.downloads,
     follows: project.followers,
     gameVersions: project.gameVersions,
     icon: project.iconUrl,
     loaders: normalizeLoaders(project.loaders),
+    organization: project.organization ?? null,
     projectType: projectTypeFromKind(project.kind),
     server: 'optional',
     slug: project.slug,
@@ -38,6 +42,10 @@ export function collectionFromSummary(
 ): PublicCollection {
   return {
     ...collection,
+    items: collection.items.map((item) => ({
+      ...item,
+      project: projectFromSummary(item.project),
+    })),
     projects: collection.projects.map(projectFromSummary),
   };
 }
@@ -57,9 +65,10 @@ export function projectDetailsFromSummary(
   return {
     additional_categories: [],
     author: mod.author,
+    authorUsername: mod.authorUsername,
     body: project.body,
     categories: mod.categories,
-    color: 0x1d9bf0,
+    color: colorNumberFromHex(project.color),
     description: project.summary,
     discord_url: discordUrl,
     donation_urls: project.links
@@ -86,8 +95,9 @@ export function projectDetailsFromSummary(
     issues_url: issuesUrl,
     license: project.license,
     loaders: mod.loaders,
+    organization: mod.organization ?? null,
     project_type: mod.projectType ?? 'mod',
-    published: project.updatedAt,
+    published: project.publishedAt ?? project.updatedAt,
     slug: project.slug,
     source_url: sourceUrl,
     title: project.title,
@@ -98,14 +108,26 @@ export function projectDetailsFromSummary(
 
 export function versionFromSummary(version: VersionSummary): ProjectVersion {
   return {
+    author:
+      version.author === null
+        ? null
+        : {
+            avatar_url: version.author.avatarUrl,
+            display_name: version.author.displayName,
+            id: version.author.id,
+            username: version.author.username,
+          },
     changelog: version.changelog,
+    created_at: version.createdAt,
     date_published: version.datePublished ?? new Date().toISOString(),
     dependencies: version.dependencies,
     downloads: version.downloads,
+    featured: version.featured,
     files: version.files.map((file) => ({
       filename: file.fileName,
       hashes: file.hashes,
       id: file.id,
+      kind: file.kind,
       primary: file.primary,
       scans: file.scans,
       size: Number(file.sizeBytes),
@@ -115,6 +137,10 @@ export function versionFromSummary(version: VersionSummary): ProjectVersion {
     id: version.id,
     loaders: normalizeLoaders(version.loaders),
     name: version.name,
+    requested_status: version.requestedStatus,
+    sort_order: version.sortOrder,
+    status: version.status,
+    updated_at: version.updatedAt,
     version_number: version.versionNumber,
     version_type:
       version.channel.toLowerCase() as ProjectVersion['version_type'],
@@ -125,6 +151,7 @@ export function memberFromSummary(member: ProjectMemberSummary): ProjectMember {
   return {
     accepted: member.accepted,
     owner: member.owner,
+    permissions: member.permissions,
     role: member.role,
     sortOrder: member.sortOrder,
     user: {
@@ -166,23 +193,15 @@ function projectLinkUrl(
   return links.find((link) => link.kind === kind)?.url ?? null;
 }
 
-function projectKindFromType(projectType: ProjectType): ProjectKind {
-  switch (projectType) {
-    case 'datapack':
-      return 'DATAPACK';
-    case 'modpack':
-      return 'MODPACK';
-    case 'plugin':
-      return 'PLUGIN';
-    case 'resourcepack':
-      return 'RESOURCE_PACK';
-    case 'shader':
-      return 'SHADER';
-    case 'mod':
-      return 'MOD';
-  }
-}
-
 function normalizeLoaders(loaders: string[]): string[] {
   return loaders.map((loader) => loader.toLowerCase());
+}
+
+function colorNumberFromHex(color: string | null): number | null {
+  if (color === null) return null;
+
+  const normalized = color.trim().replace(/^#/, '');
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null;
+
+  return Number.parseInt(normalized, 16);
 }

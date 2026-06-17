@@ -4,18 +4,22 @@ import { type SearchTag } from '../components/ModCard.tsx';
 import { useDiscoverState } from '../components/discover/useDiscoverState.ts';
 import { type Mod, type ProjectType } from '../types.ts';
 import {
+  collectionFromUrl,
   organizationFromUrl,
   profileFromUrl,
   projectFromUrl,
   projectTypeFromPath,
   viewFromUrl,
+  writeCollectionToUrl,
   writeCollectionsToUrl,
   writeDashboardToUrl,
   writeHomeToUrl,
+  writeNotificationsToUrl,
   writeOrganizationsToUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
   type AppView,
+  type SelectedCollection,
 } from './routing.ts';
 
 export function useAppShellState() {
@@ -27,6 +31,9 @@ export function useAppShellState() {
   );
   const [selectedOrganization, setSelectedOrganization] = useState(() =>
     organizationFromUrl(),
+  );
+  const [selectedCollection, setSelectedCollection] = useState(() =>
+    collectionFromUrl(),
   );
   const [appView, setAppView] = useState<AppView>(() =>
     projectFromUrl()
@@ -48,9 +55,11 @@ export function useAppShellState() {
       const nextProject = projectFromUrl();
       const nextUsername = profileFromUrl();
       const nextOrganization = organizationFromUrl();
+      const nextCollection = collectionFromUrl();
       setSelectedProject(nextProject);
       setSelectedUsername(nextUsername);
       setSelectedOrganization(nextOrganization);
+      setSelectedCollection(nextCollection);
       setAppView(resolveView(nextProject, nextOrganization, nextUsername));
       setProjectType(
         nextProject?.projectType ?? projectTypeFromPath() ?? 'mod',
@@ -88,6 +97,7 @@ export function useAppShellState() {
     setSelectedProject(nextProject);
     setSelectedUsername(null);
     setSelectedOrganization(null);
+    setSelectedCollection(null);
     setAppView('discover');
     setProjectType(nextProject.projectType);
     discover.setMobileFiltersOpen(false);
@@ -120,9 +130,22 @@ export function useAppShellState() {
     scrollToTop();
   }
 
+  function openCollection(collection: SelectedCollection) {
+    resetSelection('collections');
+    setSelectedCollection(collection);
+    writeCollectionToUrl(collection);
+    scrollToTop();
+  }
+
   function openDashboard() {
     resetSelection('dashboard');
     writeDashboardToUrl();
+    scrollToTop();
+  }
+
+  function openNotifications() {
+    resetSelection('notifications');
+    writeNotificationsToUrl();
     scrollToTop();
   }
 
@@ -147,6 +170,7 @@ export function useAppShellState() {
     setSelectedProject(null);
     setSelectedUsername(null);
     setSelectedOrganization(null);
+    setSelectedCollection(null);
     setAppView(nextView);
   }
 
@@ -155,14 +179,17 @@ export function useAppShellState() {
     changeProjectType,
     closeProject,
     discover,
+    openCollection,
     openCollections,
     openDashboard,
     openDiscover,
     openHome,
+    openNotifications,
     openOrganizations,
     openProject,
     projectType,
     searchByTag,
+    selectedCollection,
     selectedOrganization,
     selectedProject,
     selectedUsername,

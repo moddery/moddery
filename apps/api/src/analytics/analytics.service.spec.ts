@@ -22,20 +22,37 @@ describe(AnalyticsService.name, () => {
   });
 
   test('summarizes project analytics from event tables', async () => {
+    const queries: unknown[] = [];
     const service = new AnalyticsService(
-      { command: () => Promise.resolve() } as never,
       {
-        downloadEvent: {
-          count: ({ where }: { where: unknown }) =>
-            Promise.resolve(
-              JSON.stringify(where).includes('createdAt') ? 4 : 9,
-            ),
-          findMany: () =>
-            Promise.resolve([
-              { createdAt: new Date('2026-06-16T00:00:00.000Z') },
-              { createdAt: new Date('2026-06-16T12:00:00.000Z') },
-            ]),
+        command: () => Promise.resolve(),
+        query: (input: { query: string }) => {
+          queries.push(input);
+          const isDailyQuery = input.query.includes(
+            'GROUP BY event_type, date',
+          );
+          return Promise.resolve({
+            json: () =>
+              Promise.resolve(
+                isDailyQuery
+                  ? [
+                      {
+                        date: '2026-06-16',
+                        event_type: 'download',
+                        events: '4',
+                      },
+                      { date: '2026-06-16', event_type: 'view', events: '2' },
+                      { date: '2026-06-17', event_type: 'view', events: '5' },
+                    ]
+                  : [
+                      { event_type: 'view', events: '13' },
+                      { event_type: 'download', events: '44' },
+                    ],
+              ),
+          });
         },
+      } as never,
+      {
         project: {
           findUnique: () =>
             Promise.resolve({
@@ -44,33 +61,31 @@ describe(AnalyticsService.name, () => {
               slug: 'iris',
             }),
         },
-        projectViewEvent: {
-          count: ({ where }: { where: unknown }) =>
-            Promise.resolve(
-              JSON.stringify(where).includes('createdAt') ? 7 : 13,
-            ),
-          findMany: () =>
-            Promise.resolve([
-              { createdAt: new Date('2026-06-16T00:00:00.000Z') },
-              { createdAt: new Date('2026-06-17T00:00:00.000Z') },
-            ]),
-        },
       } as unknown as PrismaService,
     );
 
     const summary = await service.projectAnalytics('iris');
 
     expect(summary?.downloadsLast30Days).toBe(4);
+    expect(summary?.days).toHaveLength(30);
     expect(summary?.projectSlug).toBe('iris');
     expect(summary?.totalDownloads).toBe(99);
     expect(summary?.totalViews).toBe(13);
     expect(summary?.viewsLast30Days).toBe(7);
+    expect(queries).toHaveLength(2);
   });
 
   test('records download events and increments counters', async () => {
     const transactionCalls: unknown[] = [];
+    const inserts: unknown[] = [];
     const service = new AnalyticsService(
-      { command: () => Promise.resolve() } as never,
+      {
+        command: () => Promise.resolve(),
+        insert: (input: unknown) => {
+          inserts.push(input);
+          return Promise.resolve();
+        },
+      } as never,
       {
         $transaction: (queries: unknown[]) => {
           transactionCalls.push(queries);
@@ -129,12 +144,30 @@ describe(AnalyticsService.name, () => {
       versionDownloads: 12,
       versionId: 'version-a',
     });
+    expect(inserts[0]).toMatchObject({
+      format: 'JSONEachRow',
+      table: 'project_events',
+      values: [
+        {
+          event_type: 'download',
+          project_id: 'project-a',
+          version_id: 'version-a',
+        },
+      ],
+    });
   });
 
   test('records project view events by slug', async () => {
     const creates: unknown[] = [];
+    const inserts: unknown[] = [];
     const service = new AnalyticsService(
-      { command: () => Promise.resolve() } as never,
+      {
+        command: () => Promise.resolve(),
+        insert: (input: unknown) => {
+          inserts.push(input);
+          return Promise.resolve();
+        },
+      } as never,
       {
         project: {
           findUnique: () =>
@@ -162,6 +195,17 @@ describe(AnalyticsService.name, () => {
     expect(record).toEqual({
       projectId: 'project-a',
       projectSlug: 'iris',
+    });
+    expect(inserts[0]).toMatchObject({
+      format: 'JSONEachRow',
+      table: 'project_events',
+      values: [
+        {
+          event_type: 'view',
+          project_id: 'project-a',
+          version_id: null,
+        },
+      ],
     });
   });
 });

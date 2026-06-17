@@ -8,6 +8,9 @@ export class CreateOrganizationInput {
   @Field(() => String, { nullable: true })
   description?: string | null;
 
+  @Field(() => String, { nullable: true })
+  iconUrl?: string | null;
+
   @Field(() => String)
   name!: string;
 

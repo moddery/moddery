@@ -98,9 +98,17 @@ export const VERSION_CHANNELS = [
 
 export interface ProjectSummaryContract {
   readonly body: string;
+  readonly color?: string | null;
   readonly id: string;
   readonly slug: string;
   readonly title: string;
+  readonly owner?: ProjectOwnerContract | null;
+  readonly organization?: ProjectOrganizationContract | null;
+  readonly approvedAt?: string | null;
+  readonly archivedAt?: string | null;
+  readonly publishedAt?: string | null;
+  readonly queuedAt?: string | null;
+  readonly requestedStatus?: ProjectStatus | null;
   readonly summary: string;
   readonly kind: ProjectKind;
   readonly status: ProjectStatus;
@@ -118,6 +126,21 @@ export interface ProjectSummaryContract {
   readonly sourceUrl?: string | null;
   readonly updatedAt: string;
   readonly wikiUrl?: string | null;
+}
+
+export interface ProjectOwnerContract {
+  readonly avatarUrl?: string | null;
+  readonly displayName?: string | null;
+  readonly id: string;
+  readonly username: string;
+}
+
+export interface ProjectOrganizationContract {
+  readonly color?: string | null;
+  readonly iconUrl?: string | null;
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
 }
 
 export interface ProjectLicenseContract {

@@ -16,13 +16,14 @@ import { hash } from 'bcryptjs';
 
 const prisma = new PrismaClient();
 const searchClient = new Client({
-  node: process.env.OPENSEARCH_NODE ?? 'http://localhost:9200',
+  node: requiredEnv('OPENSEARCH_NODE'),
 });
 
-const sourceBaseUrl =
-  process.env.SEED_SOURCE_API_URL ?? 'https://api.modrinth.com/v2';
-const limit = Number(process.env.SEED_PROJECT_LIMIT ?? '20');
-const versionsPerProject = Number(process.env.SEED_VERSIONS_PER_PROJECT ?? '5');
+const sourceBaseUrl = requiredEnv('SEED_SOURCE_API_URL');
+const limit = requiredPositiveIntegerEnv('SEED_PROJECT_LIMIT');
+const versionsPerProject = requiredPositiveIntegerEnv(
+  'SEED_VERSIONS_PER_PROJECT',
+);
 const projectsIndex = 'projects';
 
 interface SearchResponse {
@@ -919,6 +920,25 @@ function titleize(slug: string): string {
     .split('-')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function requiredEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+
+  return value;
+}
+
+function requiredPositiveIntegerEnv(name: string): number {
+  const rawValue = requiredEnv(name);
+  const value = Number(rawValue);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+
+  return value;
 }
 
 void main().finally(async () => {

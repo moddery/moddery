@@ -1,15 +1,24 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  type OnModuleInit,
+} from '@nestjs/common';
 import { type ClickHouseClient } from '@clickhouse/client';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CLICKHOUSE_CLIENT } from './analytics.constants.js';
 
 @Injectable()
-export class AnalyticsService {
+export class AnalyticsService implements OnModuleInit {
   constructor(
     @Inject(CLICKHOUSE_CLIENT) private readonly client: ClickHouseClient,
     private readonly prisma: PrismaService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureSchema();
+  }
 
   async ensureSchema(): Promise<void> {
     await this.client.command({
@@ -44,53 +53,45 @@ export class AnalyticsService {
     }
 
     const since = startOfUtcDay(addDays(new Date(), -29));
-    const [
-      totalViews,
-      viewsLast30Days,
-      downloadsLast30Days,
-      viewDays,
-      downloadDays,
-    ] = await Promise.all([
-      this.prisma.projectViewEvent.count({
-        where: { projectId: project.id },
+    const [totalRows, dailyRows] = await Promise.all([
+      this.analyticsRows<AnalyticsTotalRow>({
+        query: `
+          SELECT event_type, count() AS events
+          FROM project_events
+          WHERE project_id = {projectId:String}
+          GROUP BY event_type
+        `,
+        query_params: { projectId: project.id },
       }),
-      this.prisma.projectViewEvent.count({
-        where: {
-          createdAt: { gte: since },
+      this.analyticsRows<AnalyticsDailyRow>({
+        query: `
+          SELECT
+            event_type,
+            toString(toDate(occurred_at)) AS date,
+            count() AS events
+          FROM project_events
+          WHERE project_id = {projectId:String}
+            AND occurred_at >= {since:DateTime64(3)}
+          GROUP BY event_type, date
+          ORDER BY date ASC
+        `,
+        query_params: {
           projectId: project.id,
-        },
-      }),
-      this.prisma.downloadEvent.count({
-        where: {
-          createdAt: { gte: since },
-          projectId: project.id,
-        },
-      }),
-      this.prisma.projectViewEvent.findMany({
-        orderBy: { createdAt: 'asc' },
-        select: { createdAt: true },
-        where: {
-          createdAt: { gte: since },
-          projectId: project.id,
-        },
-      }),
-      this.prisma.downloadEvent.findMany({
-        orderBy: { createdAt: 'asc' },
-        select: { createdAt: true },
-        where: {
-          createdAt: { gte: since },
-          projectId: project.id,
+          since: since.toISOString(),
         },
       }),
     ]);
 
+    const totals = summarizeTotalRows(totalRows);
+    const days = buildDailyBuckets({ dailyRows, since });
+
     return {
-      days: buildDailyBuckets({ downloadDays, since, viewDays }),
-      downloadsLast30Days,
+      days,
+      downloadsLast30Days: sumEvents(dailyRows, 'download'),
       projectSlug: project.slug,
       totalDownloads: project.downloads,
-      totalViews,
-      viewsLast30Days,
+      totalViews: totals.views,
+      viewsLast30Days: sumEvents(dailyRows, 'view'),
     };
   }
 
@@ -111,6 +112,11 @@ export class AnalyticsService {
       data: {
         projectId: project.id,
       },
+    });
+    await this.recordAnalyticsEvent({
+      eventType: 'view',
+      projectId: project.id,
+      versionId: null,
     });
 
     return {
@@ -155,6 +161,11 @@ export class AnalyticsService {
         },
       }),
     ]);
+    await this.recordAnalyticsEvent({
+      eventType: 'download',
+      projectId: file.version.projectId,
+      versionId: file.version.id,
+    });
 
     return {
       fileId: file.id,
@@ -164,16 +175,52 @@ export class AnalyticsService {
       versionId: version.id,
     };
   }
+
+  private async analyticsRows<T>(input: {
+    query: string;
+    query_params: Record<string, string>;
+  }): Promise<T[]> {
+    const result = await this.client.query({
+      format: 'JSONEachRow',
+      query: input.query,
+      query_params: input.query_params,
+    });
+
+    return result.json<T>();
+  }
+
+  private async recordAnalyticsEvent({
+    eventType,
+    projectId,
+    versionId,
+  }: {
+    eventType: AnalyticsEventType;
+    projectId: string;
+    versionId: string | null;
+  }): Promise<void> {
+    await this.client.insert({
+      format: 'JSONEachRow',
+      table: 'project_events',
+      values: [
+        {
+          country_code: null,
+          event_type: eventType,
+          occurred_at: new Date(),
+          project_id: projectId,
+          user_agent: null,
+          version_id: versionId,
+        },
+      ],
+    });
+  }
 }
 
 function buildDailyBuckets({
-  downloadDays,
+  dailyRows,
   since,
-  viewDays,
 }: {
-  downloadDays: { createdAt: Date }[];
+  dailyRows: AnalyticsDailyRow[];
   since: Date;
-  viewDays: { createdAt: Date }[];
 }) {
   const buckets = new Map<
     string,
@@ -184,26 +231,44 @@ function buildDailyBuckets({
     }
   >();
 
-  for (let offset = 16; offset >= 0; offset -= 1) {
+  for (let offset = 29; offset >= 0; offset -= 1) {
     const date = dateKey(addDays(new Date(), -offset));
     buckets.set(date, { date, downloads: 0, views: 0 });
   }
 
-  for (const view of viewDays) {
-    const key = dateKey(view.createdAt);
+  for (const row of dailyRows) {
+    const key = row.date;
     const bucket = buckets.get(key);
-    if (bucket !== undefined) bucket.views += 1;
-  }
-
-  for (const download of downloadDays) {
-    const key = dateKey(download.createdAt);
-    const bucket = buckets.get(key);
-    if (bucket !== undefined) bucket.downloads += 1;
+    if (bucket === undefined) continue;
+    if (row.event_type === 'view') bucket.views += parseEventCount(row.events);
+    if (row.event_type === 'download') {
+      bucket.downloads += parseEventCount(row.events);
+    }
   }
 
   return [...buckets.values()].filter(
     (bucket) => new Date(`${bucket.date}T00:00:00.000Z`) >= since,
   );
+}
+
+function parseEventCount(value: number | string): number {
+  return typeof value === 'number' ? value : Number.parseInt(value, 10);
+}
+
+function sumEvents(
+  rows: readonly { event_type: AnalyticsEventType; events: number | string }[],
+  eventType: AnalyticsEventType,
+) {
+  return rows
+    .filter((row) => row.event_type === eventType)
+    .reduce((total, row) => total + parseEventCount(row.events), 0);
+}
+
+function summarizeTotalRows(rows: AnalyticsTotalRow[]) {
+  return {
+    downloads: sumEvents(rows, 'download'),
+    views: sumEvents(rows, 'view'),
+  };
 }
 
 function addDays(date: Date, days: number): Date {
@@ -220,4 +285,17 @@ function startOfUtcDay(date: Date): Date {
   return new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
   );
+}
+
+type AnalyticsEventType = 'download' | 'view';
+
+interface AnalyticsDailyRow {
+  readonly date: string;
+  readonly event_type: AnalyticsEventType;
+  readonly events: number | string;
+}
+
+interface AnalyticsTotalRow {
+  readonly event_type: AnalyticsEventType;
+  readonly events: number | string;
 }
