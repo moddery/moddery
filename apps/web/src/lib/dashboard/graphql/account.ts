@@ -17,8 +17,8 @@ export const UPDATE_VIEWER_PROFILE_MUTATION = gql`
 `;
 
 export const VIEWER_API_TOKENS_QUERY = gql`
-  query ViewerApiTokens {
-    viewerApiTokens {
+  query ViewerApiTokens($includeRevoked: Boolean) {
+    viewerApiTokens(includeRevoked: $includeRevoked) {
       createdAt
       expiresAt
       id
@@ -31,8 +31,8 @@ export const VIEWER_API_TOKENS_QUERY = gql`
 `;
 
 export const VIEWER_SESSIONS_QUERY = gql`
-  query ViewerSessions {
-    viewerSessions {
+  query ViewerSessions($includeRevoked: Boolean) {
+    viewerSessions(includeRevoked: $includeRevoked) {
       createdAt
       expiresAt
       id

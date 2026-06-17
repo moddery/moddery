@@ -136,11 +136,21 @@ export class AuthService {
     };
   }
 
-  findViewerSessions(userId: string) {
+  findViewerSessions(
+    userId: string,
+    {
+      includeRevoked,
+    }: {
+      includeRevoked?: boolean | null;
+    } = {},
+  ) {
     return this.prisma.session.findMany({
       orderBy: [{ revokedAt: 'asc' }, { lastUsedAt: 'desc' }],
       select: sessionSelect(),
-      where: { userId },
+      where: {
+        ...(includeRevoked ? {} : { revokedAt: null }),
+        userId,
+      },
     });
   }
 

@@ -19,9 +19,10 @@ export function ApiTokensPanel() {
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showRevoked, setShowRevoked] = useState(false);
   const tokensQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerApiTokens(signal),
-    queryKey: ['dashboard', 'api-tokens'],
+    queryFn: ({ signal }) => fetchViewerApiTokens(showRevoked, signal),
+    queryKey: ['dashboard', 'api-tokens', showRevoked],
   });
   const tokens = tokensQuery.data ?? [];
 
@@ -102,6 +103,8 @@ export function ApiTokensPanel() {
           tokensQuery.error instanceof Error ? tokensQuery.error.message : null
         }
         onRevoke={revoke}
+        onShowRevokedChange={setShowRevoked}
+        showRevoked={showRevoked}
         tokens={tokens}
       />
     </section>

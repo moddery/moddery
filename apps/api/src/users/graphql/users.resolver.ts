@@ -34,6 +34,15 @@ export class UsersResolver {
     return this.usersService.findByUsername(username);
   }
 
+  @Public()
+  @Query(() => [UserProfile])
+  publicUsers(
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+  ): Promise<UserProfile[]> {
+    return this.usersService.findPublicUsers({ search });
+  }
+
   @Query(() => UserProfile, { nullable: true })
   viewer(@CurrentUser() user: AuthenticatedUser): Promise<UserProfile | null> {
     return this.usersService.findById(user.id);

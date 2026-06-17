@@ -15,14 +15,15 @@ import { VersionsToolbar } from './VersionsToolbar.tsx';
 export function VersionsTab({ versions }: { versions: ProjectVersion[] }) {
   const [gameVersion, setGameVersion] = useState(allVersionFilter);
   const [loader, setLoader] = useState(allLoaderFilter);
+  const [query, setQuery] = useState('');
   const gameVersionOptions = useMemo(
     () => buildGameVersionOptions(versions),
     [versions],
   );
   const loaderOptions = useMemo(() => buildLoaderOptions(versions), [versions]);
   const filteredVersions = useMemo(
-    () => filterProjectVersions(versions, gameVersion, loader),
-    [versions, gameVersion, loader],
+    () => filterProjectVersions(versions, gameVersion, loader, query),
+    [versions, gameVersion, loader, query],
   );
 
   useEffect(() => {
@@ -58,9 +59,11 @@ export function VersionsTab({ versions }: { versions: ProjectVersion[] }) {
         gameVersionOptions={gameVersionOptions}
         loader={loader}
         loaderOptions={loaderOptions}
+        query={query}
         totalCount={versions.length}
         onGameVersionChange={setGameVersion}
         onLoaderChange={setLoader}
+        onQueryChange={setQuery}
       />
 
       {filteredVersions.length ? (

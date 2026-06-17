@@ -525,6 +525,7 @@ function reportSelect() {
     project: {
       select: {
         id: true,
+        kind: true,
         slug: true,
         title: true,
       },
@@ -554,6 +555,7 @@ function reportSelect() {
         project: {
           select: {
             id: true,
+            kind: true,
             slug: true,
             title: true,
           },

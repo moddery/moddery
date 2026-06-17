@@ -18,6 +18,7 @@ describe(ReportsService.name, () => {
               id: 'report-a',
               project: {
                 id: 'project-a',
+                kind: 'MOD',
                 slug: 'iris',
                 title: 'Iris',
               },
@@ -36,6 +37,7 @@ describe(ReportsService.name, () => {
                 name: 'Iris 1.0.0',
                 project: {
                   id: 'project-a',
+                  kind: 'MOD',
                   slug: 'iris',
                   title: 'Iris',
                 },
@@ -123,6 +125,7 @@ describe(ReportsService.name, () => {
             id: 'report-a',
             project: {
               id: 'project-a',
+              kind: 'MOD',
               slug: 'iris',
               title: 'Iris',
             },
@@ -190,6 +193,7 @@ describe(ReportsService.name, () => {
               name: 'Iris 1.0.0',
               project: {
                 id: 'project-a',
+                kind: 'MOD',
                 slug: 'iris',
                 title: 'Iris',
               },

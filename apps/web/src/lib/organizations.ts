@@ -68,127 +68,107 @@ interface PublicOrganizationsQueryData {
   publicOrganizations: OrganizationProfile[];
 }
 
+interface PublicOrganizationsQueryVariables {
+  search?: string | null;
+}
+
 interface OrganizationBySlugQueryVariables {
   slug: string;
 }
 
-const ORGANIZATION_BY_SLUG_QUERY = gql`
-  query OrganizationBySlug($slug: String!) {
-    organizationBySlug(slug: $slug) {
-      color
-      createdAt
-      description
-      iconUrl
+const ORGANIZATION_PROJECT_PREVIEW_FRAGMENT = gql`
+  fragment OrganizationProjectPreviewFields on ProjectSummary {
+    categories
+    color
+    downloads
+    followers
+    gameVersions
+    iconUrl
+    kind
+    loaders
+    owner {
+      avatarUrl
+      displayName
       id
-      memberCount
-      members {
-        isOwner
-        permissions
-        role
-        sortOrder
-        user {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-      }
-      name
-      owner {
+      username
+    }
+    slug
+    summary
+    title
+    updatedAt
+  }
+`;
+
+const ORGANIZATION_PROFILE_FRAGMENT = gql`
+  ${ORGANIZATION_PROJECT_PREVIEW_FRAGMENT}
+  fragment OrganizationProfileFields on OrganizationSummary {
+    color
+    createdAt
+    description
+    iconUrl
+    id
+    memberCount
+    members {
+      isOwner
+      permissions
+      role
+      sortOrder
+      user {
         avatarUrl
         displayName
         id
         username
       }
-      projectCount
-      projects {
-        categories
-        color
-        downloads
-        followers
-        gameVersions
-        iconUrl
-        kind
-        loaders
-        owner {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-        slug
-        summary
-        title
-        updatedAt
-      }
-      slug
-      updatedAt
+    }
+    name
+    owner {
+      avatarUrl
+      displayName
+      id
+      username
+    }
+    projectCount
+    projects {
+      ...OrganizationProjectPreviewFields
+    }
+    slug
+    updatedAt
+  }
+`;
+
+const ORGANIZATION_BY_SLUG_QUERY = gql`
+  ${ORGANIZATION_PROFILE_FRAGMENT}
+  query OrganizationBySlug($slug: String!) {
+    organizationBySlug(slug: $slug) {
+      ...OrganizationProfileFields
     }
   }
 `;
 
 const PUBLIC_ORGANIZATIONS_QUERY = gql`
-  query PublicOrganizations {
-    publicOrganizations {
-      color
-      createdAt
-      description
-      iconUrl
-      id
-      memberCount
-      members {
-        isOwner
-        permissions
-        role
-        sortOrder
-        user {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-      }
-      name
-      owner {
-        avatarUrl
-        displayName
-        id
-        username
-      }
-      projectCount
-      projects {
-        categories
-        color
-        downloads
-        followers
-        gameVersions
-        iconUrl
-        kind
-        loaders
-        owner {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-        slug
-        summary
-        title
-        updatedAt
-      }
-      slug
-      updatedAt
+  ${ORGANIZATION_PROFILE_FRAGMENT}
+  query PublicOrganizations($search: String) {
+    publicOrganizations(search: $search) {
+      ...OrganizationProfileFields
     }
   }
 `;
 
 export async function fetchPublicOrganizations(
+  search?: string | null,
   signal?: AbortSignal,
 ): Promise<OrganizationProfile[]> {
-  const { data } = await apolloClient.query<PublicOrganizationsQueryData>({
+  const normalizedSearch = search?.trim() ?? '';
+  const { data } = await apolloClient.query<
+    PublicOrganizationsQueryData,
+    PublicOrganizationsQueryVariables
+  >({
     context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: PUBLIC_ORGANIZATIONS_QUERY,
+    variables: {
+      search: normalizedSearch === '' ? null : normalizedSearch,
+    },
   });
 
   return data.publicOrganizations;

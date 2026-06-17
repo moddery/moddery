@@ -20,8 +20,10 @@ import {
 
 export function AuthControls({
   onOpenNotifications,
+  onOpenProfile,
 }: {
   onOpenNotifications?: () => void;
+  onOpenProfile?: (username: string) => void;
 }) {
   const [token, setToken] = useState(() =>
     localStorage.getItem(authTokenStorageKey),
@@ -98,6 +100,7 @@ export function AuthControls({
         notifications={notificationsQuery.data?.viewerNotifications ?? []}
         onLogout={logout}
         onOpenNotifications={onOpenNotifications}
+        onOpenProfile={onOpenProfile}
         onNotificationRead={async (id) => {
           await markNotificationRead({ variables: { id } });
           await notificationsQuery.refetch();

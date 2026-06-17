@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { BookMarked } from 'lucide-react';
+import { BookMarked, Search } from 'lucide-react';
+import { useDeferredValue, useState } from 'react';
 
 import {
   fetchPublicCollections,
@@ -19,27 +20,47 @@ export function CollectionsPage({
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+  const normalizedQuery = deferredQuery.trim();
   const collectionsQuery = useQuery({
-    queryFn: ({ signal }) => fetchPublicCollections(signal),
-    queryKey: ['collections', 'public'],
+    queryFn: ({ signal }) => fetchPublicCollections(normalizedQuery, signal),
+    queryKey: ['collections', 'public', normalizedQuery],
   });
 
   const collections = collectionsQuery.data ?? [];
+  const hasSearch = query.trim() !== '';
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
-      <header className="border-b border-line pb-5">
-        <h1 className="font-display text-3xl font-extrabold text-ink">
-          Collections
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Browse curated project lists from the community.
-        </p>
+      <header className="border-b border-line pb-5 sm:flex sm:items-end sm:justify-between sm:gap-6">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-ink">
+            Collections
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            Browse curated project lists from the community.
+          </p>
+        </div>
+        <label className="mt-4 block w-full max-w-sm sm:mt-0">
+          <span className="sr-only">Search collections</span>
+          <span className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" />
+            <input
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+              placeholder="Search collections..."
+              className="h-10 w-full rounded-lg border border-line bg-control pl-10 pr-3 text-sm text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent"
+            />
+          </span>
+        </label>
       </header>
 
       {collectionsQuery.isLoading ? (
         <CollectionsSkeleton />
-      ) : collections.length === 0 ? (
+      ) : collections.length === 0 && !hasSearch ? (
         <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
           <div className="text-accent-icon">
             <BookMarked className="size-6" />
@@ -51,8 +72,29 @@ export function CollectionsPage({
             Public lists will show up here once creators publish them.
           </p>
         </div>
+      ) : collections.length === 0 ? (
+        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <div className="text-accent-icon">
+            <BookMarked className="size-6" />
+          </div>
+          <h2 className="mt-4 font-display text-lg font-bold text-ink">
+            No collections match this search
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('');
+            }}
+            className="mt-4 inline-flex h-9 items-center rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
+          >
+            Clear search
+          </button>
+        </div>
       ) : (
         <div className="mt-6 grid gap-8">
+          <p className="text-sm font-semibold text-muted">
+            Showing {collections.length.toLocaleString('en-US')} collections
+          </p>
           {collections.map((collection) => (
             <CollectionSection
               key={collection.id}

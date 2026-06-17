@@ -12,13 +12,33 @@ import { type SendNotificationInput } from '../graphql/send-notification.input.j
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findViewerNotifications(userId: string) {
+  findViewerNotifications(
+    userId: string,
+    {
+      type,
+      unreadOnly,
+    }: {
+      type?: string | null;
+      unreadOnly?: boolean | null;
+    } = {},
+  ) {
     return this.prisma.notification.findMany({
       orderBy: [{ createdAt: 'desc' }],
       select: notificationSelect(),
       take: 20,
+      where: notificationWhere(userId, { type, unreadOnly }),
+    });
+  }
+
+  async findViewerNotificationTypes(userId: string) {
+    const notifications = await this.prisma.notification.findMany({
+      distinct: ['type'],
+      orderBy: [{ type: 'asc' }],
+      select: { type: true },
       where: { userId },
     });
+
+    return notifications.map((notification) => notification.type);
   }
 
   unreadCount(userId: string) {
@@ -227,6 +247,25 @@ function notificationSelect() {
     state: true,
     title: true,
     type: true,
+  };
+}
+
+function notificationWhere(
+  userId: string,
+  {
+    type,
+    unreadOnly,
+  }: {
+    type?: string | null;
+    unreadOnly?: boolean | null;
+  },
+) {
+  const normalizedType = type?.trim().toLowerCase() ?? '';
+
+  return {
+    ...(normalizedType.length > 0 ? { type: normalizedType } : {}),
+    ...(unreadOnly ? { readAt: null } : {}),
+    userId,
   };
 }
 

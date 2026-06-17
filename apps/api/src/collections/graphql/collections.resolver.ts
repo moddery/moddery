@@ -16,8 +16,11 @@ export class CollectionsResolver {
 
   @Public()
   @Query(() => [CollectionSummary])
-  publicCollections() {
-    return this.collectionsService.findPublicCollections();
+  publicCollections(
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+  ) {
+    return this.collectionsService.findPublicCollections({ search });
   }
 
   @Public()

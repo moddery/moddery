@@ -325,6 +325,7 @@ export const MODERATION_REPORTS_QUERY = gql`
       id
       project {
         id
+        kind
         slug
         title
       }
@@ -347,6 +348,7 @@ export const MODERATION_REPORTS_QUERY = gql`
         name
         project {
           id
+          kind
           slug
           title
         }
@@ -366,6 +368,7 @@ export const UPDATE_REPORT_STATE_MUTATION = gql`
       id
       project {
         id
+        kind
         slug
         title
       }
@@ -388,6 +391,7 @@ export const UPDATE_REPORT_STATE_MUTATION = gql`
         name
         project {
           id
+          kind
           slug
           title
         }

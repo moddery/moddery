@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { Search } from 'lucide-react';
+import { useDeferredValue, useState } from 'react';
 
 import { fetchPublicOrganizations } from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
@@ -11,30 +13,60 @@ export function OrganizationDirectory({
 }: {
   onOpenProject: (mod: Mod) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+  const normalizedQuery = deferredQuery.trim();
   const organizationsQuery = useQuery({
-    queryFn: ({ signal }) => fetchPublicOrganizations(signal),
-    queryKey: ['organizations', 'public'],
+    queryFn: ({ signal }) => fetchPublicOrganizations(normalizedQuery, signal),
+    queryKey: ['organizations', 'public', normalizedQuery],
   });
 
   const organizations = organizationsQuery.data ?? [];
+  const hasSearch = query.trim() !== '';
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
-      <header className="border-b border-line pb-5">
-        <h1 className="font-display text-3xl font-extrabold text-ink">
-          Organizations
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Browse creator groups and their published projects.
-        </p>
+      <header className="border-b border-line pb-5 sm:flex sm:items-end sm:justify-between sm:gap-6">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-ink">
+            Organizations
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            Browse creator groups and their published projects.
+          </p>
+        </div>
+        <label className="mt-4 block w-full max-w-sm sm:mt-0">
+          <span className="sr-only">Search organizations</span>
+          <span className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" />
+            <input
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+              placeholder="Search organizations..."
+              className="h-10 w-full rounded-lg border border-line bg-control pl-10 pr-3 text-sm text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent"
+            />
+          </span>
+        </label>
       </header>
 
       {organizationsQuery.isLoading ? (
         <OrganizationDirectorySkeleton />
-      ) : organizations.length === 0 ? (
+      ) : organizations.length === 0 && !hasSearch ? (
         <EmptyState onClear={() => window.history.back()} itemLabel="groups" />
+      ) : organizations.length === 0 ? (
+        <EmptyState
+          onClear={() => {
+            setQuery('');
+          }}
+          itemLabel="organizations matching this search"
+        />
       ) : (
         <div className="mt-6 grid gap-8">
+          <p className="text-sm font-semibold text-muted">
+            Showing {organizations.length.toLocaleString('en-US')} organizations
+          </p>
           {organizations.map((organization) => (
             <section
               key={organization.id}

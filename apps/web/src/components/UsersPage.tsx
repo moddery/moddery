@@ -1,0 +1,163 @@
+import { useQuery } from '@tanstack/react-query';
+import { Search } from 'lucide-react';
+import { useDeferredValue, useState } from 'react';
+
+import {
+  fetchPublicUsers,
+  type PublicUserListItem,
+  userProjectToMod,
+} from '../lib/users.ts';
+import { type Mod } from '../types.ts';
+import { EmptyState } from './EmptyState.tsx';
+import { ModCard } from './ModCard.tsx';
+import { ProfileAvatar } from './user-profile/profile-header/ProfileAvatar.tsx';
+
+export function UsersPage({
+  onOpenProject,
+}: {
+  onOpenProject: (mod: Mod) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
+  const normalizedQuery = deferredQuery.trim();
+  const usersQuery = useQuery({
+    queryFn: ({ signal }) => fetchPublicUsers(normalizedQuery, signal),
+    queryKey: ['users', 'public', normalizedQuery],
+  });
+
+  const users = usersQuery.data ?? [];
+  const hasSearch = query.trim() !== '';
+
+  return (
+    <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
+      <header className="border-b border-line pb-5 sm:flex sm:items-end sm:justify-between sm:gap-6">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-ink">
+            Creators
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+            Browse public creator profiles, recent projects, and collections.
+          </p>
+        </div>
+        <label className="mt-4 block w-full max-w-sm sm:mt-0">
+          <span className="sr-only">Search creators</span>
+          <span className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint" />
+            <input
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+              }}
+              placeholder="Search creators..."
+              className="h-10 w-full rounded-lg border border-line bg-control pl-10 pr-3 text-sm text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent"
+            />
+          </span>
+        </label>
+      </header>
+
+      {usersQuery.isLoading ? (
+        <UsersDirectorySkeleton />
+      ) : users.length === 0 && !hasSearch ? (
+        <EmptyState onClear={() => window.history.back()} itemLabel="users" />
+      ) : users.length === 0 ? (
+        <EmptyState
+          onClear={() => {
+            setQuery('');
+          }}
+          itemLabel="creators matching this search"
+        />
+      ) : (
+        <div className="mt-6 grid gap-6">
+          <p className="text-sm font-semibold text-muted">
+            Showing {users.length.toLocaleString('en-US')} creators
+          </p>
+          {users.map((user) => (
+            <UserDirectoryRow
+              key={user.id}
+              user={user}
+              onOpenProject={onOpenProject}
+            />
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
+
+function UserDirectoryRow({
+  onOpenProject,
+  user,
+}: {
+  onOpenProject: (mod: Mod) => void;
+  user: PublicUserListItem;
+}) {
+  const name = user.displayName ?? user.username;
+
+  return (
+    <section className="border-b border-line pb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <ProfileAvatar avatarUrl={user.avatarUrl} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`/users/${user.username}`}
+              className="truncate font-display text-xl font-extrabold text-ink transition-colors hover:text-accent"
+            >
+              {name}
+            </a>
+            {user.isAdmin && (
+              <span className="rounded-md bg-accent-soft px-2 py-1 text-xs font-bold uppercase text-accent">
+                Admin
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-sm font-semibold text-muted">
+            @{user.username} · {user.projectCount.toLocaleString('en-US')}{' '}
+            projects · {user.collectionCount.toLocaleString('en-US')}{' '}
+            collections · {user.friendCount.toLocaleString('en-US')} friends
+          </p>
+          {user.bio && (
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+              {user.bio}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {user.projects.length > 0 && (
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {user.projects.slice(0, 2).map((project) => {
+            const mod = userProjectToMod(project);
+            return (
+              <ModCard
+                key={project.slug}
+                mod={mod}
+                layout="list"
+                onOpen={onOpenProject}
+              />
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function UsersDirectorySkeleton() {
+  return (
+    <div className="mt-6 grid gap-6">
+      {[0, 1, 2].map((item) => (
+        <section key={item} className="border-b border-line pb-6">
+          <div className="flex gap-4">
+            <div className="size-20 animate-pulse rounded-xl bg-surface-2" />
+            <div className="flex-1">
+              <div className="h-6 w-48 animate-pulse rounded bg-surface-2" />
+              <div className="mt-3 h-4 w-72 animate-pulse rounded bg-surface-2" />
+              <div className="mt-3 h-4 w-full max-w-2xl animate-pulse rounded bg-surface-2" />
+            </div>
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}

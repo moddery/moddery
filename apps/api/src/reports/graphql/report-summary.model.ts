@@ -6,6 +6,9 @@ export class ReportProjectTarget {
   id!: string;
 
   @Field(() => String)
+  kind!: string;
+
+  @Field(() => String)
   slug!: string;
 
   @Field(() => String)

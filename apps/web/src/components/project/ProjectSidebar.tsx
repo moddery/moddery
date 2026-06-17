@@ -16,6 +16,7 @@ import {
 import { FollowProjectButton } from './sidebar/FollowProjectButton.tsx';
 import { MetaRow } from './sidebar/MetaRow.tsx';
 import { ProjectAnalyticsSection } from './sidebar/ProjectAnalyticsSection.tsx';
+import { ProjectCollectionSave } from './sidebar/ProjectCollectionSave.tsx';
 import { ProjectLinksSection } from './sidebar/ProjectLinksSection.tsx';
 import { ProjectMembersSection } from './sidebar/ProjectMembersSection.tsx';
 import { ProjectModerationNotes } from './sidebar/ProjectModerationNotes.tsx';
@@ -52,6 +53,7 @@ export function ProjectSidebar({
         </button>
       )}
       <FollowProjectButton project={project} initialState={followState} />
+      <ProjectCollectionSave project={project} />
 
       <div className="mt-4 divide-y divide-line/70">
         <MetaRow

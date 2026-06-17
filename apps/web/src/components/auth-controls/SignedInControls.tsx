@@ -8,6 +8,7 @@ export function SignedInControls({
   notificationCount,
   onLogout,
   onOpenNotifications,
+  onOpenProfile,
   onNotificationRead,
   username,
 }: {
@@ -16,6 +17,7 @@ export function SignedInControls({
   notificationCount: number;
   onLogout: () => Promise<void>;
   onOpenNotifications?: () => void;
+  onOpenProfile?: (username: string) => void;
   onNotificationRead: (id: string) => Promise<void>;
   username?: string;
 }) {
@@ -23,6 +25,21 @@ export function SignedInControls({
     <div className="flex items-center gap-2">
       <a
         href={username ? `/users/${username}` : undefined}
+        onClick={(event) => {
+          if (!username || !onOpenProfile) return;
+          if (
+            event.button !== 0 ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.altKey
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+          onOpenProfile(username);
+        }}
         className="hidden text-sm font-semibold text-muted transition-colors hover:text-ink sm:inline"
       >
         {username ?? 'Signed in'}

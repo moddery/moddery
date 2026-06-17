@@ -129,6 +129,51 @@ describe(CollectionsService.name, () => {
     expect(collection.items[0]?.sortOrder).toBe(0);
   });
 
+  test('filters public collections by search text', async () => {
+    const queries: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([collectionRow()]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const collections = await service.findPublicCollections({
+      search: ' creator ',
+    });
+
+    expect(queries[0]).toMatchObject({
+      where: {
+        OR: expect.arrayContaining([
+          {
+            name: {
+              contains: 'creator',
+              mode: 'insensitive',
+            },
+          },
+          {
+            owner: {
+              is: {
+                OR: expect.arrayContaining([
+                  {
+                    username: {
+                      contains: 'creator',
+                      mode: 'insensitive',
+                    },
+                  },
+                ]),
+              },
+            },
+          },
+        ]) as unknown[],
+        visibility: 'PUBLIC',
+      },
+    });
+    expect(collections[0]?.name).toBe('Example');
+  });
+
   test('removes projects from collections owned by the current user', async () => {
     const deletes: unknown[] = [];
     const service = new CollectionsService({

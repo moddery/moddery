@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { type MouseEventHandler } from 'react';
 import { ModderyMark } from './icons.tsx';
 import { AuthControls } from './AuthControls.tsx';
 import {
@@ -15,19 +16,25 @@ import { HomeProjectSection } from './home/HomeProjectSection.tsx';
 export function HomePage({
   onDiscover,
   onOpenCollection,
+  onOpenNotifications,
   onOpenProject,
+  onOpenProfile,
   onTagSearch,
+  onNavigate,
 }: {
   onDiscover: () => void;
   onOpenCollection?: (collection: PublicCollection) => void;
+  onOpenNotifications?: () => void;
   onOpenProject: (mod: Mod) => void;
+  onOpenProfile?: (username: string) => void;
   onTagSearch: (tag: SearchTag) => void;
+  onNavigate?: MouseEventHandler<HTMLElement>;
 }) {
   const popularModsQuery = useHomeProjects('mod', 'downloads');
   const popularPluginsQuery = useHomeProjects('plugin', 'downloads');
   const updatedModpacksQuery = useHomeProjects('modpack', 'updated');
   const collectionsQuery = useQuery({
-    queryFn: ({ signal }) => fetchPublicCollections(signal),
+    queryFn: ({ signal }) => fetchPublicCollections(null, signal),
     queryKey: ['home', 'collections'],
   });
 
@@ -37,10 +44,16 @@ export function HomePage({
   const collections = collectionsQuery.data?.slice(0, 3) ?? [];
 
   return (
-    <div className="min-h-dvh bg-bg">
+    <div className="min-h-dvh bg-bg" onClickCapture={onNavigate}>
       <header className="sticky top-0 z-30 border-b border-line bg-bg pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center gap-4 px-4 sm:px-6">
-          <a href="/" className="flex shrink-0 items-center gap-2.5">
+          <a
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+            }}
+            className="flex shrink-0 items-center gap-2.5"
+          >
             <ModderyMark className="size-8 text-accent-icon" />
             <span className="font-display text-xl font-extrabold lowercase text-ink">
               moddery
@@ -55,7 +68,10 @@ export function HomePage({
             >
               Explore
             </button>
-            <AuthControls />
+            <AuthControls
+              onOpenNotifications={onOpenNotifications}
+              onOpenProfile={onOpenProfile}
+            />
           </div>
         </div>
       </header>

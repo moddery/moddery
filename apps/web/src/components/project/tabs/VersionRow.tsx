@@ -1,4 +1,4 @@
-import { ChevronDown, Download, Flag } from 'lucide-react';
+import { ChevronDown, Download, Flag, PackageCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import { recordDownload, type ProjectVersion } from '../../../lib/catalog.ts';
@@ -16,7 +16,9 @@ export function VersionRow({ version }: { version: ProjectVersion }) {
   const primaryFile =
     version.files.find((file) => file.primary) ?? version.files[0];
   const [reportOpen, setReportOpen] = useState(false);
-  const [filesOpen, setFilesOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const hasDetails =
+    version.files.length > 0 || version.dependencies.length > 0;
   const authorName =
     version.author?.display_name ?? version.author?.username ?? null;
   const typeClass = {
@@ -96,18 +98,18 @@ export function VersionRow({ version }: { version: ProjectVersion }) {
         >
           <Flag className="size-4" />
         </button>
-        {version.files.length > 0 && (
+        {hasDetails && (
           <button
             type="button"
-            onClick={() => setFilesOpen((current) => !current)}
+            onClick={() => setDetailsOpen((current) => !current)}
             className="grid size-9 place-items-center rounded-lg bg-control text-accent-icon transition-colors hover:bg-control-hover"
-            aria-label={`Show files for ${version.name}`}
-            aria-expanded={filesOpen}
+            aria-label={`Show details for ${version.name}`}
+            aria-expanded={detailsOpen}
           >
             <ChevronDown
               className={cn(
                 'size-4 transition-transform',
-                filesOpen && 'rotate-180',
+                detailsOpen && 'rotate-180',
               )}
             />
           </button>
@@ -133,10 +135,71 @@ export function VersionRow({ version }: { version: ProjectVersion }) {
         </div>
       )}
 
-      {filesOpen && (
-        <div className="sm:col-span-2">
+      {detailsOpen && (
+        <div className="grid gap-3 sm:col-span-2">
+          <VersionDependencies dependencies={version.dependencies} />
           <VersionFiles files={version.files} onDownload={downloadFile} />
         </div>
+      )}
+    </div>
+  );
+}
+
+function VersionDependencies({
+  dependencies,
+}: {
+  dependencies: ProjectVersion['dependencies'];
+}) {
+  if (dependencies.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border border-line bg-surface px-3 py-3">
+      <div className="mb-2 flex items-center gap-2 text-xs font-extrabold uppercase text-muted">
+        <PackageCheck className="size-4 text-accent-icon" />
+        Dependencies
+      </div>
+      <div className="grid gap-2">
+        {dependencies.map((dependency) => (
+          <DependencyRow key={dependency.id} dependency={dependency} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DependencyRow({
+  dependency,
+}: {
+  dependency: ProjectVersion['dependencies'][number];
+}) {
+  const href = dependencyProjectHref(dependency);
+  const target =
+    dependency.targetProject?.title ??
+    dependency.targetVersion?.versionNumber ??
+    dependency.externalFileName ??
+    'External file';
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span className="rounded-md bg-surface-2 px-2 py-1 text-xs font-bold uppercase text-muted">
+        {dependency.dependencyKind.toLowerCase()}
+      </span>
+      {href === null ? (
+        <span className="font-semibold text-ink">{target}</span>
+      ) : (
+        <a
+          href={href}
+          className="font-semibold text-ink transition-colors hover:text-accent"
+        >
+          {target}
+        </a>
+      )}
+      {dependency.targetProject !== null && dependency.targetVersion && (
+        <span className="text-xs font-semibold text-muted">
+          Version {dependency.targetVersion.versionNumber}
+        </span>
       )}
     </div>
   );

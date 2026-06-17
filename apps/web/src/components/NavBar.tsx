@@ -11,10 +11,12 @@ export function NavBar({
   onHome,
   onDiscover,
   onCollections,
+  onUsers,
   onOrganizations,
   onDashboard,
   isDiscoverActive,
   isCollectionsActive,
+  isUsersActive,
   isOrganizationsActive,
   showContentTabs,
   accountSlot,
@@ -24,10 +26,12 @@ export function NavBar({
   onHome: () => void;
   onDiscover: () => void;
   onCollections: () => void;
+  onUsers: () => void;
   onOrganizations: () => void;
   onDashboard: () => void;
   isDiscoverActive: boolean;
   isCollectionsActive: boolean;
+  isUsersActive: boolean;
   isOrganizationsActive: boolean;
   showContentTabs: boolean;
   accountSlot?: ReactNode;
@@ -44,6 +48,12 @@ export function NavBar({
       href: '/collections',
       label: 'Collections',
       onClick: onCollections,
+    },
+    {
+      active: isUsersActive,
+      href: '/users',
+      label: 'Creators',
+      onClick: onUsers,
     },
     {
       active: isOrganizationsActive,
@@ -65,6 +75,8 @@ export function NavBar({
           {accountSlot}
         </div>
       </div>
+
+      <PrimaryNav items={primaryItems} variant="mobile" />
 
       {showContentTabs && (
         <ContentTypeTabs activeType={activeType} onTypeChange={onTypeChange} />

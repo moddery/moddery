@@ -5,11 +5,15 @@ export function ApiTokenList({
   busy,
   error,
   onRevoke,
+  onShowRevokedChange,
+  showRevoked,
   tokens,
 }: {
   busy: boolean;
   error: string | null;
   onRevoke: (tokenId: string) => Promise<void>;
+  onShowRevokedChange: (value: boolean) => void;
+  showRevoked: boolean;
   tokens: ApiTokenSummary[];
 }) {
   if (error) {
@@ -22,14 +26,28 @@ export function ApiTokenList({
 
   if (tokens.length === 0) {
     return (
-      <p className="mt-4 text-sm font-semibold text-muted">
-        No personal access tokens.
-      </p>
+      <div className="mt-4 rounded-lg border border-line bg-surface px-3 py-3">
+        <TokenListHeader
+          showRevoked={showRevoked}
+          tokens={tokens}
+          onShowRevokedChange={onShowRevokedChange}
+        />
+        <p className="mt-3 text-sm font-semibold text-muted">
+          {showRevoked
+            ? 'No personal access tokens.'
+            : 'No active personal access tokens.'}
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="mt-4 grid gap-2">
+      <TokenListHeader
+        showRevoked={showRevoked}
+        tokens={tokens}
+        onShowRevokedChange={onShowRevokedChange}
+      />
       {tokens.map((token) => (
         <div
           key={token.id}
@@ -62,6 +80,34 @@ export function ApiTokenList({
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function TokenListHeader({
+  showRevoked,
+  tokens,
+  onShowRevokedChange,
+}: {
+  showRevoked: boolean;
+  tokens: ApiTokenSummary[];
+  onShowRevokedChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm font-semibold text-muted">
+        Showing {tokens.length.toLocaleString('en-US')}{' '}
+        {showRevoked ? 'total tokens' : 'active tokens'}
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          onShowRevokedChange(!showRevoked);
+        }}
+        className="inline-flex h-8 items-center rounded-lg border border-line px-3 text-xs font-bold text-ink transition-colors hover:bg-control-hover"
+      >
+        {showRevoked ? 'Hide revoked' : 'Show revoked'}
+      </button>
     </div>
   );
 }

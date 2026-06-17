@@ -26,13 +26,20 @@ export interface NotificationDelivery {
 
 export interface NotificationsQueryData {
   unreadNotificationCount: number;
+  viewerNotificationTypes: string[];
   viewerNotifications: NotificationItem[];
 }
 
+export interface NotificationsQueryVariables {
+  type?: string | null;
+  unreadOnly?: boolean | null;
+}
+
 export const NOTIFICATIONS_QUERY = gql`
-  query ViewerNotifications {
+  query ViewerNotifications($type: String, $unreadOnly: Boolean) {
     unreadNotificationCount
-    viewerNotifications {
+    viewerNotificationTypes
+    viewerNotifications(type: $type, unreadOnly: $unreadOnly) {
       actionUrl
       body
       createdAt
@@ -70,13 +77,27 @@ export const MARK_ALL_NOTIFICATIONS_READ_MUTATION = gql`
   }
 `;
 
-export async function fetchViewerNotifications(signal?: AbortSignal) {
-  const { data } = await apolloClient.query<NotificationsQueryData>({
+export async function fetchViewerNotifications(
+  filters: {
+    type?: string | null;
+    unreadOnly?: boolean | null;
+  } = {},
+  signal?: AbortSignal,
+) {
+  const normalizedType = filters.type?.trim().toLowerCase() ?? '';
+  const { data } = await apolloClient.query<
+    NotificationsQueryData,
+    NotificationsQueryVariables
+  >({
     context: {
       fetchOptions: { signal },
     },
     fetchPolicy: 'network-only',
     query: NOTIFICATIONS_QUERY,
+    variables: {
+      type: normalizedType.length === 0 ? null : normalizedType,
+      unreadOnly: filters.unreadOnly ?? null,
+    },
   });
 
   return data;

@@ -22,6 +22,20 @@ export interface PublicUserProfile {
   username: string;
 }
 
+export interface PublicUserListItem {
+  avatarUrl: string | null;
+  bio: string | null;
+  collectionCount: number;
+  createdAt: string;
+  displayName: string | null;
+  friendCount: number;
+  id: string;
+  isAdmin: boolean;
+  projectCount: number;
+  projects: UserProjectPreview[];
+  username: string;
+}
+
 export interface UserCollectionPreview {
   color: string | null;
   description: string | null;
@@ -91,6 +105,14 @@ interface UserByUsernameQueryData {
   userByUsername: PublicUserProfile | null;
 }
 
+interface PublicUsersQueryData {
+  publicUsers: PublicUserListItem[];
+}
+
+interface PublicUsersQueryVariables {
+  search?: string | null;
+}
+
 interface UserByUsernameQueryVariables {
   username: string;
 }
@@ -136,89 +158,37 @@ interface RemoveFriendMutationData {
   removeFriend: boolean;
 }
 
-const USER_BY_USERNAME_QUERY = gql`
-  query UserByUsername($username: String!) {
-    userByUsername(username: $username) {
-      avatarUrl
-      bio
-      collectionCount
-      collections {
-        color
-        description
-        id
-        name
-        projectCount
-        projects {
-          categories
-          color
-          downloads
-          followers
-          gameVersions
-          iconUrl
-          kind
-          loaders
-          owner {
-            avatarUrl
-            displayName
-            id
-            username
-          }
-          organization {
-            color
-            iconUrl
-            id
-            name
-            slug
-          }
-          slug
-          summary
-          title
-          updatedAt
-        }
-        slug
-        updatedAt
-      }
-      createdAt
-      displayName
-      followedProjectCount
-      friendCount
+const USER_PROJECT_PREVIEW_FRAGMENT = gql`
+  fragment UserProjectPreviewFields on ProjectSummary {
+    categories
+    color
+    downloads
+    followers
+    gameVersions
+    iconUrl
+    kind
+    loaders
+    organization {
+      color
+      iconUrl
       id
-      isAdmin
-      projectCount
-      projects {
-        categories
-        color
-        downloads
-        followers
-        gameVersions
-        iconUrl
-        kind
-        loaders
-        owner {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-        organization {
-          color
-          iconUrl
-          id
-          name
-          slug
-        }
-        slug
-        summary
-        title
-        updatedAt
-      }
-      role
+      name
+      slug
+    }
+    owner {
+      avatarUrl
+      displayName
+      id
       username
     }
+    slug
+    summary
+    title
+    updatedAt
   }
 `;
 
-const VIEWER_FRIENDSHIP_QUERY = gql`
+const FRIENDSHIP_SUMMARY_FRAGMENT = gql`
   fragment FriendshipSummaryFields on FriendshipSummary {
     acceptedAt
     createdAt
@@ -232,7 +202,66 @@ const VIEWER_FRIENDSHIP_QUERY = gql`
       username
     }
   }
+`;
 
+const USER_BY_USERNAME_QUERY = gql`
+  ${USER_PROJECT_PREVIEW_FRAGMENT}
+  query UserByUsername($username: String!) {
+    userByUsername(username: $username) {
+      avatarUrl
+      bio
+      collectionCount
+      collections {
+        color
+        description
+        id
+        name
+        projectCount
+        projects {
+          ...UserProjectPreviewFields
+        }
+        slug
+        updatedAt
+      }
+      createdAt
+      displayName
+      followedProjectCount
+      friendCount
+      id
+      isAdmin
+      projectCount
+      projects {
+        ...UserProjectPreviewFields
+      }
+      role
+      username
+    }
+  }
+`;
+
+const PUBLIC_USERS_QUERY = gql`
+  ${USER_PROJECT_PREVIEW_FRAGMENT}
+  query PublicUsers($search: String) {
+    publicUsers(search: $search) {
+      avatarUrl
+      bio
+      collectionCount
+      createdAt
+      displayName
+      friendCount
+      id
+      isAdmin
+      projectCount
+      projects {
+        ...UserProjectPreviewFields
+      }
+      username
+    }
+  }
+`;
+
+const VIEWER_FRIENDSHIP_QUERY = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
   query ViewerFriendship($username: String!) {
     viewer {
       username
@@ -244,99 +273,46 @@ const VIEWER_FRIENDSHIP_QUERY = gql`
 `;
 
 const SEND_FRIEND_REQUEST_MUTATION = gql`
-  fragment SendFriendRequestFields on FriendshipSummary {
-    acceptedAt
-    createdAt
-    direction
-    id
-    state
-    user {
-      avatarUrl
-      displayName
-      id
-      username
-    }
-  }
-
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
   mutation SendFriendRequest($username: String!) {
     sendFriendRequest(username: $username) {
-      ...SendFriendRequestFields
+      ...FriendshipSummaryFields
     }
   }
 `;
 
 const ACCEPT_FRIEND_REQUEST_MUTATION = gql`
-  fragment AcceptFriendRequestFields on FriendshipSummary {
-    acceptedAt
-    createdAt
-    direction
-    id
-    state
-    user {
-      avatarUrl
-      displayName
-      id
-      username
-    }
-  }
-
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
   mutation AcceptFriendRequest($username: String!) {
     acceptFriendRequest(username: $username) {
-      ...AcceptFriendRequestFields
+      ...FriendshipSummaryFields
     }
   }
 `;
 
 const VIEWER_FRIENDS_QUERY = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
   query ViewerFriends {
     viewerFriends {
-      acceptedAt
-      createdAt
-      direction
-      id
-      state
-      user {
-        avatarUrl
-        displayName
-        id
-        username
-      }
+      ...FriendshipSummaryFields
     }
   }
 `;
 
 const VIEWER_FRIEND_REQUESTS_QUERY = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
   query ViewerFriendRequests {
     viewerFriendRequests {
-      acceptedAt
-      createdAt
-      direction
-      id
-      state
-      user {
-        avatarUrl
-        displayName
-        id
-        username
-      }
+      ...FriendshipSummaryFields
     }
   }
 `;
 
 const VIEWER_BLOCKED_USERS_QUERY = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
   query ViewerBlockedUsers {
     viewerBlockedUsers {
-      acceptedAt
-      createdAt
-      direction
-      id
-      state
-      user {
-        avatarUrl
-        displayName
-        id
-        username
-      }
+      ...FriendshipSummaryFields
     }
   }
 `;
@@ -348,19 +324,10 @@ const REMOVE_FRIEND_MUTATION = gql`
 `;
 
 const BLOCK_USER_MUTATION = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
   mutation BlockUser($username: String!) {
     blockUser(username: $username) {
-      acceptedAt
-      createdAt
-      direction
-      id
-      state
-      user {
-        avatarUrl
-        displayName
-        id
-        username
-      }
+      ...FriendshipSummaryFields
     }
   }
 `;
@@ -396,6 +363,26 @@ export async function fetchUserProfile(
   });
 
   return data.userByUsername;
+}
+
+export async function fetchPublicUsers(
+  search?: string | null,
+  signal?: AbortSignal,
+): Promise<PublicUserListItem[]> {
+  const normalizedSearch = search?.trim() ?? '';
+  const { data } = await apolloClient.query<
+    PublicUsersQueryData,
+    PublicUsersQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: PUBLIC_USERS_QUERY,
+    variables: {
+      search: normalizedSearch === '' ? null : normalizedSearch,
+    },
+  });
+
+  return data.publicUsers;
 }
 
 export async function createUserReport(input: {

@@ -164,11 +164,15 @@ export class CollectionsService {
     return collectionRowToContract(collection);
   }
 
-  async findPublicCollections() {
+  async findPublicCollections({
+    search,
+  }: {
+    search?: string | null;
+  } = {}) {
     const collections: CollectionRow[] = await this.prisma.collection.findMany({
       orderBy: [{ updatedAt: 'desc' }],
       select: collectionSelect(6),
-      where: { visibility: 'PUBLIC' },
+      where: publicCollectionWhere(search),
     });
 
     return collections.map(collectionRowToContract);
@@ -286,6 +290,62 @@ export class CollectionsService {
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed;
+}
+
+function publicCollectionWhere(search: string | null | undefined) {
+  const trimmed = search?.trim() ?? '';
+  const base = { visibility: 'PUBLIC' as const };
+
+  if (trimmed === '') {
+    return base;
+  }
+
+  return {
+    ...base,
+    OR: [
+      { name: { contains: trimmed, mode: 'insensitive' as const } },
+      { slug: { contains: trimmed, mode: 'insensitive' as const } },
+      { description: { contains: trimmed, mode: 'insensitive' as const } },
+      {
+        owner: {
+          is: {
+            OR: [
+              {
+                username: {
+                  contains: trimmed,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                displayName: {
+                  contains: trimmed,
+                  mode: 'insensitive' as const,
+                },
+              },
+            ],
+          },
+        },
+      },
+      {
+        projects: {
+          some: {
+            project: {
+              OR: [
+                { title: { contains: trimmed, mode: 'insensitive' as const } },
+                {
+                  summary: {
+                    contains: trimmed,
+                    mode: 'insensitive' as const,
+                  },
+                },
+                { slug: { contains: trimmed, mode: 'insensitive' as const } },
+              ],
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 function collectionSelect(projectTake: number) {

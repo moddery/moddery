@@ -255,15 +255,15 @@ export class OrganizationsService {
     });
   }
 
-  async findPublicOrganizations() {
+  async findPublicOrganizations({
+    search,
+  }: {
+    search?: string | null;
+  } = {}) {
     const organizations = await this.prisma.organization.findMany({
       orderBy: [{ updatedAt: 'desc' }],
       select: organizationSelect(4, { includeDraftProjects: false }),
-      where: {
-        projects: {
-          some: { status: 'APPROVED' },
-        },
-      },
+      where: publicOrganizationWhere(search),
     });
 
     return organizations.map(organizationRowToContract);
@@ -455,6 +455,86 @@ export class OrganizationsService {
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed;
+}
+
+function publicOrganizationWhere(search: string | null | undefined) {
+  const trimmed = search?.trim() ?? '';
+  const base = {
+    projects: {
+      some: { status: 'APPROVED' as const },
+    },
+  };
+
+  if (trimmed === '') {
+    return base;
+  }
+
+  return {
+    ...base,
+    OR: [
+      { name: { contains: trimmed, mode: 'insensitive' as const } },
+      { slug: { contains: trimmed, mode: 'insensitive' as const } },
+      { description: { contains: trimmed, mode: 'insensitive' as const } },
+      {
+        owner: {
+          is: {
+            OR: [
+              {
+                username: {
+                  contains: trimmed,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                displayName: {
+                  contains: trimmed,
+                  mode: 'insensitive' as const,
+                },
+              },
+            ],
+          },
+        },
+      },
+      {
+        projects: {
+          some: {
+            status: 'APPROVED' as const,
+            OR: [
+              { title: { contains: trimmed, mode: 'insensitive' as const } },
+              { summary: { contains: trimmed, mode: 'insensitive' as const } },
+              { slug: { contains: trimmed, mode: 'insensitive' as const } },
+            ],
+          },
+        },
+      },
+      {
+        team: {
+          is: {
+            members: {
+              some: {
+                user: {
+                  OR: [
+                    {
+                      username: {
+                        contains: trimmed,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                    {
+                      displayName: {
+                        contains: trimmed,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 function organizationMemberPermissions(

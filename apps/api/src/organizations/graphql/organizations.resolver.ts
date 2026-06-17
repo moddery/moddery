@@ -18,8 +18,11 @@ export class OrganizationsResolver {
 
   @Public()
   @Query(() => [OrganizationSummary])
-  publicOrganizations(): Promise<OrganizationSummary[]> {
-    return this.organizationsService.findPublicOrganizations();
+  publicOrganizations(
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+  ): Promise<OrganizationSummary[]> {
+    return this.organizationsService.findPublicOrganizations({ search });
   }
 
   @Public()

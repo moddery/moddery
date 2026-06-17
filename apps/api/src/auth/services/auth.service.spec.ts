@@ -6,6 +6,57 @@ import { type AuthTokenService } from './auth-token.service.js';
 import { AuthService } from './auth.service.js';
 
 describe(AuthService.name, () => {
+  test('loads active viewer sessions by default', async () => {
+    const queries: unknown[] = [];
+    const service = new AuthService(
+      {} as AuthTokenService,
+      {
+        session: {
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([]);
+          },
+        },
+      } as unknown as PrismaService,
+    );
+
+    await service.findViewerSessions('user-a');
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          revokedAt: null,
+          userId: 'user-a',
+        },
+      }),
+    );
+  });
+
+  test('loads revoked viewer sessions when requested', async () => {
+    const queries: unknown[] = [];
+    const service = new AuthService(
+      {} as AuthTokenService,
+      {
+        session: {
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([]);
+          },
+        },
+      } as unknown as PrismaService,
+    );
+
+    await service.findViewerSessions('user-a', { includeRevoked: true });
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          userId: 'user-a',
+        },
+      }),
+    );
+  });
+
   test('stores request metadata when creating login sessions', async () => {
     const sessions: unknown[] = [];
     const service = new AuthService(

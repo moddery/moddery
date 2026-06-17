@@ -17,8 +17,9 @@ export function ProjectMembersSection({
           const name = member.user.display_name ?? member.user.username;
 
           return (
-            <div
+            <a
               key={member.user.id}
+              href={`/users/${member.user.username}`}
               className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5"
             >
               {member.user.avatar_url ? (
@@ -40,7 +41,7 @@ export function ProjectMembersSection({
                   {member.owner ? 'Owner' : member.role}
                 </span>
               </span>
-            </div>
+            </a>
           );
         })}
       </div>

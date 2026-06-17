@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { type FormEvent } from 'react';
 import { useState } from 'react';
 
 import {
@@ -8,12 +9,15 @@ import {
   fetchViewerFriendRequests,
   fetchViewerFriends,
   removeFriend,
+  sendFriendRequest,
 } from '../../../lib/users.ts';
 import { FriendGroup, FriendList } from './friends-panel/FriendLists.tsx';
+import { DashboardField } from './shared.tsx';
 
 export function FriendsPanel() {
   const [busyUsername, setBusyUsername] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [username, setUsername] = useState('');
   const friendsQuery = useQuery({
     queryFn: fetchViewerFriends,
     queryKey: ['dashboard', 'friends'],
@@ -50,6 +54,19 @@ export function FriendsPanel() {
     }
   }
 
+  async function requestFriend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedUsername = username.trim();
+    if (trimmedUsername.length === 0) {
+      return;
+    }
+
+    await run(trimmedUsername, async () => {
+      await sendFriendRequest(trimmedUsername);
+      setUsername('');
+    });
+  }
+
   const requests = requestsQuery.data ?? [];
   const friends = friendsQuery.data ?? [];
   const blockedUsers = blockedQuery.data ?? [];
@@ -69,6 +86,25 @@ export function FriendsPanel() {
           <span className="text-sm font-semibold text-muted">{message}</span>
         )}
       </div>
+
+      <form onSubmit={requestFriend} className="mt-4 flex max-w-xl gap-2">
+        <div className="min-w-0 flex-1">
+          <DashboardField
+            required
+            label="Add friend"
+            placeholder="username"
+            value={username}
+            onChange={setUsername}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busyUsername === username.trim()}
+          className="mt-6 rounded-lg bg-accent px-4 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong disabled:cursor-wait disabled:opacity-60"
+        >
+          Add
+        </button>
+      </form>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <FriendGroup

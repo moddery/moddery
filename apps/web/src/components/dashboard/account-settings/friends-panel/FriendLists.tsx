@@ -74,7 +74,12 @@ function FriendRow({
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2">
       <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-ink">{name}</p>
+        <a
+          href={`/users/${friendship.user.username}`}
+          className="block truncate text-sm font-bold text-ink transition-colors hover:text-accent"
+        >
+          {name}
+        </a>
         <p className="text-xs font-semibold uppercase text-muted">
           @{friendship.user.username} · {friendship.direction.toLowerCase()}
         </p>

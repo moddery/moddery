@@ -52,6 +52,55 @@ describe(NotificationsService.name, () => {
     expect(notifications[0]?.deliveries[0]?.channel).toBe('EMAIL');
   });
 
+  test('loads filtered viewer notifications', async () => {
+    const queries: unknown[] = [];
+    const service = new NotificationsService({
+      notification: {
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    await service.findViewerNotifications('user-a', {
+      type: ' Team ',
+      unreadOnly: true,
+    });
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          readAt: null,
+          type: 'team',
+          userId: 'user-a',
+        },
+      }),
+    );
+  });
+
+  test('loads viewer notification types sorted by type', async () => {
+    const queries: unknown[] = [];
+    const service = new NotificationsService({
+      notification: {
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([{ type: 'message' }, { type: 'team' }]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const types = await service.findViewerNotificationTypes('user-a');
+
+    expect(queries[0]).toEqual({
+      distinct: ['type'],
+      orderBy: [{ type: 'asc' }],
+      select: { type: true },
+      where: { userId: 'user-a' },
+    });
+    expect(types).toEqual(['message', 'team']);
+  });
+
   test('marks viewer notifications as read by id and user', async () => {
     const updates: unknown[] = [];
     const service = new NotificationsService({

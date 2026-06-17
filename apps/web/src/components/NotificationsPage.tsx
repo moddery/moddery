@@ -8,15 +8,27 @@ import {
   markNotificationRead,
 } from '../lib/notifications.ts';
 import { NotificationRow } from './notifications/NotificationRow.tsx';
+import { SelectField, type SelectOption } from './ui/Select.tsx';
+
+const allTypesFilter = '__all_notification_types__';
 
 export function NotificationsPage() {
   const [message, setMessage] = useState<string | null>(null);
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [type, setType] = useState(allTypesFilter);
+  const selectedType = type === allTypesFilter ? null : type;
   const notificationsQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerNotifications(signal),
-    queryKey: ['notifications', 'viewer'],
+    queryFn: ({ signal }) =>
+      fetchViewerNotifications({ type: selectedType, unreadOnly }, signal),
+    queryKey: ['notifications', 'viewer', selectedType, unreadOnly],
   });
-  const notifications = notificationsQuery.data?.viewerNotifications;
+  const notifications = notificationsQuery.data?.viewerNotifications ?? [];
   const unreadCount = notificationsQuery.data?.unreadNotificationCount ?? 0;
+  const notificationTypes =
+    notificationsQuery.data?.viewerNotificationTypes ?? [];
+  const typeOptions = buildTypeOptions(notificationTypes);
+  const hasNotifications = notificationsQuery.data !== undefined;
+  const hasFilterControls = hasNotifications && notificationTypes.length > 0;
 
   async function markOneRead(id: string) {
     setMessage(null);
@@ -68,6 +80,35 @@ export function NotificationsPage() {
         </button>
       </header>
 
+      {hasFilterControls && (
+        <section className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3">
+          <p className="text-sm font-semibold text-muted">
+            Showing {notifications.length.toLocaleString('en-US')} notifications
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setUnreadOnly((current) => !current);
+              }}
+              className="inline-flex h-9 items-center rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
+              aria-pressed={unreadOnly}
+            >
+              {unreadOnly ? 'Unread only' : 'All notifications'}
+            </button>
+            <SelectField
+              ariaLabel="Filter by notification type"
+              prefix="Type:"
+              value={type}
+              onValueChange={setType}
+              options={typeOptions}
+              align="end"
+              className="h-9"
+            />
+          </div>
+        </section>
+      )}
+
       {notificationsQuery.isLoading ? (
         <NotificationsSkeleton />
       ) : notificationsQuery.error ? (
@@ -76,7 +117,7 @@ export function NotificationsPage() {
             ? notificationsQuery.error.message
             : 'Notifications failed to load'}
         </p>
-      ) : notifications === undefined ? (
+      ) : !hasNotifications ? (
         <p className="mt-5 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
           Notifications did not return from the API.
         </p>
@@ -89,6 +130,23 @@ export function NotificationsPage() {
           <p className="mt-1 max-w-sm text-sm leading-6 text-muted">
             Updates about your account and projects will appear here.
           </p>
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <Bell className="size-6 text-accent-icon" />
+          <h2 className="mt-4 font-display text-lg font-bold text-ink">
+            No matching notifications
+          </h2>
+          <button
+            type="button"
+            onClick={() => {
+              setUnreadOnly(false);
+              setType(allTypesFilter);
+            }}
+            className="mt-4 inline-flex h-9 items-center rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
         <section className="mt-2">
@@ -105,6 +163,21 @@ export function NotificationsPage() {
       )}
     </main>
   );
+}
+
+function buildTypeOptions(types: string[]): SelectOption[] {
+  return [
+    { label: 'All types', value: allTypesFilter },
+    ...types.map((item) => ({ label: formatTypeLabel(item), value: item })),
+  ];
+}
+
+function formatTypeLabel(type: string) {
+  return type
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
 }
 
 function NotificationsSkeleton() {

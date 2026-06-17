@@ -168,6 +168,26 @@ export class UsersService {
       : userProfileRowToContract(user, { includePrivateAccountFields: false });
   }
 
+  async findPublicUsers({
+    search,
+  }: {
+    search?: string | null;
+  } = {}) {
+    const users = await this.prisma.user.findMany({
+      orderBy: [{ createdAt: 'desc' }],
+      select: userProfileSelect({
+        includePrivateAccountFields: false,
+        includePrivateCollections: false,
+      }),
+      take: 50,
+      where: publicUserWhere(search),
+    });
+
+    return users.map((user) =>
+      userProfileRowToContract(user, { includePrivateAccountFields: false }),
+    );
+  }
+
   async updateViewerProfile(id: string, input: UpdateViewerProfileInput) {
     await this.prisma.user.update({
       data: {
@@ -441,6 +461,58 @@ export class UsersService {
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed;
+}
+
+function publicUserWhere(search: string | null | undefined) {
+  const trimmed = search?.trim() ?? '';
+  const base = { status: AccountStatus.ACTIVE };
+
+  if (trimmed === '') {
+    return base;
+  }
+
+  return {
+    ...base,
+    OR: [
+      { username: { contains: trimmed, mode: 'insensitive' as const } },
+      { displayName: { contains: trimmed, mode: 'insensitive' as const } },
+      { bio: { contains: trimmed, mode: 'insensitive' as const } },
+      {
+        teamMemberships: {
+          some: {
+            acceptedAt: { not: null },
+            team: {
+              project: {
+                is: {
+                  status: 'APPROVED' as const,
+                  OR: [
+                    {
+                      title: {
+                        contains: trimmed,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                    {
+                      summary: {
+                        contains: trimmed,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                    {
+                      slug: {
+                        contains: trimmed,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    ],
+  };
 }
 
 function userProfileSelect({

@@ -116,6 +116,10 @@ export interface ViewerApiTokensQueryData {
   viewerApiTokens: ApiTokenSummary[];
 }
 
+export interface ViewerSecurityQueryVariables {
+  includeRevoked?: boolean | null;
+}
+
 export interface ViewerSessionsQueryData {
   viewerSessions: SessionSummary[];
 }

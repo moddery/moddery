@@ -118,6 +118,129 @@ describe(UsersService.name, () => {
     expect(profile.status).toBe('SUSPENDED');
   });
 
+  test('loads active public users without private account fields', async () => {
+    const queries: unknown[] = [];
+    const service = new UsersService({
+      user: {
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            {
+              _count: {
+                collections: 2,
+                projectFollows: 3,
+                teamMemberships: 4,
+              },
+              avatarUrl: null,
+              bio: 'Ships useful projects.',
+              collections: [],
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              displayName: 'Creator',
+              email: false,
+              emailVerifiedAt: false,
+              friendRequestsReceived: [{ id: 'friend-a' }],
+              friendRequestsSent: [{ id: 'friend-b' }],
+              id: 'user-a',
+              newsletterOptIn: false,
+              role: 'USER',
+              status: 'ACTIVE',
+              teamMemberships: [],
+              twoFactorEnabled: false,
+              username: 'creator',
+            },
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const users = await service.findPublicUsers();
+
+    expect(queries[0]).toMatchObject({
+      orderBy: [{ createdAt: 'desc' }],
+      take: 50,
+      where: { status: 'ACTIVE' },
+    });
+    expect(users[0]).toMatchObject({
+      bio: 'Ships useful projects.',
+      collectionCount: 2,
+      email: null,
+      emailVerifiedAt: null,
+      followedProjectCount: 3,
+      friendCount: 2,
+      newsletterOptIn: false,
+      projectCount: 4,
+      twoFactorEnabled: false,
+      username: 'creator',
+    });
+  });
+
+  test('filters public users by search text', async () => {
+    const queries: unknown[] = [];
+    const service = new UsersService({
+      user: {
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            {
+              _count: {
+                collections: 0,
+                projectFollows: 0,
+                teamMemberships: 0,
+              },
+              avatarUrl: null,
+              bio: 'Builds utility projects.',
+              collections: [],
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              displayName: 'Creator',
+              email: false,
+              emailVerifiedAt: false,
+              friendRequestsReceived: [],
+              friendRequestsSent: [],
+              id: 'user-a',
+              newsletterOptIn: false,
+              role: 'USER',
+              status: 'ACTIVE',
+              teamMemberships: [],
+              twoFactorEnabled: false,
+              username: 'creator',
+            },
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const users = await service.findPublicUsers({ search: ' utility ' });
+
+    expect(queries[0]).toMatchObject({
+      where: {
+        OR: expect.arrayContaining([
+          {
+            username: {
+              contains: 'utility',
+              mode: 'insensitive',
+            },
+          },
+          {
+            teamMemberships: {
+              some: {
+                acceptedAt: { not: null },
+                team: {
+                  project: {
+                    is: expect.objectContaining({
+                      status: 'APPROVED',
+                    }) as object,
+                  },
+                },
+              },
+            },
+          },
+        ]) as unknown[],
+        status: 'ACTIVE',
+      },
+    });
+    expect(users[0]?.username).toBe('creator');
+  });
+
   test('accepts an incoming friend request when sending one back', async () => {
     const updates: unknown[] = [];
     const service = new UsersService({

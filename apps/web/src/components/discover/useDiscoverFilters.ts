@@ -18,17 +18,29 @@ export const EMPTY_FILTER_TAGS: FilterTags = {
   versions: [],
 };
 
-export function useDiscoverFilters({ filterTags }: { filterTags: FilterTags }) {
+export interface DiscoverFilterSelection {
+  categories: string[];
+  loaders: string[];
+  versions: string[];
+}
+
+export function useDiscoverFilters({
+  filterTags,
+  initialSelection,
+}: {
+  filterTags: FilterTags;
+  initialSelection?: DiscoverFilterSelection;
+}) {
   const [layout, setLayout] = useState<Layout>('list');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [selectedVersions, setSelectedVersions] = useState<Set<string>>(
-    new Set(),
+    () => new Set(initialSelection?.versions ?? []),
   );
   const [selectedLoaders, setSelectedLoaders] = useState<Set<string>>(
-    new Set(),
+    () => new Set(initialSelection?.loaders ?? []),
   );
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-    new Set(),
+    () => new Set(initialSelection?.categories ?? []),
   );
 
   const selectedVersionValues = useMemo(
@@ -94,6 +106,12 @@ export function useDiscoverFilters({ filterTags }: { filterTags: FilterTags }) {
     setSelectedCategories(new Set());
   }
 
+  function replaceSelection(selection: DiscoverFilterSelection) {
+    setSelectedVersions(new Set(selection.versions));
+    setSelectedLoaders(new Set(selection.loaders));
+    setSelectedCategories(new Set(selection.categories));
+  }
+
   function toggleTag(tag: TagFacetOption, onChange: () => void) {
     if (tag.kind === 'category') {
       toggleIn(setSelectedCategories, tag.value, onChange);
@@ -114,6 +132,7 @@ export function useDiscoverFilters({ filterTags }: { filterTags: FilterTags }) {
     layout,
     loaderOptions,
     mobileFiltersOpen,
+    replaceSelection,
     resetFilters,
     selectedCategories,
     selectedCategoryValues,

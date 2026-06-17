@@ -15,6 +15,7 @@ import { projectKindFromType } from './projectTypes.js';
 import {
   CREATE_PROJECT_REPORT_MUTATION,
   CREATE_VERSION_REPORT_MUTATION,
+  ADD_PROJECT_TO_COLLECTION_MUTATION,
   FOLLOW_PROJECT_MUTATION,
   PLATFORM_METADATA_QUERY,
   PROJECTS_QUERY,
@@ -25,9 +26,11 @@ import {
   PUBLIC_COLLECTIONS_QUERY,
   RECORD_DOWNLOAD_MUTATION,
   RECORD_PROJECT_VIEW_MUTATION,
+  REMOVE_PROJECT_FROM_COLLECTION_MUTATION,
   UNFOLLOW_PROJECT_MUTATION,
   VERSIONS_FOR_PROJECT_QUERY,
   VIEWER_FOLLOWED_PROJECTS_QUERY,
+  VIEWER_COLLECTION_CHOICES_QUERY,
   VIEWER_PROJECT_FOLLOW_STATE_QUERY,
 } from './catalog/queries.js';
 import {
@@ -35,6 +38,8 @@ import {
   type CreateProjectReportMutationVariables,
   type CreateVersionReportMutationData,
   type CreateVersionReportMutationVariables,
+  type AddProjectToCollectionMutationData,
+  type AddProjectToCollectionMutationVariables,
   type FilterTags,
   type PlatformMetadataQueryData,
   type ProjectAnalytics,
@@ -56,17 +61,22 @@ import {
   type PublicCollectionBySlugQueryData,
   type PublicCollectionBySlugQueryVariables,
   type PublicCollectionsQueryData,
+  type PublicCollectionsQueryVariables,
   type RecordDownloadMutationData,
   type RecordDownloadMutationVariables,
   type RecordProjectViewMutationData,
   type RecordProjectViewMutationVariables,
   type ReportSummary,
+  type RemoveProjectFromCollectionMutationData,
+  type RemoveProjectFromCollectionMutationVariables,
   type SearchProjectsParams,
   type SearchProjectsResult,
   type SortKey,
   type VersionsForProjectQueryData,
   type VersionsForProjectQueryVariables,
   type ViewerFollowedProjectsQueryData,
+  type ViewerCollectionChoice,
+  type ViewerCollectionChoicesQueryData,
 } from './catalog/types.js';
 
 export type {
@@ -87,6 +97,7 @@ export type {
   SearchProjectsResult,
   SortKey,
   VersionDependency,
+  ViewerCollectionChoice,
 } from './catalog/types.js';
 
 export async function searchProjects({
@@ -160,13 +171,22 @@ export async function fetchFilterTags(
 }
 
 export async function fetchPublicCollections(
+  search?: string | null,
   signal?: AbortSignal,
 ): Promise<PublicCollection[]> {
   throwIfAborted(signal);
 
-  const { data } = await apolloClient.query<PublicCollectionsQueryData>({
+  const normalizedSearch = search?.trim() ?? '';
+  const { data } = await apolloClient.query<
+    PublicCollectionsQueryData,
+    PublicCollectionsQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: PUBLIC_COLLECTIONS_QUERY,
+    variables: {
+      search: normalizedSearch === '' ? null : normalizedSearch,
+    },
   });
 
   throwIfAborted(signal);
@@ -210,6 +230,57 @@ export async function fetchViewerFollowedProjects(
   throwIfAborted(signal);
 
   return data.viewerFollowedProjects.map(projectFromSummary);
+}
+
+export async function fetchViewerCollectionChoices(
+  signal?: AbortSignal,
+): Promise<ViewerCollectionChoice[]> {
+  if (!hasAuthToken()) return [];
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<ViewerCollectionChoicesQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_COLLECTION_CHOICES_QUERY,
+  });
+
+  throwIfAborted(signal);
+
+  return data.viewer?.collections ?? [];
+}
+
+export async function addProjectToCollection(
+  collectionId: string,
+  projectSlug: string,
+): Promise<void> {
+  const { data } = await apolloClient.mutate<
+    AddProjectToCollectionMutationData,
+    AddProjectToCollectionMutationVariables
+  >({
+    mutation: ADD_PROJECT_TO_COLLECTION_MUTATION,
+    variables: { input: { collectionId, projectSlug } },
+  });
+
+  if (!data?.addProjectToCollection) {
+    throw new Error('Collection update did not return from the API');
+  }
+}
+
+export async function removeProjectFromCollection(
+  collectionId: string,
+  projectSlug: string,
+): Promise<void> {
+  const { data } = await apolloClient.mutate<
+    RemoveProjectFromCollectionMutationData,
+    RemoveProjectFromCollectionMutationVariables
+  >({
+    mutation: REMOVE_PROJECT_FROM_COLLECTION_MUTATION,
+    variables: { input: { collectionId, projectSlug } },
+  });
+
+  if (!data?.removeProjectFromCollection) {
+    throw new Error('Collection update did not return from the API');
+  }
 }
 
 export async function fetchProjectDetails(

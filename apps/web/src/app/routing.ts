@@ -5,6 +5,7 @@ export type AppView =
   | 'home'
   | 'discover'
   | 'collections'
+  | 'users'
   | 'dashboard'
   | 'notifications'
   | 'organization'
@@ -48,6 +49,7 @@ export function viewFromUrl(): AppView {
   if (window.location.pathname === '/dashboard') return 'dashboard';
   if (window.location.pathname === '/notifications') return 'notifications';
   if (window.location.pathname === '/collections') return 'collections';
+  if (window.location.pathname === '/users') return 'users';
   if (collectionFromUrl()) return 'collections';
   if (window.location.pathname === '/organizations') return 'organization';
   if (organizationFromUrl()) return 'organization';
@@ -64,6 +66,18 @@ export function writeHomeToUrl() {
 
 export function writeCollectionsToUrl() {
   writeStaticViewToUrl('/collections');
+}
+
+export function writeUsersToUrl() {
+  writeStaticViewToUrl('/users');
+}
+
+export function writeProfileToUrl(username: string) {
+  const url = new URL(window.location.href);
+  url.pathname = `/users/${encodeURIComponent(username)}`;
+  clearProjectSearchParams(url);
+
+  window.history.pushState(null, '', url);
 }
 
 export function writeCollectionToUrl(collection: SelectedCollection) {

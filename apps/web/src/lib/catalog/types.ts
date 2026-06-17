@@ -64,6 +64,15 @@ export interface PublicCollection {
   visibility: string;
 }
 
+export interface ViewerCollectionChoice {
+  id: string;
+  items: { project: { slug: string } }[];
+  name: string;
+  projectCount: number;
+  slug: string;
+  visibility: string;
+}
+
 export interface PublicCollectionItem {
   addedBy: {
     avatarUrl: string | null;
@@ -314,6 +323,12 @@ export interface ViewerFollowedProjectsQueryData {
   viewerFollowedProjects: ProjectSummary[];
 }
 
+export interface ViewerCollectionChoicesQueryData {
+  viewer: {
+    collections: ViewerCollectionChoice[];
+  } | null;
+}
+
 export interface ProjectsQueryVariables {
   query?: {
     search?: string;
@@ -332,6 +347,10 @@ export interface ProjectBySlugQueryVariables {
 
 export interface PublicCollectionsQueryData {
   publicCollections: PublicCollectionSummary[];
+}
+
+export interface PublicCollectionsQueryVariables {
+  search?: string | null;
 }
 
 export interface PublicCollectionBySlugQueryData {
@@ -400,6 +419,30 @@ export interface ProjectFollowStateMutationData {
   followProject?: ProjectFollowState;
   unfollowProject?: ProjectFollowState;
 }
+
+export interface AddProjectToCollectionMutationData {
+  addProjectToCollection: {
+    id: string;
+    projectCount: number;
+  };
+}
+
+export interface RemoveProjectFromCollectionMutationData {
+  removeProjectFromCollection: {
+    id: string;
+    projectCount: number;
+  };
+}
+
+export interface AddProjectToCollectionMutationVariables {
+  input: {
+    collectionId: string;
+    projectSlug: string;
+  };
+}
+
+export type RemoveProjectFromCollectionMutationVariables =
+  AddProjectToCollectionMutationVariables;
 
 export interface RecordDownloadMutationData {
   recordDownload: {

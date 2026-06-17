@@ -12,9 +12,10 @@ import { timeAgo } from '../../../lib/format.ts';
 export function SessionsPanel() {
   const [busySessionId, setBusySessionId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showRevoked, setShowRevoked] = useState(false);
   const sessionsQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerSessions(signal),
-    queryKey: ['dashboard', 'sessions'],
+    queryFn: ({ signal }) => fetchViewerSessions(showRevoked, signal),
+    queryKey: ['dashboard', 'sessions', showRevoked],
   });
   const sessions = sessionsQuery.data ?? [];
 
@@ -58,7 +59,9 @@ export function SessionsPanel() {
             : null
         }
         onRevoke={revoke}
+        onShowRevokedChange={setShowRevoked}
         sessions={sessions}
+        showRevoked={showRevoked}
       />
     </section>
   );
@@ -68,12 +71,16 @@ function SessionList({
   busySessionId,
   error,
   onRevoke,
+  onShowRevokedChange,
   sessions,
+  showRevoked,
 }: {
   busySessionId: string | null;
   error: string | null;
   onRevoke: (sessionId: string) => Promise<void>;
+  onShowRevokedChange: (value: boolean) => void;
   sessions: SessionSummary[];
+  showRevoked: boolean;
 }) {
   if (error) {
     return (
@@ -85,14 +92,26 @@ function SessionList({
 
   if (sessions.length === 0) {
     return (
-      <p className="mt-4 text-sm font-semibold text-muted">
-        No active sessions.
-      </p>
+      <div className="mt-4 rounded-lg border border-line bg-surface px-3 py-3">
+        <SessionListHeader
+          sessions={sessions}
+          showRevoked={showRevoked}
+          onShowRevokedChange={onShowRevokedChange}
+        />
+        <p className="mt-3 text-sm font-semibold text-muted">
+          {showRevoked ? 'No sessions.' : 'No active sessions.'}
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="mt-4 grid gap-2">
+      <SessionListHeader
+        sessions={sessions}
+        showRevoked={showRevoked}
+        onShowRevokedChange={onShowRevokedChange}
+      />
       {sessions.map((session) => (
         <div
           key={session.id}
@@ -124,6 +143,34 @@ function SessionList({
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function SessionListHeader({
+  sessions,
+  showRevoked,
+  onShowRevokedChange,
+}: {
+  sessions: SessionSummary[];
+  showRevoked: boolean;
+  onShowRevokedChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm font-semibold text-muted">
+        Showing {sessions.length.toLocaleString('en-US')}{' '}
+        {showRevoked ? 'total sessions' : 'active sessions'}
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          onShowRevokedChange(!showRevoked);
+        }}
+        className="inline-flex h-8 items-center rounded-lg border border-line px-3 text-xs font-bold text-ink transition-colors hover:bg-control-hover"
+      >
+        {showRevoked ? 'Hide revoked' : 'Show revoked'}
+      </button>
     </div>
   );
 }

@@ -32,8 +32,22 @@ export class NotificationsResolver {
   }
 
   @Query(() => [NotificationSummary])
-  viewerNotifications(@CurrentUser() user: AuthenticatedUser) {
-    return this.notificationsService.findViewerNotifications(user.id);
+  viewerNotifications(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('type', { nullable: true, type: () => String })
+    type?: string | null,
+    @Args('unreadOnly', { nullable: true, type: () => Boolean })
+    unreadOnly?: boolean | null,
+  ) {
+    return this.notificationsService.findViewerNotifications(user.id, {
+      type,
+      unreadOnly,
+    });
+  }
+
+  @Query(() => [String])
+  viewerNotificationTypes(@CurrentUser() user: AuthenticatedUser) {
+    return this.notificationsService.findViewerNotificationTypes(user.id);
   }
 
   @Query(() => [NotificationPreferenceSummary])

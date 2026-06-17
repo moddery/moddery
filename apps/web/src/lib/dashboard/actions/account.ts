@@ -24,6 +24,7 @@ import {
   type UpdateViewerProfileMutationVariables,
   type ViewerApiTokensQueryData,
   type ViewerSessionsQueryData,
+  type ViewerSecurityQueryVariables,
   type CreateApiTokenMutationData,
   type CreateApiTokenMutationVariables,
   type RevokeApiTokenMutationData,
@@ -85,24 +86,34 @@ export async function updateViewerProfile(
 }
 
 export async function fetchViewerApiTokens(
+  includeRevoked = false,
   signal?: AbortSignal,
 ): Promise<ApiTokenSummary[]> {
-  const { data } = await apolloClient.query<ViewerApiTokensQueryData>({
+  const { data } = await apolloClient.query<
+    ViewerApiTokensQueryData,
+    ViewerSecurityQueryVariables
+  >({
     context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: VIEWER_API_TOKENS_QUERY,
+    variables: { includeRevoked },
   });
 
   return data.viewerApiTokens;
 }
 
 export async function fetchViewerSessions(
+  includeRevoked = false,
   signal?: AbortSignal,
 ): Promise<SessionSummary[]> {
-  const { data } = await apolloClient.query<ViewerSessionsQueryData>({
+  const { data } = await apolloClient.query<
+    ViewerSessionsQueryData,
+    ViewerSecurityQueryVariables
+  >({
     context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: VIEWER_SESSIONS_QUERY,
+    variables: { includeRevoked },
   });
 
   return data.viewerSessions;

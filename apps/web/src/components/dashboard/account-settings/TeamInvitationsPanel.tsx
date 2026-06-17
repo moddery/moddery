@@ -7,6 +7,7 @@ import {
   fetchViewerTeamInvitations,
 } from '../../../lib/dashboard.ts';
 import { type TeamInvitationSummary } from '../../../lib/dashboard/types.ts';
+import { timeAgo } from '../../../lib/format.ts';
 
 export function TeamInvitationsPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -91,7 +92,7 @@ function TeamInvitationRow({
           <h3 className="font-bold text-ink">{invitation.target.name}</h3>
           <p className="mt-1 text-sm font-semibold text-muted">
             {invitation.target.type.toLowerCase().replace('_', ' ')} ·{' '}
-            {invitation.role}
+            {invitation.role} · invited {timeAgo(invitation.createdAt)}
           </p>
         </div>
         <div className="flex gap-2">

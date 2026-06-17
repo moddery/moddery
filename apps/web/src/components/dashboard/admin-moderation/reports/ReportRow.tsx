@@ -5,6 +5,8 @@ import {
   type ModerationReportState,
 } from '../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../lib/format.ts';
+import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
+import { projectPath } from '../../../mod-card/ModCardParts.tsx';
 import { ReportActionButton } from '../shared.tsx';
 import { ReportThreadPanel } from './ReportThreadPanel.tsx';
 
@@ -29,9 +31,15 @@ export function ReportRow({
     report.userTargetId ??
     'Unknown target';
   const targetHref = report.version
-    ? `/mods/${report.version.project.slug}`
+    ? projectPath(
+        projectTypeFromKind(report.version.project.kind),
+        report.version.project.slug,
+      )
     : report.project
-      ? `/mods/${report.project.slug}`
+      ? projectPath(
+          projectTypeFromKind(report.project.kind),
+          report.project.slug,
+        )
       : report.userTarget
         ? `/users/${report.userTarget.username}`
         : null;
@@ -50,7 +58,10 @@ export function ReportRow({
         ? report.userTarget.username
         : null;
   const versionHref = report.version
-    ? `/mods/${report.version.project.slug}`
+    ? projectPath(
+        projectTypeFromKind(report.version.project.kind),
+        report.version.project.slug,
+      )
     : null;
 
   return (

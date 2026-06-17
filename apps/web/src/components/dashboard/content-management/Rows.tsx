@@ -3,6 +3,8 @@ import {
   type DashboardOrganization,
 } from '../../../lib/dashboard.ts';
 import { timeAgo } from '../../../lib/format.ts';
+import { projectTypeFromKind } from '../../../lib/projectTypes.ts';
+import { projectPath } from '../../mod-card/ModCardParts.tsx';
 
 export function OrganizationRow({
   organization,
@@ -98,7 +100,10 @@ export function CollectionRow({
           {collection.items.map((item) => (
             <a
               key={`${collection.id}-${item.project.slug}`}
-              href={`/projects/${item.project.slug}`}
+              href={projectPath(
+                projectTypeFromKind(item.project.kind),
+                item.project.slug,
+              )}
               className="inline-flex max-w-full items-center gap-2 rounded-md border border-line bg-control px-2 py-1 text-xs font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover"
             >
               <span className="text-faint">{item.sortOrder + 1}</span>

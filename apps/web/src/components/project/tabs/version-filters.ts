@@ -59,7 +59,10 @@ export function filterProjectVersions(
   versions: ProjectVersion[],
   gameVersion: string,
   loader: string,
+  query = '',
 ): ProjectVersion[] {
+  const normalizedQuery = query.trim().toLowerCase();
+
   return versions
     .filter((version) => {
       const matchesGameVersion =
@@ -67,8 +70,11 @@ export function filterProjectVersions(
         version.game_versions.includes(gameVersion);
       const matchesLoader =
         loader === allLoaderFilter || version.loaders.includes(loader);
+      const matchesQuery =
+        normalizedQuery === '' ||
+        versionSearchText(version).includes(normalizedQuery);
 
-      return matchesGameVersion && matchesLoader;
+      return matchesGameVersion && matchesLoader && matchesQuery;
     })
     .sort(
       (a, b) => Date.parse(b.date_published) - Date.parse(a.date_published),
@@ -90,4 +96,41 @@ function formatLoaderLabel(loader: string): string {
   };
 
   return labels[loader] ?? loader;
+}
+
+function versionSearchText(version: ProjectVersion): string {
+  const dependencyText = version.dependencies
+    .map(
+      (dependency) =>
+        `${dependency.dependencyKind} ${
+          dependency.targetProject?.title ?? ''
+        } ${dependency.targetProject?.slug ?? ''} ${
+          dependency.targetVersion?.versionNumber ?? ''
+        } ${dependency.externalFileName ?? ''}`,
+    )
+    .join(' ');
+  const fileText = version.files
+    .map(
+      (file) =>
+        `${file.filename} ${file.kind} ${file.hashes
+          .map((hash) => `${hash.algorithm} ${hash.value}`)
+          .join(' ')}`,
+    )
+    .join(' ');
+
+  return [
+    version.name,
+    version.version_number,
+    version.version_type,
+    version.status,
+    version.requested_status ?? '',
+    version.author?.username ?? '',
+    version.author?.display_name ?? '',
+    version.loaders.join(' '),
+    version.game_versions.join(' '),
+    dependencyText,
+    fileText,
+  ]
+    .join(' ')
+    .toLowerCase();
 }

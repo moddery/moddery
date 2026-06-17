@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { type SearchTag } from '../components/ModCard.tsx';
 import { useDiscoverState } from '../components/discover/useDiscoverState.ts';
+import { CONTENT_TYPES } from '../lib/projectTypes.ts';
 import { type Mod, type ProjectType } from '../types.ts';
 import {
   collectionFromUrl,
@@ -16,8 +17,10 @@ import {
   writeHomeToUrl,
   writeNotificationsToUrl,
   writeOrganizationsToUrl,
+  writeProfileToUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
+  writeUsersToUrl,
   type AppView,
   type SelectedCollection,
 } from './routing.ts';
@@ -48,7 +51,11 @@ export function useAppShellState() {
     () => projectFromUrl()?.projectType ?? projectTypeFromPath() ?? 'mod',
   );
   const shouldLoadCatalog = appView === 'discover' || Boolean(selectedProject);
-  const discover = useDiscoverState({ projectType, shouldLoadCatalog });
+  const discover = useDiscoverState({
+    projectType,
+    shouldLoadCatalog,
+    syncUrl: appView === 'discover' && selectedProject === null,
+  });
 
   useEffect(() => {
     function handlePopState() {
@@ -130,6 +137,19 @@ export function useAppShellState() {
     scrollToTop();
   }
 
+  function openUsers() {
+    resetSelection('users');
+    writeUsersToUrl();
+    scrollToTop();
+  }
+
+  function openProfile(username: string) {
+    resetSelection('profile');
+    setSelectedUsername(username);
+    writeProfileToUrl(username);
+    scrollToTop();
+  }
+
   function openCollection(collection: SelectedCollection) {
     resetSelection('collections');
     setSelectedCollection(collection);
@@ -166,6 +186,94 @@ export function useAppShellState() {
     discover.setMobileFiltersOpen(false);
   }
 
+  function navigateToUrl(url: URL): boolean {
+    if (url.origin !== window.location.origin) return false;
+
+    const nextProject = projectFromNavigationUrl(url);
+    if (nextProject) {
+      setSelectedProject(nextProject);
+      setSelectedUsername(null);
+      setSelectedOrganization(null);
+      setSelectedCollection(null);
+      setAppView('discover');
+      setProjectType(nextProject.projectType);
+      discover.setMobileFiltersOpen(false);
+      window.history.pushState(null, '', url);
+      scrollToTop();
+      return true;
+    }
+
+    const nextCollection = collectionFromNavigationUrl(url);
+    if (nextCollection) {
+      resetSelection('collections');
+      setSelectedCollection(nextCollection);
+      window.history.pushState(null, '', url);
+      scrollToTop();
+      return true;
+    }
+
+    const nextUsername = profileFromNavigationUrl(url);
+    if (nextUsername) {
+      resetSelection('profile');
+      setSelectedUsername(nextUsername);
+      window.history.pushState(null, '', url);
+      scrollToTop();
+      return true;
+    }
+
+    const nextOrganization = organizationFromNavigationUrl(url);
+    if (nextOrganization) {
+      resetSelection('organization');
+      setSelectedOrganization(nextOrganization);
+      window.history.pushState(null, '', url);
+      scrollToTop();
+      return true;
+    }
+
+    const nextProjectType = projectTypeFromNavigationUrl(url);
+    if (nextProjectType) {
+      resetSelection('discover');
+      setProjectType(nextProjectType);
+      discover.setMobileFiltersOpen(false);
+      window.history.pushState(null, '', url);
+      discover.applyUrlState();
+      scrollToTop();
+      return true;
+    }
+
+    if (url.pathname === '/') {
+      openHome();
+      return true;
+    }
+
+    if (url.pathname === '/collections') {
+      openCollections();
+      return true;
+    }
+
+    if (url.pathname === '/users') {
+      openUsers();
+      return true;
+    }
+
+    if (url.pathname === '/organizations') {
+      openOrganizations();
+      return true;
+    }
+
+    if (url.pathname === '/dashboard') {
+      openDashboard();
+      return true;
+    }
+
+    if (url.pathname === '/notifications') {
+      openNotifications();
+      return true;
+    }
+
+    return false;
+  }
+
   function resetSelection(nextView: AppView) {
     setSelectedProject(null);
     setSelectedUsername(null);
@@ -187,6 +295,9 @@ export function useAppShellState() {
     openNotifications,
     openOrganizations,
     openProject,
+    openProfile,
+    openUsers,
+    navigateToUrl,
     projectType,
     searchByTag,
     selectedCollection,
@@ -210,4 +321,54 @@ function resolveView(
 
 function scrollToTop() {
   window.scrollTo({ top: 0 });
+}
+
+function projectFromNavigationUrl(url: URL) {
+  const slug = url.searchParams.get('project');
+  if (!slug) return null;
+
+  return {
+    projectType: projectTypeFromNavigationUrl(url) ?? 'mod',
+    slug,
+  };
+}
+
+function collectionFromNavigationUrl(url: URL): SelectedCollection | null {
+  const [resource, ownerUsername, slug] = url.pathname
+    .split('/')
+    .filter(Boolean);
+  if (resource !== 'collections' || !ownerUsername || !slug) return null;
+
+  return {
+    ownerUsername: decodeURIComponent(ownerUsername),
+    slug: decodeURIComponent(slug),
+  };
+}
+
+function profileFromNavigationUrl(url: URL): string | null {
+  const [resource, username] = url.pathname.split('/').filter(Boolean);
+  if (resource !== 'users' || !username) return null;
+
+  return decodeURIComponent(username);
+}
+
+function organizationFromNavigationUrl(url: URL): string | null {
+  const [resource, slug] = url.pathname.split('/').filter(Boolean);
+  if (resource !== 'organizations' || !slug) return null;
+
+  return decodeURIComponent(slug);
+}
+
+function projectTypeFromNavigationUrl(url: URL): ProjectType | null {
+  const type = url.searchParams.get('type');
+  if (type && isProjectType(type)) return type;
+
+  const segment = url.pathname.split('/').find(Boolean);
+  const meta = CONTENT_TYPES.find((item) => item.path === segment);
+
+  return meta?.type ?? null;
+}
+
+function isProjectType(value: string): value is ProjectType {
+  return CONTENT_TYPES.some((item) => item.type === value);
 }

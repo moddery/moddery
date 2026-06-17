@@ -363,6 +363,54 @@ describe(OrganizationsService.name, () => {
     expect(organizations).toHaveLength(1);
   });
 
+  test('filters public organizations by search text', async () => {
+    const queries: unknown[] = [];
+    const service = new OrganizationsService({
+      organization: {
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([organizationRow()]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const organizations = await service.findPublicOrganizations({
+      search: ' sodium ',
+    });
+
+    expect(queries[0]).toMatchObject({
+      where: {
+        OR: expect.arrayContaining([
+          {
+            name: {
+              contains: 'sodium',
+              mode: 'insensitive',
+            },
+          },
+          {
+            projects: {
+              some: {
+                OR: expect.arrayContaining([
+                  {
+                    title: {
+                      contains: 'sodium',
+                      mode: 'insensitive',
+                    },
+                  },
+                ]) as unknown[],
+                status: 'APPROVED',
+              },
+            },
+          },
+        ]) as unknown[],
+        projects: {
+          some: { status: 'APPROVED' },
+        },
+      },
+    });
+    expect(organizations[0]?.slug).toBe('seed');
+  });
+
   test('updates owned organization metadata', async () => {
     const updates: unknown[] = [];
     const service = new OrganizationsService({

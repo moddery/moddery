@@ -5,6 +5,57 @@ import { type AuthTokenService } from './auth-token.service.js';
 import { ApiTokensService } from './api-tokens.service.js';
 
 describe(ApiTokensService.name, () => {
+  test('loads active viewer tokens by default', async () => {
+    const queries: unknown[] = [];
+    const service = new ApiTokensService(
+      {} as AuthTokenService,
+      {
+        apiToken: {
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([]);
+          },
+        },
+      } as unknown as PrismaService,
+    );
+
+    await service.findViewerTokens('user-a');
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          revokedAt: null,
+          userId: 'user-a',
+        },
+      }),
+    );
+  });
+
+  test('loads revoked viewer tokens when requested', async () => {
+    const queries: unknown[] = [];
+    const service = new ApiTokensService(
+      {} as AuthTokenService,
+      {
+        apiToken: {
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([]);
+          },
+        },
+      } as unknown as PrismaService,
+    );
+
+    await service.findViewerTokens('user-a', { includeRevoked: true });
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          userId: 'user-a',
+        },
+      }),
+    );
+  });
+
   test('creates viewer tokens and stores only the hash', async () => {
     const creates: unknown[] = [];
     const service = new ApiTokensService(

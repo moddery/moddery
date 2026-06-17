@@ -461,6 +461,7 @@ export interface ModerationReport {
   id: string;
   project: {
     id: string;
+    kind: ProjectKind;
     slug: string;
     title: string;
   } | null;
@@ -483,6 +484,7 @@ export interface ModerationReport {
     name: string;
     project: {
       id: string;
+      kind: ProjectKind;
       slug: string;
       title: string;
     };

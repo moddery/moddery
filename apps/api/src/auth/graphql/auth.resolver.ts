@@ -51,13 +51,21 @@ export class AuthResolver {
   }
 
   @Query(() => [ApiTokenSummary])
-  viewerApiTokens(@CurrentUser() user: AuthenticatedUser) {
-    return this.apiTokensService.findViewerTokens(user.id);
+  viewerApiTokens(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('includeRevoked', { nullable: true, type: () => Boolean })
+    includeRevoked?: boolean | null,
+  ) {
+    return this.apiTokensService.findViewerTokens(user.id, { includeRevoked });
   }
 
   @Query(() => [SessionSummary])
-  viewerSessions(@CurrentUser() user: AuthenticatedUser) {
-    return this.authService.findViewerSessions(user.id);
+  viewerSessions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('includeRevoked', { nullable: true, type: () => Boolean })
+    includeRevoked?: boolean | null,
+  ) {
+    return this.authService.findViewerSessions(user.id, { includeRevoked });
   }
 
   @Mutation(() => CreatedApiToken)

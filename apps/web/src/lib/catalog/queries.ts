@@ -1,190 +1,146 @@
 import { gql } from '@apollo/client';
 
-export const PROJECTS_QUERY = gql`
-  query CatalogProjects($query: CatalogQueryInput) {
-    projects(query: $query) {
-      body
-      color
+const PROJECT_FIELDS_FRAGMENT = gql`
+  fragment CatalogProjectFields on ProjectSummary {
+    approvedAt
+    archivedAt
+    body
+    categories
+    color
+    discordUrl
+    downloads
+    followers
+    gallery {
+      createdAt
+      description
+      displayUrl
+      featured
+      rawUrl
+      sortOrder
+      title
+    }
+    gameVersions
+    iconUrl
+    id
+    issuesUrl
+    kind
+    license {
       id
-      owner {
+      name
+      url
+    }
+    links {
+      kind
+      label
+      url
+    }
+    loaders
+    organization {
+      color
+      iconUrl
+      id
+      name
+      slug
+    }
+    owner {
+      avatarUrl
+      displayName
+      id
+      username
+    }
+    publishedAt
+    queuedAt
+    requestedStatus
+    slug
+    sourceUrl
+    status
+    summary
+    title
+    updatedAt
+    wikiUrl
+  }
+`;
+
+const COLLECTION_FIELDS_FRAGMENT = gql`
+  ${PROJECT_FIELDS_FRAGMENT}
+  fragment CatalogCollectionFields on CollectionSummary {
+    color
+    createdAt
+    description
+    iconUrl
+    id
+    items {
+      addedBy {
         avatarUrl
         displayName
         id
         username
       }
-      organization {
-        color
-        iconUrl
-        id
-        name
-        slug
+      createdAt
+      project {
+        ...CatalogProjectFields
       }
-      approvedAt
-      archivedAt
-      publishedAt
-      queuedAt
-      requestedStatus
-      slug
-      title
-      summary
-      kind
-      status
-      categories
-      discordUrl
-      downloads
-      followers
-      gameVersions
-      iconUrl
-      issuesUrl
-      license {
-        id
-        name
-        url
-      }
-      links {
-        kind
-        label
-        url
-      }
-      loaders
-      sourceUrl
-      gallery {
-        createdAt
-        description
-        displayUrl
-        featured
-        rawUrl
-        sortOrder
-        title
-      }
-      updatedAt
-      wikiUrl
+      sortOrder
+    }
+    name
+    owner {
+      avatarUrl
+      displayName
+      id
+      username
+    }
+    projectCount
+    projects {
+      ...CatalogProjectFields
+    }
+    slug
+    updatedAt
+    visibility
+  }
+`;
+
+export const PROJECTS_QUERY = gql`
+  ${PROJECT_FIELDS_FRAGMENT}
+  query CatalogProjects($query: CatalogQueryInput) {
+    projects(query: $query) {
+      ...CatalogProjectFields
     }
   }
 `;
 
 export const PROJECT_BY_SLUG_QUERY = gql`
+  ${PROJECT_FIELDS_FRAGMENT}
   query CatalogProjectBySlug($slug: String!) {
     projectBySlug(slug: $slug) {
-      body
-      color
-      id
-      owner {
-        avatarUrl
-        displayName
-        id
-        username
-      }
-      organization {
-        color
-        iconUrl
-        id
-        name
-        slug
-      }
-      approvedAt
-      archivedAt
-      publishedAt
-      queuedAt
-      requestedStatus
-      slug
-      title
-      summary
-      kind
-      status
-      categories
-      discordUrl
-      downloads
-      followers
-      gameVersions
-      iconUrl
-      issuesUrl
-      license {
-        id
-        name
-        url
-      }
-      links {
-        kind
-        label
-        url
-      }
-      loaders
-      sourceUrl
-      gallery {
-        createdAt
-        description
-        displayUrl
-        featured
-        rawUrl
-        sortOrder
-        title
-      }
-      updatedAt
-      wikiUrl
+      ...CatalogProjectFields
     }
   }
 `;
 
 export const VIEWER_FOLLOWED_PROJECTS_QUERY = gql`
+  ${PROJECT_FIELDS_FRAGMENT}
   query ViewerFollowedProjects {
     viewerFollowedProjects {
-      body
-      color
-      id
-      owner {
-        avatarUrl
-        displayName
+      ...CatalogProjectFields
+    }
+  }
+`;
+
+export const VIEWER_COLLECTION_CHOICES_QUERY = gql`
+  query ViewerCollectionChoices {
+    viewer {
+      collections {
         id
-        username
-      }
-      organization {
-        color
-        iconUrl
-        id
+        items {
+          project {
+            slug
+          }
+        }
         name
+        projectCount
         slug
+        visibility
       }
-      approvedAt
-      archivedAt
-      publishedAt
-      queuedAt
-      requestedStatus
-      slug
-      title
-      summary
-      kind
-      status
-      categories
-      discordUrl
-      downloads
-      followers
-      gameVersions
-      iconUrl
-      issuesUrl
-      license {
-        id
-        name
-        url
-      }
-      links {
-        kind
-        label
-        url
-      }
-      loaders
-      sourceUrl
-      gallery {
-        createdAt
-        description
-        displayUrl
-        featured
-        rawUrl
-        sortOrder
-        title
-      }
-      updatedAt
-      wikiUrl
     }
   }
 `;
@@ -326,6 +282,26 @@ export const FOLLOW_PROJECT_MUTATION = gql`
   }
 `;
 
+export const ADD_PROJECT_TO_COLLECTION_MUTATION = gql`
+  mutation AddProjectToCollection($input: AddProjectToCollectionInput!) {
+    addProjectToCollection(input: $input) {
+      id
+      projectCount
+    }
+  }
+`;
+
+export const REMOVE_PROJECT_FROM_COLLECTION_MUTATION = gql`
+  mutation RemoveProjectFromCollection(
+    $input: RemoveProjectFromCollectionInput!
+  ) {
+    removeProjectFromCollection(input: $input) {
+      id
+      projectCount
+    }
+  }
+`;
+
 export const UNFOLLOW_PROJECT_MUTATION = gql`
   mutation UnfollowProject($projectSlug: String!) {
     unfollowProject(projectSlug: $projectSlug) {
@@ -390,299 +366,19 @@ export const CREATE_VERSION_REPORT_MUTATION = gql`
 `;
 
 export const PUBLIC_COLLECTIONS_QUERY = gql`
-  query PublicCollections {
-    publicCollections {
-      color
-      createdAt
-      description
-      iconUrl
-      id
-      name
-      owner {
-        avatarUrl
-        displayName
-        id
-        username
-      }
-      items {
-        addedBy {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-        createdAt
-        project {
-          body
-          color
-          id
-          owner {
-            avatarUrl
-            displayName
-            id
-            username
-          }
-          organization {
-            color
-            iconUrl
-            id
-            name
-            slug
-          }
-          approvedAt
-          archivedAt
-          publishedAt
-          queuedAt
-          requestedStatus
-          slug
-          title
-          summary
-          kind
-          status
-          categories
-          discordUrl
-          downloads
-          followers
-          gameVersions
-          iconUrl
-          issuesUrl
-          license {
-            id
-            name
-            url
-          }
-          links {
-            kind
-            label
-            url
-          }
-          loaders
-          sourceUrl
-          gallery {
-            createdAt
-            description
-            displayUrl
-            featured
-            rawUrl
-            sortOrder
-            title
-          }
-          updatedAt
-          wikiUrl
-        }
-        sortOrder
-      }
-      projectCount
-      projects {
-        body
-        color
-        id
-        owner {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-        organization {
-          color
-          iconUrl
-          id
-          name
-          slug
-        }
-        approvedAt
-        archivedAt
-        publishedAt
-        queuedAt
-        requestedStatus
-        slug
-        title
-        summary
-        kind
-        status
-        categories
-        discordUrl
-        downloads
-        followers
-        gameVersions
-        iconUrl
-        issuesUrl
-        license {
-          id
-          name
-          url
-        }
-        links {
-          kind
-          label
-          url
-        }
-        loaders
-        sourceUrl
-        gallery {
-          createdAt
-          description
-          displayUrl
-          featured
-          rawUrl
-          sortOrder
-          title
-        }
-        updatedAt
-        wikiUrl
-      }
-      slug
-      updatedAt
-      visibility
+  ${COLLECTION_FIELDS_FRAGMENT}
+  query PublicCollections($search: String) {
+    publicCollections(search: $search) {
+      ...CatalogCollectionFields
     }
   }
 `;
 
 export const PUBLIC_COLLECTION_BY_SLUG_QUERY = gql`
+  ${COLLECTION_FIELDS_FRAGMENT}
   query PublicCollectionBySlug($ownerUsername: String!, $slug: String!) {
     publicCollectionBySlug(ownerUsername: $ownerUsername, slug: $slug) {
-      color
-      createdAt
-      description
-      iconUrl
-      id
-      name
-      owner {
-        avatarUrl
-        displayName
-        id
-        username
-      }
-      items {
-        addedBy {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-        createdAt
-        project {
-          body
-          color
-          id
-          owner {
-            avatarUrl
-            displayName
-            id
-            username
-          }
-          organization {
-            color
-            iconUrl
-            id
-            name
-            slug
-          }
-          approvedAt
-          archivedAt
-          publishedAt
-          queuedAt
-          requestedStatus
-          slug
-          title
-          summary
-          kind
-          status
-          categories
-          discordUrl
-          downloads
-          followers
-          gameVersions
-          iconUrl
-          issuesUrl
-          license {
-            id
-            name
-            url
-          }
-          links {
-            kind
-            label
-            url
-          }
-          loaders
-          sourceUrl
-          gallery {
-            createdAt
-            description
-            displayUrl
-            featured
-            rawUrl
-            sortOrder
-            title
-          }
-          updatedAt
-          wikiUrl
-        }
-        sortOrder
-      }
-      projectCount
-      projects {
-        body
-        color
-        id
-        owner {
-          avatarUrl
-          displayName
-          id
-          username
-        }
-        organization {
-          color
-          iconUrl
-          id
-          name
-          slug
-        }
-        approvedAt
-        archivedAt
-        publishedAt
-        queuedAt
-        requestedStatus
-        slug
-        title
-        summary
-        kind
-        status
-        categories
-        discordUrl
-        downloads
-        followers
-        gameVersions
-        iconUrl
-        issuesUrl
-        license {
-          id
-          name
-          url
-        }
-        links {
-          kind
-          label
-          url
-        }
-        loaders
-        sourceUrl
-        gallery {
-          createdAt
-          description
-          displayUrl
-          featured
-          rawUrl
-          sortOrder
-          title
-        }
-        updatedAt
-        wikiUrl
-      }
-      slug
-      updatedAt
-      visibility
+      ...CatalogCollectionFields
     }
   }
 `;

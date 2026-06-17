@@ -20,11 +20,21 @@ export class ApiTokensService {
     private readonly prisma: PrismaService,
   ) {}
 
-  findViewerTokens(userId: string) {
+  findViewerTokens(
+    userId: string,
+    {
+      includeRevoked,
+    }: {
+      includeRevoked?: boolean | null;
+    } = {},
+  ) {
     return this.prisma.apiToken.findMany({
       orderBy: [{ revokedAt: 'asc' }, { createdAt: 'desc' }],
       select: apiTokenSelect(),
-      where: { userId },
+      where: {
+        ...(includeRevoked ? {} : { revokedAt: null }),
+        userId,
+      },
     });
   }
 
