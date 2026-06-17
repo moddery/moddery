@@ -27,3 +27,11 @@ export function dependencyProjectHref(
     dependency.targetProject.slug,
   );
 }
+
+export function versionHref(versionNumber: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('tab', 'versions');
+  url.searchParams.set('version', versionNumber);
+
+  return `${url.pathname}${url.search}${url.hash}`;
+}

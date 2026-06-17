@@ -34,15 +34,7 @@ export function projectFromUrl(): SelectedProject | null {
 }
 
 export function collectionFromUrl(): SelectedCollection | null {
-  const [resource, ownerUsername, slug] = window.location.pathname
-    .split('/')
-    .filter(Boolean);
-  if (resource !== 'collections' || !ownerUsername || !slug) return null;
-
-  return {
-    ownerUsername: decodeURIComponent(ownerUsername),
-    slug: decodeURIComponent(slug),
-  };
+  return collectionFromPathname(window.location.pathname);
 }
 
 export function viewFromUrl(): AppView {
@@ -111,19 +103,11 @@ export function writeProjectListToUrl(projectType: ProjectType) {
 }
 
 export function profileFromUrl(): string | null {
-  const [resource, username] = window.location.pathname
-    .split('/')
-    .filter(Boolean);
-  if (resource !== 'users' || !username) return null;
-
-  return decodeURIComponent(username);
+  return profileFromPathname(window.location.pathname);
 }
 
 export function organizationFromUrl(): string | null {
-  const [resource, slug] = window.location.pathname.split('/').filter(Boolean);
-  if (resource !== 'organizations' || !slug) return null;
-
-  return decodeURIComponent(slug);
+  return organizationFromPathname(window.location.pathname);
 }
 
 export function writeProjectToUrl(project: SelectedProject | null) {
@@ -142,7 +126,66 @@ export function writeProjectToUrl(project: SelectedProject | null) {
 }
 
 export function projectTypeFromPath(): ProjectType | null {
-  const segment = window.location.pathname.split('/').find(Boolean);
+  return projectTypeFromPathname(window.location.pathname);
+}
+
+export function projectFromNavigationUrl(url: URL): SelectedProject | null {
+  const slug = url.searchParams.get('project');
+  if (!slug) return null;
+
+  return {
+    projectType: projectTypeFromNavigationUrl(url) ?? 'mod',
+    slug,
+  };
+}
+
+export function collectionFromNavigationUrl(
+  url: URL,
+): SelectedCollection | null {
+  return collectionFromPathname(url.pathname);
+}
+
+export function profileFromNavigationUrl(url: URL): string | null {
+  return profileFromPathname(url.pathname);
+}
+
+export function organizationFromNavigationUrl(url: URL): string | null {
+  return organizationFromPathname(url.pathname);
+}
+
+export function projectTypeFromNavigationUrl(url: URL): ProjectType | null {
+  const type = url.searchParams.get('type');
+  if (type && isProjectType(type)) return type;
+
+  return projectTypeFromPathname(url.pathname);
+}
+
+function collectionFromPathname(pathname: string): SelectedCollection | null {
+  const [resource, ownerUsername, slug] = pathname.split('/').filter(Boolean);
+  if (resource !== 'collections' || !ownerUsername || !slug) return null;
+
+  return {
+    ownerUsername: decodeURIComponent(ownerUsername),
+    slug: decodeURIComponent(slug),
+  };
+}
+
+function profileFromPathname(pathname: string): string | null {
+  const [resource, username] = pathname.split('/').filter(Boolean);
+  if (resource !== 'users' || !username) return null;
+
+  return decodeURIComponent(username);
+}
+
+function organizationFromPathname(pathname: string): string | null {
+  const [resource, slug] = pathname.split('/').filter(Boolean);
+  if (resource !== 'organizations' || !slug) return null;
+
+  return decodeURIComponent(slug);
+}
+
+function projectTypeFromPathname(pathname: string): ProjectType | null {
+  const segment = pathname.split('/').find(Boolean);
   const meta = CONTENT_TYPES.find((item) => item.path === segment);
 
   return meta?.type ?? null;

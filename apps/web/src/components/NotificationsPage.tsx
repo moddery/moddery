@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import {
@@ -7,11 +6,15 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from '../lib/notifications.ts';
-import { NotificationRow } from './notifications/NotificationRow.tsx';
-import { Pagination } from './Pagination.tsx';
-import { SelectField, type SelectOption } from './ui/Select.tsx';
+import { NotificationEmptyState } from './notifications/NotificationEmptyState.tsx';
+import { NotificationsFilters } from './notifications/NotificationsFilters.tsx';
+import { NotificationsList } from './notifications/NotificationsList.tsx';
+import { NotificationsSkeleton } from './notifications/NotificationsSkeleton.tsx';
+import {
+  allTypesFilter,
+  buildTypeOptions,
+} from './notifications/notificationTypeOptions.ts';
 
-const allTypesFilter = '__all_notification_types__';
 const pageSize = 20;
 
 export function NotificationsPage() {
@@ -97,33 +100,15 @@ export function NotificationsPage() {
       </header>
 
       {hasFilterControls && (
-        <section className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3">
-          <p className="text-sm font-semibold text-muted">
-            Showing {notifications.length.toLocaleString('en-US')} of{' '}
-            {totalHits.toLocaleString('en-US')} notifications
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setUnreadOnly((current) => !current);
-              }}
-              className="inline-flex h-9 items-center rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
-              aria-pressed={unreadOnly}
-            >
-              {unreadOnly ? 'Unread only' : 'All notifications'}
-            </button>
-            <SelectField
-              ariaLabel="Filter by notification type"
-              prefix="Type:"
-              value={type}
-              onValueChange={setType}
-              options={typeOptions}
-              align="end"
-              className="h-9"
-            />
-          </div>
-        </section>
+        <NotificationsFilters
+          notificationCount={notifications.length}
+          totalHits={totalHits}
+          type={type}
+          typeOptions={typeOptions}
+          unreadOnly={unreadOnly}
+          onTypeChange={setType}
+          onUnreadOnlyChange={setUnreadOnly}
+        />
       )}
 
       {notificationsQuery.isLoading ? (
@@ -138,59 +123,22 @@ export function NotificationsPage() {
         <p className="mt-5 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
           Notifications did not return from the API.
         </p>
-      ) : notifications.length === 0 && !hasActiveFilters ? (
-        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <Bell className="size-6 text-accent-icon" />
-          <h2 className="mt-4 font-display text-lg font-bold text-ink">
-            No notifications yet
-          </h2>
-          <p className="mt-1 max-w-sm text-sm leading-6 text-muted">
-            Updates about your account and projects will appear here.
-          </p>
-        </div>
       ) : notifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <Bell className="size-6 text-accent-icon" />
-          <h2 className="mt-4 font-display text-lg font-bold text-ink">
-            No matching notifications
-          </h2>
-          <button
-            type="button"
-            onClick={() => {
-              setUnreadOnly(false);
-              setType(allTypesFilter);
-            }}
-            className="mt-4 inline-flex h-9 items-center rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
-          >
-            Clear filters
-          </button>
-        </div>
+        <NotificationEmptyState
+          filtered={hasActiveFilters}
+          onClear={() => {
+            setUnreadOnly(false);
+            setType(allTypesFilter);
+          }}
+        />
       ) : (
-        <div className="mt-2 grid gap-4">
-          {totalPages > 1 && (
-            <div className="flex justify-end">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPage={setPage}
-              />
-            </div>
-          )}
-          <section>
-            {notifications.map((item) => (
-              <NotificationRow key={item.id} item={item} onRead={markOneRead} />
-            ))}
-          </section>
-          {totalPages > 1 && (
-            <div className="flex justify-end">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPage={setPage}
-              />
-            </div>
-          )}
-        </div>
+        <NotificationsList
+          notifications={notifications}
+          page={page}
+          totalPages={totalPages}
+          onPage={setPage}
+          onRead={markOneRead}
+        />
       )}
 
       {message && (
@@ -199,34 +147,5 @@ export function NotificationsPage() {
         </p>
       )}
     </main>
-  );
-}
-
-function buildTypeOptions(types: string[]): SelectOption[] {
-  return [
-    { label: 'All types', value: allTypesFilter },
-    ...types.map((item) => ({ label: formatTypeLabel(item), value: item })),
-  ];
-}
-
-function formatTypeLabel(type: string) {
-  return type
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(' ');
-}
-
-function NotificationsSkeleton() {
-  return (
-    <div className="mt-4 grid gap-4">
-      {[0, 1, 2].map((item) => (
-        <div key={item} className="border-b border-line py-4">
-          <div className="h-5 w-48 animate-pulse rounded bg-surface-2" />
-          <div className="mt-3 h-4 w-full max-w-xl animate-pulse rounded bg-surface-2" />
-          <div className="mt-2 h-3 w-28 animate-pulse rounded bg-surface-2" />
-        </div>
-      ))}
-    </div>
   );
 }

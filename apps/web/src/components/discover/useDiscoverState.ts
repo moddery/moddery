@@ -6,14 +6,13 @@ import {
   searchProjects,
   type SortKey,
 } from '../../lib/catalog.ts';
-import { projectTypeMeta } from '../../lib/projectTypes.ts';
 import { type ProjectType } from '../../types.ts';
-import {
-  EMPTY_FILTER_TAGS,
-  useDiscoverFilters,
-  type DiscoverFilterSelection,
-} from './useDiscoverFilters.ts';
+import { EMPTY_FILTER_TAGS, useDiscoverFilters } from './useDiscoverFilters.ts';
 import { type TagFacetOption } from '../FilterSidebar.tsx';
+import {
+  readDiscoverUrlState,
+  writeDiscoverUrlState,
+} from './discoverUrlState.ts';
 
 interface UseDiscoverStateInput {
   projectType: ProjectType;
@@ -65,20 +64,16 @@ export function useDiscoverState({
   useEffect(() => {
     if (!syncUrl) return;
 
-    const url = new URL(window.location.href);
-    url.pathname = `/${projectTypeMeta(projectType).path}`;
-    url.searchParams.delete('project');
-    url.searchParams.delete('type');
-    url.searchParams.delete('tab');
-    setOptionalParam(url, 'q', query.trim());
-    setOptionalParam(url, 'sort', sort === 'relevance' ? '' : sort);
-    setOptionalParam(url, 'view', view === '20' ? '' : view);
-    setOptionalParam(url, 'page', page === 1 ? '' : String(page));
-    setListParam(url, 'version', filters.selectedVersionValues);
-    setListParam(url, 'loader', filters.selectedLoaderValues);
-    setListParam(url, 'category', filters.selectedCategoryValues);
-
-    window.history.replaceState(null, '', url);
+    writeDiscoverUrlState({
+      categories: filters.selectedCategoryValues,
+      loaders: filters.selectedLoaderValues,
+      page,
+      projectType,
+      query,
+      sort,
+      versions: filters.selectedVersionValues,
+      view,
+    });
   }, [
     filters.selectedCategoryValues,
     filters.selectedLoaderValues,
@@ -186,64 +181,4 @@ export function useDiscoverState({
     versionOptions: filters.versionOptions,
     view,
   };
-}
-
-function readDiscoverUrlState(): {
-  filters: DiscoverFilterSelection;
-  page: number;
-  query: string;
-  sort: SortKey;
-  view: string;
-} {
-  const params = new URLSearchParams(window.location.search);
-
-  return {
-    filters: {
-      categories: params.getAll('category'),
-      loaders: params.getAll('loader'),
-      versions: params.getAll('version'),
-    },
-    page: readPositiveInteger(params.get('page'), 1),
-    query: params.get('q') ?? '',
-    sort: readSort(params.get('sort')),
-    view: readView(params.get('view')),
-  };
-}
-
-function readPositiveInteger(value: string | null, fallback: number) {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function readSort(value: string | null): SortKey {
-  if (
-    value === 'downloads' ||
-    value === 'follows' ||
-    value === 'updated' ||
-    value === 'name'
-  ) {
-    return value;
-  }
-
-  return 'relevance';
-}
-
-function readView(value: string | null): string {
-  return value === '5' || value === '10' || value === '20' ? value : '20';
-}
-
-function setOptionalParam(url: URL, key: string, value: string) {
-  if (value) {
-    url.searchParams.set(key, value);
-    return;
-  }
-
-  url.searchParams.delete(key);
-}
-
-function setListParam(url: URL, key: string, values: string[]) {
-  url.searchParams.delete(key);
-  values.forEach((value) => {
-    url.searchParams.append(key, value);
-  });
 }

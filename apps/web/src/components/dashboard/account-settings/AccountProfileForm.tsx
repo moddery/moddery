@@ -1,11 +1,8 @@
 import { UserRound } from 'lucide-react';
-import { type FormEvent, useEffect, useState } from 'react';
 
-import {
-  updateViewerProfile,
-  type DashboardData,
-  type UpdateViewerProfileInput,
-} from '../../../lib/dashboard.ts';
+import { type DashboardData } from '../../../lib/dashboard.ts';
+import { AccountStatusMeta } from './profile/AccountStatusMeta.tsx';
+import { useAccountProfileFormState } from './profile/useAccountProfileFormState.ts';
 import { DashboardField } from './shared.tsx';
 
 export function AccountProfileForm({
@@ -15,55 +12,7 @@ export function AccountProfileForm({
   dashboard: DashboardData;
   onUpdated: () => Promise<void>;
 }) {
-  const [displayName, setDisplayName] = useState(dashboard.displayName ?? '');
-  const [bio, setBio] = useState(dashboard.bio ?? '');
-  const [avatarUrl, setAvatarUrl] = useState(dashboard.avatarUrl ?? '');
-  const [email, setEmail] = useState(dashboard.email ?? '');
-  const [newsletterOptIn, setNewsletterOptIn] = useState(
-    dashboard.newsletterOptIn,
-  );
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDisplayName(dashboard.displayName ?? '');
-    setBio(dashboard.bio ?? '');
-    setAvatarUrl(dashboard.avatarUrl ?? '');
-    setEmail(dashboard.email ?? '');
-    setNewsletterOptIn(dashboard.newsletterOptIn);
-  }, [
-    dashboard.avatarUrl,
-    dashboard.bio,
-    dashboard.displayName,
-    dashboard.email,
-    dashboard.newsletterOptIn,
-  ]);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setMessage(null);
-
-    const input: UpdateViewerProfileInput = {
-      avatarUrl,
-      bio,
-      displayName,
-      email,
-      newsletterOptIn,
-    };
-
-    try {
-      await updateViewerProfile(input);
-      await onUpdated();
-      setMessage('Profile updated.');
-    } catch (caught) {
-      setMessage(
-        caught instanceof Error ? caught.message : 'Profile update failed.',
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const profile = useAccountProfileFormState({ dashboard, onUpdated });
 
   return (
     <section className="mt-8">
@@ -77,12 +26,16 @@ export function AccountProfileForm({
       </div>
 
       <form
-        onSubmit={(event) => void submit(event)}
+        onSubmit={(event) => void profile.submit(event)}
         className="mt-4 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]"
       >
         <div className="grid size-20 place-items-center overflow-hidden rounded-xl border border-line bg-surface-2 text-muted">
-          {avatarUrl.trim() ? (
-            <img src={avatarUrl} alt="" className="size-full object-cover" />
+          {profile.avatarUrl.trim() ? (
+            <img
+              src={profile.avatarUrl}
+              alt=""
+              className="size-full object-cover"
+            />
           ) : (
             <UserRound className="size-7" />
           )}
@@ -92,20 +45,20 @@ export function AccountProfileForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <DashboardField
               label="Display name"
-              value={displayName}
-              onChange={setDisplayName}
+              value={profile.displayName}
+              onChange={profile.setDisplayName}
               placeholder={dashboard.username}
             />
             <DashboardField
               label="Avatar URL"
-              value={avatarUrl}
-              onChange={setAvatarUrl}
+              value={profile.avatarUrl}
+              onChange={profile.setAvatarUrl}
               placeholder="https://..."
             />
             <DashboardField
               label="Email"
-              value={email}
-              onChange={setEmail}
+              value={profile.email}
+              onChange={profile.setEmail}
               placeholder="you@example.com"
             />
           </div>
@@ -114,34 +67,22 @@ export function AccountProfileForm({
             <label className="flex items-center gap-2 font-bold text-ink">
               <input
                 type="checkbox"
-                checked={newsletterOptIn}
-                onChange={(event) => setNewsletterOptIn(event.target.checked)}
+                checked={profile.newsletterOptIn}
+                onChange={(event) =>
+                  profile.setNewsletterOptIn(event.target.checked)
+                }
                 className="size-4 accent-accent"
               />
               Newsletter opt-in
             </label>
-            <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted">
-              <span>
-                Email{' '}
-                {dashboard.emailVerifiedAt
-                  ? `verified ${new Date(
-                      dashboard.emailVerifiedAt,
-                    ).toLocaleDateString('en-US')}`
-                  : 'not verified'}
-              </span>
-              <span>·</span>
-              <span>
-                Two-factor authentication{' '}
-                {dashboard.twoFactorEnabled ? 'enabled' : 'disabled'}
-              </span>
-            </div>
+            <AccountStatusMeta dashboard={dashboard} />
           </div>
 
           <label className="block text-sm font-bold text-ink">
             Bio
             <textarea
-              value={bio}
-              onChange={(event) => setBio(event.target.value)}
+              value={profile.bio}
+              onChange={(event) => profile.setBio(event.target.value)}
               maxLength={1000}
               className="mt-1 min-h-24 w-full resize-y rounded-md border border-line bg-control px-3 py-2 text-sm font-normal text-ink outline-none placeholder:text-faint focus-visible:border-accent"
               placeholder="Short public profile bio"
@@ -151,14 +92,14 @@ export function AccountProfileForm({
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="submit"
-              disabled={busy}
+              disabled={profile.busy}
               className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               Save profile
             </button>
-            {message && (
+            {profile.message && (
               <span className="text-sm font-semibold text-muted">
-                {message}
+                {profile.message}
               </span>
             )}
           </div>

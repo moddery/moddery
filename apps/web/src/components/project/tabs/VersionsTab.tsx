@@ -1,22 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
-
-import {
-  fetchProjectVersionSearch,
-  type ProjectVersion,
-} from '../../../lib/catalog.ts';
-import { Pagination } from '../../Pagination.tsx';
+import { type ProjectVersion } from '../../../lib/catalog.ts';
 import { EmptyTab } from './EmptyTab.tsx';
-import {
-  allLoaderFilter,
-  allVersionFilter,
-  buildGameVersionOptions,
-  buildLoaderOptions,
-} from './version-filters.ts';
-import { VersionRow } from './VersionRow.tsx';
+import { useVersionSearchState } from './versions-tab/useVersionSearchState.ts';
+import { VersionSearchResults } from './versions-tab/VersionSearchResults.tsx';
 import { VersionsToolbar } from './VersionsToolbar.tsx';
-
-const pageSize = 20;
 
 export function VersionsTab({
   selectedVersion,
@@ -29,82 +15,11 @@ export function VersionsTab({
   projectSlug: string;
   versions: ProjectVersion[];
 }) {
-  const [gameVersion, setGameVersion] = useState(allVersionFilter);
-  const [loader, setLoader] = useState(allLoaderFilter);
-  const [page, setPage] = useState(1);
-  const [query, setQuery] = useState('');
-  const gameVersionOptions = useMemo(
-    () => buildGameVersionOptions(versions),
-    [versions],
-  );
-  const loaderOptions = useMemo(() => buildLoaderOptions(versions), [versions]);
-  const selectedGameVersion =
-    gameVersion === allVersionFilter ? null : gameVersion;
-  const selectedLoader = loader === allLoaderFilter ? null : loader;
-  const versionsQuery = useQuery({
-    queryFn: ({ signal }) =>
-      fetchProjectVersionSearch(
-        projectSlug,
-        {
-          gameVersion: selectedGameVersion,
-          limit: pageSize,
-          loader: selectedLoader,
-          page,
-          search: query,
-        },
-        signal,
-      ),
-    queryKey: [
-      'catalog',
-      'project-version-search',
-      projectSlug,
-      page,
-      selectedGameVersion,
-      selectedLoader,
-      query,
-    ],
+  const search = useVersionSearchState({
+    projectSlug,
+    selectedVersion,
+    versions,
   });
-  const visibleVersions = versionsQuery.data?.versions ?? [];
-  const totalHits = versionsQuery.data?.totalHits ?? versions.length;
-  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
-
-  useEffect(() => {
-    setPage(1);
-  }, [gameVersion, loader, query]);
-
-  useEffect(() => {
-    if (
-      gameVersion !== allVersionFilter &&
-      !gameVersionOptions.some((option) => option.value === gameVersion)
-    ) {
-      setGameVersion(allVersionFilter);
-    }
-
-    if (
-      loader !== allLoaderFilter &&
-      !loaderOptions.some((option) => option.value === loader)
-    ) {
-      setLoader(allLoaderFilter);
-    }
-  }, [gameVersion, gameVersionOptions, loader, loaderOptions]);
-
-  useEffect(() => {
-    if (selectedVersion === null) return;
-    if (
-      gameVersion !== allVersionFilter ||
-      loader !== allLoaderFilter ||
-      query.trim() !== ''
-    ) {
-      return;
-    }
-
-    const versionIndex = versions.findIndex(
-      (version) => version.version_number === selectedVersion,
-    );
-    if (versionIndex === -1) return;
-
-    setPage(Math.floor(versionIndex / pageSize) + 1);
-  }, [gameVersion, loader, query, selectedVersion, versions]);
 
   if (!versions.length) {
     return (
@@ -118,63 +33,28 @@ export function VersionsTab({
   return (
     <section aria-label="Versions">
       <VersionsToolbar
-        filteredCount={totalHits}
-        gameVersion={gameVersion}
-        gameVersionOptions={gameVersionOptions}
-        loader={loader}
-        loaderOptions={loaderOptions}
-        query={query}
-        totalCount={Math.max(totalHits, versions.length)}
-        onGameVersionChange={setGameVersion}
-        onLoaderChange={setLoader}
-        onQueryChange={setQuery}
+        filteredCount={search.totalHits}
+        gameVersion={search.gameVersion}
+        gameVersionOptions={search.gameVersionOptions}
+        loader={search.loader}
+        loaderOptions={search.loaderOptions}
+        query={search.query}
+        totalCount={Math.max(search.totalHits, versions.length)}
+        onGameVersionChange={search.setGameVersion}
+        onLoaderChange={search.setLoader}
+        onQueryChange={search.setQuery}
       />
 
-      {versionsQuery.isLoading ? (
-        <div className="py-8 text-sm font-semibold text-muted">
-          Loading versions...
-        </div>
-      ) : versionsQuery.isError ? (
-        <div className="py-8 text-sm font-semibold text-danger">
-          Versions could not be loaded.
-        </div>
-      ) : visibleVersions.length ? (
-        <div>
-          {totalPages > 1 && (
-            <div className="border-b border-line py-3">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPage={setPage}
-              />
-            </div>
-          )}
-
-          {visibleVersions.map((version) => (
-            <VersionRow
-              key={version.id}
-              selected={version.version_number === selectedVersion}
-              version={version}
-              onSelectVersion={onSelectVersion}
-            />
-          ))}
-
-          {totalPages > 1 && (
-            <div className="pt-4">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPage={setPage}
-              />
-            </div>
-          )}
-        </div>
-      ) : (
-        <EmptyTab
-          title="No matching versions"
-          body="There are no files for that version and loader combination."
-        />
-      )}
+      <VersionSearchResults
+        isError={search.versionsQuery.isError}
+        isLoading={search.versionsQuery.isLoading}
+        page={search.page}
+        selectedVersion={selectedVersion}
+        totalPages={search.totalPages}
+        versions={search.visibleVersions}
+        onPage={search.setPage}
+        onSelectVersion={onSelectVersion}
+      />
     </section>
   );
 }

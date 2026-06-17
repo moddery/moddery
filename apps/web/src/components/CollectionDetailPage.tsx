@@ -1,18 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, BookMarked } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 import {
   fetchPublicCollectionBySlug,
   fetchPublicCollectionItems,
-  type PublicCollection,
-  type PublicCollectionItem,
 } from '../lib/catalog.ts';
-import { timeAgo } from '../lib/format.ts';
 import type { Mod } from '../types.ts';
-import { CollectionProjectItem } from './collection/CollectionProjectItem.tsx';
+import { CollectionDetailContent } from './collection/detail/CollectionDetailContent.tsx';
+import { CollectionDetailSkeleton } from './collection/detail/CollectionDetailSkeleton.tsx';
 import type { SearchTag } from './ModCard.tsx';
-import { Pagination } from './Pagination.tsx';
 
 const itemPageSize = 20;
 
@@ -72,7 +69,7 @@ export function CollectionDetailPage({
           Collection did not return from the API.
         </p>
       ) : (
-        <CollectionDetail
+        <CollectionDetailContent
           collection={collectionQuery.data}
           isLoadingItems={itemsQuery.isLoading}
           items={itemsQuery.data?.items ?? collectionQuery.data.items}
@@ -90,108 +87,5 @@ export function CollectionDetailPage({
         />
       )}
     </main>
-  );
-}
-
-function CollectionDetail({
-  collection,
-  isLoadingItems,
-  itemPage,
-  itemTotalPages,
-  items,
-  onItemPage,
-  onOpenProject,
-  onTagSearch,
-}: {
-  collection: PublicCollection;
-  isLoadingItems: boolean;
-  itemPage: number;
-  itemTotalPages: number;
-  items: PublicCollectionItem[];
-  onItemPage: (page: number) => void;
-  onOpenProject: (mod: Mod) => void;
-  onTagSearch?: (tag: SearchTag) => void;
-}) {
-  const ownerName = collection.owner.displayName ?? collection.owner.username;
-
-  return (
-    <>
-      <header className="mt-5 border-b border-line pb-6">
-        <div className="flex items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="size-4 rounded-full"
-            style={{ backgroundColor: collection.color ?? '#1d9bf0' }}
-          />
-          <h1 className="font-display text-3xl font-extrabold text-ink">
-            {collection.name}
-          </h1>
-        </div>
-        {collection.description && (
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-            {collection.description}
-          </p>
-        )}
-        <p className="mt-3 text-sm font-semibold text-muted">
-          {collection.projectCount.toLocaleString('en-US')} projects by{' '}
-          <a
-            href={`/users/${collection.owner.username}`}
-            className="text-ink transition-colors hover:text-accent"
-          >
-            {ownerName}
-          </a>{' '}
-          · updated {timeAgo(collection.updatedAt)}
-        </p>
-      </header>
-
-      {isLoadingItems ? (
-        <section className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
-          <div className="h-28 animate-pulse rounded bg-surface-2" />
-          <div className="h-28 animate-pulse rounded bg-surface-2" />
-        </section>
-      ) : items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-          <BookMarked className="size-6 text-accent-icon" />
-          <h2 className="mt-4 font-display text-lg font-bold text-ink">
-            No projects in this collection
-          </h2>
-        </div>
-      ) : (
-        <>
-          <section className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {items.map((item) => (
-              <CollectionProjectItem
-                key={item.project.slug}
-                item={item}
-                onOpenProject={onOpenProject}
-                onTagSearch={onTagSearch}
-              />
-            ))}
-          </section>
-          {itemTotalPages > 1 && (
-            <div className="mt-5 flex justify-end">
-              <Pagination
-                page={itemPage}
-                totalPages={itemTotalPages}
-                onPage={onItemPage}
-              />
-            </div>
-          )}
-        </>
-      )}
-    </>
-  );
-}
-
-function CollectionDetailSkeleton() {
-  return (
-    <div className="mt-5">
-      <div className="h-8 w-64 animate-pulse rounded bg-surface-2" />
-      <div className="mt-4 h-4 w-full max-w-2xl animate-pulse rounded bg-surface-2" />
-      <div className="mt-8 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="h-28 animate-pulse rounded bg-surface-2" />
-        <div className="h-28 animate-pulse rounded bg-surface-2" />
-      </div>
-    </div>
   );
 }

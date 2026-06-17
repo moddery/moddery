@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react';
 
 import { type SearchTag } from '../components/ModCard.tsx';
 import { useDiscoverState } from '../components/discover/useDiscoverState.ts';
-import { CONTENT_TYPES } from '../lib/projectTypes.ts';
 import { type Mod, type ProjectType } from '../types.ts';
 import {
   collectionFromUrl,
+  collectionFromNavigationUrl,
   organizationFromUrl,
+  organizationFromNavigationUrl,
   profileFromUrl,
+  profileFromNavigationUrl,
   projectFromUrl,
+  projectFromNavigationUrl,
   projectTypeFromPath,
+  projectTypeFromNavigationUrl,
   viewFromUrl,
   writeCollectionToUrl,
   writeCollectionsToUrl,
@@ -321,54 +325,4 @@ function resolveView(
 
 function scrollToTop() {
   window.scrollTo({ top: 0 });
-}
-
-function projectFromNavigationUrl(url: URL) {
-  const slug = url.searchParams.get('project');
-  if (!slug) return null;
-
-  return {
-    projectType: projectTypeFromNavigationUrl(url) ?? 'mod',
-    slug,
-  };
-}
-
-function collectionFromNavigationUrl(url: URL): SelectedCollection | null {
-  const [resource, ownerUsername, slug] = url.pathname
-    .split('/')
-    .filter(Boolean);
-  if (resource !== 'collections' || !ownerUsername || !slug) return null;
-
-  return {
-    ownerUsername: decodeURIComponent(ownerUsername),
-    slug: decodeURIComponent(slug),
-  };
-}
-
-function profileFromNavigationUrl(url: URL): string | null {
-  const [resource, username] = url.pathname.split('/').filter(Boolean);
-  if (resource !== 'users' || !username) return null;
-
-  return decodeURIComponent(username);
-}
-
-function organizationFromNavigationUrl(url: URL): string | null {
-  const [resource, slug] = url.pathname.split('/').filter(Boolean);
-  if (resource !== 'organizations' || !slug) return null;
-
-  return decodeURIComponent(slug);
-}
-
-function projectTypeFromNavigationUrl(url: URL): ProjectType | null {
-  const type = url.searchParams.get('type');
-  if (type && isProjectType(type)) return type;
-
-  const segment = url.pathname.split('/').find(Boolean);
-  const meta = CONTENT_TYPES.find((item) => item.path === segment);
-
-  return meta?.type ?? null;
-}
-
-function isProjectType(value: string): value is ProjectType {
-  return CONTENT_TYPES.some((item) => item.type === value);
 }

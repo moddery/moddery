@@ -12,25 +12,13 @@ import {
 } from '../../../lib/catalog.ts';
 import { compareVersions } from '../../../lib/format.ts';
 import { type ProjectType } from '../../../types.ts';
+import { type ProjectTab } from '../ProjectContentTabs.tsx';
 import {
-  defaultProjectTab,
-  projectTabs,
-  type ProjectTab,
-} from '../ProjectContentTabs.tsx';
-
-function readProjectTab(): ProjectTab {
-  const tab = new URLSearchParams(window.location.search).get('tab');
-  return projectTabs.some((item) => item.id === tab)
-    ? (tab as ProjectTab)
-    : defaultProjectTab;
-}
-
-function readSelectedVersion(): string | null {
-  const version = new URLSearchParams(window.location.search).get('version');
-  const trimmed = version?.trim() ?? '';
-
-  return trimmed === '' ? null : trimmed;
-}
+  readProjectTab,
+  readSelectedVersion,
+  writeProjectTab,
+  writeSelectedVersion,
+} from './projectPageUrlState.ts';
 
 export function useProjectPageState({
   projectTypeHint,
@@ -91,35 +79,17 @@ export function useProjectPageState({
   function selectTab(tab: ProjectTab) {
     setActiveTab(tab);
 
-    const url = new URL(window.location.href);
-    if (tab === defaultProjectTab) {
-      url.searchParams.delete('tab');
-    } else {
-      url.searchParams.set('tab', tab);
-    }
-
     if (tab !== 'versions') {
-      url.searchParams.delete('version');
       setSelectedVersion(null);
     }
 
-    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    writeProjectTab(tab);
   }
 
   function selectVersion(versionNumber: string | null) {
     setActiveTab('versions');
     setSelectedVersion(versionNumber);
-
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'versions');
-
-    if (versionNumber === null) {
-      url.searchParams.delete('version');
-    } else {
-      url.searchParams.set('version', versionNumber);
-    }
-
-    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    writeSelectedVersion(versionNumber);
   }
 
   const project = projectQuery.data?.project;
