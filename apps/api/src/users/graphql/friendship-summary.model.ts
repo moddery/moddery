@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class FriendshipUser {
@@ -34,4 +34,13 @@ export class FriendshipSummary {
 
   @Field(() => FriendshipUser)
   user!: FriendshipUser;
+}
+
+@ObjectType()
+export class FriendshipSearchResult {
+  @Field(() => [FriendshipSummary])
+  friendships!: FriendshipSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }

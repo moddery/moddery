@@ -102,6 +102,34 @@ interface OrganizationRow {
   updatedAt: Date;
 }
 
+interface OrganizationMemberRow {
+  isOwner: boolean;
+  permissions: string[];
+  role: string;
+  sortOrder: number;
+  user: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+}
+
+export interface OrganizationSearchResultContract {
+  organizations: ReturnType<typeof organizationRowToContract>[];
+  totalHits: number;
+}
+
+export interface OrganizationMemberSearchResultContract {
+  members: ReturnType<typeof organizationMemberRowToContract>[];
+  totalHits: number;
+}
+
+export interface OrganizationProjectSearchResultContract {
+  projects: ReturnType<typeof projectRowToContract>[];
+  totalHits: number;
+}
+
 @Injectable()
 export class OrganizationsService {
   constructor(
@@ -256,17 +284,42 @@ export class OrganizationsService {
   }
 
   async findPublicOrganizations({
+    limit = 50,
+    offset = 0,
+    search,
+  }: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+  } = {}): Promise<OrganizationSearchResultContract> {
+    const where = publicOrganizationWhere(search);
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, organizations] = await Promise.all([
+      this.prisma.organization.count({ where }),
+      this.prisma.organization.findMany({
+        orderBy: [{ updatedAt: 'desc' }],
+        select: organizationSelect(4, { includeDraftProjects: false }),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      organizations: organizations.map(organizationRowToContract),
+      totalHits,
+    };
+  }
+
+  async findPublicOrganizationList({
     search,
   }: {
     search?: string | null;
   } = {}) {
-    const organizations = await this.prisma.organization.findMany({
-      orderBy: [{ updatedAt: 'desc' }],
-      select: organizationSelect(4, { includeDraftProjects: false }),
-      where: publicOrganizationWhere(search),
-    });
+    const result = await this.findPublicOrganizations({ search });
 
-    return organizations.map(organizationRowToContract);
+    return result.organizations;
   }
 
   async findBySlug(slug: string) {
@@ -278,6 +331,82 @@ export class OrganizationsService {
     return organization === null
       ? null
       : organizationRowToContract(organization);
+  }
+
+  async findOrganizationMembers(
+    slug: string,
+    { limit = 24, offset = 0 }: { limit?: number; offset?: number } = {},
+  ): Promise<OrganizationMemberSearchResultContract> {
+    const organization = await this.prisma.organization.findFirst({
+      select: { teamId: true },
+      where: {
+        slug: { equals: slug, mode: 'insensitive' },
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const where = {
+      acceptedAt: { not: null },
+      teamId: organization.teamId,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, members] = await Promise.all([
+      this.prisma.teamMember.count({ where }),
+      this.prisma.teamMember.findMany({
+        orderBy: [{ isOwner: 'desc' }, { sortOrder: 'asc' }],
+        select: organizationMemberSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      members: members.map(organizationMemberRowToContract),
+      totalHits,
+    };
+  }
+
+  async findOrganizationProjects(
+    slug: string,
+    { limit = 20, offset = 0 }: { limit?: number; offset?: number } = {},
+  ): Promise<OrganizationProjectSearchResultContract> {
+    const organization = await this.prisma.organization.findFirst({
+      select: { id: true },
+      where: {
+        slug: { equals: slug, mode: 'insensitive' },
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const where = {
+      organizationId: organization.id,
+      status: 'APPROVED' as const,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, projects] = await Promise.all([
+      this.prisma.project.count({ where }),
+      this.prisma.project.findMany({
+        orderBy: [{ updatedAt: 'desc' }],
+        select: projectSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      projects: projects.map(projectRowToContract),
+      totalHits,
+    };
   }
 
   async findViewerOrganizations(ownerId: string) {
@@ -717,6 +846,23 @@ function projectSelect() {
   };
 }
 
+function organizationMemberSelect() {
+  return {
+    isOwner: true,
+    permissions: true,
+    role: true,
+    sortOrder: true,
+    user: {
+      select: {
+        avatarUrl: true,
+        displayName: true,
+        id: true,
+        username: true,
+      },
+    },
+  };
+}
+
 function organizationRowToContract(organization: OrganizationRow) {
   return {
     color: organization.color,
@@ -725,13 +871,7 @@ function organizationRowToContract(organization: OrganizationRow) {
     iconUrl: organization.iconUrl,
     id: organization.id,
     memberCount: organization.team._count.members,
-    members: organization.team.members.map((member) => ({
-      isOwner: member.isOwner,
-      permissions: member.permissions,
-      role: member.role,
-      sortOrder: member.sortOrder,
-      user: member.user,
-    })),
+    members: organization.team.members.map(organizationMemberRowToContract),
     name: organization.name,
     owner: organization.owner,
     projectCount: organization._count.projects,
@@ -739,6 +879,22 @@ function organizationRowToContract(organization: OrganizationRow) {
     slug: organization.slug,
     updatedAt: organization.updatedAt,
   };
+}
+
+function organizationMemberRowToContract(member: OrganizationMemberRow) {
+  return {
+    isOwner: member.isOwner,
+    permissions: member.permissions,
+    role: member.role,
+    sortOrder: member.sortOrder,
+    user: member.user,
+  };
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isInteger(value)) return min;
+
+  return Math.min(max, Math.max(min, value));
 }
 
 function projectRowToContract(project: OrganizationProjectRow) {

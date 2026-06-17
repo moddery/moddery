@@ -3,21 +3,28 @@ import { ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import {
-  fetchViewerSessions,
+  fetchViewerSessionSearch,
   revokeSession,
   type SessionSummary,
 } from '../../../lib/dashboard.ts';
 import { timeAgo } from '../../../lib/format.ts';
+import { Pagination } from '../../Pagination.tsx';
+
+const pageSize = 20;
 
 export function SessionsPanel() {
   const [busySessionId, setBusySessionId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [showRevoked, setShowRevoked] = useState(false);
   const sessionsQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerSessions(showRevoked, signal),
-    queryKey: ['dashboard', 'sessions', showRevoked],
+    queryFn: ({ signal }) =>
+      fetchViewerSessionSearch(showRevoked, page, pageSize, signal),
+    queryKey: ['dashboard', 'sessions', showRevoked, page],
   });
-  const sessions = sessionsQuery.data ?? [];
+  const sessions = sessionsQuery.data?.sessions ?? [];
+  const totalHits = sessionsQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
 
   async function revoke(sessionId: string) {
     setBusySessionId(sessionId);
@@ -59,9 +66,16 @@ export function SessionsPanel() {
             : null
         }
         onRevoke={revoke}
-        onShowRevokedChange={setShowRevoked}
+        onPage={setPage}
+        onShowRevokedChange={(value) => {
+          setPage(1);
+          setShowRevoked(value);
+        }}
+        page={page}
         sessions={sessions}
         showRevoked={showRevoked}
+        totalHits={totalHits}
+        totalPages={totalPages}
       />
     </section>
   );
@@ -71,16 +85,24 @@ function SessionList({
   busySessionId,
   error,
   onRevoke,
+  onPage,
   onShowRevokedChange,
+  page,
   sessions,
   showRevoked,
+  totalHits,
+  totalPages,
 }: {
   busySessionId: string | null;
   error: string | null;
   onRevoke: (sessionId: string) => Promise<void>;
+  onPage: (page: number) => void;
   onShowRevokedChange: (value: boolean) => void;
+  page: number;
   sessions: SessionSummary[];
   showRevoked: boolean;
+  totalHits: number;
+  totalPages: number;
 }) {
   if (error) {
     return (
@@ -94,8 +116,9 @@ function SessionList({
     return (
       <div className="mt-4 rounded-lg border border-line bg-surface px-3 py-3">
         <SessionListHeader
-          sessions={sessions}
+          shownCount={sessions.length}
           showRevoked={showRevoked}
+          totalHits={totalHits}
           onShowRevokedChange={onShowRevokedChange}
         />
         <p className="mt-3 text-sm font-semibold text-muted">
@@ -108,10 +131,16 @@ function SessionList({
   return (
     <div className="mt-4 grid gap-2">
       <SessionListHeader
-        sessions={sessions}
+        shownCount={sessions.length}
         showRevoked={showRevoked}
+        totalHits={totalHits}
         onShowRevokedChange={onShowRevokedChange}
       />
+      {totalPages > 1 && (
+        <div className="flex justify-end">
+          <Pagination page={page} totalPages={totalPages} onPage={onPage} />
+        </div>
+      )}
       {sessions.map((session) => (
         <div
           key={session.id}
@@ -143,24 +172,32 @@ function SessionList({
           )}
         </div>
       ))}
+      {totalPages > 1 && (
+        <div className="flex justify-end">
+          <Pagination page={page} totalPages={totalPages} onPage={onPage} />
+        </div>
+      )}
     </div>
   );
 }
 
 function SessionListHeader({
-  sessions,
+  shownCount,
   showRevoked,
+  totalHits,
   onShowRevokedChange,
 }: {
-  sessions: SessionSummary[];
+  shownCount: number;
   showRevoked: boolean;
+  totalHits: number;
   onShowRevokedChange: (value: boolean) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-semibold text-muted">
-        Showing {sessions.length.toLocaleString('en-US')}{' '}
-        {showRevoked ? 'total sessions' : 'active sessions'}
+        Showing {shownCount.toLocaleString('en-US')} of{' '}
+        {totalHits.toLocaleString('en-US')}{' '}
+        {showRevoked ? 'sessions' : 'active sessions'}
       </p>
       <button
         type="button"

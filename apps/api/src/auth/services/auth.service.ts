@@ -136,7 +136,42 @@ export class AuthService {
     };
   }
 
-  findViewerSessions(
+  async findViewerSessions(
+    userId: string,
+    {
+      includeRevoked,
+      limit = 20,
+      offset = 0,
+    }: {
+      includeRevoked?: boolean | null;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
+    const where = {
+      ...(includeRevoked ? {} : { revokedAt: null }),
+      userId,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, sessions] = await Promise.all([
+      this.prisma.session.count({ where }),
+      this.prisma.session.findMany({
+        orderBy: [{ revokedAt: 'asc' }, { lastUsedAt: 'desc' }],
+        select: sessionSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      sessions,
+      totalHits,
+    };
+  }
+
+  async findViewerSessionList(
     userId: string,
     {
       includeRevoked,
@@ -144,14 +179,9 @@ export class AuthService {
       includeRevoked?: boolean | null;
     } = {},
   ) {
-    return this.prisma.session.findMany({
-      orderBy: [{ revokedAt: 'asc' }, { lastUsedAt: 'desc' }],
-      select: sessionSelect(),
-      where: {
-        ...(includeRevoked ? {} : { revokedAt: null }),
-        userId,
-      },
-    });
+    const result = await this.findViewerSessions(userId, { includeRevoked });
+
+    return result.sessions;
   }
 
   async revokeViewerSession({
@@ -198,4 +228,12 @@ function sessionSelect() {
     revokedAt: true,
     userAgent: true,
   };
+}
+
+function clampInteger(value: number, minimum: number, maximum: number): number {
+  if (!Number.isFinite(value)) {
+    return minimum;
+  }
+
+  return Math.min(maximum, Math.max(minimum, Math.floor(value)));
 }

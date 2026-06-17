@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   fetchViewerNotifications,
@@ -8,27 +8,43 @@ import {
   markNotificationRead,
 } from '../lib/notifications.ts';
 import { NotificationRow } from './notifications/NotificationRow.tsx';
+import { Pagination } from './Pagination.tsx';
 import { SelectField, type SelectOption } from './ui/Select.tsx';
 
 const allTypesFilter = '__all_notification_types__';
+const pageSize = 20;
 
 export function NotificationsPage() {
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [type, setType] = useState(allTypesFilter);
   const selectedType = type === allTypesFilter ? null : type;
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedType, unreadOnly]);
+
   const notificationsQuery = useQuery({
     queryFn: ({ signal }) =>
-      fetchViewerNotifications({ type: selectedType, unreadOnly }, signal),
-    queryKey: ['notifications', 'viewer', selectedType, unreadOnly],
+      fetchViewerNotifications(
+        { limit: pageSize, page, type: selectedType, unreadOnly },
+        signal,
+      ),
+    queryKey: ['notifications', 'viewer', selectedType, unreadOnly, page],
   });
-  const notifications = notificationsQuery.data?.viewerNotifications ?? [];
+  const notifications =
+    notificationsQuery.data?.viewerNotificationSearch.notifications ?? [];
+  const totalHits =
+    notificationsQuery.data?.viewerNotificationSearch.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
   const unreadCount = notificationsQuery.data?.unreadNotificationCount ?? 0;
   const notificationTypes =
     notificationsQuery.data?.viewerNotificationTypes ?? [];
   const typeOptions = buildTypeOptions(notificationTypes);
   const hasNotifications = notificationsQuery.data !== undefined;
   const hasFilterControls = hasNotifications && notificationTypes.length > 0;
+  const hasActiveFilters = unreadOnly || selectedType !== null;
 
   async function markOneRead(id: string) {
     setMessage(null);
@@ -83,7 +99,8 @@ export function NotificationsPage() {
       {hasFilterControls && (
         <section className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3">
           <p className="text-sm font-semibold text-muted">
-            Showing {notifications.length.toLocaleString('en-US')} notifications
+            Showing {notifications.length.toLocaleString('en-US')} of{' '}
+            {totalHits.toLocaleString('en-US')} notifications
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -121,7 +138,7 @@ export function NotificationsPage() {
         <p className="mt-5 rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
           Notifications did not return from the API.
         </p>
-      ) : notifications.length === 0 ? (
+      ) : notifications.length === 0 && !hasActiveFilters ? (
         <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
           <Bell className="size-6 text-accent-icon" />
           <h2 className="mt-4 font-display text-lg font-bold text-ink">
@@ -149,11 +166,31 @@ export function NotificationsPage() {
           </button>
         </div>
       ) : (
-        <section className="mt-2">
-          {notifications.map((item) => (
-            <NotificationRow key={item.id} item={item} onRead={markOneRead} />
-          ))}
-        </section>
+        <div className="mt-2 grid gap-4">
+          {totalPages > 1 && (
+            <div className="flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
+          <section>
+            {notifications.map((item) => (
+              <NotificationRow key={item.id} item={item} onRead={markOneRead} />
+            ))}
+          </section>
+          {totalPages > 1 && (
+            <div className="flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {message && (

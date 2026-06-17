@@ -191,6 +191,15 @@ export class ProjectSummary {
 }
 
 @ObjectType()
+export class ProjectSearchResult {
+  @Field(() => [ProjectSummary])
+  projects!: ProjectSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}
+
+@ObjectType()
 export class ProjectMemberUser {
   @Field(() => String, { nullable: true })
   avatarUrl!: string | null;
@@ -224,6 +233,15 @@ export class ProjectMemberSummary {
 
   @Field(() => ProjectMemberUser)
   user!: ProjectMemberUser;
+}
+
+@ObjectType()
+export class ProjectMemberSearchResult {
+  @Field(() => [ProjectMemberSummary])
+  members!: ProjectMemberSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }
 
 @ObjectType()

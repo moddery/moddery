@@ -227,8 +227,12 @@ describe(VersionsService.name, () => {
     const queries: unknown[] = [];
     const service = new VersionsService({
       version: {
+        count: (query: unknown) => {
+          queries.push({ count: query });
+          return Promise.resolve(1);
+        },
         findMany: (query: unknown) => {
-          queries.push(query);
+          queries.push({ findMany: query });
           return Promise.resolve([
             versionRow({
               changelog: 'Release notes',
@@ -264,10 +268,24 @@ describe(VersionsService.name, () => {
 
     expect(queries[0]).toEqual(
       expect.objectContaining({
-        where: {
-          project: { slug: 'example' },
-          status: 'APPROVED',
+        count: {
+          where: {
+            project: { slug: 'example' },
+            status: 'APPROVED',
+          },
         },
+      }),
+    );
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        findMany: expect.objectContaining({
+          skip: 0,
+          take: 100,
+          where: {
+            project: { slug: 'example' },
+            status: 'APPROVED',
+          },
+        }),
       }),
     );
     expect(versions).toEqual([
@@ -317,6 +335,75 @@ describe(VersionsService.name, () => {
         versionNumber: '1.0.0',
       },
     ]);
+  });
+
+  test('searches project versions with filters and pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new VersionsService({
+      version: {
+        count: (query: unknown) => {
+          queries.push({ count: query });
+          return Promise.resolve(12);
+        },
+        findMany: (query: unknown) => {
+          queries.push({ findMany: query });
+          return Promise.resolve([
+            versionRow({
+              name: 'Fabric 1.21.6',
+              versionNumber: '2.0.0',
+            }),
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.searchByProjectSlug('example', {
+      gameVersion: '1.21.6',
+      limit: 10,
+      loader: 'fabric',
+      offset: 20,
+      search: '2.0',
+    });
+
+    const where = {
+      gameVersions: {
+        some: {
+          gameVersion: { version: '1.21.6' },
+        },
+      },
+      loaders: {
+        some: { loader: 'FABRIC' },
+      },
+      OR: [
+        {
+          name: {
+            contains: '2.0',
+            mode: 'insensitive',
+          },
+        },
+        {
+          versionNumber: {
+            contains: '2.0',
+            mode: 'insensitive',
+          },
+        },
+      ],
+      project: { slug: 'example' },
+      status: 'APPROVED',
+    };
+
+    expect(queries[0]).toEqual({ count: { where } });
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        findMany: expect.objectContaining({
+          skip: 20,
+          take: 10,
+          where,
+        }),
+      }),
+    );
+    expect(result.totalHits).toBe(12);
+    expect(result.versions[0]?.versionNumber).toBe('2.0.0');
   });
 
   test('records moderator file scan results', async () => {

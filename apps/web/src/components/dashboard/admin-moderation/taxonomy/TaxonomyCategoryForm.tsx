@@ -4,6 +4,7 @@ import { type FormEvent } from 'react';
 import { type CategoryTaxonomy } from '../../../../lib/dashboard.ts';
 import { DashboardField } from '../shared.tsx';
 import { taxonomyProjectKinds } from './constants.ts';
+import { TaxonomyList } from './TaxonomyList.tsx';
 
 export function TaxonomyCategoryForm({
   busy,
@@ -98,18 +99,29 @@ function TaxonomyCategoryList({
   }
 
   return (
-    <div className="mt-1 grid gap-2">
-      {categories.slice(0, 12).map((category) => (
+    <TaxonomyList
+      emptyLabel="No categories yet."
+      getKey={(category) => category.slug}
+      getSearchText={(category) =>
+        [
+          category.slug,
+          category.name,
+          category.description ?? '',
+          category.projectKind ?? '',
+        ].join(' ')
+      }
+      items={categories}
+      searchLabel="Search categories..."
+      renderItem={(category) => (
         <button
-          key={category.slug}
           type="button"
           onClick={() => onSelect(category)}
-          className="flex items-center justify-between gap-3 rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
+          className="flex w-full items-center justify-between gap-3 rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
         >
           <span>{category.name}</span>
           <span className="text-xs text-muted">{category.slug}</span>
         </button>
-      ))}
-    </div>
+      )}
+    />
   );
 }

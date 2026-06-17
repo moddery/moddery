@@ -1,10 +1,30 @@
+import { type FormEvent } from 'react';
+
+import { Pagination } from '../../Pagination.tsx';
 import { AdminUserRow } from './admin-users/AdminUserRow.tsx';
 import { useAdminUsersPanelState } from './admin-users/useAdminUsersPanelState.ts';
-import { ReportActionButton } from './shared.tsx';
+import { DashboardField, ReportActionButton } from './shared.tsx';
 
 export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
-  const { busyUserId, message, updateAccount, users, usersQuery } =
-    useAdminUsersPanelState();
+  const {
+    busyUserId,
+    message,
+    page,
+    searchInput,
+    setPage,
+    setSearchInput,
+    submitSearch,
+    totalHits,
+    totalPages,
+    updateAccount,
+    users,
+    usersQuery,
+  } = useAdminUsersPanelState();
+
+  function onSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitSearch();
+  }
 
   return (
     <section className="mt-8 rounded-xl border border-line bg-surface p-4 shadow-sm">
@@ -17,13 +37,34 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
             Recent accounts and moderation access.
           </p>
         </div>
-        <ReportActionButton
-          disabled={usersQuery.isFetching}
-          onClick={() => void usersQuery.refetch()}
-        >
-          Refresh
-        </ReportActionButton>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-semibold text-muted">
+            {totalHits.toLocaleString('en-US')} users
+          </span>
+          <ReportActionButton
+            disabled={usersQuery.isFetching}
+            onClick={() => void usersQuery.refetch()}
+          >
+            Refresh
+          </ReportActionButton>
+        </div>
       </div>
+      <form onSubmit={onSearch} className="mt-4 flex max-w-xl gap-2">
+        <div className="min-w-0 flex-1">
+          <DashboardField
+            label="Search users"
+            placeholder="username, email, role, or status"
+            value={searchInput}
+            onChange={setSearchInput}
+          />
+        </div>
+        <button
+          type="submit"
+          className="mt-6 rounded-lg bg-accent px-4 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong"
+        >
+          Search
+        </button>
+      </form>
       {message && (
         <p className="mt-3 text-sm font-semibold text-muted">{message}</p>
       )}
@@ -31,6 +72,11 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
         <p className="mt-4 text-sm text-muted">Loading users...</p>
       )}
       <div className="mt-4 grid gap-3">
+        {totalPages > 1 && (
+          <div className="flex justify-end">
+            <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+          </div>
+        )}
         {users.map((user) => (
           <AdminUserRow
             key={user.id}
@@ -40,6 +86,14 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
             onUpdate={updateAccount}
           />
         ))}
+        {users.length === 0 && !usersQuery.isLoading && (
+          <p className="py-8 text-sm text-muted">No matching users.</p>
+        )}
+        {totalPages > 1 && (
+          <div className="flex justify-end">
+            <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+          </div>
+        )}
       </div>
     </section>
   );

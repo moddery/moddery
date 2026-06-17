@@ -1,4 +1,4 @@
-import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../decorators/current-user.decorator.js';
 import { CreateApiTokenInput } from '../dto/create-api-token.input.js';
@@ -9,10 +9,14 @@ import { ApiTokensService } from '../services/api-tokens.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { type AuthenticatedUser } from '../services/auth-token.service.js';
 import { UsersService } from '../../users/services/users.service.js';
-import { ApiTokenSummary, CreatedApiToken } from './api-token.model.js';
+import {
+  ApiTokenSearchResult,
+  ApiTokenSummary,
+  CreatedApiToken,
+} from './api-token.model.js';
 import { AuthPayload } from './auth-payload.model.js';
 import { AuthUser } from './auth-user.model.js';
-import { SessionSummary } from './session.model.js';
+import { SessionSearchResult, SessionSummary } from './session.model.js';
 
 @Resolver()
 export class AuthResolver {
@@ -56,7 +60,24 @@ export class AuthResolver {
     @Args('includeRevoked', { nullable: true, type: () => Boolean })
     includeRevoked?: boolean | null,
   ) {
-    return this.apiTokensService.findViewerTokens(user.id, { includeRevoked });
+    return this.apiTokensService.findViewerTokenList(user.id, {
+      includeRevoked,
+    });
+  }
+
+  @Query(() => ApiTokenSearchResult)
+  viewerApiTokenSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('includeRevoked', { nullable: true, type: () => Boolean })
+    includeRevoked?: boolean | null,
+    @Args('limit', { nullable: true, type: () => Int }) limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int }) offset?: number | null,
+  ) {
+    return this.apiTokensService.findViewerTokens(user.id, {
+      includeRevoked,
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Query(() => [SessionSummary])
@@ -65,7 +86,22 @@ export class AuthResolver {
     @Args('includeRevoked', { nullable: true, type: () => Boolean })
     includeRevoked?: boolean | null,
   ) {
-    return this.authService.findViewerSessions(user.id, { includeRevoked });
+    return this.authService.findViewerSessionList(user.id, { includeRevoked });
+  }
+
+  @Query(() => SessionSearchResult)
+  viewerSessionSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('includeRevoked', { nullable: true, type: () => Boolean })
+    includeRevoked?: boolean | null,
+    @Args('limit', { nullable: true, type: () => Int }) limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int }) offset?: number | null,
+  ) {
+    return this.authService.findViewerSessions(user.id, {
+      includeRevoked,
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Mutation(() => CreatedApiToken)

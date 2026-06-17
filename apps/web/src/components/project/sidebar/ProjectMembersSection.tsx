@@ -1,19 +1,53 @@
 import { UserRound } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
-import { type ProjectMember } from '../../../lib/catalog.ts';
+import {
+  fetchProjectMemberSearch,
+  type ProjectMember,
+} from '../../../lib/catalog.ts';
+import { Pagination } from '../../Pagination.tsx';
+
+const pageSize = 12;
 
 export function ProjectMembersSection({
   members,
+  projectSlug,
 }: {
   members: ProjectMember[];
+  projectSlug: string;
 }) {
+  const [page, setPage] = useState(1);
+  const membersQuery = useQuery({
+    queryFn: ({ signal }) =>
+      fetchProjectMemberSearch(projectSlug, page, pageSize, signal),
+    queryKey: ['catalog', 'project-members', projectSlug, page],
+  });
+  const visibleMembers = membersQuery.data?.members ?? members;
+  const totalHits = membersQuery.data?.totalHits ?? members.length;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
+
+  if (membersQuery.isError && members.length === 0) {
+    return null;
+  }
+
   return (
     <section className="mt-6">
-      <h2 className="font-display text-base font-extrabold text-ink">
-        Creators
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-base font-extrabold text-ink">
+          Creators
+        </h2>
+        <span className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
+          {totalHits.toLocaleString('en-US')}
+        </span>
+      </div>
       <div className="mt-3 flex flex-col gap-2">
-        {members.map((member) => {
+        {membersQuery.isLoading && members.length === 0 && (
+          <p className="text-sm font-semibold text-muted">
+            Loading creators...
+          </p>
+        )}
+        {visibleMembers.map((member) => {
           const name = member.user.display_name ?? member.user.username;
 
           return (
@@ -45,6 +79,11 @@ export function ProjectMembersSection({
           );
         })}
       </div>
+      {totalPages > 1 && (
+        <div className="mt-3">
+          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+        </div>
+      )}
     </section>
   );
 }

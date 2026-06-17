@@ -76,3 +76,30 @@ export class OrganizationSummary {
   @Field(() => Date)
   updatedAt!: Date;
 }
+
+@ObjectType()
+export class OrganizationSearchResult {
+  @Field(() => [OrganizationSummary])
+  organizations!: OrganizationSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}
+
+@ObjectType()
+export class OrganizationMemberSearchResult {
+  @Field(() => [OrganizationMember])
+  members!: OrganizationMember[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}
+
+@ObjectType()
+export class OrganizationProjectSearchResult {
+  @Field(() => [ProjectSummary])
+  projects!: ProjectSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}

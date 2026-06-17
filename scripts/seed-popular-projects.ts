@@ -256,6 +256,7 @@ async function indexProject(
         ...loaders.map((loader) => `loader:${loader}`),
       ],
       title: project.title,
+      titleSort: project.title.toLowerCase(),
       updatedAt,
     },
     id: projectId,
@@ -298,6 +299,7 @@ function projectIndexMapping() {
       summary: { type: 'text' },
       tags: { type: 'keyword' },
       title: { type: 'text' },
+      titleSort: { type: 'keyword' },
       updatedAt: { type: 'date' },
     },
   };

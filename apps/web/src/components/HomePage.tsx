@@ -34,14 +34,14 @@ export function HomePage({
   const popularPluginsQuery = useHomeProjects('plugin', 'downloads');
   const updatedModpacksQuery = useHomeProjects('modpack', 'updated');
   const collectionsQuery = useQuery({
-    queryFn: ({ signal }) => fetchPublicCollections(null, signal),
+    queryFn: ({ signal }) => fetchPublicCollections(null, 1, 3, signal),
     queryKey: ['home', 'collections'],
   });
 
   const popularMods = popularModsQuery.data?.projects ?? [];
   const popularPlugins = popularPluginsQuery.data?.projects ?? [];
   const updatedModpacks = updatedModpacksQuery.data?.projects ?? [];
-  const collections = collectionsQuery.data?.slice(0, 3) ?? [];
+  const collections = collectionsQuery.data?.collections ?? [];
 
   return (
     <div className="min-h-dvh bg-bg" onClickCapture={onNavigate}>

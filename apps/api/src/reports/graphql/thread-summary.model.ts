@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 import { ReportUser } from './report-summary.model.js';
 
@@ -51,4 +51,13 @@ export class ThreadSummary {
 
   @Field(() => Date)
   updatedAt!: Date;
+}
+
+@ObjectType()
+export class ThreadSearchResult {
+  @Field(() => [ThreadSummary])
+  threads!: ThreadSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }

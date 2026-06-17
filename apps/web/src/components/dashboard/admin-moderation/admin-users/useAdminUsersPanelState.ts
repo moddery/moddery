@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import {
-  fetchAdminUsers,
+  fetchAdminUserSearch,
   updateUserAccount,
   type AdminUserAccount,
 } from '../../../../lib/dashboard.ts';
@@ -12,14 +12,28 @@ export interface UpdateUserAccountInput {
   status?: string;
 }
 
+const pageSize = 20;
+
 export function useAdminUsersPanelState() {
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const usersQuery = useQuery({
-    queryFn: ({ signal }) => fetchAdminUsers(signal),
-    queryKey: ['dashboard', 'admin-users'],
+    queryFn: ({ signal }) =>
+      fetchAdminUserSearch(searchQuery, page, pageSize, signal),
+    queryKey: ['dashboard', 'admin-users', searchQuery, page],
   });
-  const users = usersQuery.data ?? [];
+  const totalHits = usersQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
+  const users = usersQuery.data?.users ?? [];
+
+  function submitSearch() {
+    const normalizedSearch = searchInput.trim();
+    setPage(1);
+    setSearchQuery(normalizedSearch === '' ? null : normalizedSearch);
+  }
 
   async function updateAccount(
     user: AdminUserAccount,
@@ -47,6 +61,14 @@ export function useAdminUsersPanelState() {
   return {
     busyUserId,
     message,
+    page,
+    pageSize,
+    searchInput,
+    setPage,
+    setSearchInput,
+    submitSearch,
+    totalHits,
+    totalPages,
     updateAccount,
     users,
     usersQuery,

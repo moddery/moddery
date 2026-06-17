@@ -53,3 +53,12 @@ export class NotificationSummary {
   @Field(() => String)
   type!: string;
 }
+
+@ObjectType()
+export class NotificationSearchResult {
+  @Field(() => [NotificationSummary])
+  notifications!: NotificationSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}

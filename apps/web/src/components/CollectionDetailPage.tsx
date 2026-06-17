@@ -1,14 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, BookMarked } from 'lucide-react';
+import { useState } from 'react';
 
 import {
   fetchPublicCollectionBySlug,
+  fetchPublicCollectionItems,
   type PublicCollection,
+  type PublicCollectionItem,
 } from '../lib/catalog.ts';
 import { timeAgo } from '../lib/format.ts';
 import type { Mod } from '../types.ts';
 import { CollectionProjectItem } from './collection/CollectionProjectItem.tsx';
 import type { SearchTag } from './ModCard.tsx';
+import { Pagination } from './Pagination.tsx';
+
+const itemPageSize = 20;
 
 export function CollectionDetailPage({
   onBack,
@@ -23,10 +29,23 @@ export function CollectionDetailPage({
   ownerUsername: string;
   slug: string;
 }) {
+  const [itemPage, setItemPage] = useState(1);
   const collectionQuery = useQuery({
     queryFn: ({ signal }) =>
       fetchPublicCollectionBySlug(ownerUsername, slug, signal),
     queryKey: ['collections', 'detail', ownerUsername, slug],
+  });
+  const itemsQuery = useQuery({
+    enabled: Boolean(collectionQuery.data),
+    queryFn: ({ signal }) =>
+      fetchPublicCollectionItems(
+        ownerUsername,
+        slug,
+        itemPage,
+        itemPageSize,
+        signal,
+      ),
+    queryKey: ['collections', 'detail', ownerUsername, slug, 'items', itemPage],
   });
 
   return (
@@ -55,6 +74,17 @@ export function CollectionDetailPage({
       ) : (
         <CollectionDetail
           collection={collectionQuery.data}
+          isLoadingItems={itemsQuery.isLoading}
+          items={itemsQuery.data?.items ?? collectionQuery.data.items}
+          onItemPage={setItemPage}
+          itemPage={itemPage}
+          itemTotalPages={Math.max(
+            1,
+            Math.ceil(
+              (itemsQuery.data?.totalHits ??
+                collectionQuery.data.projectCount) / itemPageSize,
+            ),
+          )}
           onOpenProject={onOpenProject}
           onTagSearch={onTagSearch}
         />
@@ -65,10 +95,20 @@ export function CollectionDetailPage({
 
 function CollectionDetail({
   collection,
+  isLoadingItems,
+  itemPage,
+  itemTotalPages,
+  items,
+  onItemPage,
   onOpenProject,
   onTagSearch,
 }: {
   collection: PublicCollection;
+  isLoadingItems: boolean;
+  itemPage: number;
+  itemTotalPages: number;
+  items: PublicCollectionItem[];
+  onItemPage: (page: number) => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
@@ -104,7 +144,12 @@ function CollectionDetail({
         </p>
       </header>
 
-      {collection.items.length === 0 ? (
+      {isLoadingItems ? (
+        <section className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="h-28 animate-pulse rounded bg-surface-2" />
+          <div className="h-28 animate-pulse rounded bg-surface-2" />
+        </section>
+      ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
           <BookMarked className="size-6 text-accent-icon" />
           <h2 className="mt-4 font-display text-lg font-bold text-ink">
@@ -112,16 +157,27 @@ function CollectionDetail({
           </h2>
         </div>
       ) : (
-        <section className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {collection.items.map((item) => (
-            <CollectionProjectItem
-              key={item.project.slug}
-              item={item}
-              onOpenProject={onOpenProject}
-              onTagSearch={onTagSearch}
-            />
-          ))}
-        </section>
+        <>
+          <section className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {items.map((item) => (
+              <CollectionProjectItem
+                key={item.project.slug}
+                item={item}
+                onOpenProject={onOpenProject}
+                onTagSearch={onTagSearch}
+              />
+            ))}
+          </section>
+          {itemTotalPages > 1 && (
+            <div className="mt-5 flex justify-end">
+              <Pagination
+                page={itemPage}
+                totalPages={itemTotalPages}
+                onPage={onItemPage}
+              />
+            </div>
+          )}
+        </>
       )}
     </>
   );

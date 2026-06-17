@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
@@ -12,10 +12,15 @@ import { ModerateProjectInput } from '../dto/moderate-project.input.js';
 import { RemoveProjectTeamMemberInput } from '../dto/remove-project-team-member.input.js';
 import { UpdateProjectInput } from '../dto/update-project.input.js';
 import { CatalogService } from '../services/catalog.service.js';
-import { ModerationActionSummary } from './moderation-action-summary.model.js';
+import {
+  ModerationActionSearchResult,
+  ModerationActionSummary,
+} from './moderation-action-summary.model.js';
 import {
   ProjectFollowState,
+  ProjectMemberSearchResult,
   ProjectMemberSummary,
+  ProjectSearchResult,
   ProjectSummary,
 } from './project-summary.model.js';
 
@@ -42,21 +47,77 @@ export class CatalogResolver {
     return projects.map(projectToGraphql);
   }
 
+  @Public()
+  @Query(() => ProjectSearchResult)
+  async projectSearch(
+    @Args('query', { nullable: true, type: () => CatalogQueryInput })
+    query?: CatalogQueryInput,
+  ) {
+    const result = await this.catalogService.searchProjects(query);
+
+    return {
+      projects: result.projects.map(projectToGraphql),
+      totalHits: result.totalHits,
+    };
+  }
+
   @Query(() => [ProjectSummary])
   async viewerFollowedProjects(@CurrentUser() user: AuthenticatedUser) {
-    const projects = await this.catalogService.findViewerFollowedProjects(
+    const projects = await this.catalogService.findViewerFollowedProjectList(
       user.id,
     );
 
     return projects.map(projectToGraphql);
   }
 
+  @Query(() => ProjectSearchResult)
+  async viewerFollowedProjectSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    const result = await this.catalogService.findViewerFollowedProjects(
+      user.id,
+      {
+        limit: limit ?? undefined,
+        offset: offset ?? undefined,
+      },
+    );
+
+    return {
+      projects: result.projects.map(projectToGraphql),
+      totalHits: result.totalHits,
+    };
+  }
+
   @Query(() => [ProjectSummary])
   async moderationProjects(@CurrentUser() user: AuthenticatedUser) {
     assertCanModerate(user);
-    const projects = await this.catalogService.findProjectsForModeration();
+    const projects = await this.catalogService.findProjectModerationList();
 
     return projects.map(projectToGraphql);
+  }
+
+  @Query(() => ProjectSearchResult)
+  async moderationProjectSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    assertCanModerate(user);
+    const result = await this.catalogService.findProjectsForModeration({
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
+
+    return {
+      projects: result.projects.map(projectToGraphql),
+      totalHits: result.totalHits,
+    };
   }
 
   @Query(() => [ModerationActionSummary])
@@ -65,7 +126,23 @@ export class CatalogResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.catalogService.findProjectModerationActions(projectSlug);
+    return this.catalogService.findProjectModerationActionList(projectSlug);
+  }
+
+  @Query(() => ModerationActionSearchResult)
+  projectModerationActionSearch(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    assertCanModerate(user);
+    return this.catalogService.findProjectModerationActions(projectSlug, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Public()
@@ -74,6 +151,21 @@ export class CatalogResolver {
     @Args('projectSlug', { type: () => String }) projectSlug: string,
   ) {
     return this.catalogService.findProjectMembers(projectSlug);
+  }
+
+  @Public()
+  @Query(() => ProjectMemberSearchResult)
+  projectMemberSearch(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    return this.catalogService.findProjectMemberSearch(projectSlug, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Mutation(() => [ProjectMemberSummary])

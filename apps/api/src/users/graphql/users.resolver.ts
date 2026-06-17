@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
   Args,
+  Int,
   Mutation,
   Parent,
   Query,
@@ -14,8 +15,16 @@ import { type AuthenticatedUser } from '../../auth/services/auth-token.service.j
 import { UpdateUserAccountInput } from '../dto/update-user-account.input.js';
 import { UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
 import { UsersService } from '../services/users.service.js';
-import { FriendshipSummary } from './friendship-summary.model.js';
-import { UserProfile } from './user-profile.model.js';
+import {
+  FriendshipSearchResult,
+  FriendshipSummary,
+} from './friendship-summary.model.js';
+import {
+  UserCollectionSearchResult,
+  UserProfile,
+  UserProjectSearchResult,
+  UserSearchResult,
+} from './user-profile.model.js';
 
 @Resolver(() => UserProfile)
 export class UsersResolver {
@@ -40,7 +49,54 @@ export class UsersResolver {
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
   ): Promise<UserProfile[]> {
-    return this.usersService.findPublicUsers({ search });
+    return this.usersService.findPublicUserList({ search });
+  }
+
+  @Public()
+  @Query(() => UserSearchResult)
+  publicUserSearch(
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<UserSearchResult> {
+    return this.usersService.findPublicUsers({
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+      search,
+    });
+  }
+
+  @Public()
+  @Query(() => UserProjectSearchResult)
+  publicUserProjectSearch(
+    @Args('username', { type: () => String }) username: string,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<UserProjectSearchResult> {
+    return this.usersService.findPublicUserProjects(username, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
+  }
+
+  @Public()
+  @Query(() => UserCollectionSearchResult)
+  publicUserCollectionSearch(
+    @Args('username', { type: () => String }) username: string,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<UserCollectionSearchResult> {
+    return this.usersService.findPublicUserCollections(username, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Query(() => UserProfile, { nullable: true })
@@ -49,9 +105,27 @@ export class UsersResolver {
   }
 
   @Query(() => [UserProfile])
-  adminUsers(@CurrentUser() user: AuthenticatedUser) {
+  adminUsers(@CurrentUser() user: AuthenticatedUser): Promise<UserProfile[]> {
     assertAdmin(user);
-    return this.usersService.findAdminUsers();
+    return this.usersService.findAdminUserList();
+  }
+
+  @Query(() => UserSearchResult)
+  adminUserSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<UserSearchResult> {
+    assertAdmin(user);
+    return this.usersService.findAdminUsers({
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+      search,
+    });
   }
 
   @Mutation(() => UserProfile, { nullable: true })
@@ -74,21 +148,63 @@ export class UsersResolver {
   viewerFriends(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary[]> {
-    return this.usersService.findViewerFriends(user.id);
+    return this.usersService.findViewerFriendList(user.id);
+  }
+
+  @Query(() => FriendshipSearchResult)
+  viewerFriendSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<FriendshipSearchResult> {
+    return this.usersService.findViewerFriends(user.id, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Query(() => [FriendshipSummary])
   viewerFriendRequests(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary[]> {
-    return this.usersService.findViewerFriendRequests(user.id);
+    return this.usersService.findViewerFriendRequestList(user.id);
+  }
+
+  @Query(() => FriendshipSearchResult)
+  viewerFriendRequestSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<FriendshipSearchResult> {
+    return this.usersService.findViewerFriendRequests(user.id, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Query(() => [FriendshipSummary])
   viewerBlockedUsers(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary[]> {
-    return this.usersService.findViewerBlockedUsers(user.id);
+    return this.usersService.findViewerBlockedUserList(user.id);
+  }
+
+  @Query(() => FriendshipSearchResult)
+  viewerBlockedUserSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<FriendshipSearchResult> {
+    return this.usersService.findViewerBlockedUsers(user.id, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Mutation(() => FriendshipSummary)
@@ -127,7 +243,7 @@ export class UsersResolver {
   updateUserAccount(
     @Args('input') input: UpdateUserAccountInput,
     @CurrentUser() user: AuthenticatedUser,
-  ) {
+  ): Promise<UserProfile> {
     assertAdmin(user);
     return this.usersService.updateUserAccount(input, user.id);
   }

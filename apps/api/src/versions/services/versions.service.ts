@@ -135,6 +135,11 @@ export interface VersionSummaryContract {
   versionNumber: string;
 }
 
+export interface VersionSearchResultContract {
+  totalHits: number;
+  versions: VersionSummaryContract[];
+}
+
 @Injectable()
 export class VersionsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -206,16 +211,53 @@ export class VersionsService {
   async findByProjectSlug(
     projectSlug: string,
   ): Promise<VersionSummaryContract[]> {
-    const versions: VersionRow[] = await this.prisma.version.findMany({
-      orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-      select: versionSelect(),
-      where: {
-        project: { slug: projectSlug },
-        status: 'APPROVED',
-      },
+    const result = await this.searchByProjectSlug(projectSlug, {
+      limit: 100,
+      offset: 0,
     });
 
-    return versions.map(versionRowToContract);
+    return result.versions;
+  }
+
+  async searchByProjectSlug(
+    projectSlug: string,
+    {
+      gameVersion = null,
+      limit = 20,
+      loader = null,
+      offset = 0,
+      search = null,
+    }: {
+      gameVersion?: string | null;
+      limit?: number;
+      loader?: string | null;
+      offset?: number;
+      search?: string | null;
+    } = {},
+  ): Promise<VersionSearchResultContract> {
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const where = versionSearchWhere(projectSlug, {
+      gameVersion,
+      loader,
+      search,
+    });
+
+    const [totalHits, versions] = await Promise.all([
+      this.prisma.version.count({ where }),
+      this.prisma.version.findMany({
+        orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+        select: versionSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      totalHits,
+      versions: versions.map(versionRowToContract),
+    };
   }
 
   async updateVersion(
@@ -394,6 +436,75 @@ async function createVersionDependency(
       versionId,
     },
   });
+}
+
+function versionSearchWhere(
+  projectSlug: string,
+  {
+    gameVersion,
+    loader,
+    search,
+  }: {
+    gameVersion?: string | null;
+    loader?: string | null;
+    search?: string | null;
+  },
+): Prisma.VersionWhereInput {
+  const normalizedGameVersion = nullableTrim(gameVersion);
+  const normalizedLoader = nullableTrim(loader)?.toLowerCase() ?? null;
+  const normalizedSearch = nullableTrim(search);
+
+  if (
+    normalizedGameVersion !== null &&
+    !isGameVersionTag(normalizedGameVersion)
+  ) {
+    throw new BadRequestException('Unsupported game version');
+  }
+
+  const loaderFilter =
+    normalizedLoader === null ? null : loaderToEnum(normalizedLoader);
+  if (normalizedLoader !== null && loaderFilter === null) {
+    throw new BadRequestException('Unsupported loader');
+  }
+
+  return {
+    ...(normalizedGameVersion === null
+      ? {}
+      : {
+          gameVersions: {
+            some: {
+              gameVersion: { version: normalizedGameVersion },
+            },
+          },
+        }),
+    ...(loaderFilter === null
+      ? {}
+      : {
+          loaders: {
+            some: { loader: loaderFilter },
+          },
+        }),
+    project: { slug: projectSlug },
+    ...(normalizedSearch === null
+      ? {}
+      : {
+          OR: [
+            {
+              name: {
+                contains: normalizedSearch,
+                mode: 'insensitive',
+              },
+            },
+            {
+              versionNumber: {
+                contains: normalizedSearch,
+                mode: 'insensitive',
+              },
+            },
+          ],
+        }),
+    status: 'APPROVED',
+  };
 }
 
 function versionSelect() {
@@ -605,6 +716,11 @@ function uniqueNormalized(values: readonly string[]): string[] {
         .filter((value) => value.length > 0),
     ),
   ];
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function nullableTrim(value: string | null | undefined): string | null {

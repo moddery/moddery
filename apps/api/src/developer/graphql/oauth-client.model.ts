@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class OAuthClientRedirectUriSummary {
@@ -46,6 +46,15 @@ export class OAuthClientSummary {
 
   @Field(() => Date)
   updatedAt!: Date;
+}
+
+@ObjectType()
+export class OAuthClientSearchResult {
+  @Field(() => [OAuthClientSummary])
+  clients!: OAuthClientSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }
 
 @ObjectType()

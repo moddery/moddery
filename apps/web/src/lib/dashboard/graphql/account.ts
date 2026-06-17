@@ -30,6 +30,31 @@ export const VIEWER_API_TOKENS_QUERY = gql`
   }
 `;
 
+export const VIEWER_API_TOKEN_SEARCH_QUERY = gql`
+  query ViewerApiTokenSearch(
+    $includeRevoked: Boolean
+    $limit: Int!
+    $offset: Int!
+  ) {
+    viewerApiTokenSearch(
+      includeRevoked: $includeRevoked
+      limit: $limit
+      offset: $offset
+    ) {
+      tokens {
+        createdAt
+        expiresAt
+        id
+        lastUsedAt
+        name
+        revokedAt
+        scopes
+      }
+      totalHits
+    }
+  }
+`;
+
 export const VIEWER_SESSIONS_QUERY = gql`
   query ViewerSessions($includeRevoked: Boolean) {
     viewerSessions(includeRevoked: $includeRevoked) {
@@ -39,6 +64,30 @@ export const VIEWER_SESSIONS_QUERY = gql`
       lastUsedAt
       revokedAt
       userAgent
+    }
+  }
+`;
+
+export const VIEWER_SESSION_SEARCH_QUERY = gql`
+  query ViewerSessionSearch(
+    $includeRevoked: Boolean
+    $limit: Int!
+    $offset: Int!
+  ) {
+    viewerSessionSearch(
+      includeRevoked: $includeRevoked
+      limit: $limit
+      offset: $offset
+    ) {
+      sessions {
+        createdAt
+        expiresAt
+        id
+        lastUsedAt
+        revokedAt
+        userAgent
+      }
+      totalHits
     }
   }
 `;
@@ -116,6 +165,18 @@ export const VIEWER_OAUTH_CLIENTS_QUERY = gql`
   }
 `;
 
+export const VIEWER_OAUTH_CLIENT_SEARCH_QUERY = gql`
+  ${OAUTH_CLIENT_FIELDS}
+  query ViewerOAuthClientSearch($limit: Int!, $offset: Int!) {
+    viewerOAuthClientSearch(limit: $limit, offset: $offset) {
+      clients {
+        ...OAuthClientFields
+      }
+      totalHits
+    }
+  }
+`;
+
 export const CREATE_OAUTH_CLIENT_MUTATION = gql`
   ${OAUTH_CLIENT_FIELDS}
   mutation CreateOAuthClient($input: CreateOAuthClientInput!) {
@@ -157,6 +218,18 @@ export const VIEWER_TEAM_INVITATIONS_QUERY = gql`
   query ViewerTeamInvitations {
     viewerTeamInvitations {
       ...TeamInvitationFields
+    }
+  }
+`;
+
+export const VIEWER_TEAM_INVITATION_SEARCH_QUERY = gql`
+  ${TEAM_INVITATION_FIELDS}
+  query ViewerTeamInvitationSearch($limit: Int!, $offset: Int!) {
+    viewerTeamInvitationSearch(limit: $limit, offset: $offset) {
+      invitations {
+        ...TeamInvitationFields
+      }
+      totalHits
     }
   }
 `;
@@ -249,9 +322,12 @@ const DIRECT_THREAD_FIELDS = gql`
 
 export const VIEWER_DIRECT_THREADS_QUERY = gql`
   ${DIRECT_THREAD_FIELDS}
-  query ViewerDirectThreads {
-    viewerDirectThreads {
-      ...DirectThreadFields
+  query ViewerDirectThreads($limit: Int!, $offset: Int!) {
+    viewerDirectThreadSearch(limit: $limit, offset: $offset) {
+      threads {
+        ...DirectThreadFields
+      }
+      totalHits
     }
   }
 `;

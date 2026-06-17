@@ -14,6 +14,23 @@ export const ADMIN_USERS_QUERY = gql`
   }
 `;
 
+export const ADMIN_USER_SEARCH_QUERY = gql`
+  query AdminUserSearch($search: String, $limit: Int!, $offset: Int!) {
+    adminUserSearch(search: $search, limit: $limit, offset: $offset) {
+      totalHits
+      users {
+        avatarUrl
+        createdAt
+        displayName
+        id
+        role
+        status
+        username
+      }
+    }
+  }
+`;
+
 export const UPDATE_USER_ACCOUNT_MUTATION = gql`
   mutation UpdateUserAccount($input: UpdateUserAccountInput!) {
     updateUserAccount(input: $input) {
@@ -96,6 +113,81 @@ export const MODERATION_PROJECTS_QUERY = gql`
       title
       updatedAt
       wikiUrl
+    }
+  }
+`;
+
+export const MODERATION_PROJECT_SEARCH_QUERY = gql`
+  query ModerationProjectSearch($limit: Int!, $offset: Int!) {
+    moderationProjectSearch(limit: $limit, offset: $offset) {
+      projects {
+        approvedAt
+        archivedAt
+        body
+        categories
+        color
+        discordUrl
+        downloads
+        followers
+        gallery {
+          createdAt
+          description
+          displayUrl
+          featured
+          rawUrl
+          sortOrder
+          title
+        }
+        gameVersions
+        iconUrl
+        issuesUrl
+        kind
+        license {
+          id
+          name
+          url
+        }
+        links {
+          kind
+          label
+          url
+        }
+        loaders
+        moderationLock {
+          createdAt
+          expiresAt
+          id
+          moderator {
+            displayName
+            id
+            username
+          }
+        }
+        owner {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        organization {
+          color
+          iconUrl
+          id
+          name
+          slug
+        }
+        publishedAt
+        queuedAt
+        requestedStatus
+        slug
+        sourceUrl
+        status
+        summary
+        title
+        updatedAt
+        wikiUrl
+      }
+      totalHits
     }
   }
 `;
@@ -317,44 +409,47 @@ export const RELEASE_PROJECT_MODERATION_LOCK_MUTATION = gql`
 `;
 
 export const MODERATION_REPORTS_QUERY = gql`
-  query ModerationReports {
-    moderationReports {
-      body
-      closedAt
-      createdAt
-      id
-      project {
+  query ModerationReports($limit: Int!, $offset: Int!) {
+    moderationReportSearch(limit: $limit, offset: $offset) {
+      reports {
+        body
+        closedAt
+        createdAt
         id
-        kind
-        slug
-        title
-      }
-      projectId
-      reason
-      reporter {
-        displayName
-        id
-        username
-      }
-      state
-      userTarget {
-        displayName
-        id
-        username
-      }
-      userTargetId
-      version {
-        id
-        name
         project {
           id
           kind
           slug
           title
         }
-        versionNumber
+        projectId
+        reason
+        reporter {
+          displayName
+          id
+          username
+        }
+        state
+        userTarget {
+          displayName
+          id
+          username
+        }
+        userTargetId
+        version {
+          id
+          name
+          project {
+            id
+            kind
+            slug
+            title
+          }
+          versionNumber
+        }
+        versionId
       }
-      versionId
+      totalHits
     }
   }
 `;

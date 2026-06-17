@@ -4,13 +4,15 @@ import { type FormEvent, useState } from 'react';
 
 import {
   createApiToken,
-  fetchViewerApiTokens,
+  fetchViewerApiTokenSearch,
   revokeApiToken,
 } from '../../../lib/dashboard.ts';
 import { ApiTokenCreatedNotice } from './api-tokens/ApiTokenCreatedNotice.tsx';
 import { ApiTokenCreateForm } from './api-tokens/ApiTokenCreateForm.tsx';
 import { ApiTokenList } from './api-tokens/ApiTokenList.tsx';
 import { splitList } from './shared.tsx';
+
+const pageSize = 20;
 
 export function ApiTokensPanel() {
   const [name, setName] = useState('');
@@ -19,12 +21,16 @@ export function ApiTokensPanel() {
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [showRevoked, setShowRevoked] = useState(false);
   const tokensQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerApiTokens(showRevoked, signal),
-    queryKey: ['dashboard', 'api-tokens', showRevoked],
+    queryFn: ({ signal }) =>
+      fetchViewerApiTokenSearch(showRevoked, page, pageSize, signal),
+    queryKey: ['dashboard', 'api-tokens', showRevoked, page],
   });
-  const tokens = tokensQuery.data ?? [];
+  const tokens = tokensQuery.data?.tokens ?? [];
+  const totalHits = tokensQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,6 +47,7 @@ export function ApiTokensPanel() {
       });
       setCreatedToken(created.token);
       setName('');
+      setPage(1);
       await tokensQuery.refetch();
     } catch (caught) {
       setMessage(
@@ -103,9 +110,16 @@ export function ApiTokensPanel() {
           tokensQuery.error instanceof Error ? tokensQuery.error.message : null
         }
         onRevoke={revoke}
-        onShowRevokedChange={setShowRevoked}
+        onPage={setPage}
+        onShowRevokedChange={(value) => {
+          setPage(1);
+          setShowRevoked(value);
+        }}
+        page={page}
         showRevoked={showRevoked}
         tokens={tokens}
+        totalHits={totalHits}
+        totalPages={totalPages}
       />
     </section>
   );

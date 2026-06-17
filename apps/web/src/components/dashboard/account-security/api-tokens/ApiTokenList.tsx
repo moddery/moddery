@@ -1,20 +1,29 @@
 import { type ApiTokenSummary } from '../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../lib/format.ts';
+import { Pagination } from '../../../Pagination.tsx';
 
 export function ApiTokenList({
   busy,
   error,
+  onPage,
   onRevoke,
   onShowRevokedChange,
+  page,
   showRevoked,
   tokens,
+  totalHits,
+  totalPages,
 }: {
   busy: boolean;
   error: string | null;
+  onPage: (page: number) => void;
   onRevoke: (tokenId: string) => Promise<void>;
   onShowRevokedChange: (value: boolean) => void;
+  page: number;
   showRevoked: boolean;
   tokens: ApiTokenSummary[];
+  totalHits: number;
+  totalPages: number;
 }) {
   if (error) {
     return (
@@ -29,7 +38,8 @@ export function ApiTokenList({
       <div className="mt-4 rounded-lg border border-line bg-surface px-3 py-3">
         <TokenListHeader
           showRevoked={showRevoked}
-          tokens={tokens}
+          shownCount={tokens.length}
+          totalHits={totalHits}
           onShowRevokedChange={onShowRevokedChange}
         />
         <p className="mt-3 text-sm font-semibold text-muted">
@@ -45,9 +55,15 @@ export function ApiTokenList({
     <div className="mt-4 grid gap-2">
       <TokenListHeader
         showRevoked={showRevoked}
-        tokens={tokens}
+        shownCount={tokens.length}
+        totalHits={totalHits}
         onShowRevokedChange={onShowRevokedChange}
       />
+      {totalPages > 1 && (
+        <div className="flex justify-end">
+          <Pagination page={page} totalPages={totalPages} onPage={onPage} />
+        </div>
+      )}
       {tokens.map((token) => (
         <div
           key={token.id}
@@ -80,24 +96,32 @@ export function ApiTokenList({
           )}
         </div>
       ))}
+      {totalPages > 1 && (
+        <div className="flex justify-end">
+          <Pagination page={page} totalPages={totalPages} onPage={onPage} />
+        </div>
+      )}
     </div>
   );
 }
 
 function TokenListHeader({
   showRevoked,
-  tokens,
+  shownCount,
+  totalHits,
   onShowRevokedChange,
 }: {
   showRevoked: boolean;
-  tokens: ApiTokenSummary[];
+  shownCount: number;
+  totalHits: number;
   onShowRevokedChange: (value: boolean) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-semibold text-muted">
-        Showing {tokens.length.toLocaleString('en-US')}{' '}
-        {showRevoked ? 'total tokens' : 'active tokens'}
+        Showing {shownCount.toLocaleString('en-US')} of{' '}
+        {totalHits.toLocaleString('en-US')}{' '}
+        {showRevoked ? 'tokens' : 'active tokens'}
       </p>
       <button
         type="button"

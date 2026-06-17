@@ -2,7 +2,9 @@ import { apolloClient } from '../../../apollo.js';
 import {
   UPDATE_VIEWER_PROFILE_MUTATION,
   VIEWER_API_TOKENS_QUERY,
+  VIEWER_API_TOKEN_SEARCH_QUERY,
   VIEWER_SESSIONS_QUERY,
+  VIEWER_SESSION_SEARCH_QUERY,
   CREATE_API_TOKEN_MUTATION,
   REVOKE_API_TOKEN_MUTATION,
   REVOKE_SESSION_MUTATION,
@@ -13,16 +15,22 @@ import {
   CREATE_DIRECT_THREAD_MUTATION,
   CREATE_DIRECT_THREAD_MESSAGE_MUTATION,
   VIEWER_OAUTH_CLIENTS_QUERY,
+  VIEWER_OAUTH_CLIENT_SEARCH_QUERY,
   CREATE_OAUTH_CLIENT_MUTATION,
   REVOKE_OAUTH_CLIENT_MUTATION,
   VIEWER_TEAM_INVITATIONS_QUERY,
+  VIEWER_TEAM_INVITATION_SEARCH_QUERY,
   ACCEPT_TEAM_INVITATION_MUTATION,
   DECLINE_TEAM_INVITATION_MUTATION,
 } from '../graphql.js';
 import {
   type UpdateViewerProfileMutationData,
   type UpdateViewerProfileMutationVariables,
+  type ViewerApiTokenSearchQueryData,
+  type ViewerApiTokenSearchQueryVariables,
   type ViewerApiTokensQueryData,
+  type ViewerSessionSearchQueryData,
+  type ViewerSessionSearchQueryVariables,
   type ViewerSessionsQueryData,
   type ViewerSecurityQueryVariables,
   type CreateApiTokenMutationData,
@@ -37,28 +45,38 @@ import {
   type SendNotificationMutationVariables,
   type UpdateNotificationPreferenceMutationVariables,
   type ViewerDirectThreadsQueryData,
+  type ViewerDirectThreadsQueryVariables,
   type CreateDirectThreadMutationData,
   type CreateDirectThreadMutationVariables,
   type CreateDirectThreadMessageMutationData,
   type CreateDirectThreadMessageMutationVariables,
   type ViewerOAuthClientsQueryData,
+  type ViewerOAuthClientSearchQueryData,
+  type ViewerOAuthClientSearchQueryVariables,
   type CreateOAuthClientMutationData,
   type CreateOAuthClientMutationVariables,
   type RevokeOAuthClientMutationData,
   type RevokeOAuthClientMutationVariables,
+  type ViewerTeamInvitationSearchQueryData,
+  type ViewerTeamInvitationSearchQueryVariables,
   type ViewerTeamInvitationsQueryData,
   type AcceptTeamInvitationMutationData,
   type DeclineTeamInvitationMutationData,
   type TeamInvitationMutationVariables,
 } from '../internal-types.js';
 import {
+  type ApiTokenSearchResult,
   type ApiTokenSummary,
   type CreatedApiToken,
   type DirectThread,
+  type DirectThreadSearchResult,
   type NotificationPreference,
+  type OAuthClientSearchResult,
   type OAuthClientSummary,
   type CreatedOAuthClient,
+  type TeamInvitationSearchResult,
   type TeamInvitationSummary,
+  type SessionSearchResult,
   type SessionSummary,
   type UpdateViewerProfileInput,
   type ViewerProfileUpdate,
@@ -102,6 +120,29 @@ export async function fetchViewerApiTokens(
   return data.viewerApiTokens;
 }
 
+export async function fetchViewerApiTokenSearch(
+  includeRevoked = false,
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<ApiTokenSearchResult> {
+  const { data } = await apolloClient.query<
+    ViewerApiTokenSearchQueryData,
+    ViewerApiTokenSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_API_TOKEN_SEARCH_QUERY,
+    variables: {
+      includeRevoked,
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  return data.viewerApiTokenSearch;
+}
+
 export async function fetchViewerSessions(
   includeRevoked = false,
   signal?: AbortSignal,
@@ -117,6 +158,29 @@ export async function fetchViewerSessions(
   });
 
   return data.viewerSessions;
+}
+
+export async function fetchViewerSessionSearch(
+  includeRevoked = false,
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<SessionSearchResult> {
+  const { data } = await apolloClient.query<
+    ViewerSessionSearchQueryData,
+    ViewerSessionSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_SESSION_SEARCH_QUERY,
+    variables: {
+      includeRevoked,
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  return data.viewerSessionSearch;
 }
 
 export async function createApiToken(input: {
@@ -187,6 +251,27 @@ export async function fetchViewerOAuthClients(
   return data.viewerOAuthClients;
 }
 
+export async function fetchViewerOAuthClientSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<OAuthClientSearchResult> {
+  const { data } = await apolloClient.query<
+    ViewerOAuthClientSearchQueryData,
+    ViewerOAuthClientSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_OAUTH_CLIENT_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  return data.viewerOAuthClientSearch;
+}
+
 export async function createOAuthClient(input: {
   description: string | null;
   homepageUrl: string | null;
@@ -237,6 +322,27 @@ export async function fetchViewerTeamInvitations(
   });
 
   return data.viewerTeamInvitations;
+}
+
+export async function fetchViewerTeamInvitationSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<TeamInvitationSearchResult> {
+  const { data } = await apolloClient.query<
+    ViewerTeamInvitationSearchQueryData,
+    ViewerTeamInvitationSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_TEAM_INVITATION_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  return data.viewerTeamInvitationSearch;
 }
 
 export async function acceptTeamInvitation(
@@ -330,15 +436,24 @@ export async function sendNotification(input: {
 }
 
 export async function fetchViewerDirectThreads(
+  page = 1,
+  limit = 20,
   signal?: AbortSignal,
-): Promise<DirectThread[]> {
-  const { data } = await apolloClient.query<ViewerDirectThreadsQueryData>({
+): Promise<DirectThreadSearchResult> {
+  const { data } = await apolloClient.query<
+    ViewerDirectThreadsQueryData,
+    ViewerDirectThreadsQueryVariables
+  >({
     context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: VIEWER_DIRECT_THREADS_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
   });
 
-  return data.viewerDirectThreads;
+  return data.viewerDirectThreadSearch;
 }
 
 export async function createDirectThread(input: {

@@ -2,6 +2,7 @@ import { type FormEvent } from 'react';
 
 import { type GameVersionTaxonomy } from '../../../../lib/dashboard.ts';
 import { DashboardField } from '../shared.tsx';
+import { TaxonomyList } from './TaxonomyList.tsx';
 
 export function TaxonomyGameVersionForm({
   busy,
@@ -47,24 +48,30 @@ export function TaxonomyGameVersionForm({
       >
         Save game version
       </button>
-      <div className="mt-1 grid gap-2">
-        {gameVersions.slice(0, 12).map((item) => (
+      <TaxonomyList
+        emptyLabel="No game versions yet."
+        getKey={(item) => item.version}
+        getSearchText={(item) =>
+          `${item.version} ${item.isActive ? 'active' : 'inactive'}`
+        }
+        items={gameVersions}
+        searchLabel="Search game versions..."
+        renderItem={(item) => (
           <button
-            key={item.version}
             type="button"
             onClick={() => {
               onGameVersionChange(item.version);
               onGameVersionActiveChange(item.isActive);
             }}
-            className="flex items-center justify-between rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
+            className="flex w-full items-center justify-between rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
           >
             <span>{item.version}</span>
             <span className="text-xs text-muted">
               {item.isActive ? 'active' : 'inactive'}
             </span>
           </button>
-        ))}
-      </div>
+        )}
+      />
     </form>
   );
 }

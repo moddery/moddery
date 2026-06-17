@@ -182,10 +182,6 @@ export function projectSearchTags({
   ];
 }
 
-export function sortByName(projects: Mod[]): Mod[] {
-  return [...projects].sort((a, b) => a.title.localeCompare(b.title));
-}
-
 function projectLinkUrl(
   links: ProjectSummary['links'],
   kind: string,

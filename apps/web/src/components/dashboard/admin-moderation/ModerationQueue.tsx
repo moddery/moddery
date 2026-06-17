@@ -6,21 +6,30 @@ import {
   updateReportState,
   type ModerationReportState,
 } from '../../../lib/dashboard.ts';
+import { Pagination } from '../../Pagination.tsx';
 import { ReportRow } from './reports/ReportRow.tsx';
 
+const pageSize = 20;
+
 export function ModerationQueue() {
+  const [page, setPage] = useState(1);
   const [updatingReportId, setUpdatingReportId] = useState<string | null>(null);
   const reportsQuery = useQuery({
-    queryFn: ({ signal }) => fetchModerationReports(signal),
-    queryKey: ['dashboard', 'moderation-reports'],
+    queryFn: ({ signal }) => fetchModerationReports(page, pageSize, signal),
+    queryKey: ['dashboard', 'moderation-reports', page],
   });
 
-  const reports = reportsQuery.data ?? [];
+  const reports = reportsQuery.data?.reports ?? [];
+  const totalHits = reportsQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
   async function setReportState(id: string, state: ModerationReportState) {
     setUpdatingReportId(id);
     try {
       await updateReportState(id, state);
       await reportsQuery.refetch();
+      if (reports.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      }
     } finally {
       setUpdatingReportId(null);
     }
@@ -33,7 +42,7 @@ export function ModerationQueue() {
           Moderation queue
         </h2>
         <span className="text-sm font-semibold text-muted">
-          {reports.length.toLocaleString('en-US')} active
+          {totalHits.toLocaleString('en-US')} active
         </span>
       </div>
 
@@ -46,6 +55,15 @@ export function ModerationQueue() {
         <p className="py-8 text-sm text-muted">No active reports.</p>
       ) : (
         <div className="mt-4 grid gap-3">
+          {totalPages > 1 && (
+            <div className="flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
           {reports.map((report) => (
             <ReportRow
               key={report.id}
@@ -54,6 +72,15 @@ export function ModerationQueue() {
               onStateChange={setReportState}
             />
           ))}
+          {totalPages > 1 && (
+            <div className="flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
         </div>
       )}
     </section>

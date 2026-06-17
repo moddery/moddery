@@ -316,11 +316,27 @@ export interface PlatformMetadataQueryData {
 }
 
 export interface ProjectsQueryData {
-  projects: ProjectSummary[];
+  projectSearch: {
+    projects: ProjectSummary[];
+    totalHits: number;
+  };
 }
 
 export interface ViewerFollowedProjectsQueryData {
-  viewerFollowedProjects: ProjectSummary[];
+  viewerFollowedProjectSearch: {
+    projects: ProjectSummary[];
+    totalHits: number;
+  };
+}
+
+export interface ViewerFollowedProjectsQueryVariables {
+  limit: number;
+  offset: number;
+}
+
+export interface ViewerFollowedProjectsResult {
+  projects: Mod[];
+  totalHits: number;
 }
 
 export interface ViewerCollectionChoicesQueryData {
@@ -331,6 +347,8 @@ export interface ViewerCollectionChoicesQueryData {
 
 export interface ProjectsQueryVariables {
   query?: {
+    limit?: number;
+    offset?: number;
     search?: string;
     sort?: string;
     tags?: string[];
@@ -346,20 +364,47 @@ export interface ProjectBySlugQueryVariables {
 }
 
 export interface PublicCollectionsQueryData {
-  publicCollections: PublicCollectionSummary[];
+  publicCollectionSearch: {
+    collections: PublicCollectionSummary[];
+    totalHits: number;
+  };
 }
 
 export interface PublicCollectionsQueryVariables {
+  limit: number;
+  offset: number;
   search?: string | null;
+}
+
+export interface PublicCollectionsResult {
+  collections: PublicCollection[];
+  totalHits: number;
+}
+
+export interface PublicCollectionItemsResult {
+  items: PublicCollectionItem[];
+  totalHits: number;
 }
 
 export interface PublicCollectionBySlugQueryData {
   publicCollectionBySlug: PublicCollectionSummary;
 }
 
+export interface PublicCollectionItemSearchQueryData {
+  publicCollectionItemSearch: {
+    items: PublicCollectionItemSummary[];
+    totalHits: number;
+  };
+}
+
 export interface PublicCollectionBySlugQueryVariables {
   ownerUsername: string;
   slug: string;
+}
+
+export interface PublicCollectionItemSearchQueryVariables extends PublicCollectionBySlugQueryVariables {
+  limit: number;
+  offset: number;
 }
 
 export interface PublicCollectionSummary {
@@ -403,12 +448,51 @@ export interface VersionsForProjectQueryVariables {
   projectSlug: string;
 }
 
+export interface VersionSearchForProjectQueryData {
+  versionSearchForProject: {
+    totalHits: number;
+    versions: VersionSummary[];
+  };
+}
+
+export interface VersionSearchForProjectQueryVariables {
+  gameVersion?: string | null;
+  limit: number;
+  loader?: string | null;
+  offset: number;
+  projectSlug: string;
+  search?: string | null;
+}
+
+export interface ProjectVersionSearchResult {
+  totalHits: number;
+  versions: ProjectVersion[];
+}
+
 export interface ProjectMembersQueryData {
   projectMembers: ProjectMemberSummary[];
 }
 
 export interface ProjectMembersQueryVariables {
   projectSlug: string;
+}
+
+export interface ProjectMemberSearchQueryData {
+  projectMemberSearch: {
+    members: ProjectMemberSummary[];
+    totalHits: number;
+  };
+}
+
+export interface ProjectMemberSearchQueryVariables {
+  limit: number;
+  offset: number;
+  projectSlug: string;
+}
+
+export interface ProjectMemberSearchResult {
+  members: ProjectMember[];
+  totalHits: number;
 }
 
 export interface ProjectFollowStateQueryData {

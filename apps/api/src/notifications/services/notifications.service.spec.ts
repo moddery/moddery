@@ -8,6 +8,10 @@ describe(NotificationsService.name, () => {
     const queries: unknown[] = [];
     const service = new NotificationsService({
       notification: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(6);
+        },
         findMany: (query: unknown) => {
           queries.push(query);
           return Promise.resolve([
@@ -41,21 +45,35 @@ describe(NotificationsService.name, () => {
 
     expect(queries[0]).toEqual(
       expect.objectContaining({
+        where: { userId: 'user-a' },
+      }),
+    );
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
         select: expect.objectContaining({
           deliveries: expect.objectContaining({
             take: 5,
           }),
         }),
+        skip: 0,
+        take: 20,
         where: { userId: 'user-a' },
       }),
     );
-    expect(notifications[0]?.deliveries[0]?.channel).toBe('EMAIL');
+    expect(notifications.totalHits).toBe(6);
+    expect(notifications.notifications[0]?.deliveries[0]?.channel).toBe(
+      'EMAIL',
+    );
   });
 
   test('loads filtered viewer notifications', async () => {
     const queries: unknown[] = [];
     const service = new NotificationsService({
       notification: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(0);
+        },
         findMany: (query: unknown) => {
           queries.push(query);
           return Promise.resolve([]);
@@ -64,6 +82,8 @@ describe(NotificationsService.name, () => {
     } as unknown as PrismaService);
 
     await service.findViewerNotifications('user-a', {
+      limit: 12,
+      offset: 24,
       type: ' Team ',
       unreadOnly: true,
     });
@@ -77,6 +97,56 @@ describe(NotificationsService.name, () => {
         },
       }),
     );
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 24,
+        take: 12,
+        where: {
+          readAt: null,
+          type: 'team',
+          userId: 'user-a',
+        },
+      }),
+    );
+  });
+
+  test('loads the legacy viewer notification list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = new NotificationsService({
+      notification: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(1);
+        },
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            {
+              actionUrl: null,
+              body: null,
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              deliveries: [],
+              id: 'notification-a',
+              readAt: null,
+              state: 'PENDING',
+              title: 'Project update',
+              type: 'project',
+            },
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const notifications = await service.findViewerNotificationList('user-a');
+
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 0,
+        take: 20,
+        where: { userId: 'user-a' },
+      }),
+    );
+    expect(notifications[0]?.title).toBe('Project update');
   });
 
   test('loads viewer notification types sorted by type', async () => {

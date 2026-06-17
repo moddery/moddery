@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { fetchProjectMembers } from '../../../lib/catalog.ts';
+import { fetchProjectMemberSearch } from '../../../lib/catalog.ts';
 import { type DashboardProject } from '../../../lib/dashboard.ts';
+import { Pagination } from '../../Pagination.tsx';
 import { ProjectTeamFields } from './team-management/ProjectTeamFields.tsx';
 import { ProjectTeamMembersList } from './team-management/ProjectTeamMembersList.tsx';
 import { useProjectTeamManagementState } from './team-management/useProjectTeamManagementState.ts';
+
+const memberPageSize = 12;
 
 export function ProjectTeamManagementForm({
   projects,
@@ -12,20 +16,48 @@ export function ProjectTeamManagementForm({
   projects: DashboardProject[];
 }) {
   const state = useProjectTeamManagementState(projects);
+  const [memberPage, setMemberPage] = useState(1);
   const membersQuery = useQuery({
     enabled: state.projectSlug.length > 0,
-    queryFn: ({ signal }) => fetchProjectMembers(state.projectSlug, signal),
-    queryKey: ['dashboard', 'project-team-members', state.projectSlug],
+    queryFn: ({ signal }) =>
+      fetchProjectMemberSearch(
+        state.projectSlug,
+        memberPage,
+        memberPageSize,
+        signal,
+      ),
+    queryKey: [
+      'dashboard',
+      'project-team-members',
+      state.projectSlug,
+      memberPage,
+    ],
   });
+  const totalMembers = membersQuery.data?.totalHits ?? 0;
+  const totalMemberPages = Math.max(
+    1,
+    Math.ceil(totalMembers / memberPageSize),
+  );
 
   async function addMember(event: React.FormEvent<HTMLFormElement>) {
     await state.addMember(event);
-    await membersQuery.refetch();
+    setMemberPage(1);
+    if (memberPage === 1) {
+      await membersQuery.refetch();
+    }
   }
 
   async function removeMember() {
     await state.removeMember();
-    await membersQuery.refetch();
+    setMemberPage(1);
+    if (memberPage === 1) {
+      await membersQuery.refetch();
+    }
+  }
+
+  function selectProject(slug: string) {
+    state.setProjectSlug(slug);
+    setMemberPage(1);
   }
 
   return (
@@ -50,7 +82,7 @@ export function ProjectTeamManagementForm({
           projects={projects}
           role={state.role}
           setPermissions={state.setPermissions}
-          setProjectSlug={state.setProjectSlug}
+          setProjectSlug={selectProject}
           setRole={state.setRole}
           setUsername={state.setUsername}
           username={state.username}
@@ -82,8 +114,20 @@ export function ProjectTeamManagementForm({
 
         <ProjectTeamMembersList
           isLoading={membersQuery.isLoading}
-          members={membersQuery.data ?? []}
+          members={membersQuery.data?.members ?? []}
         />
+        {totalMemberPages > 1 && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
+              {totalMembers.toLocaleString('en-US')} members
+            </span>
+            <Pagination
+              page={memberPage}
+              totalPages={totalMemberPages}
+              onPage={setMemberPage}
+            />
+          </div>
+        )}
       </form>
     </section>
   );

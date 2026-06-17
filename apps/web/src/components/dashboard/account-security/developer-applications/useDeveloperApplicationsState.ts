@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import {
   createOAuthClient,
-  fetchViewerOAuthClients,
+  fetchViewerOAuthClientSearch,
   revokeOAuthClient,
 } from '../../../../lib/dashboard.ts';
 import { splitList } from '../shared.tsx';
@@ -23,9 +23,12 @@ export function useDeveloperApplicationsState() {
     'http://localhost:3000/callback',
   );
   const [scopes, setScopes] = useState('read:projects');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const clientsQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerOAuthClients(signal),
-    queryKey: ['dashboard', 'oauth-clients'],
+    queryFn: ({ signal }) =>
+      fetchViewerOAuthClientSearch(page, pageSize, signal),
+    queryKey: ['dashboard', 'oauth-clients', page],
   });
 
   async function submit(event: PreventableSubmitEvent) {
@@ -46,6 +49,7 @@ export function useDeveloperApplicationsState() {
       setDescription('');
       setHomepageUrl('');
       setName('');
+      setPage(1);
       await clientsQuery.refetch();
     } catch (caught) {
       setMessage(
@@ -77,21 +81,25 @@ export function useDeveloperApplicationsState() {
   return {
     busy,
     clientSecret,
-    clients: clientsQuery.data ?? [],
+    clients: clientsQuery.data?.clients ?? [],
     description,
     homepageUrl,
     isLoading: clientsQuery.isLoading,
     message,
     name,
+    page,
+    pageSize,
     redirectUris,
     revoke,
     scopes,
     setDescription,
     setHomepageUrl,
     setName,
+    setPage,
     setRedirectUris,
     setScopes,
     submit,
+    totalHits: clientsQuery.data?.totalHits ?? 0,
   };
 }
 

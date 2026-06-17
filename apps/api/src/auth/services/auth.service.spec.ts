@@ -12,24 +12,79 @@ describe(AuthService.name, () => {
       {} as AuthTokenService,
       {
         session: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(3);
+          },
           findMany: (query: unknown) => {
-            queries.push(query);
+            queries.push({ findMany: query });
             return Promise.resolve([]);
           },
         },
       } as unknown as PrismaService,
     );
 
-    await service.findViewerSessions('user-a');
+    const result = await service.findViewerSessions('user-a');
 
-    expect(queries[0]).toEqual(
-      expect.objectContaining({
+    expect(result.totalHits).toBe(3);
+    expect(queries).toEqual([
+      {
+        count: {
+          where: {
+            revokedAt: null,
+            userId: 'user-a',
+          },
+        },
+      },
+      {
+        findMany: expect.objectContaining({
+          skip: 0,
+          take: 20,
+          where: {
+            revokedAt: null,
+            userId: 'user-a',
+          },
+        }),
+      },
+    ]);
+  });
+
+  test('loads viewer sessions with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new AuthService(
+      {} as AuthTokenService,
+      {
+        session: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(12);
+          },
+          findMany: (query: unknown) => {
+            queries.push({ findMany: query });
+            return Promise.resolve([sessionRow({ id: 'session-b' })]);
+          },
+        },
+      } as unknown as PrismaService,
+    );
+
+    const result = await service.findViewerSessions('user-a', {
+      limit: 1,
+      offset: 4,
+    });
+
+    expect(result.totalHits).toBe(12);
+    expect(result.sessions.map((session) => session.id)).toEqual(['session-b']);
+    expect(queries[1]).toEqual({
+      findMany: expect.objectContaining({
+        orderBy: [{ revokedAt: 'asc' }, { lastUsedAt: 'desc' }],
+        skip: 4,
+        take: 1,
         where: {
           revokedAt: null,
           userId: 'user-a',
         },
       }),
-    );
+    });
   });
 
   test('loads revoked viewer sessions when requested', async () => {
@@ -38,8 +93,12 @@ describe(AuthService.name, () => {
       {} as AuthTokenService,
       {
         session: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(2);
+          },
           findMany: (query: unknown) => {
-            queries.push(query);
+            queries.push({ findMany: query });
             return Promise.resolve([]);
           },
         },
@@ -48,13 +107,43 @@ describe(AuthService.name, () => {
 
     await service.findViewerSessions('user-a', { includeRevoked: true });
 
-    expect(queries[0]).toEqual(
-      expect.objectContaining({
+    expect(queries[0]).toEqual({
+      count: {
+        where: {
+          userId: 'user-a',
+        },
+      },
+    });
+    expect(queries[1]).toEqual({
+      findMany: expect.objectContaining({
         where: {
           userId: 'user-a',
         },
       }),
+    });
+  });
+
+  test('loads the legacy viewer session list from search results', async () => {
+    const service = new AuthService(
+      {} as AuthTokenService,
+      {
+        session: {
+          count: () => Promise.resolve(2),
+          findMany: () =>
+            Promise.resolve([
+              sessionRow({ id: 'session-a' }),
+              sessionRow({ id: 'session-b' }),
+            ]),
+        },
+      } as unknown as PrismaService,
     );
+
+    const sessions = await service.findViewerSessionList('user-a');
+
+    expect(sessions.map((session) => session.id)).toEqual([
+      'session-a',
+      'session-b',
+    ]);
   });
 
   test('stores request metadata when creating login sessions', async () => {
@@ -120,3 +209,14 @@ describe(AuthService.name, () => {
 });
 
 const passwordHashFixture = await hash('correct-password', 4);
+
+function sessionRow({ id }: { id: string }) {
+  return {
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: new Date('2026-01-08T00:00:00.000Z'),
+    id,
+    lastUsedAt: new Date('2026-01-02T00:00:00.000Z'),
+    revokedAt: null,
+    userAgent: 'Test Browser',
+  };
+}

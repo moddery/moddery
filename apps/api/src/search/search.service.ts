@@ -7,6 +7,8 @@ import { type SearchProjectDocument } from './dto/search-project.document.js';
 const PROJECTS_INDEX = 'projects';
 
 export interface SearchProjectsParams {
+  readonly limit?: number;
+  readonly offset?: number;
   readonly search?: string;
   readonly sort?: string;
   readonly tags?: readonly string[];
@@ -14,6 +16,7 @@ export interface SearchProjectsParams {
 
 export interface SearchProjectsResult {
   readonly ids: readonly string[];
+  readonly total: number;
 }
 
 @Injectable()
@@ -59,6 +62,8 @@ export class SearchService implements OnModuleInit {
   }
 
   async searchProjects({
+    limit = 100,
+    offset = 0,
     search,
     sort,
     tags = [],
@@ -81,22 +86,33 @@ export class SearchService implements OnModuleInit {
             ],
           },
         },
-        size: 100,
+        from: offset,
+        size: limit,
         sort: sortForProjects(sort),
       },
       index: PROJECTS_INDEX,
     });
 
     const body = response.body as {
-      hits: { hits: { _id?: string }[] };
+      hits: {
+        hits: { _id?: string }[];
+        total?: number | { value?: number };
+      };
     };
 
     return {
       ids: body.hits.hits.flatMap((hit) =>
         hit._id === undefined ? [] : [hit._id],
       ),
+      total: searchTotal(body.hits.total),
     };
   }
+}
+
+function searchTotal(total: number | { value?: number } | undefined): number {
+  if (typeof total === 'number') return total;
+
+  return total?.value ?? 0;
 }
 
 function projectIndexMapping() {
@@ -115,6 +131,7 @@ function projectIndexMapping() {
       summary: { type: 'text' },
       tags: { type: 'keyword' },
       title: { type: 'text' },
+      titleSort: { type: 'keyword' },
       updatedAt: { type: 'date' },
     },
   };
@@ -122,6 +139,7 @@ function projectIndexMapping() {
 
 function sortForProjects(sort: string | undefined) {
   if (sort === 'downloads') return [{ downloads: { order: 'desc' as const } }];
+  if (sort === 'name') return [{ titleSort: { order: 'asc' as const } }];
   if (sort === 'updated' || sort === 'newest') {
     return [{ updatedAt: { order: 'desc' as const } }];
   }

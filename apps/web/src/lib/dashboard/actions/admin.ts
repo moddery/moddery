@@ -1,8 +1,10 @@
 import { apolloClient } from '../../../apollo.js';
 import {
+  ADMIN_USER_SEARCH_QUERY,
   ADMIN_USERS_QUERY,
   UPDATE_USER_ACCOUNT_MUTATION,
   MODERATION_PROJECTS_QUERY,
+  MODERATION_PROJECT_SEARCH_QUERY,
   MODERATE_PROJECT_MUTATION,
   MODERATION_REPORTS_QUERY,
   UPDATE_REPORT_STATE_MUTATION,
@@ -13,13 +15,18 @@ import {
 } from '../graphql.js';
 import {
   type ModerationReportsQueryData,
+  type ModerationReportsQueryVariables,
   type UpdateReportStateMutationData,
   type UpdateReportStateMutationVariables,
   type ReportThreadQueryData,
   type ReportThreadQueryVariables,
   type CreateReportThreadMessageMutationData,
   type CreateReportThreadMessageMutationVariables,
+  type ModerationProjectSearchQueryData,
+  type ModerationProjectSearchQueryVariables,
   type ModerationProjectsQueryData,
+  type AdminUserSearchQueryData,
+  type AdminUserSearchQueryVariables,
   type AdminUsersQueryData,
   type UpdateUserAccountMutationData,
   type UpdateUserAccountMutationVariables,
@@ -31,22 +38,34 @@ import {
 } from '../internal-types.js';
 import {
   type AdminUserAccount,
+  type AdminUserSearchResult,
+  type DashboardProjectSearchResult,
   type DashboardProject,
   type ModerationReport,
+  type ModerationReportSearchResult,
   type ModerationReportState,
   type ReportThread,
 } from '../types.js';
 
 export async function fetchModerationReports(
+  page = 1,
+  limit = 20,
   signal?: AbortSignal,
-): Promise<ModerationReport[]> {
-  const { data } = await apolloClient.query<ModerationReportsQueryData>({
+): Promise<ModerationReportSearchResult> {
+  const { data } = await apolloClient.query<
+    ModerationReportsQueryData,
+    ModerationReportsQueryVariables
+  >({
     context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: MODERATION_REPORTS_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
   });
 
-  return data.moderationReports;
+  return data.moderationReportSearch;
 }
 
 export async function fetchModerationProjects(
@@ -61,6 +80,27 @@ export async function fetchModerationProjects(
   return data.moderationProjects;
 }
 
+export async function fetchModerationProjectSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<DashboardProjectSearchResult> {
+  const { data } = await apolloClient.query<
+    ModerationProjectSearchQueryData,
+    ModerationProjectSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: MODERATION_PROJECT_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  return data.moderationProjectSearch;
+}
+
 export async function fetchAdminUsers(
   signal?: AbortSignal,
 ): Promise<AdminUserAccount[]> {
@@ -71,6 +111,30 @@ export async function fetchAdminUsers(
   });
 
   return data.adminUsers;
+}
+
+export async function fetchAdminUserSearch(
+  search: string | null,
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<AdminUserSearchResult> {
+  const normalizedSearch = search?.trim() ?? '';
+  const { data } = await apolloClient.query<
+    AdminUserSearchQueryData,
+    AdminUserSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: ADMIN_USER_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      search: normalizedSearch === '' ? null : normalizedSearch,
+    },
+  });
+
+  return data.adminUserSearch;
 }
 
 export async function updateUserAccount(input: {

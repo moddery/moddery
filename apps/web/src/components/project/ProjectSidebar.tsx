@@ -82,7 +82,9 @@ export function ProjectSidebar({
 
       <ProjectLinksSection project={project} />
 
-      {members.length > 0 && <ProjectMembersSection members={members} />}
+      {members.length > 0 && (
+        <ProjectMembersSection members={members} projectSlug={project.slug} />
+      )}
 
       <ProjectReportSection project={project} />
       <ProjectModerationNotes projectSlug={project.slug} />

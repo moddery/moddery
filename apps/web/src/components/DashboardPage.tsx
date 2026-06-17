@@ -25,6 +25,7 @@ import { DashboardHeader } from './dashboard/overview/DashboardHeader.tsx';
 import { DashboardSkeleton } from './dashboard/overview/DashboardSkeleton.tsx';
 import { DashboardSummarySections } from './dashboard/overview/DashboardSummarySections.tsx';
 import { useDashboardPageState } from './dashboard/overview/useDashboardPageState.ts';
+import { ProjectAnalyticsPanel } from './dashboard/ProjectInsightsPanels.tsx';
 import { ProjectMetadataForm } from './dashboard/ProjectMetadataForm.tsx';
 import {
   AddGalleryImageForm,
@@ -118,6 +119,7 @@ export function DashboardPage({
             onAdded={refreshDashboard}
           />
           <ProjectTeamManagementForm projects={dashboard.projects} />
+          <ProjectAnalyticsPanel projects={dashboard.projects} />
           <EditVersionForm projects={dashboard.projects} />
           <EditVersionDependencyForm projects={dashboard.projects} />
           <PublishVersionForm projects={dashboard.projects} />

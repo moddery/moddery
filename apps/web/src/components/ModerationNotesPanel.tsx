@@ -2,17 +2,26 @@ import { useState, type FormEvent } from 'react';
 
 import { timeAgo } from '../lib/format.ts';
 import type { ModerationNote } from '../lib/moderation.ts';
+import { Pagination } from './Pagination.tsx';
 
 export function ModerationNotesPanel({
   error,
   loading,
   notes,
   onCreate,
+  onPage,
+  page,
+  totalHits,
+  totalPages,
 }: {
   error: string | null;
   loading: boolean;
   notes: ModerationNote[] | undefined;
   onCreate: (body: string) => Promise<void>;
+  onPage: (page: number) => void;
+  page: number;
+  totalHits: number;
+  totalPages: number;
 }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,6 +47,14 @@ export function ModerationNotesPanel({
       <h2 className="font-display text-base font-extrabold text-ink">
         Moderation notes
       </h2>
+      <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
+          {totalHits.toLocaleString('en-US')} notes
+        </span>
+        {totalPages > 1 && (
+          <Pagination page={page} totalPages={totalPages} onPage={onPage} />
+        )}
+      </div>
       {loading ? (
         <p className="mt-2 text-sm font-semibold text-muted">
           Loading notes...
@@ -64,6 +81,11 @@ export function ModerationNotesPanel({
               </p>
             </div>
           ))}
+          {totalPages > 1 && (
+            <div className="mt-3 flex justify-end">
+              <Pagination page={page} totalPages={totalPages} onPage={onPage} />
+            </div>
+          )}
         </div>
       )}
 

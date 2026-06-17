@@ -129,10 +129,131 @@ describe(CollectionsService.name, () => {
     expect(collection.items[0]?.sortOrder).toBe(0);
   });
 
+  test('loads public collection items with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: (query: unknown) => {
+          queries.push({ collection: query });
+          return Promise.resolve({ id: 'collection-a' });
+        },
+      },
+      collectionProject: {
+        count: (query: unknown) => {
+          queries.push({ count: query });
+          return Promise.resolve(13);
+        },
+        findMany: (query: unknown) => {
+          queries.push({ findMany: query });
+          return Promise.resolve(collectionRow().projects);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findPublicCollectionItems(
+      'Creator',
+      'example',
+      {
+        limit: 8,
+        offset: 8,
+      },
+    );
+
+    expect(queries[0]).toEqual({
+      collection: {
+        select: { id: true },
+        where: {
+          owner: {
+            username: {
+              equals: 'Creator',
+              mode: 'insensitive',
+            },
+          },
+          slug: 'example',
+          visibility: { in: ['PUBLIC', 'UNLISTED'] },
+        },
+      },
+    });
+    expect(queries[1]).toEqual({
+      count: { where: { collectionId: 'collection-a' } },
+    });
+    expect(queries[2]).toMatchObject({
+      findMany: {
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+        skip: 8,
+        take: 8,
+        where: { collectionId: 'collection-a' },
+      },
+    });
+    expect(result.totalHits).toBe(13);
+    expect(result.items[0]?.project.slug).toBe('example');
+  });
+
   test('filters public collections by search text', async () => {
     const queries: unknown[] = [];
     const service = new CollectionsService({
       collection: {
+        count: (query: unknown) => {
+          queries.push({ count: query });
+          return Promise.resolve(7);
+        },
+        findMany: (query: unknown) => {
+          queries.push({ findMany: query });
+          return Promise.resolve([collectionRow()]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findPublicCollections({
+      limit: 12,
+      offset: 24,
+      search: ' creator ',
+    });
+
+    expect(queries[0]).toMatchObject({
+      count: {
+        where: {
+          OR: expect.arrayContaining([
+            {
+              name: {
+                contains: 'creator',
+                mode: 'insensitive',
+              },
+            },
+            {
+              owner: {
+                is: {
+                  OR: expect.arrayContaining([
+                    {
+                      username: {
+                        contains: 'creator',
+                        mode: 'insensitive',
+                      },
+                    },
+                  ]),
+                },
+              },
+            },
+          ]) as unknown[],
+          visibility: 'PUBLIC',
+        },
+      },
+    });
+    expect(queries[1]).toMatchObject({
+      findMany: {
+        skip: 24,
+        take: 12,
+      },
+    });
+    expect(result.totalHits).toBe(7);
+    expect(result.collections[0]?.name).toBe('Example');
+  });
+
+  test('loads the legacy public collection list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        count: () => Promise.resolve(1),
         findMany: (query: unknown) => {
           queries.push(query);
           return Promise.resolve([collectionRow()]);
@@ -140,36 +261,11 @@ describe(CollectionsService.name, () => {
       },
     } as unknown as PrismaService);
 
-    const collections = await service.findPublicCollections({
-      search: ' creator ',
-    });
+    const collections = await service.findPublicCollectionList();
 
     expect(queries[0]).toMatchObject({
-      where: {
-        OR: expect.arrayContaining([
-          {
-            name: {
-              contains: 'creator',
-              mode: 'insensitive',
-            },
-          },
-          {
-            owner: {
-              is: {
-                OR: expect.arrayContaining([
-                  {
-                    username: {
-                      contains: 'creator',
-                      mode: 'insensitive',
-                    },
-                  },
-                ]),
-              },
-            },
-          },
-        ]) as unknown[],
-        visibility: 'PUBLIC',
-      },
+      take: 50,
+      where: { visibility: 'PUBLIC' },
     });
     expect(collections[0]?.name).toBe('Example');
   });

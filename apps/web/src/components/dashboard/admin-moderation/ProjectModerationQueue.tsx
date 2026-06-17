@@ -2,12 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import {
-  fetchModerationProjects,
+  fetchModerationProjectSearch,
   lockProjectForModeration,
   moderateProject,
   releaseProjectModerationLock,
 } from '../../../lib/dashboard.ts';
 import { type Mod } from '../../../types.ts';
+import { Pagination } from '../../Pagination.tsx';
 import { ProjectModerationRow } from './projects/ProjectModerationRow.tsx';
 import {
   ProjectModerationEmpty,
@@ -15,6 +16,8 @@ import {
   ProjectModerationSkeleton,
 } from './projects/ProjectModerationStates.tsx';
 import { nullableText } from './shared.tsx';
+
+const pageSize = 20;
 
 export function ProjectModerationQueue({
   onOpenProject,
@@ -24,11 +27,15 @@ export function ProjectModerationQueue({
   const [reason, setReason] = useState('');
   const [busySlug, setBusySlug] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const projectsQuery = useQuery({
-    queryFn: ({ signal }) => fetchModerationProjects(signal),
-    queryKey: ['dashboard', 'moderation-projects'],
+    queryFn: ({ signal }) =>
+      fetchModerationProjectSearch(page, pageSize, signal),
+    queryKey: ['dashboard', 'moderation-projects', page],
   });
-  const projects = projectsQuery.data ?? [];
+  const projects = projectsQuery.data?.projects ?? [];
+  const totalHits = projectsQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
 
   async function act(projectSlug: string, action: string) {
     setBusySlug(projectSlug);
@@ -41,6 +48,9 @@ export function ProjectModerationQueue({
         reason: nullableText(reason),
       });
       await projectsQuery.refetch();
+      if (projects.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      }
     } catch (caught) {
       setMessage(
         caught instanceof Error ? caught.message : 'Project moderation failed',
@@ -77,7 +87,7 @@ export function ProjectModerationQueue({
           Project review
         </h2>
         <span className="text-sm font-semibold text-muted">
-          {projects.length.toLocaleString('en-US')} queued
+          {totalHits.toLocaleString('en-US')} queued
         </span>
       </div>
 
@@ -104,20 +114,40 @@ export function ProjectModerationQueue({
       ) : projects.length === 0 ? (
         <ProjectModerationEmpty />
       ) : (
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {projects.map((project) => (
-            <ProjectModerationRow
-              busy={busySlug === project.slug}
-              key={project.slug}
-              onAction={act}
-              onLock={(projectSlug) => updateLock(projectSlug, 'lock')}
-              onReleaseLock={(projectSlug) =>
-                updateLock(projectSlug, 'release')
-              }
-              onOpenProject={onOpenProject}
-              project={project}
-            />
-          ))}
+        <div className="mt-4">
+          {totalPages > 1 && (
+            <div className="mb-3 flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
+          <div className="grid gap-3 lg:grid-cols-2">
+            {projects.map((project) => (
+              <ProjectModerationRow
+                busy={busySlug === project.slug}
+                key={project.slug}
+                onAction={act}
+                onLock={(projectSlug) => updateLock(projectSlug, 'lock')}
+                onReleaseLock={(projectSlug) =>
+                  updateLock(projectSlug, 'release')
+                }
+                onOpenProject={onOpenProject}
+                project={project}
+              />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="mt-3 flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
         </div>
       )}
 

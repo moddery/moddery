@@ -62,3 +62,30 @@ export class UserProfile {
   @Field(() => Boolean)
   twoFactorEnabled!: boolean;
 }
+
+@ObjectType()
+export class UserSearchResult {
+  @Field(() => [UserProfile])
+  users!: UserProfile[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}
+
+@ObjectType()
+export class UserProjectSearchResult {
+  @Field(() => [ProjectSummary])
+  projects!: ProjectSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}
+
+@ObjectType()
+export class UserCollectionSearchResult {
+  @Field(() => [CollectionSummary])
+  collections!: CollectionSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}

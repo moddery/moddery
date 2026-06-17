@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import {
   fetchViewerFollowedProjects,
@@ -7,6 +8,9 @@ import {
 import { type DashboardData } from '../../../lib/dashboard.ts';
 import { type Mod } from '../../../types.ts';
 import { ModCard } from '../../ModCard.tsx';
+import { Pagination } from '../../Pagination.tsx';
+
+const pageSize = 20;
 
 export function FollowedProjectsSummary({
   dashboard,
@@ -15,18 +19,24 @@ export function FollowedProjectsSummary({
   dashboard: DashboardData;
   onOpenProject: (mod: Mod) => void;
 }) {
+  const [page, setPage] = useState(1);
   const followedQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerFollowedProjects(signal),
-    queryKey: ['dashboard', 'followed-projects'],
+    queryFn: ({ signal }) =>
+      fetchViewerFollowedProjects(page, pageSize, signal),
+    queryKey: ['dashboard', 'followed-projects', page],
   });
-  const followedProjects = followedQuery.data ?? [];
+  const followedProjects = followedQuery.data?.projects ?? [];
   const followedCount = followedQuery.data
-    ? followedProjects.length
+    ? followedQuery.data.totalHits
     : dashboard.followedProjectCount;
+  const totalPages = Math.max(1, Math.ceil(followedCount / pageSize));
 
   async function unfollow(project: Mod) {
     await setProjectFollowing(project.slug, false);
     await followedQuery.refetch();
+    if (followedProjects.length === 1 && page > 1) {
+      setPage((current) => current - 1);
+    }
   }
 
   return (
@@ -59,6 +69,15 @@ export function FollowedProjectsSummary({
         </p>
       ) : (
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {totalPages > 1 && (
+            <div className="lg:col-span-2 flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
           {followedProjects.map((project) => (
             <div key={project.slug} className="relative">
               <ModCard mod={project} layout="list" onOpen={onOpenProject} />
@@ -71,6 +90,15 @@ export function FollowedProjectsSummary({
               </button>
             </div>
           ))}
+          {totalPages > 1 && (
+            <div className="lg:col-span-2 flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
         </div>
       )}
     </section>

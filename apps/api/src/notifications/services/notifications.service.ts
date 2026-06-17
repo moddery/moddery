@@ -12,7 +12,41 @@ import { type SendNotificationInput } from '../graphql/send-notification.input.j
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findViewerNotifications(
+  async findViewerNotifications(
+    userId: string,
+    {
+      limit = 20,
+      offset = 0,
+      type,
+      unreadOnly,
+    }: {
+      limit?: number;
+      offset?: number;
+      type?: string | null;
+      unreadOnly?: boolean | null;
+    } = {},
+  ) {
+    const where = notificationWhere(userId, { type, unreadOnly });
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, notifications] = await Promise.all([
+      this.prisma.notification.count({ where }),
+      this.prisma.notification.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: notificationSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      notifications,
+      totalHits,
+    };
+  }
+
+  async findViewerNotificationList(
     userId: string,
     {
       type,
@@ -22,12 +56,12 @@ export class NotificationsService {
       unreadOnly?: boolean | null;
     } = {},
   ) {
-    return this.prisma.notification.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: notificationSelect(),
-      take: 20,
-      where: notificationWhere(userId, { type, unreadOnly }),
+    const result = await this.findViewerNotifications(userId, {
+      type,
+      unreadOnly,
     });
+
+    return result.notifications;
   }
 
   async findViewerNotificationTypes(userId: string) {
@@ -301,6 +335,12 @@ function requiredTrim(value: string, message: string): string {
   }
 
   return trimmed;
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isInteger(value)) return min;
+
+  return Math.min(max, Math.max(min, value));
 }
 
 function preferenceKey({

@@ -73,3 +73,21 @@ export class CollectionSummary {
   @Field(() => String)
   visibility!: string;
 }
+
+@ObjectType()
+export class CollectionSearchResult {
+  @Field(() => [CollectionSummary])
+  collections!: CollectionSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}
+
+@ObjectType()
+export class CollectionProjectItemSearchResult {
+  @Field(() => [CollectionProjectItem])
+  items!: CollectionProjectItem[];
+
+  @Field(() => Int)
+  totalHits!: number;
+}

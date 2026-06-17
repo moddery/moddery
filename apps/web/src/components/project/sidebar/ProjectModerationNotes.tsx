@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import { hasAuthToken } from '../../../lib/catalog.ts';
 import { formatDate } from '../../../lib/format.ts';
@@ -6,10 +7,14 @@ import {
   canUseModerationNotes,
   createProjectModerationNote,
   fetchModerationViewer,
-  fetchProjectModerationActions,
-  fetchProjectModerationNotes,
+  fetchProjectModerationActionSearch,
+  fetchProjectModerationNoteSearch,
 } from '../../../lib/moderation.ts';
 import { ModerationNotesPanel } from '../../ModerationNotesPanel.tsx';
+import { Pagination } from '../../Pagination.tsx';
+
+const notePageSize = 20;
+const actionPageSize = 10;
 
 function formatModerationAction(kind: string): string {
   const labels: Record<string, string> = {
@@ -27,6 +32,8 @@ export function ProjectModerationNotes({
 }: {
   projectSlug: string;
 }) {
+  const [actionsPage, setActionsPage] = useState(1);
+  const [notesPage, setNotesPage] = useState(1);
   const viewerQuery = useQuery({
     enabled: hasAuthToken(),
     queryFn: ({ signal }) => fetchModerationViewer(signal),
@@ -36,13 +43,25 @@ export function ProjectModerationNotes({
   const enabled = canUseModerationNotes(viewerQuery.data);
   const notesQuery = useQuery({
     enabled,
-    queryFn: ({ signal }) => fetchProjectModerationNotes(projectSlug, signal),
-    queryKey: ['moderation', 'project-notes', projectSlug],
+    queryFn: ({ signal }) =>
+      fetchProjectModerationNoteSearch(
+        projectSlug,
+        notesPage,
+        notePageSize,
+        signal,
+      ),
+    queryKey: ['moderation', 'project-notes', projectSlug, notesPage],
   });
   const actionsQuery = useQuery({
     enabled,
-    queryFn: ({ signal }) => fetchProjectModerationActions(projectSlug, signal),
-    queryKey: ['moderation', 'project-actions', projectSlug],
+    queryFn: ({ signal }) =>
+      fetchProjectModerationActionSearch(
+        projectSlug,
+        actionsPage,
+        actionPageSize,
+        signal,
+      ),
+    queryKey: ['moderation', 'project-actions', projectSlug, actionsPage],
   });
 
   if (!enabled) return null;
@@ -50,24 +69,39 @@ export function ProjectModerationNotes({
   return (
     <div className="grid gap-4">
       <ModerationActionsPanel
-        actions={actionsQuery.data}
+        actions={actionsQuery.data?.actions}
         error={
           actionsQuery.error instanceof Error
             ? actionsQuery.error.message
             : null
         }
         loading={actionsQuery.isLoading}
+        onPage={setActionsPage}
+        page={actionsPage}
+        totalHits={actionsQuery.data?.totalHits ?? 0}
+        totalPages={Math.max(
+          1,
+          Math.ceil((actionsQuery.data?.totalHits ?? 0) / actionPageSize),
+        )}
       />
       <ModerationNotesPanel
         error={
           notesQuery.error instanceof Error ? notesQuery.error.message : null
         }
         loading={notesQuery.isLoading}
-        notes={notesQuery.data}
+        notes={notesQuery.data?.notes}
         onCreate={async (body) => {
           await createProjectModerationNote({ body, projectSlug });
+          setNotesPage(1);
           await notesQuery.refetch();
         }}
+        onPage={setNotesPage}
+        page={notesPage}
+        totalHits={notesQuery.data?.totalHits ?? 0}
+        totalPages={Math.max(
+          1,
+          Math.ceil((notesQuery.data?.totalHits ?? 0) / notePageSize),
+        )}
       />
     </div>
   );
@@ -77,12 +111,20 @@ function ModerationActionsPanel({
   actions,
   error,
   loading,
+  onPage,
+  page,
+  totalHits,
+  totalPages,
 }: {
   actions:
-    | Awaited<ReturnType<typeof fetchProjectModerationActions>>
+    | Awaited<ReturnType<typeof fetchProjectModerationActionSearch>>['actions']
     | undefined;
   error: string | null;
   loading: boolean;
+  onPage: (page: number) => void;
+  page: number;
+  totalHits: number;
+  totalPages: number;
 }) {
   return (
     <section className="rounded-xl border border-line bg-surface p-4 shadow-sm">
@@ -91,9 +133,14 @@ function ModerationActionsPanel({
           Moderation history
         </h2>
         <span className="text-xs font-bold uppercase tracking-[0.08em] text-muted">
-          {actions?.length ?? 0} actions
+          {totalHits.toLocaleString('en-US')} actions
         </span>
       </div>
+      {totalPages > 1 && (
+        <div className="mt-3">
+          <Pagination page={page} totalPages={totalPages} onPage={onPage} />
+        </div>
+      )}
       {error && (
         <p className="mt-3 text-sm font-semibold text-danger">{error}</p>
       )}
@@ -126,6 +173,11 @@ function ModerationActionsPanel({
               )}
             </div>
           ))}
+        </div>
+      )}
+      {totalPages > 1 && (
+        <div className="mt-3">
+          <Pagination page={page} totalPages={totalPages} onPage={onPage} />
         </div>
       )}
     </section>

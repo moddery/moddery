@@ -170,3 +170,12 @@ export class VersionSummary {
   @Field(() => String)
   versionNumber!: string;
 }
+
+@ObjectType()
+export class VersionSearchResult {
+  @Field(() => Int)
+  totalHits!: number;
+
+  @Field(() => [VersionSummary])
+  versions!: VersionSummary[];
+}

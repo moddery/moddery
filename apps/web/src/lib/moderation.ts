@@ -22,6 +22,11 @@ export interface ModerationNote {
   userId: string | null;
 }
 
+export interface ModerationNoteSearchResult {
+  notes: ModerationNote[];
+  totalHits: number;
+}
+
 export interface ModerationAction {
   createdAt: string;
   id: string;
@@ -35,6 +40,11 @@ export interface ModerationAction {
   reason: string | null;
 }
 
+export interface ModerationActionSearchResult {
+  actions: ModerationAction[];
+  totalHits: number;
+}
+
 interface ModerationViewerQueryData {
   me: ModerationViewer;
 }
@@ -43,7 +53,17 @@ interface ProjectModerationActionsQueryData {
   projectModerationActions: ModerationAction[];
 }
 
+interface ProjectModerationActionSearchQueryData {
+  projectModerationActionSearch: ModerationActionSearchResult;
+}
+
 interface ProjectModerationActionsQueryVariables {
+  projectSlug: string;
+}
+
+interface ProjectModerationActionSearchQueryVariables {
+  limit: number;
+  offset: number;
   projectSlug: string;
 }
 
@@ -51,12 +71,27 @@ interface ProjectModerationNotesQueryData {
   projectModerationNotes: ModerationNote[];
 }
 
+interface ProjectModerationNoteSearchQueryData {
+  projectModerationNoteSearch: ModerationNoteSearchResult;
+}
+
 interface ProjectModerationNotesQueryVariables {
   projectSlug: string;
 }
 
+interface ModerationNoteSearchQueryVariables {
+  limit: number;
+  offset: number;
+  projectSlug?: string;
+  username?: string;
+}
+
 interface UserModerationNotesQueryData {
   userModerationNotes: ModerationNote[];
+}
+
+interface UserModerationNoteSearchQueryData {
+  userModerationNoteSearch: ModerationNoteSearchResult;
 }
 
 interface UserModerationNotesQueryVariables {
@@ -135,6 +170,26 @@ const PROJECT_MODERATION_ACTIONS_QUERY = gql`
   }
 `;
 
+const PROJECT_MODERATION_ACTION_SEARCH_QUERY = gql`
+  ${ACTION_FIELDS}
+  query ProjectModerationActionSearch(
+    $projectSlug: String!
+    $limit: Int!
+    $offset: Int!
+  ) {
+    projectModerationActionSearch(
+      projectSlug: $projectSlug
+      limit: $limit
+      offset: $offset
+    ) {
+      actions {
+        ...ModerationActionFields
+      }
+      totalHits
+    }
+  }
+`;
+
 const PROJECT_MODERATION_NOTES_QUERY = gql`
   ${NOTE_FIELDS}
   query ProjectModerationNotes($projectSlug: String!) {
@@ -144,11 +199,51 @@ const PROJECT_MODERATION_NOTES_QUERY = gql`
   }
 `;
 
+const PROJECT_MODERATION_NOTE_SEARCH_QUERY = gql`
+  ${NOTE_FIELDS}
+  query ProjectModerationNoteSearch(
+    $projectSlug: String!
+    $limit: Int!
+    $offset: Int!
+  ) {
+    projectModerationNoteSearch(
+      projectSlug: $projectSlug
+      limit: $limit
+      offset: $offset
+    ) {
+      notes {
+        ...ModerationNoteFields
+      }
+      totalHits
+    }
+  }
+`;
+
 const USER_MODERATION_NOTES_QUERY = gql`
   ${NOTE_FIELDS}
   query UserModerationNotes($username: String!) {
     userModerationNotes(username: $username) {
       ...ModerationNoteFields
+    }
+  }
+`;
+
+const USER_MODERATION_NOTE_SEARCH_QUERY = gql`
+  ${NOTE_FIELDS}
+  query UserModerationNoteSearch(
+    $username: String!
+    $limit: Int!
+    $offset: Int!
+  ) {
+    userModerationNoteSearch(
+      username: $username
+      limit: $limit
+      offset: $offset
+    ) {
+      notes {
+        ...ModerationNoteFields
+      }
+      totalHits
     }
   }
 `;
@@ -202,6 +297,29 @@ export async function fetchProjectModerationActions(
   return data.projectModerationActions;
 }
 
+export async function fetchProjectModerationActionSearch(
+  projectSlug: string,
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<ModerationActionSearchResult> {
+  const { data } = await apolloClient.query<
+    ProjectModerationActionSearchQueryData,
+    ProjectModerationActionSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: PROJECT_MODERATION_ACTION_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      projectSlug,
+    },
+  });
+
+  return data.projectModerationActionSearch;
+}
+
 export async function fetchProjectModerationNotes(
   projectSlug: string,
   signal?: AbortSignal,
@@ -219,6 +337,29 @@ export async function fetchProjectModerationNotes(
   return data.projectModerationNotes;
 }
 
+export async function fetchProjectModerationNoteSearch(
+  projectSlug: string,
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<ModerationNoteSearchResult> {
+  const { data } = await apolloClient.query<
+    ProjectModerationNoteSearchQueryData,
+    ModerationNoteSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: PROJECT_MODERATION_NOTE_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      projectSlug,
+    },
+  });
+
+  return data.projectModerationNoteSearch;
+}
+
 export async function fetchUserModerationNotes(
   username: string,
   signal?: AbortSignal,
@@ -234,6 +375,29 @@ export async function fetchUserModerationNotes(
   });
 
   return data.userModerationNotes;
+}
+
+export async function fetchUserModerationNoteSearch(
+  username: string,
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<ModerationNoteSearchResult> {
+  const { data } = await apolloClient.query<
+    UserModerationNoteSearchQueryData,
+    ModerationNoteSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: USER_MODERATION_NOTE_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      username,
+    },
+  });
+
+  return data.userModerationNoteSearch;
 }
 
 export async function createProjectModerationNote(input: {

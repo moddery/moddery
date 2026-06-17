@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class ApiTokenSummary {
@@ -22,6 +22,15 @@ export class ApiTokenSummary {
 
   @Field(() => [String])
   scopes!: string[];
+}
+
+@ObjectType()
+export class ApiTokenSearchResult {
+  @Field(() => [ApiTokenSummary])
+  tokens!: ApiTokenSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }
 
 @ObjectType()

@@ -4,6 +4,8 @@ import {
   type AddOrganizationTeamMemberInput,
   type AddProjectTeamMemberInput,
   type AdminUserAccount,
+  type AdminUserSearchResult,
+  type ApiTokenSearchResult,
   type ApiTokenSummary,
   type CategoryTaxonomy,
   type CreateCollectionInput,
@@ -16,19 +18,25 @@ import {
   type DashboardData,
   type DashboardOrganization,
   type DashboardProject,
+  type DashboardProjectSearchResult,
   type DashboardProjectMember,
   type DashboardVersion,
   type DirectThread,
+  type DirectThreadSearchResult,
   type GameVersionTaxonomy,
   type LicenseTaxonomy,
   type ModerationReport,
+  type ModerationReportSearchResult,
   type ModerationReportState,
   type NotificationPreference,
+  type OAuthClientSearchResult,
   type OAuthClientSummary,
   type RemoveOrganizationTeamMemberInput,
   type RemoveProjectTeamMemberInput,
   type ReportThread,
+  type SessionSearchResult,
   type SessionSummary,
+  type TeamInvitationSearchResult,
   type TeamInvitationSummary,
   type UpdateCollectionInput,
   type UpdateOrganizationInput,
@@ -53,7 +61,12 @@ export interface UpdateViewerProfileMutationVariables {
 }
 
 export interface ModerationReportsQueryData {
-  moderationReports: ModerationReport[];
+  moderationReportSearch: ModerationReportSearchResult;
+}
+
+export interface ModerationReportsQueryVariables {
+  limit: number;
+  offset: number;
 }
 
 export interface UpdateReportStateMutationData {
@@ -87,7 +100,12 @@ export interface CreateReportThreadMessageMutationVariables {
 }
 
 export interface ViewerDirectThreadsQueryData {
-  viewerDirectThreads: DirectThread[];
+  viewerDirectThreadSearch: DirectThreadSearchResult;
+}
+
+export interface ViewerDirectThreadsQueryVariables {
+  limit: number;
+  offset: number;
 }
 
 export interface CreateDirectThreadMutationData {
@@ -116,12 +134,32 @@ export interface ViewerApiTokensQueryData {
   viewerApiTokens: ApiTokenSummary[];
 }
 
+export interface ViewerApiTokenSearchQueryData {
+  viewerApiTokenSearch: ApiTokenSearchResult;
+}
+
+export interface ViewerApiTokenSearchQueryVariables {
+  includeRevoked?: boolean | null;
+  limit: number;
+  offset: number;
+}
+
 export interface ViewerSecurityQueryVariables {
   includeRevoked?: boolean | null;
 }
 
 export interface ViewerSessionsQueryData {
   viewerSessions: SessionSummary[];
+}
+
+export interface ViewerSessionSearchQueryData {
+  viewerSessionSearch: SessionSearchResult;
+}
+
+export interface ViewerSessionSearchQueryVariables {
+  includeRevoked?: boolean | null;
+  limit: number;
+  offset: number;
 }
 
 export interface CreateApiTokenMutationData {
@@ -156,6 +194,15 @@ export interface ViewerOAuthClientsQueryData {
   viewerOAuthClients: OAuthClientSummary[];
 }
 
+export interface ViewerOAuthClientSearchQueryData {
+  viewerOAuthClientSearch: OAuthClientSearchResult;
+}
+
+export interface ViewerOAuthClientSearchQueryVariables {
+  limit: number;
+  offset: number;
+}
+
 export interface CreateOAuthClientMutationData {
   createOAuthClient: CreatedOAuthClient;
 }
@@ -180,6 +227,15 @@ export interface RevokeOAuthClientMutationVariables {
 
 export interface ViewerTeamInvitationsQueryData {
   viewerTeamInvitations: TeamInvitationSummary[];
+}
+
+export interface ViewerTeamInvitationSearchQueryData {
+  viewerTeamInvitationSearch: TeamInvitationSearchResult;
+}
+
+export interface ViewerTeamInvitationSearchQueryVariables {
+  limit: number;
+  offset: number;
 }
 
 export interface AcceptTeamInvitationMutationData {
@@ -454,8 +510,27 @@ export interface ModerationProjectsQueryData {
   moderationProjects: DashboardProject[];
 }
 
+export interface ModerationProjectSearchQueryData {
+  moderationProjectSearch: DashboardProjectSearchResult;
+}
+
+export interface ModerationProjectSearchQueryVariables {
+  limit: number;
+  offset: number;
+}
+
 export interface AdminUsersQueryData {
   adminUsers: AdminUserAccount[];
+}
+
+export interface AdminUserSearchQueryData {
+  adminUserSearch: AdminUserSearchResult;
+}
+
+export interface AdminUserSearchQueryVariables {
+  limit: number;
+  offset: number;
+  search?: string | null;
 }
 
 export interface UpdateUserAccountMutationData {

@@ -28,7 +28,11 @@ export function DeveloperApplicationsPanel() {
         busy={state.busy}
         clients={state.clients}
         isLoading={state.isLoading}
+        page={state.page}
+        pageSize={state.pageSize}
         revoke={(clientId) => void state.revoke(clientId)}
+        setPage={state.setPage}
+        totalHits={state.totalHits}
       />
     </section>
   );

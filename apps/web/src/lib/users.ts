@@ -101,20 +101,55 @@ export interface FriendshipSummary {
   };
 }
 
+export interface FriendshipSearchResult {
+  friendships: FriendshipSummary[];
+  totalHits: number;
+}
+
 interface UserByUsernameQueryData {
   userByUsername: PublicUserProfile | null;
 }
 
+export interface PublicUsersResult {
+  totalHits: number;
+  users: PublicUserListItem[];
+}
+
+export interface PublicUserProjectsResult {
+  projects: UserProjectPreview[];
+  totalHits: number;
+}
+
+export interface PublicUserCollectionsResult {
+  collections: UserCollectionPreview[];
+  totalHits: number;
+}
+
 interface PublicUsersQueryData {
-  publicUsers: PublicUserListItem[];
+  publicUserSearch: PublicUsersResult;
+}
+
+interface PublicUserProjectsQueryData {
+  publicUserProjectSearch: PublicUserProjectsResult;
+}
+
+interface PublicUserCollectionsQueryData {
+  publicUserCollectionSearch: PublicUserCollectionsResult;
 }
 
 interface PublicUsersQueryVariables {
+  limit: number;
+  offset: number;
   search?: string | null;
 }
 
 interface UserByUsernameQueryVariables {
   username: string;
+}
+
+interface PublicUserListQueryVariables extends UserByUsernameQueryVariables {
+  limit: number;
+  offset: number;
 }
 
 interface CreateUserReportMutationData {
@@ -135,9 +170,26 @@ interface ViewerFriendshipQueryData {
 }
 
 interface ViewerFriendshipsQueryData {
-  viewerBlockedUsers?: FriendshipSummary[];
-  viewerFriendRequests?: FriendshipSummary[];
-  viewerFriends?: FriendshipSummary[];
+  viewerBlockedUsers: FriendshipSummary[];
+  viewerFriendRequests: FriendshipSummary[];
+  viewerFriends: FriendshipSummary[];
+}
+
+interface ViewerFriendSearchQueryData {
+  viewerFriendSearch: FriendshipSearchResult;
+}
+
+interface ViewerFriendRequestSearchQueryData {
+  viewerFriendRequestSearch: FriendshipSearchResult;
+}
+
+interface ViewerBlockedUserSearchQueryData {
+  viewerBlockedUserSearch: FriendshipSearchResult;
+}
+
+interface ViewerFriendshipSearchQueryVariables {
+  limit: number;
+  offset: number;
 }
 
 interface ViewerFriendshipQueryVariables {
@@ -241,21 +293,65 @@ const USER_BY_USERNAME_QUERY = gql`
 
 const PUBLIC_USERS_QUERY = gql`
   ${USER_PROJECT_PREVIEW_FRAGMENT}
-  query PublicUsers($search: String) {
-    publicUsers(search: $search) {
-      avatarUrl
-      bio
-      collectionCount
-      createdAt
-      displayName
-      friendCount
-      id
-      isAdmin
-      projectCount
+  query PublicUsers($search: String, $limit: Int!, $offset: Int!) {
+    publicUserSearch(search: $search, limit: $limit, offset: $offset) {
+      totalHits
+      users {
+        avatarUrl
+        bio
+        collectionCount
+        createdAt
+        displayName
+        friendCount
+        id
+        isAdmin
+        projectCount
+        projects {
+          ...UserProjectPreviewFields
+        }
+        username
+      }
+    }
+  }
+`;
+
+const PUBLIC_USER_PROJECTS_QUERY = gql`
+  ${USER_PROJECT_PREVIEW_FRAGMENT}
+  query PublicUserProjects($username: String!, $limit: Int!, $offset: Int!) {
+    publicUserProjectSearch(
+      username: $username
+      limit: $limit
+      offset: $offset
+    ) {
       projects {
         ...UserProjectPreviewFields
       }
-      username
+      totalHits
+    }
+  }
+`;
+
+const PUBLIC_USER_COLLECTIONS_QUERY = gql`
+  ${USER_PROJECT_PREVIEW_FRAGMENT}
+  query PublicUserCollections($username: String!, $limit: Int!, $offset: Int!) {
+    publicUserCollectionSearch(
+      username: $username
+      limit: $limit
+      offset: $offset
+    ) {
+      collections {
+        color
+        description
+        id
+        name
+        projectCount
+        projects {
+          ...UserProjectPreviewFields
+        }
+        slug
+        updatedAt
+      }
+      totalHits
     }
   }
 `;
@@ -299,6 +395,18 @@ const VIEWER_FRIENDS_QUERY = gql`
   }
 `;
 
+const VIEWER_FRIEND_SEARCH_QUERY = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
+  query ViewerFriendSearch($limit: Int!, $offset: Int!) {
+    viewerFriendSearch(limit: $limit, offset: $offset) {
+      friendships {
+        ...FriendshipSummaryFields
+      }
+      totalHits
+    }
+  }
+`;
+
 const VIEWER_FRIEND_REQUESTS_QUERY = gql`
   ${FRIENDSHIP_SUMMARY_FRAGMENT}
   query ViewerFriendRequests {
@@ -308,11 +416,35 @@ const VIEWER_FRIEND_REQUESTS_QUERY = gql`
   }
 `;
 
+const VIEWER_FRIEND_REQUEST_SEARCH_QUERY = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
+  query ViewerFriendRequestSearch($limit: Int!, $offset: Int!) {
+    viewerFriendRequestSearch(limit: $limit, offset: $offset) {
+      friendships {
+        ...FriendshipSummaryFields
+      }
+      totalHits
+    }
+  }
+`;
+
 const VIEWER_BLOCKED_USERS_QUERY = gql`
   ${FRIENDSHIP_SUMMARY_FRAGMENT}
   query ViewerBlockedUsers {
     viewerBlockedUsers {
       ...FriendshipSummaryFields
+    }
+  }
+`;
+
+const VIEWER_BLOCKED_USER_SEARCH_QUERY = gql`
+  ${FRIENDSHIP_SUMMARY_FRAGMENT}
+  query ViewerBlockedUserSearch($limit: Int!, $offset: Int!) {
+    viewerBlockedUserSearch(limit: $limit, offset: $offset) {
+      friendships {
+        ...FriendshipSummaryFields
+      }
+      totalHits
     }
   }
 `;
@@ -367,9 +499,12 @@ export async function fetchUserProfile(
 
 export async function fetchPublicUsers(
   search?: string | null,
+  page = 1,
+  limit = 20,
   signal?: AbortSignal,
-): Promise<PublicUserListItem[]> {
+): Promise<PublicUsersResult> {
   const normalizedSearch = search?.trim() ?? '';
+  const offset = Math.max(0, page - 1) * limit;
   const { data } = await apolloClient.query<
     PublicUsersQueryData,
     PublicUsersQueryVariables
@@ -378,11 +513,59 @@ export async function fetchPublicUsers(
     fetchPolicy: 'network-only',
     query: PUBLIC_USERS_QUERY,
     variables: {
+      limit,
+      offset,
       search: normalizedSearch === '' ? null : normalizedSearch,
     },
   });
 
-  return data.publicUsers;
+  return data.publicUserSearch;
+}
+
+export async function fetchPublicUserProjects(
+  username: string,
+  page = 1,
+  limit = 12,
+  signal?: AbortSignal,
+): Promise<PublicUserProjectsResult> {
+  const { data } = await apolloClient.query<
+    PublicUserProjectsQueryData,
+    PublicUserListQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: PUBLIC_USER_PROJECTS_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      username,
+    },
+  });
+
+  return data.publicUserProjectSearch;
+}
+
+export async function fetchPublicUserCollections(
+  username: string,
+  page = 1,
+  limit = 10,
+  signal?: AbortSignal,
+): Promise<PublicUserCollectionsResult> {
+  const { data } = await apolloClient.query<
+    PublicUserCollectionsQueryData,
+    PublicUserListQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: PUBLIC_USER_COLLECTIONS_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      username,
+    },
+  });
+
+  return data.publicUserCollectionSearch;
 }
 
 export async function createUserReport(input: {
@@ -430,7 +613,26 @@ export async function fetchViewerFriends(): Promise<FriendshipSummary[]> {
     query: VIEWER_FRIENDS_QUERY,
   });
 
-  return data.viewerFriends ?? [];
+  return data.viewerFriends;
+}
+
+export async function fetchViewerFriendSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<FriendshipSearchResult> {
+  const offset = Math.max(0, page - 1) * limit;
+  const { data } = await apolloClient.query<
+    ViewerFriendSearchQueryData,
+    ViewerFriendshipSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_FRIEND_SEARCH_QUERY,
+    variables: { limit, offset },
+  });
+
+  return data.viewerFriendSearch;
 }
 
 export async function fetchViewerFriendRequests(): Promise<
@@ -441,7 +643,26 @@ export async function fetchViewerFriendRequests(): Promise<
     query: VIEWER_FRIEND_REQUESTS_QUERY,
   });
 
-  return data.viewerFriendRequests ?? [];
+  return data.viewerFriendRequests;
+}
+
+export async function fetchViewerFriendRequestSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<FriendshipSearchResult> {
+  const offset = Math.max(0, page - 1) * limit;
+  const { data } = await apolloClient.query<
+    ViewerFriendRequestSearchQueryData,
+    ViewerFriendshipSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_FRIEND_REQUEST_SEARCH_QUERY,
+    variables: { limit, offset },
+  });
+
+  return data.viewerFriendRequestSearch;
 }
 
 export async function fetchViewerBlockedUsers(): Promise<FriendshipSummary[]> {
@@ -450,7 +671,26 @@ export async function fetchViewerBlockedUsers(): Promise<FriendshipSummary[]> {
     query: VIEWER_BLOCKED_USERS_QUERY,
   });
 
-  return data.viewerBlockedUsers ?? [];
+  return data.viewerBlockedUsers;
+}
+
+export async function fetchViewerBlockedUserSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<FriendshipSearchResult> {
+  const offset = Math.max(0, page - 1) * limit;
+  const { data } = await apolloClient.query<
+    ViewerBlockedUserSearchQueryData,
+    ViewerFriendshipSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_BLOCKED_USER_SEARCH_QUERY,
+    variables: { limit, offset },
+  });
+
+  return data.viewerBlockedUserSearch;
 }
 
 export async function sendFriendRequest(

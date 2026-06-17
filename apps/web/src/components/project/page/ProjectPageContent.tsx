@@ -28,7 +28,9 @@ export function ProjectPageContent({
   members,
   onDownloadLatest,
   onSelectTab,
+  onSelectVersion,
   project,
+  selectedVersion,
   supportedVersions,
   versions,
 }: {
@@ -41,7 +43,9 @@ export function ProjectPageContent({
   members: ProjectMember[];
   onDownloadLatest: () => void;
   onSelectTab: (tab: ProjectTab) => void;
+  onSelectVersion: (versionNumber: string | null) => void;
   project: ProjectDetails;
+  selectedVersion: string | null;
   supportedVersions: string[];
   versions: ProjectVersion[];
 }) {
@@ -76,7 +80,14 @@ export function ProjectPageContent({
             <ChangelogTab versions={changelogVersions} />
           )}
 
-          {activeTab === 'versions' && <VersionsTab versions={versions} />}
+          {activeTab === 'versions' && (
+            <VersionsTab
+              projectSlug={project.slug}
+              selectedVersion={selectedVersion}
+              versions={versions}
+              onSelectVersion={onSelectVersion}
+            />
+          )}
         </div>
       </main>
 

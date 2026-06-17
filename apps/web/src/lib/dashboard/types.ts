@@ -35,6 +35,11 @@ export interface AdminUserAccount {
   username: string;
 }
 
+export interface AdminUserSearchResult {
+  totalHits: number;
+  users: AdminUserAccount[];
+}
+
 export interface DashboardCollection {
   color: string | null;
   description: string | null;
@@ -107,6 +112,11 @@ export interface DashboardProject {
   wikiUrl: string | null;
 }
 
+export interface DashboardProjectSearchResult {
+  projects: DashboardProject[];
+  totalHits: number;
+}
+
 export interface DashboardModerationLock {
   createdAt: string;
   expiresAt: string;
@@ -148,6 +158,11 @@ export interface ApiTokenSummary {
   scopes: string[];
 }
 
+export interface ApiTokenSearchResult {
+  tokens: ApiTokenSummary[];
+  totalHits: number;
+}
+
 export interface SessionSummary {
   createdAt: string;
   expiresAt: string;
@@ -155,6 +170,11 @@ export interface SessionSummary {
   lastUsedAt: string;
   revokedAt: string | null;
   userAgent: string | null;
+}
+
+export interface SessionSearchResult {
+  sessions: SessionSummary[];
+  totalHits: number;
 }
 
 export interface CreatedApiToken {
@@ -182,6 +202,11 @@ export interface OAuthClientSummary {
   updatedAt: string;
 }
 
+export interface OAuthClientSearchResult {
+  clients: OAuthClientSummary[];
+  totalHits: number;
+}
+
 export interface CreatedOAuthClient {
   client: OAuthClientSummary;
   clientSecret: string;
@@ -200,6 +225,11 @@ export interface TeamInvitationSummary {
   permissions: string[];
   role: string;
   target: TeamInvitationTarget;
+}
+
+export interface TeamInvitationSearchResult {
+  invitations: TeamInvitationSummary[];
+  totalHits: number;
 }
 
 export interface NotificationPreference {
@@ -493,6 +523,11 @@ export interface ModerationReport {
   versionId: string | null;
 }
 
+export interface ModerationReportSearchResult {
+  reports: ModerationReport[];
+  totalHits: number;
+}
+
 export type ModerationReportState = 'OPEN' | 'TRIAGED' | 'CLOSED';
 
 export interface ReportThreadMessage {
@@ -527,3 +562,8 @@ export interface ReportThread {
 }
 
 export type DirectThread = ReportThread;
+
+export interface DirectThreadSearchResult {
+  threads: DirectThread[];
+  totalHits: number;
+}

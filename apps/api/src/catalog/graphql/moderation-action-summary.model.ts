@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 import { ReportUser } from '../../reports/graphql/report-summary.model.js';
 
@@ -21,4 +21,13 @@ export class ModerationActionSummary {
 
   @Field(() => String, { nullable: true })
   reason!: string | null;
+}
+
+@ObjectType()
+export class ModerationActionSearchResult {
+  @Field(() => [ModerationActionSummary])
+  actions!: ModerationActionSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }

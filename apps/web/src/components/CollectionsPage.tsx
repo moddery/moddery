@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { BookMarked, Search } from 'lucide-react';
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 
 import {
   fetchPublicCollections,
@@ -10,6 +10,9 @@ import { timeAgo } from '../lib/format.ts';
 import type { Mod } from '../types.ts';
 import { CollectionProjectItem } from './collection/CollectionProjectItem.tsx';
 import type { SearchTag } from './ModCard.tsx';
+import { Pagination } from './Pagination.tsx';
+
+const pageSize = 20;
 
 export function CollectionsPage({
   onOpenCollection,
@@ -21,14 +24,23 @@ export function CollectionsPage({
   onTagSearch?: (tag: SearchTag) => void;
 }) {
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim();
+
+  useEffect(() => {
+    setPage(1);
+  }, [normalizedQuery]);
+
   const collectionsQuery = useQuery({
-    queryFn: ({ signal }) => fetchPublicCollections(normalizedQuery, signal),
-    queryKey: ['collections', 'public', normalizedQuery],
+    queryFn: ({ signal }) =>
+      fetchPublicCollections(normalizedQuery, page, pageSize, signal),
+    queryKey: ['collections', 'public', normalizedQuery, page],
   });
 
-  const collections = collectionsQuery.data ?? [];
+  const collections = collectionsQuery.data?.collections ?? [];
+  const totalHits = collectionsQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
   const hasSearch = query.trim() !== '';
 
   return (
@@ -92,9 +104,19 @@ export function CollectionsPage({
         </div>
       ) : (
         <div className="mt-6 grid gap-8">
-          <p className="text-sm font-semibold text-muted">
-            Showing {collections.length.toLocaleString('en-US')} collections
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-muted">
+              Showing {collections.length.toLocaleString('en-US')} of{' '}
+              {totalHits.toLocaleString('en-US')} collections
+            </p>
+            {totalPages > 1 && (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            )}
+          </div>
           {collections.map((collection) => (
             <CollectionSection
               key={collection.id}
@@ -104,6 +126,15 @@ export function CollectionsPage({
               onTagSearch={onTagSearch}
             />
           ))}
+          {totalPages > 1 && (
+            <div className="flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
         </div>
       )}
     </main>

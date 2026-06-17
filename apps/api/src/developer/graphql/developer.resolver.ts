@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
@@ -6,6 +6,7 @@ import { CreateOAuthClientInput } from '../dto/create-oauth-client.input.js';
 import { DeveloperService } from '../services/developer.service.js';
 import {
   CreatedOAuthClient,
+  OAuthClientSearchResult,
   OAuthClientSummary,
 } from './oauth-client.model.js';
 
@@ -15,7 +16,19 @@ export class DeveloperResolver {
 
   @Query(() => [OAuthClientSummary])
   viewerOAuthClients(@CurrentUser() user: AuthenticatedUser) {
-    return this.developerService.findViewerOAuthClients(user.id);
+    return this.developerService.findViewerOAuthClientList(user.id);
+  }
+
+  @Query(() => OAuthClientSearchResult)
+  viewerOAuthClientSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int }) limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int }) offset?: number | null,
+  ) {
+    return this.developerService.findViewerOAuthClients(user.id, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Mutation(() => CreatedOAuthClient)

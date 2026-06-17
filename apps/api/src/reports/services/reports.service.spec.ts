@@ -8,6 +8,10 @@ describe(ReportsService.name, () => {
     const queries: unknown[] = [];
     const service = new ReportsService({
       report: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(8);
+        },
         findMany: (query: unknown) => {
           queries.push(query);
           return Promise.resolve([
@@ -50,17 +54,75 @@ describe(ReportsService.name, () => {
       },
     } as unknown as PrismaService);
 
-    const reports = await service.findModerationReports();
+    const result = await service.findModerationReports({
+      limit: 12,
+      offset: 24,
+    });
 
     expect(queries[0]).toEqual(
       expect.objectContaining({
+        where: { state: { in: ['OPEN', 'TRIAGED'] } },
+      }),
+    );
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 24,
+        take: 12,
+        where: { state: { in: ['OPEN', 'TRIAGED'] } },
+      }),
+    );
+    expect(result.totalHits).toBe(8);
+    const reports = result.reports as {
+      project: { slug: string } | null;
+      reporter: { username: string };
+      version: { project: { slug: string } } | null;
+    }[];
+    expect(reports[0]?.project?.slug).toBe('iris');
+    expect(reports[0]?.reporter.username).toBe('reporter');
+    expect(reports[0]?.version?.project.slug).toBe('iris');
+  });
+
+  test('loads the legacy moderation report list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = new ReportsService({
+      report: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(1);
+        },
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            {
+              body: 'Suspicious upload',
+              closedAt: null,
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              id: 'report-a',
+              project: null,
+              projectId: null,
+              reason: 'MALWARE',
+              reporter: null,
+              state: 'OPEN',
+              userTarget: null,
+              userTargetId: null,
+              version: null,
+              versionId: null,
+            },
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const reports = await service.findModerationReportList();
+
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 0,
         take: 50,
         where: { state: { in: ['OPEN', 'TRIAGED'] } },
       }),
     );
-    expect(reports[0]?.project?.slug).toBe('iris');
-    expect(reports[0]?.reporter.username).toBe('reporter');
-    expect(reports[0]?.version?.project.slug).toBe('iris');
+    expect(reports[0]?.id).toBe('report-a');
   });
 
   test('updates report state and closes reports with a timestamp', async () => {
@@ -400,6 +462,100 @@ describe(ReportsService.name, () => {
     expect(thread.members[0]?.user.username).toBe('moderator');
   });
 
+  test('loads viewer direct threads with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new ReportsService({
+      thread: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(7);
+        },
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            {
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              id: 'thread-a',
+              members: [],
+              messages: [],
+              reportId: null,
+              subject: 'Direct message with target',
+              updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+            },
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findViewerDirectThreads('user-a', {
+      limit: 12,
+      offset: 24,
+    });
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: {
+          members: { some: { userId: 'user-a' } },
+          reportId: null,
+        },
+      }),
+    );
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        include: expect.any(Object),
+        orderBy: [{ updatedAt: 'desc' }],
+        skip: 24,
+        take: 12,
+        where: {
+          members: { some: { userId: 'user-a' } },
+          reportId: null,
+        },
+      }),
+    );
+    expect(result.totalHits).toBe(7);
+    expect(result.threads[0]?.id).toBe('thread-a');
+  });
+
+  test('loads the legacy viewer direct thread list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = new ReportsService({
+      thread: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(1);
+        },
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            {
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              id: 'thread-a',
+              members: [],
+              messages: [],
+              reportId: null,
+              subject: 'Direct message with target',
+              updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+            },
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const threads = await service.findViewerDirectThreadList('user-a');
+
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 0,
+        take: 25,
+        where: {
+          members: { some: { userId: 'user-a' } },
+          reportId: null,
+        },
+      }),
+    );
+    expect(threads[0]?.id).toBe('thread-a');
+  });
+
   test('creates direct threads with both members and first message', async () => {
     const creates: unknown[] = [];
     const service = new ReportsService({
@@ -475,6 +631,113 @@ describe(ReportsService.name, () => {
 
     expect(thrown).toBeInstanceOf(Error);
     expect((thrown as Error).message).toBe('Thread access required');
+  });
+
+  test('loads project moderation notes with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new ReportsService({
+      moderationNote: {
+        count: (query: unknown) => {
+          queries.push({ count: query });
+          return Promise.resolve(6);
+        },
+        findMany: (query: unknown) => {
+          queries.push({ findMany: query });
+          return Promise.resolve([
+            moderationNoteRow({ projectId: 'project-a' }),
+          ]);
+        },
+      },
+      project: {
+        findUnique: () => Promise.resolve({ id: 'project-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findProjectModerationNotes('iris', {
+      limit: 10,
+      offset: 20,
+    });
+
+    expect(queries[0]).toEqual({
+      count: { where: { projectId: 'project-a' } },
+    });
+    expect(queries[1]).toEqual({
+      findMany: expect.objectContaining({
+        orderBy: [{ createdAt: 'desc' }],
+        skip: 20,
+        take: 10,
+        where: { projectId: 'project-a' },
+      }) as object,
+    });
+    expect(result.totalHits).toBe(6);
+    expect(result.notes[0]?.projectId).toBe('project-a');
+  });
+
+  test('loads the legacy project moderation note list from note search results', async () => {
+    const queries: unknown[] = [];
+    const service = new ReportsService({
+      moderationNote: {
+        count: () => Promise.resolve(1),
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            moderationNoteRow({ projectId: 'project-a' }),
+          ]);
+        },
+      },
+      project: {
+        findUnique: () => Promise.resolve({ id: 'project-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const notes = await service.findProjectModerationNoteList('iris');
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        skip: 0,
+        take: 25,
+        where: { projectId: 'project-a' },
+      }),
+    );
+    expect(notes[0]?.projectId).toBe('project-a');
+  });
+
+  test('loads user moderation notes with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new ReportsService({
+      moderationNote: {
+        count: (query: unknown) => {
+          queries.push({ count: query });
+          return Promise.resolve(4);
+        },
+        findMany: (query: unknown) => {
+          queries.push({ findMany: query });
+          return Promise.resolve([moderationNoteRow({ userId: 'user-b' })]);
+        },
+      },
+      user: {
+        findFirst: () => Promise.resolve({ id: 'user-b' }),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findUserModerationNotes('target', {
+      limit: 5,
+      offset: 10,
+    });
+
+    expect(queries[0]).toEqual({
+      count: { where: { userId: 'user-b' } },
+    });
+    expect(queries[1]).toEqual({
+      findMany: expect.objectContaining({
+        orderBy: [{ createdAt: 'desc' }],
+        skip: 10,
+        take: 5,
+        where: { userId: 'user-b' },
+      }) as object,
+    });
+    expect(result.totalHits).toBe(4);
+    expect(result.notes[0]?.userId).toBe('user-b');
   });
 
   test('creates project moderation notes', async () => {

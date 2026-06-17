@@ -10,17 +10,43 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 export class TeamsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findViewerInvitations(userId: string) {
-    const invitations = await this.prisma.teamMember.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: teamInvitationSelect(),
-      where: {
-        acceptedAt: null,
-        userId,
-      },
-    });
+  async findViewerInvitations(
+    userId: string,
+    {
+      limit = 20,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
+    const where = {
+      acceptedAt: null,
+      userId,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, invitations] = await Promise.all([
+      this.prisma.teamMember.count({ where }),
+      this.prisma.teamMember.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: teamInvitationSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
 
-    return invitations.map(teamInvitationRowToContract);
+    return {
+      invitations: invitations.map(teamInvitationRowToContract),
+      totalHits,
+    };
+  }
+
+  async findViewerInvitationList(userId: string) {
+    const result = await this.findViewerInvitations(userId);
+
+    return result.invitations;
   }
 
   async acceptInvitation({
@@ -155,4 +181,12 @@ function teamInvitationRowToContract(row: {
     role: row.role,
     target,
   };
+}
+
+function clampInteger(value: number, minimum: number, maximum: number): number {
+  if (!Number.isFinite(value)) {
+    return minimum;
+  }
+
+  return Math.min(maximum, Math.max(minimum, Math.floor(value)));
 }

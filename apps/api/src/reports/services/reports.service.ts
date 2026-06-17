@@ -18,13 +18,37 @@ export class ReportsService {
     private readonly notificationsService?: NotificationsService,
   ) {}
 
-  findModerationReports() {
-    return this.prisma.report.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: reportSelect(),
-      take: 50,
-      where: { state: { in: ['OPEN', 'TRIAGED'] } },
-    });
+  async findModerationReports({
+    limit = 50,
+    offset = 0,
+  }: {
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    const where = activeReportWhere();
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, reports] = await Promise.all([
+      this.prisma.report.count({ where }),
+      this.prisma.report.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: reportSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      reports,
+      totalHits,
+    };
+  }
+
+  async findModerationReportList() {
+    const result = await this.findModerationReports();
+
+    return result.reports;
   }
 
   async updateReportState({ id, state }: { id: string; state: ReportState }) {
@@ -203,16 +227,40 @@ export class ReportsService {
     });
   }
 
-  findViewerDirectThreads(userId: string) {
-    return this.prisma.thread.findMany({
-      include: threadInclude(),
-      orderBy: [{ updatedAt: 'desc' }],
-      take: 25,
-      where: {
-        members: { some: { userId } },
-        reportId: null,
-      },
-    });
+  async findViewerDirectThreads(
+    userId: string,
+    {
+      limit = 25,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
+    const where = directThreadListWhere(userId);
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, threads] = await Promise.all([
+      this.prisma.thread.count({ where }),
+      this.prisma.thread.findMany({
+        include: threadInclude(),
+        orderBy: [{ updatedAt: 'desc' }],
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      threads,
+      totalHits,
+    };
+  }
+
+  async findViewerDirectThreadList(userId: string) {
+    const result = await this.findViewerDirectThreads(userId);
+
+    return result.threads;
   }
 
   async createDirectThread({
@@ -331,7 +379,16 @@ export class ReportsService {
     return directThread;
   }
 
-  async findProjectModerationNotes(projectSlug: string) {
+  async findProjectModerationNotes(
+    projectSlug: string,
+    {
+      limit = 25,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
     const project = await this.prisma.project.findUnique({
       select: { id: true },
       where: { slug: projectSlug },
@@ -341,15 +398,42 @@ export class ReportsService {
       throw new NotFoundException('Project not found');
     }
 
-    return this.prisma.moderationNote.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: moderationNoteSelect(),
-      take: 25,
-      where: { projectId: project.id },
-    });
+    const where = { projectId: project.id };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, notes] = await Promise.all([
+      this.prisma.moderationNote.count({ where }),
+      this.prisma.moderationNote.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: moderationNoteSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      notes,
+      totalHits,
+    };
   }
 
-  async findUserModerationNotes(username: string) {
+  async findProjectModerationNoteList(projectSlug: string) {
+    const result = await this.findProjectModerationNotes(projectSlug);
+
+    return result.notes;
+  }
+
+  async findUserModerationNotes(
+    username: string,
+    {
+      limit = 25,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
     const user = await this.prisma.user.findFirst({
       select: { id: true },
       where: { username: { equals: username, mode: 'insensitive' } },
@@ -359,12 +443,30 @@ export class ReportsService {
       throw new NotFoundException('User not found');
     }
 
-    return this.prisma.moderationNote.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: moderationNoteSelect(),
-      take: 25,
-      where: { userId: user.id },
-    });
+    const where = { userId: user.id };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, notes] = await Promise.all([
+      this.prisma.moderationNote.count({ where }),
+      this.prisma.moderationNote.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: moderationNoteSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      notes,
+      totalHits,
+    };
+  }
+
+  async findUserModerationNoteList(username: string) {
+    const result = await this.findUserModerationNotes(username);
+
+    return result.notes;
   }
 
   async createProjectModerationNote({
@@ -567,6 +669,16 @@ function reportSelect() {
   };
 }
 
+function activeReportWhere() {
+  return { state: { in: ['OPEN', 'TRIAGED'] as ReportState[] } };
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isInteger(value)) return min;
+
+  return Math.min(max, Math.max(min, value));
+}
+
 function threadInclude() {
   return {
     members: {
@@ -598,6 +710,13 @@ function threadInclude() {
         id: true,
       },
     },
+  };
+}
+
+function directThreadListWhere(userId: string) {
+  return {
+    members: { some: { userId } },
+    reportId: null,
   };
 }
 

@@ -35,7 +35,7 @@ describe(CatalogService.name, () => {
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
     const project = await service.addProjectGalleryImage(
@@ -118,7 +118,7 @@ describe(CatalogService.name, () => {
           indexed.push(...projects);
           return Promise.resolve();
         },
-        searchProjects: () => Promise.resolve({ ids: [] }),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
       } as never,
     );
 
@@ -218,7 +218,7 @@ describe(CatalogService.name, () => {
       } as unknown as PrismaService,
       {
         indexProjects: () => Promise.resolve(),
-        searchProjects: () => Promise.resolve({ ids: [] }),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
       } as never,
     );
 
@@ -299,24 +299,29 @@ describe(CatalogService.name, () => {
       {
         searchProjects: (query: unknown) => {
           searchQueries.push(query);
-          return Promise.resolve({ ids: ['project-a'] });
+          return Promise.resolve({ ids: ['project-a'], total: 14 });
         },
       } as never,
     );
 
-    await service.findProjects({
+    const result = await service.searchProjects({
+      limit: 25,
       loader: 'fabric',
+      offset: 50,
       search: 'sodium',
       tags: ['kind:MOD', 'category:optimization'],
     });
 
     expect(searchQueries).toEqual([
       {
+        limit: 25,
+        offset: 50,
         search: 'sodium',
         sort: undefined,
         tags: ['kind:MOD', 'category:optimization', 'loader:fabric'],
       },
     ]);
+    expect(result).toEqual({ projects: [], totalHits: 14 });
     expect(queries).toHaveLength(1);
     expect(queries[0]).toEqual(
       expect.objectContaining({
@@ -333,6 +338,10 @@ describe(CatalogService.name, () => {
     const service = new CatalogService(
       {
         projectFollow: {
+          count: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve(9);
+          },
           findMany: (query: unknown) => {
             queries.push(query);
             return Promise.resolve([
@@ -342,15 +351,66 @@ describe(CatalogService.name, () => {
         },
       } as unknown as PrismaService,
       {
-        searchProjects: () => Promise.resolve({ ids: [] }),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
       } as never,
     );
 
-    const projects = await service.findViewerFollowedProjects('user-a');
+    const result = await service.findViewerFollowedProjects('user-a', {
+      limit: 12,
+      offset: 24,
+    });
 
     expect(queries[0]).toEqual(
       expect.objectContaining({
+        where: {
+          project: { status: 'APPROVED' },
+          userId: 'user-a',
+        },
+      }),
+    );
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
         orderBy: { createdAt: 'desc' },
+        skip: 24,
+        take: 12,
+        where: {
+          project: { status: 'APPROVED' },
+          userId: 'user-a',
+        },
+      }),
+    );
+    expect(result.totalHits).toBe(9);
+    const projects = result.projects;
+    expect(projects[0]?.title).toBe('Followed Project');
+  });
+
+  test('loads the legacy viewer followed project list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        projectFollow: {
+          count: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve(1);
+          },
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([
+              { project: projectRow({ title: 'Followed Project' }) },
+            ]);
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      } as never,
+    );
+
+    const projects = await service.findViewerFollowedProjectList('user-a');
+
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 0,
         take: 50,
         where: {
           project: { status: 'APPROVED' },
@@ -367,37 +427,54 @@ describe(CatalogService.name, () => {
       {
         project: {
           findUnique: (query: unknown) => {
-            queries.push(query);
-            return Promise.resolve({
-              team: {
-                members: [
-                  {
-                    acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
-                    isOwner: true,
-                    permissions: ['MANAGE_VERSIONS'],
-                    role: 'Owner',
-                    sortOrder: 0,
-                    user: {
-                      avatarUrl: 'https://example.test/avatar.png',
-                      displayName: 'Seed User',
-                      id: 'user-a',
-                      username: 'seed',
-                    },
-                  },
-                ],
+            queries.push({ project: query });
+            return Promise.resolve({ teamId: 'team-a' });
+          },
+        },
+        teamMember: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(1);
+          },
+          findMany: (query: unknown) => {
+            queries.push({ findMany: query });
+            return Promise.resolve([
+              {
+                acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
+                isOwner: true,
+                permissions: ['MANAGE_VERSIONS'],
+                role: 'Owner',
+                sortOrder: 0,
+                user: {
+                  avatarUrl: 'https://example.test/avatar.png',
+                  displayName: 'Seed User',
+                  id: 'user-a',
+                  username: 'seed',
+                },
               },
-            });
+            ]);
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
     const members = await service.findProjectMembers('iris');
 
     expect(queries[0]).toEqual(
       expect.objectContaining({
-        where: { slug: 'iris' },
+        project: expect.objectContaining({
+          where: { slug: 'iris' },
+        }),
+      }),
+    );
+    expect(queries[2]).toEqual(
+      expect.objectContaining({
+        findMany: expect.objectContaining({
+          skip: 0,
+          take: 100,
+          where: { teamId: 'team-a' },
+        }),
       }),
     );
     expect(members).toEqual([
@@ -417,6 +494,77 @@ describe(CatalogService.name, () => {
     ]);
   });
 
+  test('loads project team members with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        project: {
+          findUnique: (query: unknown) => {
+            queries.push({ project: query });
+            return Promise.resolve({ teamId: 'team-a' });
+          },
+        },
+        teamMember: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(7);
+          },
+          findMany: (query: unknown) => {
+            queries.push({ findMany: query });
+            return Promise.resolve([
+              {
+                acceptedAt: null,
+                isOwner: false,
+                permissions: ['MANAGE_VERSIONS'],
+                role: 'Maintainer',
+                sortOrder: 3,
+                user: {
+                  avatarUrl: null,
+                  displayName: null,
+                  id: 'user-b',
+                  username: 'maintainer',
+                },
+              },
+            ]);
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+    );
+
+    const result = await service.findProjectMemberSearch('iris', {
+      limit: 5,
+      offset: 10,
+    });
+
+    expect(queries[1]).toEqual({ count: { where: { teamId: 'team-a' } } });
+    expect(queries[2]).toEqual(
+      expect.objectContaining({
+        findMany: expect.objectContaining({
+          skip: 10,
+          take: 5,
+          where: { teamId: 'team-a' },
+        }),
+      }),
+    );
+    expect(result.totalHits).toBe(7);
+    expect(result.members).toEqual([
+      {
+        accepted: false,
+        owner: false,
+        permissions: ['MANAGE_VERSIONS'],
+        role: 'Maintainer',
+        sortOrder: 3,
+        user: {
+          avatarUrl: null,
+          displayName: null,
+          id: 'user-b',
+          username: 'maintainer',
+        },
+      },
+    ]);
+  });
+
   test('loads viewer project follow state', async () => {
     const service = new CatalogService(
       {
@@ -429,7 +577,7 @@ describe(CatalogService.name, () => {
             }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
     const state = await service.findViewerProjectFollowState('iris', 'user-a');
@@ -470,7 +618,7 @@ describe(CatalogService.name, () => {
         $transaction: (callback: (transaction: typeof tx) => unknown) =>
           callback(tx),
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
     const state = await service.followProject('iris', 'user-a');
@@ -501,9 +649,11 @@ describe(CatalogService.name, () => {
               teamId: 'team-a',
               title: 'Iris',
             }),
-          findUnique: () => Promise.resolve(projectMembersRow()),
+          findUnique: () => Promise.resolve({ teamId: 'team-a' }),
         },
         teamMember: {
+          count: () => Promise.resolve(1),
+          findMany: () => Promise.resolve(projectMembersRow().team.members),
           upsert: (query: unknown) => {
             upserts.push(query);
             return Promise.resolve({});
@@ -513,7 +663,7 @@ describe(CatalogService.name, () => {
           findFirst: () => Promise.resolve({ id: 'user-b' }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
       {
         sendUserNotification: (input: unknown) => {
           notifications.push(input);
@@ -569,13 +719,15 @@ describe(CatalogService.name, () => {
               id: 'project-a',
               teamId: 'team-a',
             }),
-          findUnique: () => Promise.resolve(projectMembersRow()),
+          findUnique: () => Promise.resolve({ teamId: 'team-a' }),
         },
         teamMember: {
+          count: () => Promise.resolve(1),
           delete: (query: unknown) => {
             deletes.push(query);
             return Promise.resolve({});
           },
+          findMany: () => Promise.resolve(projectMembersRow().team.members),
           findFirst: () =>
             Promise.resolve({
               id: 'member-b',
@@ -584,7 +736,7 @@ describe(CatalogService.name, () => {
             }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
     const members = await service.removeProjectTeamMember(
@@ -604,6 +756,10 @@ describe(CatalogService.name, () => {
     const service = new CatalogService(
       {
         project: {
+          count: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve(6);
+          },
           findMany: (query: unknown) => {
             queries.push(query);
             return Promise.resolve([
@@ -612,13 +768,54 @@ describe(CatalogService.name, () => {
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
-    const projects = await service.findProjectsForModeration();
+    const result = await service.findProjectsForModeration({
+      limit: 10,
+      offset: 20,
+    });
+
+    expect(queries[0]).toEqual({
+      where: {
+        status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+      },
+    });
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 20,
+        take: 10,
+        where: {
+          status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+        },
+      }),
+    );
+    expect(result.totalHits).toBe(6);
+    expect(result.projects[0]?.status).toBe('PENDING_REVIEW');
+  });
+
+  test('loads the legacy project moderation list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        project: {
+          count: () => Promise.resolve(1),
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([
+              projectRow({ status: 'PENDING_REVIEW', title: 'Queued' }),
+            ]);
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+    );
+
+    const projects = await service.findProjectModerationList();
 
     expect(queries[0]).toEqual(
       expect.objectContaining({
+        skip: 0,
         take: 50,
         where: {
           status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
@@ -661,7 +858,7 @@ describe(CatalogService.name, () => {
           indexed.push(projects);
           return Promise.resolve();
         },
-        searchProjects: () => Promise.resolve({ ids: [] }),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
       } as never,
     );
 
@@ -717,7 +914,7 @@ describe(CatalogService.name, () => {
             ),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
     const project = await service.lockProjectForModeration(
@@ -762,7 +959,7 @@ describe(CatalogService.name, () => {
             ),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
     const project = await service.releaseProjectModerationLock(
@@ -774,13 +971,17 @@ describe(CatalogService.name, () => {
     expect(project.moderationLock).toBeNull();
   });
 
-  test('loads project moderation actions newest first', async () => {
+  test('loads project moderation actions newest first with pagination', async () => {
     const queries: unknown[] = [];
     const service = new CatalogService(
       {
         moderationAction: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(8);
+          },
           findMany: (query: unknown) => {
-            queries.push(query);
+            queries.push({ findMany: query });
             return Promise.resolve([
               {
                 createdAt: new Date('2026-01-03T00:00:00.000Z'),
@@ -801,33 +1002,91 @@ describe(CatalogService.name, () => {
           findUnique: () => Promise.resolve({ id: 'project-a' }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
     );
 
-    const actions = await service.findProjectModerationActions('example');
+    const result = await service.findProjectModerationActions('example', {
+      limit: 10,
+      offset: 20,
+    });
 
     expect(queries[0]).toEqual({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        createdAt: true,
-        id: true,
-        kind: true,
-        moderator: {
-          select: {
-            displayName: true,
-            id: true,
-            username: true,
+      count: { where: { projectId: 'project-a' } },
+    });
+    expect(queries[1]).toEqual({
+      findMany: {
+        orderBy: { createdAt: 'desc' },
+        select: {
+          createdAt: true,
+          id: true,
+          kind: true,
+          moderator: {
+            select: {
+              displayName: true,
+              id: true,
+              username: true,
+            },
+          },
+          projectId: true,
+          reason: true,
+        },
+        skip: 20,
+        take: 10,
+        where: { projectId: 'project-a' },
+      },
+    });
+    expect(result.totalHits).toBe(8);
+    expect(result.actions.at(0)?.id).toBe('action-a');
+    expect(result.actions.at(0)?.kind).toBe('APPROVE');
+    expect(result.actions.at(0)?.reason).toBe('Clean release');
+  });
+
+  test('loads the legacy project moderation action list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        moderationAction: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(1);
+          },
+          findMany: (query: unknown) => {
+            queries.push({ findMany: query });
+            return Promise.resolve([
+              {
+                createdAt: new Date('2026-01-03T00:00:00.000Z'),
+                id: 'action-a',
+                kind: 'APPROVE',
+                moderator: {
+                  displayName: 'Admin',
+                  id: 'user-a',
+                  username: 'admin',
+                },
+                projectId: 'project-a',
+                reason: 'Clean release',
+              },
+            ]);
           },
         },
-        projectId: true,
-        reason: true,
-      },
-      take: 25,
-      where: { projectId: 'project-a' },
-    });
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+    );
+
+    const actions = await service.findProjectModerationActionList('example');
+
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        findMany: expect.objectContaining({
+          skip: 0,
+          take: 25,
+          where: { projectId: 'project-a' },
+        }),
+      }),
+    );
     expect(actions.at(0)?.id).toBe('action-a');
-    expect(actions.at(0)?.kind).toBe('APPROVE');
-    expect(actions.at(0)?.reason).toBe('Clean release');
   });
 });
 

@@ -1,12 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 
 import { fetchPublicOrganizations } from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
 import { EmptyState } from '../EmptyState.tsx';
+import { Pagination } from '../Pagination.tsx';
 import { OrganizationProjectGrid } from './OrganizationProjectList.tsx';
 import { OrganizationDirectorySkeleton } from './OrganizationSkeletons.tsx';
+
+const pageSize = 20;
 
 export function OrganizationDirectory({
   onOpenProject,
@@ -14,14 +17,23 @@ export function OrganizationDirectory({
   onOpenProject: (mod: Mod) => void;
 }) {
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
   const deferredQuery = useDeferredValue(query);
   const normalizedQuery = deferredQuery.trim();
+
+  useEffect(() => {
+    setPage(1);
+  }, [normalizedQuery]);
+
   const organizationsQuery = useQuery({
-    queryFn: ({ signal }) => fetchPublicOrganizations(normalizedQuery, signal),
-    queryKey: ['organizations', 'public', normalizedQuery],
+    queryFn: ({ signal }) =>
+      fetchPublicOrganizations(normalizedQuery, page, pageSize, signal),
+    queryKey: ['organizations', 'public', normalizedQuery, page],
   });
 
-  const organizations = organizationsQuery.data ?? [];
+  const organizations = organizationsQuery.data?.organizations ?? [];
+  const totalHits = organizationsQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
   const hasSearch = query.trim() !== '';
 
   return (
@@ -64,9 +76,19 @@ export function OrganizationDirectory({
         />
       ) : (
         <div className="mt-6 grid gap-8">
-          <p className="text-sm font-semibold text-muted">
-            Showing {organizations.length.toLocaleString('en-US')} organizations
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-muted">
+              Showing {organizations.length.toLocaleString('en-US')} of{' '}
+              {totalHits.toLocaleString('en-US')} organizations
+            </p>
+            {totalPages > 1 && (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            )}
+          </div>
           {organizations.map((organization) => (
             <section
               key={organization.id}
@@ -102,11 +124,20 @@ export function OrganizationDirectory({
               </div>
 
               <OrganizationProjectGrid
-                organization={organization}
+                projects={organization.projects}
                 onOpenProject={onOpenProject}
               />
             </section>
           ))}
+          {totalPages > 1 && (
+            <div className="flex justify-end">
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPage={setPage}
+              />
+            </div>
+          )}
         </div>
       )}
     </main>

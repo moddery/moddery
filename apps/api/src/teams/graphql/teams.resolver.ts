@@ -1,9 +1,12 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { TeamsService } from '../services/teams.service.js';
-import { TeamInvitationSummary } from './team-invitation.model.js';
+import {
+  TeamInvitationSearchResult,
+  TeamInvitationSummary,
+} from './team-invitation.model.js';
 
 @Resolver(() => TeamInvitationSummary)
 export class TeamsResolver {
@@ -11,7 +14,19 @@ export class TeamsResolver {
 
   @Query(() => [TeamInvitationSummary])
   viewerTeamInvitations(@CurrentUser() user: AuthenticatedUser) {
-    return this.teamsService.findViewerInvitations(user.id);
+    return this.teamsService.findViewerInvitationList(user.id);
+  }
+
+  @Query(() => TeamInvitationSearchResult)
+  viewerTeamInvitationSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int }) limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int }) offset?: number | null,
+  ) {
+    return this.teamsService.findViewerInvitations(user.id, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Mutation(() => TeamInvitationSummary)

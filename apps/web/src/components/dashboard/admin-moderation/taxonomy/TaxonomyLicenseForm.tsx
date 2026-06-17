@@ -2,6 +2,7 @@ import { type FormEvent } from 'react';
 
 import { type LicenseTaxonomy } from '../../../../lib/dashboard.ts';
 import { DashboardField } from '../shared.tsx';
+import { TaxonomyList } from './TaxonomyList.tsx';
 
 export function TaxonomyLicenseForm({
   busy,
@@ -74,18 +75,24 @@ function TaxonomyLicenseList({
   }
 
   return (
-    <div className="mt-1 grid gap-2">
-      {licenses.slice(0, 12).map((license) => (
+    <TaxonomyList
+      emptyLabel="No licenses yet."
+      getKey={(license) => license.key}
+      getSearchText={(license) =>
+        [license.key, license.name, license.url ?? ''].join(' ')
+      }
+      items={licenses}
+      searchLabel="Search licenses..."
+      renderItem={(license) => (
         <button
-          key={license.key}
           type="button"
           onClick={() => onSelect(license)}
-          className="flex items-center justify-between gap-3 rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
+          className="flex w-full items-center justify-between gap-3 rounded-lg border border-line bg-control px-3 py-2 text-left text-sm font-semibold text-ink transition-colors hover:bg-control-hover"
         >
           <span>{license.name}</span>
           <span className="text-xs text-muted">{license.key}</span>
         </button>
-      ))}
-    </div>
+      )}
+    />
   );
 }

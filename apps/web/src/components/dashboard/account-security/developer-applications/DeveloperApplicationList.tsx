@@ -1,16 +1,27 @@
 import { type OAuthClientSummary } from '../../../../lib/dashboard.ts';
+import { Pagination } from '../../../Pagination.tsx';
 
 export function DeveloperApplicationList({
   busy,
   clients,
   isLoading,
+  page,
+  pageSize,
   revoke,
+  setPage,
+  totalHits,
 }: {
   busy: boolean;
   clients: OAuthClientSummary[];
   isLoading: boolean;
+  page: number;
+  pageSize: number;
   revoke: (clientId: string) => void;
+  setPage: (page: number) => void;
+  totalHits: number;
 }) {
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
+
   if (isLoading) {
     return (
       <div className="mt-4 grid gap-3">
@@ -29,6 +40,14 @@ export function DeveloperApplicationList({
 
   return (
     <div className="mt-4 grid gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-muted">
+          {totalHits.toLocaleString('en-US')} applications
+        </p>
+        {totalPages > 1 && (
+          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+        )}
+      </div>
       {clients.map((client) => (
         <article
           key={client.id}
@@ -65,6 +84,9 @@ export function DeveloperApplicationList({
           </div>
         </article>
       ))}
+      {totalPages > 1 && (
+        <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+      )}
     </div>
   );
 }

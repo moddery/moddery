@@ -1,5 +1,5 @@
-import { ChevronDown, Download, Flag, PackageCheck } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, Download, Flag, Link, PackageCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { recordDownload, type ProjectVersion } from '../../../lib/catalog.ts';
 import { cn } from '../../../lib/cn.ts';
@@ -12,11 +12,19 @@ import {
 import { VersionFiles } from './version-row/VersionFiles.tsx';
 import { VersionReportForm } from './version-row/VersionReportForm.tsx';
 
-export function VersionRow({ version }: { version: ProjectVersion }) {
+export function VersionRow({
+  selected,
+  version,
+  onSelectVersion,
+}: {
+  selected: boolean;
+  version: ProjectVersion;
+  onSelectVersion: (versionNumber: string | null) => void;
+}) {
   const primaryFile =
     version.files.find((file) => file.primary) ?? version.files[0];
   const [reportOpen, setReportOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(selected);
   const hasDetails =
     version.files.length > 0 || version.dependencies.length > 0;
   const authorName =
@@ -32,13 +40,37 @@ export function VersionRow({ version }: { version: ProjectVersion }) {
     window.location.assign(file.url);
   }
 
+  useEffect(() => {
+    setDetailsOpen(selected);
+  }, [selected]);
+
+  function toggleDetails() {
+    const nextOpen = !detailsOpen;
+    setDetailsOpen(nextOpen);
+    onSelectVersion(nextOpen ? version.version_number : null);
+  }
+
   return (
-    <div className="grid gap-3 border-b border-line py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <div
+      className={cn(
+        'grid gap-3 border-b border-line py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center',
+        selected && 'bg-accent-soft/40',
+      )}
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h3 className="truncate font-display text-base font-extrabold text-ink">
-            {version.name}
-          </h3>
+          <a
+            href={versionHref(version.version_number)}
+            onClick={(event) => {
+              event.preventDefault();
+              onSelectVersion(version.version_number);
+            }}
+            className="min-w-0 text-ink transition-colors hover:text-accent"
+          >
+            <h3 className="truncate font-display text-base font-extrabold">
+              {version.name}
+            </h3>
+          </a>
           <span className="text-sm font-bold text-muted">
             {version.version_number}
           </span>
@@ -98,10 +130,21 @@ export function VersionRow({ version }: { version: ProjectVersion }) {
         >
           <Flag className="size-4" />
         </button>
+        <a
+          href={versionHref(version.version_number)}
+          onClick={(event) => {
+            event.preventDefault();
+            onSelectVersion(version.version_number);
+          }}
+          className="grid size-9 place-items-center rounded-lg bg-control text-accent-icon transition-colors hover:bg-control-hover"
+          aria-label={`Link to ${version.name}`}
+        >
+          <Link className="size-4" />
+        </a>
         {hasDetails && (
           <button
             type="button"
-            onClick={() => setDetailsOpen((current) => !current)}
+            onClick={toggleDetails}
             className="grid size-9 place-items-center rounded-lg bg-control text-accent-icon transition-colors hover:bg-control-hover"
             aria-label={`Show details for ${version.name}`}
             aria-expanded={detailsOpen}
@@ -143,6 +186,14 @@ export function VersionRow({ version }: { version: ProjectVersion }) {
       )}
     </div>
   );
+}
+
+function versionHref(versionNumber: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('tab', 'versions');
+  url.searchParams.set('version', versionNumber);
+
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function VersionDependencies({

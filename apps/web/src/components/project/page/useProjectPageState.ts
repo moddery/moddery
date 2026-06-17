@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   fetchProjectAnalytics,
   fetchProjectDetails,
-  fetchProjectMembers,
+  fetchProjectMemberSearch,
   fetchProjectVersions,
   fetchViewerProjectFollowState,
   recordDownload,
@@ -25,6 +25,13 @@ function readProjectTab(): ProjectTab {
     : defaultProjectTab;
 }
 
+function readSelectedVersion(): string | null {
+  const version = new URLSearchParams(window.location.search).get('version');
+  const trimmed = version?.trim() ?? '';
+
+  return trimmed === '' ? null : trimmed;
+}
+
 export function useProjectPageState({
   projectTypeHint,
   slug,
@@ -33,18 +40,27 @@ export function useProjectPageState({
   slug: string;
 }) {
   const [activeTab, setActiveTab] = useState<ProjectTab>(readProjectTab);
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(
+    readSelectedVersion,
+  );
   const projectQuery = useQuery({
     queryFn: async ({ signal }) => {
       const [project, versions, members, followState, analytics] =
         await Promise.all([
           fetchProjectDetails(slug, signal),
           fetchProjectVersions(slug, signal),
-          fetchProjectMembers(slug, signal),
+          fetchProjectMemberSearch(slug, 1, 12, signal),
           fetchViewerProjectFollowState(slug, signal),
           fetchProjectAnalytics(slug, signal),
         ]);
 
-      return { analytics, followState, members, project, versions };
+      return {
+        analytics,
+        followState,
+        members: members.members,
+        project,
+        versions,
+      };
     },
     queryKey: ['catalog', 'project', slug],
   });
@@ -52,6 +68,7 @@ export function useProjectPageState({
   useEffect(() => {
     const handlePopState = () => {
       setActiveTab(readProjectTab());
+      setSelectedVersion(readSelectedVersion());
     };
 
     handlePopState();
@@ -79,6 +96,27 @@ export function useProjectPageState({
       url.searchParams.delete('tab');
     } else {
       url.searchParams.set('tab', tab);
+    }
+
+    if (tab !== 'versions') {
+      url.searchParams.delete('version');
+      setSelectedVersion(null);
+    }
+
+    window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function selectVersion(versionNumber: string | null) {
+    setActiveTab('versions');
+    setSelectedVersion(versionNumber);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'versions');
+
+    if (versionNumber === null) {
+      url.searchParams.delete('version');
+    } else {
+      url.searchParams.set('version', versionNumber);
     }
 
     window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`);
@@ -134,6 +172,8 @@ export function useProjectPageState({
     projectQuery,
     projectType,
     selectTab,
+    selectedVersion,
+    selectVersion,
     supportedVersions,
     versions,
   };

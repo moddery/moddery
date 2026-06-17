@@ -1,14 +1,13 @@
 import { type ReportReason } from '@moddery/shared';
 
 import { apolloClient, authTokenStorageKey } from '../apollo.js';
-import { type Mod, type ProjectType } from '../types.js';
+import { type ProjectType } from '../types.js';
 import {
   collectionFromSummary,
   memberFromSummary,
   projectDetailsFromSummary,
   projectFromSummary,
   projectSearchTags,
-  sortByName,
   versionFromSummary,
 } from './catalog/mappers.js';
 import { projectKindFromType } from './projectTypes.js';
@@ -18,16 +17,19 @@ import {
   ADD_PROJECT_TO_COLLECTION_MUTATION,
   FOLLOW_PROJECT_MUTATION,
   PLATFORM_METADATA_QUERY,
+  PROJECT_MEMBER_SEARCH_QUERY,
   PROJECTS_QUERY,
   PROJECT_ANALYTICS_QUERY,
   PROJECT_BY_SLUG_QUERY,
   PROJECT_MEMBERS_QUERY,
   PUBLIC_COLLECTION_BY_SLUG_QUERY,
+  PUBLIC_COLLECTION_ITEM_SEARCH_QUERY,
   PUBLIC_COLLECTIONS_QUERY,
   RECORD_DOWNLOAD_MUTATION,
   RECORD_PROJECT_VIEW_MUTATION,
   REMOVE_PROJECT_FROM_COLLECTION_MUTATION,
   UNFOLLOW_PROJECT_MUTATION,
+  VERSION_SEARCH_FOR_PROJECT_QUERY,
   VERSIONS_FOR_PROJECT_QUERY,
   VIEWER_FOLLOWED_PROJECTS_QUERY,
   VIEWER_COLLECTION_CHOICES_QUERY,
@@ -52,14 +54,22 @@ import {
   type ProjectFollowStateMutationData,
   type ProjectFollowStateQueryData,
   type ProjectMember,
+  type ProjectMemberSearchQueryData,
+  type ProjectMemberSearchQueryVariables,
+  type ProjectMemberSearchResult,
   type ProjectMembersQueryData,
   type ProjectMembersQueryVariables,
+  type ProjectVersionSearchResult,
   type ProjectsQueryData,
   type ProjectsQueryVariables,
   type ProjectVersion,
   type PublicCollection,
   type PublicCollectionBySlugQueryData,
   type PublicCollectionBySlugQueryVariables,
+  type PublicCollectionItemSearchQueryData,
+  type PublicCollectionItemSearchQueryVariables,
+  type PublicCollectionItemsResult,
+  type PublicCollectionsResult,
   type PublicCollectionsQueryData,
   type PublicCollectionsQueryVariables,
   type RecordDownloadMutationData,
@@ -72,9 +82,13 @@ import {
   type SearchProjectsParams,
   type SearchProjectsResult,
   type SortKey,
+  type VersionSearchForProjectQueryData,
+  type VersionSearchForProjectQueryVariables,
   type VersionsForProjectQueryData,
   type VersionsForProjectQueryVariables,
   type ViewerFollowedProjectsQueryData,
+  type ViewerFollowedProjectsQueryVariables,
+  type ViewerFollowedProjectsResult,
   type ViewerCollectionChoice,
   type ViewerCollectionChoicesQueryData,
 } from './catalog/types.js';
@@ -89,15 +103,19 @@ export type {
   ProjectFollowState,
   ProjectGalleryImage,
   ProjectMember,
+  ProjectMemberSearchResult,
   ProjectVersion,
+  ProjectVersionSearchResult,
   PublicCollection,
   PublicCollectionItem,
+  PublicCollectionsResult,
   ReportSummary,
   SearchProjectsParams,
   SearchProjectsResult,
   SortKey,
   VersionDependency,
   ViewerCollectionChoice,
+  ViewerFollowedProjectsResult,
 } from './catalog/types.js';
 
 export async function searchProjects({
@@ -121,6 +139,8 @@ export async function searchProjects({
     query: PROJECTS_QUERY,
     variables: {
       query: {
+        limit,
+        offset: Math.max(0, page - 1) * limit,
         ...(query.trim() ? { search: query.trim() } : {}),
         sort: sortToApiSort(sort),
         tags: projectSearchTags({
@@ -135,13 +155,9 @@ export async function searchProjects({
 
   throwIfAborted(signal);
 
-  const filtered = data.projects.map(projectFromSummary);
-  const sorted = sort === 'name' ? sortByName(filtered) : filtered;
-  const offset = Math.max(0, page - 1) * limit;
-
   return {
-    projects: sorted.slice(offset, offset + limit),
-    totalHits: sorted.length,
+    projects: data.projectSearch.projects.map(projectFromSummary),
+    totalHits: data.projectSearch.totalHits,
   };
 }
 
@@ -172,11 +188,14 @@ export async function fetchFilterTags(
 
 export async function fetchPublicCollections(
   search?: string | null,
+  page = 1,
+  limit = 20,
   signal?: AbortSignal,
-): Promise<PublicCollection[]> {
+): Promise<PublicCollectionsResult> {
   throwIfAborted(signal);
 
   const normalizedSearch = search?.trim() ?? '';
+  const offset = Math.max(0, page - 1) * limit;
   const { data } = await apolloClient.query<
     PublicCollectionsQueryData,
     PublicCollectionsQueryVariables
@@ -185,13 +204,20 @@ export async function fetchPublicCollections(
     fetchPolicy: 'network-only',
     query: PUBLIC_COLLECTIONS_QUERY,
     variables: {
+      limit,
+      offset,
       search: normalizedSearch === '' ? null : normalizedSearch,
     },
   });
 
   throwIfAborted(signal);
 
-  return data.publicCollections.map(collectionFromSummary);
+  return {
+    collections: data.publicCollectionSearch.collections.map(
+      collectionFromSummary,
+    ),
+    totalHits: data.publicCollectionSearch.totalHits,
+  };
 }
 
 export async function fetchPublicCollectionBySlug(
@@ -216,20 +242,67 @@ export async function fetchPublicCollectionBySlug(
   return collectionFromSummary(data.publicCollectionBySlug);
 }
 
-export async function fetchViewerFollowedProjects(
+export async function fetchPublicCollectionItems(
+  ownerUsername: string,
+  slug: string,
+  page = 1,
+  limit = 20,
   signal?: AbortSignal,
-): Promise<Mod[]> {
+): Promise<PublicCollectionItemsResult> {
   throwIfAborted(signal);
 
-  const { data } = await apolloClient.query<ViewerFollowedProjectsQueryData>({
+  const { data } = await apolloClient.query<
+    PublicCollectionItemSearchQueryData,
+    PublicCollectionItemSearchQueryVariables
+  >({
     context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
-    query: VIEWER_FOLLOWED_PROJECTS_QUERY,
+    query: PUBLIC_COLLECTION_ITEM_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      ownerUsername,
+      slug,
+    },
   });
 
   throwIfAborted(signal);
 
-  return data.viewerFollowedProjects.map(projectFromSummary);
+  return {
+    items: data.publicCollectionItemSearch.items.map((item) => ({
+      ...item,
+      project: projectFromSummary(item.project),
+    })),
+    totalHits: data.publicCollectionItemSearch.totalHits,
+  };
+}
+
+export async function fetchViewerFollowedProjects(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<ViewerFollowedProjectsResult> {
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<
+    ViewerFollowedProjectsQueryData,
+    ViewerFollowedProjectsQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_FOLLOWED_PROJECTS_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  throwIfAborted(signal);
+
+  return {
+    projects: data.viewerFollowedProjectSearch.projects.map(projectFromSummary),
+    totalHits: data.viewerFollowedProjectSearch.totalHits,
+  };
 }
 
 export async function fetchViewerCollectionChoices(
@@ -327,6 +400,51 @@ export async function fetchProjectVersions(
   return data.versionsForProject.map(versionFromSummary);
 }
 
+export async function fetchProjectVersionSearch(
+  slug: string,
+  {
+    gameVersion,
+    limit = 20,
+    loader,
+    page = 1,
+    search,
+  }: {
+    gameVersion?: string | null;
+    limit?: number;
+    loader?: string | null;
+    page?: number;
+    search?: string | null;
+  } = {},
+  signal?: AbortSignal,
+): Promise<ProjectVersionSearchResult> {
+  throwIfAborted(signal);
+
+  const normalizedSearch = search?.trim() ?? '';
+  const { data } = await apolloClient.query<
+    VersionSearchForProjectQueryData,
+    VersionSearchForProjectQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VERSION_SEARCH_FOR_PROJECT_QUERY,
+    variables: {
+      gameVersion,
+      limit,
+      loader,
+      offset: Math.max(0, page - 1) * limit,
+      projectSlug: slug,
+      search: normalizedSearch === '' ? null : normalizedSearch,
+    },
+  });
+
+  throwIfAborted(signal);
+
+  return {
+    totalHits: data.versionSearchForProject.totalHits,
+    versions: data.versionSearchForProject.versions.map(versionFromSummary),
+  };
+}
+
 export async function fetchProjectMembers(
   slug: string,
   signal?: AbortSignal,
@@ -347,6 +465,36 @@ export async function fetchProjectMembers(
   return data.projectMembers.map(memberFromSummary);
 }
 
+export async function fetchProjectMemberSearch(
+  slug: string,
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<ProjectMemberSearchResult> {
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<
+    ProjectMemberSearchQueryData,
+    ProjectMemberSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: PROJECT_MEMBER_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      projectSlug: slug,
+    },
+  });
+
+  throwIfAborted(signal);
+
+  return {
+    members: data.projectMemberSearch.members.map(memberFromSummary),
+    totalHits: data.projectMemberSearch.totalHits,
+  };
+}
+
 export async function fetchProjectAnalytics(
   slug: string,
   signal?: AbortSignal,
@@ -357,6 +505,7 @@ export async function fetchProjectAnalytics(
     ProjectAnalyticsQueryData,
     ProjectAnalyticsQueryVariables
   >({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: PROJECT_ANALYTICS_QUERY,
     variables: { projectSlug: slug },
@@ -483,6 +632,7 @@ export function hasAuthToken(): boolean {
 function sortToApiSort(sort: SortKey): string {
   if (sort === 'downloads') return 'downloads';
   if (sort === 'updated') return 'updated';
+  if (sort === 'name') return 'name';
   return 'relevance';
 }
 

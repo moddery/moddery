@@ -5,30 +5,38 @@ import { useState } from 'react';
 import {
   acceptFriendRequest,
   blockUser,
-  fetchViewerBlockedUsers,
-  fetchViewerFriendRequests,
-  fetchViewerFriends,
+  fetchViewerBlockedUserSearch,
+  fetchViewerFriendRequestSearch,
+  fetchViewerFriendSearch,
   removeFriend,
   sendFriendRequest,
 } from '../../../lib/users.ts';
 import { FriendGroup, FriendList } from './friends-panel/FriendLists.tsx';
 import { DashboardField } from './shared.tsx';
 
+const friendPageSize = 20;
+
 export function FriendsPanel() {
+  const [blockedPage, setBlockedPage] = useState(1);
   const [busyUsername, setBusyUsername] = useState<string | null>(null);
+  const [friendsPage, setFriendsPage] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
+  const [requestsPage, setRequestsPage] = useState(1);
   const [username, setUsername] = useState('');
   const friendsQuery = useQuery({
-    queryFn: fetchViewerFriends,
-    queryKey: ['dashboard', 'friends'],
+    queryFn: ({ signal }) =>
+      fetchViewerFriendSearch(friendsPage, friendPageSize, signal),
+    queryKey: ['dashboard', 'friends', friendsPage],
   });
   const requestsQuery = useQuery({
-    queryFn: fetchViewerFriendRequests,
-    queryKey: ['dashboard', 'friend-requests'],
+    queryFn: ({ signal }) =>
+      fetchViewerFriendRequestSearch(requestsPage, friendPageSize, signal),
+    queryKey: ['dashboard', 'friend-requests', requestsPage],
   });
   const blockedQuery = useQuery({
-    queryFn: fetchViewerBlockedUsers,
-    queryKey: ['dashboard', 'blocked-users'],
+    queryFn: ({ signal }) =>
+      fetchViewerBlockedUserSearch(blockedPage, friendPageSize, signal),
+    queryKey: ['dashboard', 'blocked-users', blockedPage],
   });
 
   async function refresh() {
@@ -44,6 +52,9 @@ export function FriendsPanel() {
     setMessage(null);
     try {
       await action();
+      setBlockedPage(1);
+      setFriendsPage(1);
+      setRequestsPage(1);
       await refresh();
     } catch (caught) {
       setMessage(
@@ -67,9 +78,15 @@ export function FriendsPanel() {
     });
   }
 
-  const requests = requestsQuery.data ?? [];
-  const friends = friendsQuery.data ?? [];
-  const blockedUsers = blockedQuery.data ?? [];
+  const blockedResult = blockedQuery.data;
+  const friendsResult = friendsQuery.data;
+  const requestsResult = requestsQuery.data;
+  const blockedTotal = blockedResult?.totalHits ?? 0;
+  const friendsTotal = friendsResult?.totalHits ?? 0;
+  const requestsTotal = requestsResult?.totalHits ?? 0;
+  const blockedUsers = blockedResult?.friendships ?? [];
+  const friends = friendsResult?.friendships ?? [];
+  const requests = requestsResult?.friendships ?? [];
 
   return (
     <section className="mt-8 border-t border-line pt-6">
@@ -108,40 +125,52 @@ export function FriendsPanel() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <FriendGroup
-          label={`Requests (${requests.length.toLocaleString('en-US')})`}
+          label={`Requests (${requestsTotal.toLocaleString('en-US')})`}
         >
           <FriendList
             busyUsername={busyUsername}
             emptyLabel="No pending friend requests."
             friendships={requests}
+            onPage={setRequestsPage}
             onAccept={(username) =>
               run(username, () => acceptFriendRequest(username))
             }
             onBlock={(username) => run(username, () => blockUser(username))}
             onRemove={(username) => run(username, () => removeFriend(username))}
+            page={requestsPage}
+            totalHits={requestsTotal}
+            totalPages={Math.ceil(requestsTotal / friendPageSize)}
           />
         </FriendGroup>
 
         <FriendGroup
-          label={`Friends (${friends.length.toLocaleString('en-US')})`}
+          label={`Friends (${friendsTotal.toLocaleString('en-US')})`}
         >
           <FriendList
             busyUsername={busyUsername}
             emptyLabel="No friends yet."
             friendships={friends}
+            onPage={setFriendsPage}
             onBlock={(username) => run(username, () => blockUser(username))}
             onRemove={(username) => run(username, () => removeFriend(username))}
+            page={friendsPage}
+            totalHits={friendsTotal}
+            totalPages={Math.ceil(friendsTotal / friendPageSize)}
           />
         </FriendGroup>
 
         <FriendGroup
-          label={`Blocked (${blockedUsers.length.toLocaleString('en-US')})`}
+          label={`Blocked (${blockedTotal.toLocaleString('en-US')})`}
         >
           <FriendList
             busyUsername={busyUsername}
             emptyLabel="No blocked users."
             friendships={blockedUsers}
+            onPage={setBlockedPage}
             onRemove={(username) => run(username, () => removeFriend(username))}
+            page={blockedPage}
+            totalHits={blockedTotal}
+            totalPages={Math.ceil(blockedTotal / friendPageSize)}
           />
         </FriendGroup>
       </div>

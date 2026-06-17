@@ -92,6 +92,18 @@ interface CollectionRow {
   visibility: string;
 }
 
+type CollectionProjectItemRow = CollectionRow['projects'][number];
+
+export interface CollectionSearchResultContract {
+  collections: ReturnType<typeof collectionRowToContract>[];
+  totalHits: number;
+}
+
+export interface CollectionProjectItemSearchResultContract {
+  items: ReturnType<typeof collectionProjectItemRowToContract>[];
+  totalHits: number;
+}
+
 @Injectable()
 export class CollectionsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -165,17 +177,42 @@ export class CollectionsService {
   }
 
   async findPublicCollections({
+    limit = 50,
+    offset = 0,
+    search,
+  }: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+  } = {}): Promise<CollectionSearchResultContract> {
+    const where = publicCollectionWhere(search);
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, collections] = await Promise.all([
+      this.prisma.collection.count({ where }),
+      this.prisma.collection.findMany({
+        orderBy: [{ updatedAt: 'desc' }],
+        select: collectionSelect(6),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      collections: collections.map(collectionRowToContract),
+      totalHits,
+    };
+  }
+
+  async findPublicCollectionList({
     search,
   }: {
     search?: string | null;
   } = {}) {
-    const collections: CollectionRow[] = await this.prisma.collection.findMany({
-      orderBy: [{ updatedAt: 'desc' }],
-      select: collectionSelect(6),
-      where: publicCollectionWhere(search),
-    });
+    const result = await this.findPublicCollections({ search });
 
-    return collections.map(collectionRowToContract);
+    return result.collections;
   }
 
   async findPublicCollectionBySlug(ownerUsername: string, slug: string) {
@@ -198,6 +235,49 @@ export class CollectionsService {
     }
 
     return collectionRowToContract(collection);
+  }
+
+  async findPublicCollectionItems(
+    ownerUsername: string,
+    slug: string,
+    { limit = 20, offset = 0 }: { limit?: number; offset?: number } = {},
+  ): Promise<CollectionProjectItemSearchResultContract> {
+    const collection = await this.prisma.collection.findFirst({
+      select: { id: true },
+      where: {
+        owner: {
+          username: {
+            equals: ownerUsername,
+            mode: 'insensitive',
+          },
+        },
+        slug,
+        visibility: { in: ['PUBLIC', 'UNLISTED'] },
+      },
+    });
+
+    if (collection === null) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    const where = { collectionId: collection.id };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, items] = await Promise.all([
+      this.prisma.collectionProject.count({ where }),
+      this.prisma.collectionProject.findMany({
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+        select: collectionProjectItemSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      items: items.map(collectionProjectItemRowToContract),
+      totalHits,
+    };
   }
 
   async removeProjectFromCollection(
@@ -371,26 +451,30 @@ function collectionSelect(projectTake: number) {
     },
     projects: {
       orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'desc' as const }],
-      select: {
-        addedBy: {
-          select: {
-            avatarUrl: true,
-            displayName: true,
-            id: true,
-            username: true,
-          },
-        },
-        createdAt: true,
-        project: {
-          select: projectSelect(),
-        },
-        sortOrder: true,
-      },
+      select: collectionProjectItemSelect(),
       take: projectTake,
     },
     slug: true,
     updatedAt: true,
     visibility: true,
+  };
+}
+
+function collectionProjectItemSelect() {
+  return {
+    addedBy: {
+      select: {
+        avatarUrl: true,
+        displayName: true,
+        id: true,
+        username: true,
+      },
+    },
+    createdAt: true,
+    project: {
+      select: projectSelect(),
+    },
+    sortOrder: true,
   };
 }
 
@@ -495,12 +579,7 @@ function projectSelect() {
 }
 
 function collectionRowToContract(collection: CollectionRow) {
-  const items = collection.projects.map((item) => ({
-    addedBy: item.addedBy,
-    createdAt: item.createdAt,
-    project: projectRowToContract(item.project),
-    sortOrder: item.sortOrder,
-  }));
+  const items = collection.projects.map(collectionProjectItemRowToContract);
 
   return {
     color: collection.color,
@@ -517,6 +596,21 @@ function collectionRowToContract(collection: CollectionRow) {
     updatedAt: collection.updatedAt,
     visibility: collection.visibility,
   };
+}
+
+function collectionProjectItemRowToContract(item: CollectionProjectItemRow) {
+  return {
+    addedBy: item.addedBy,
+    createdAt: item.createdAt,
+    project: projectRowToContract(item.project),
+    sortOrder: item.sortOrder,
+  };
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isInteger(value)) return min;
+
+  return Math.min(max, Math.max(min, value));
 }
 
 function projectRowToContract(

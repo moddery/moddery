@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
@@ -10,7 +10,12 @@ import { RemoveOrganizationTeamMemberInput } from '../dto/remove-organization-te
 import { RemoveProjectFromOrganizationInput } from '../dto/remove-project-from-organization.input.js';
 import { UpdateOrganizationInput } from '../dto/update-organization.input.js';
 import { OrganizationsService } from '../services/organizations.service.js';
-import { OrganizationSummary } from './organization-summary.model.js';
+import {
+  OrganizationMemberSearchResult,
+  OrganizationProjectSearchResult,
+  OrganizationSearchResult,
+  OrganizationSummary,
+} from './organization-summary.model.js';
 
 @Resolver(() => OrganizationSummary)
 export class OrganizationsResolver {
@@ -22,7 +27,24 @@ export class OrganizationsResolver {
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
   ): Promise<OrganizationSummary[]> {
-    return this.organizationsService.findPublicOrganizations({ search });
+    return this.organizationsService.findPublicOrganizationList({ search });
+  }
+
+  @Public()
+  @Query(() => OrganizationSearchResult)
+  publicOrganizationSearch(
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<OrganizationSearchResult> {
+    return this.organizationsService.findPublicOrganizations({
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+      search,
+    });
   }
 
   @Public()
@@ -31,6 +53,36 @@ export class OrganizationsResolver {
     @Args('slug', { type: () => String }) slug: string,
   ): Promise<OrganizationSummary | null> {
     return this.organizationsService.findBySlug(slug);
+  }
+
+  @Public()
+  @Query(() => OrganizationMemberSearchResult)
+  organizationMemberSearch(
+    @Args('slug', { type: () => String }) slug: string,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<OrganizationMemberSearchResult> {
+    return this.organizationsService.findOrganizationMembers(slug, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
+  }
+
+  @Public()
+  @Query(() => OrganizationProjectSearchResult)
+  organizationProjectSearch(
+    @Args('slug', { type: () => String }) slug: string,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ): Promise<OrganizationProjectSearchResult> {
+    return this.organizationsService.findOrganizationProjects(slug, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Mutation(() => OrganizationSummary)

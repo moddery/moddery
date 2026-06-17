@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class SessionSummary {
@@ -19,4 +19,13 @@ export class SessionSummary {
 
   @Field(() => String, { nullable: true })
   userAgent!: string | null;
+}
+
+@ObjectType()
+export class SessionSearchResult {
+  @Field(() => [SessionSummary])
+  sessions!: SessionSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }

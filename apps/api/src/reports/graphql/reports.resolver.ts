@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
@@ -18,9 +18,12 @@ import {
   CreateUserReportInput,
   CreateVersionReportInput,
 } from './create-report.input.js';
-import { ModerationNoteSummary } from './moderation-note-summary.model.js';
-import { ReportSummary } from './report-summary.model.js';
-import { ThreadSummary } from './thread-summary.model.js';
+import {
+  ModerationNoteSearchResult,
+  ModerationNoteSummary,
+} from './moderation-note-summary.model.js';
+import { ReportSearchResult, ReportSummary } from './report-summary.model.js';
+import { ThreadSearchResult, ThreadSummary } from './thread-summary.model.js';
 import { UpdateReportStateInput } from './update-report-state.input.js';
 
 @Resolver(() => ReportSummary)
@@ -30,7 +33,22 @@ export class ReportsResolver {
   @Query(() => [ReportSummary])
   moderationReports(@CurrentUser() user: AuthenticatedUser) {
     assertCanModerate(user);
-    return this.reportsService.findModerationReports();
+    return this.reportsService.findModerationReportList();
+  }
+
+  @Query(() => ReportSearchResult)
+  moderationReportSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.findModerationReports({
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Query(() => ThreadSummary)
@@ -44,7 +62,21 @@ export class ReportsResolver {
 
   @Query(() => [ThreadSummary])
   viewerDirectThreads(@CurrentUser() user: AuthenticatedUser) {
-    return this.reportsService.findViewerDirectThreads(user.id);
+    return this.reportsService.findViewerDirectThreadList(user.id);
+  }
+
+  @Query(() => ThreadSearchResult)
+  viewerDirectThreadSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    return this.reportsService.findViewerDirectThreads(user.id, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Query(() => [ModerationNoteSummary])
@@ -53,7 +85,23 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findProjectModerationNotes(projectSlug);
+    return this.reportsService.findProjectModerationNoteList(projectSlug);
+  }
+
+  @Query(() => ModerationNoteSearchResult)
+  projectModerationNoteSearch(
+    @Args('projectSlug') projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.findProjectModerationNotes(projectSlug, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Query(() => [ModerationNoteSummary])
@@ -62,7 +110,23 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findUserModerationNotes(username);
+    return this.reportsService.findUserModerationNoteList(username);
+  }
+
+  @Query(() => ModerationNoteSearchResult)
+  userModerationNoteSearch(
+    @Args('username') username: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    assertCanModerate(user);
+    return this.reportsService.findUserModerationNotes(username, {
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+    });
   }
 
   @Mutation(() => ReportSummary)

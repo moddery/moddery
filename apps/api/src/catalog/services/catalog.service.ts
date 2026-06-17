@@ -9,6 +9,7 @@ import {
   Loader,
   LinkKind,
   ModerationActionKind,
+  ProjectStatus,
   TeamPermission,
   type Prisma,
 } from '@prisma/client';
@@ -117,6 +118,11 @@ export interface ProjectMemberContract {
   };
 }
 
+export interface ProjectMemberSearchResultContract {
+  members: ProjectMemberContract[];
+  totalHits: number;
+}
+
 export interface ProjectFollowStateContract {
   following: boolean;
   followers: number;
@@ -136,6 +142,29 @@ export interface ModerationActionContract {
   reason: string | null;
 }
 
+interface ModerationActionRow {
+  createdAt: Date;
+  id: string;
+  kind: string;
+  moderator: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+  projectId: string | null;
+  reason: string | null;
+}
+
+export interface ModerationActionSearchResultContract {
+  actions: ModerationActionContract[];
+  totalHits: number;
+}
+
+export interface ProjectSearchResultContract {
+  projects: ProjectSummaryContract[];
+  totalHits: number;
+}
+
 @Injectable()
 export class CatalogService {
   constructor(
@@ -148,14 +177,27 @@ export class CatalogService {
   async findProjects(
     query: CatalogQueryInput = {},
   ): Promise<ProjectSummaryContract[]> {
+    const result = await this.searchProjects(query);
+
+    return result.projects;
+  }
+
+  async searchProjects(
+    query: CatalogQueryInput = {},
+  ): Promise<ProjectSearchResultContract> {
     const searchResult = await this.searchService.searchProjects({
+      limit: query.limit,
+      offset: query.offset,
       search: query.search,
       sort: query.sort,
       tags: searchTagsFromQuery(query),
     });
 
     if (searchResult.ids.length === 0) {
-      return [];
+      return {
+        projects: [],
+        totalHits: searchResult.total,
+      };
     }
 
     const projects: ProjectRow[] = await this.prisma.project.findMany({
@@ -170,10 +212,13 @@ export class CatalogService {
       projects.map((project) => [project.id, projectRowToContract(project)]),
     );
 
-    return searchResult.ids.flatMap((id) => {
-      const project = projectsById.get(id);
-      return project === undefined ? [] : [project];
-    });
+    return {
+      projects: searchResult.ids.flatMap((id) => {
+        const project = projectsById.get(id);
+        return project === undefined ? [] : [project];
+      }),
+      totalHits: searchResult.total,
+    };
   }
 
   async findProjectBySlug(
@@ -193,22 +238,47 @@ export class CatalogService {
 
   async findViewerFollowedProjects(
     userId: string,
-  ): Promise<ProjectSummaryContract[]> {
-    const follows = await this.prisma.projectFollow.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        project: {
-          select: projectSelect(),
+    {
+      limit = 50,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<ProjectSearchResultContract> {
+    const where = {
+      project: { status: 'APPROVED' as const },
+      userId,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, follows] = await Promise.all([
+      this.prisma.projectFollow.count({ where }),
+      this.prisma.projectFollow.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          project: {
+            select: projectSelect(),
+          },
         },
-      },
-      take: 50,
-      where: {
-        project: { status: 'APPROVED' },
-        userId,
-      },
-    });
+        skip,
+        take,
+        where,
+      }),
+    ]);
 
-    return follows.map((follow) => projectRowToContract(follow.project));
+    return {
+      projects: follows.map((follow) => projectRowToContract(follow.project)),
+      totalHits,
+    };
+  }
+
+  async findViewerFollowedProjectList(
+    userId: string,
+  ): Promise<ProjectSummaryContract[]> {
+    const result = await this.findViewerFollowedProjects(userId);
+
+    return result.projects;
   }
 
   async createProject(
@@ -285,22 +355,53 @@ export class CatalogService {
     return contract;
   }
 
-  async findProjectsForModeration(): Promise<ProjectSummaryContract[]> {
-    const projects: ProjectRow[] = await this.prisma.project.findMany({
-      orderBy: [{ queuedAt: 'asc' }, { createdAt: 'asc' }],
-      select: projectSelect(),
-      take: 50,
-      where: {
-        status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+  async findProjectsForModeration({
+    limit = 50,
+    offset = 0,
+  }: {
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<ProjectSearchResultContract> {
+    const where = {
+      status: {
+        in: [
+          ProjectStatus.PENDING_REVIEW,
+          ProjectStatus.REJECTED,
+          ProjectStatus.ARCHIVED,
+        ],
       },
-    });
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, projects]: [number, ProjectRow[]] = await Promise.all([
+      this.prisma.project.count({ where }),
+      this.prisma.project.findMany({
+        orderBy: [{ queuedAt: 'asc' }, { createdAt: 'asc' }],
+        select: projectSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
 
-    return projects.map(projectRowToContract);
+    return {
+      projects: projects.map(projectRowToContract),
+      totalHits,
+    };
+  }
+
+  async findProjectModerationList(): Promise<ProjectSummaryContract[]> {
+    const result = await this.findProjectsForModeration();
+
+    return result.projects;
   }
 
   async findProjectModerationActions(
     projectSlug: string,
-  ): Promise<ModerationActionContract[]> {
+    { limit = 25, offset = 0 }: { limit?: number; offset?: number } = {},
+  ): Promise<ModerationActionSearchResultContract> {
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
     const project = await this.prisma.project.findUnique({
       select: { id: true },
       where: { slug: projectSlug },
@@ -310,31 +411,32 @@ export class CatalogService {
       throw new NotFoundException('Project not found');
     }
 
-    const actions = await this.prisma.moderationAction.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: {
-        createdAt: true,
-        id: true,
-        kind: true,
-        moderator: {
-          select: {
-            displayName: true,
-            id: true,
-            username: true,
-          },
-        },
-        projectId: true,
-        reason: true,
-      },
-      take: 25,
-      where: { projectId: project.id },
-    });
+    const where = { projectId: project.id };
+    const [totalHits, actions] = await Promise.all([
+      this.prisma.moderationAction.count({ where }),
+      this.prisma.moderationAction.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: moderationActionSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
 
-    return actions.map((action) => ({
-      ...action,
-      kind: action.kind,
-      projectId: action.projectId ?? project.id,
-    }));
+    return {
+      actions: actions.map((action) =>
+        moderationActionToContract(action, project.id),
+      ),
+      totalHits,
+    };
+  }
+
+  async findProjectModerationActionList(
+    projectSlug: string,
+  ): Promise<ModerationActionContract[]> {
+    const result = await this.findProjectModerationActions(projectSlug);
+
+    return result.actions;
   }
 
   async moderateProject(
@@ -584,35 +686,47 @@ export class CatalogService {
   async findProjectMembers(
     projectSlug: string,
   ): Promise<ProjectMemberContract[]> {
+    const result = await this.findProjectMemberSearch(projectSlug, {
+      limit: 100,
+      offset: 0,
+    });
+
+    return result.members;
+  }
+
+  async findProjectMemberSearch(
+    projectSlug: string,
+    { limit = 20, offset = 0 }: { limit?: number; offset?: number } = {},
+  ): Promise<ProjectMemberSearchResultContract> {
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
     const project = await this.prisma.project.findUnique({
       select: {
-        team: {
-          select: {
-            members: {
-              orderBy: [{ isOwner: 'desc' }, { sortOrder: 'asc' }],
-              select: {
-                acceptedAt: true,
-                isOwner: true,
-                permissions: true,
-                role: true,
-                sortOrder: true,
-                user: {
-                  select: {
-                    avatarUrl: true,
-                    displayName: true,
-                    id: true,
-                    username: true,
-                  },
-                },
-              },
-            },
-          },
-        },
+        teamId: true,
       },
       where: { slug: projectSlug },
     });
 
-    return (project?.team.members ?? []).map(projectMemberRowToContract);
+    if (project === null) {
+      return { members: [], totalHits: 0 };
+    }
+
+    const where = { teamId: project.teamId };
+    const [totalHits, members] = await Promise.all([
+      this.prisma.teamMember.count({ where }),
+      this.prisma.teamMember.findMany({
+        orderBy: [{ isOwner: 'desc' }, { sortOrder: 'asc' }],
+        select: projectMemberSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      members: members.map(projectMemberRowToContract),
+      totalHits,
+    };
   }
 
   async addProjectTeamMember(
@@ -1231,6 +1345,52 @@ function projectMemberRowToContract(
   };
 }
 
+function projectMemberSelect() {
+  return {
+    acceptedAt: true,
+    isOwner: true,
+    permissions: true,
+    role: true,
+    sortOrder: true,
+    user: {
+      select: {
+        avatarUrl: true,
+        displayName: true,
+        id: true,
+        username: true,
+      },
+    },
+  };
+}
+
+function moderationActionSelect() {
+  return {
+    createdAt: true,
+    id: true,
+    kind: true,
+    moderator: {
+      select: {
+        displayName: true,
+        id: true,
+        username: true,
+      },
+    },
+    projectId: true,
+    reason: true,
+  };
+}
+
+function moderationActionToContract(
+  action: ModerationActionRow,
+  projectId: string,
+): ModerationActionContract {
+  return {
+    ...action,
+    kind: action.kind,
+    projectId: action.projectId ?? projectId,
+  };
+}
+
 function searchTagsFromQuery(query: CatalogQueryInput): string[] {
   return [
     ...(query.tags ?? []),
@@ -1266,6 +1426,7 @@ function projectContractToSearch(project: ProjectSummaryContract) {
     summary: project.summary,
     tags: projectSearchTags(project),
     title: project.title,
+    titleSort: project.title.toLowerCase(),
     updatedAt: project.updatedAt,
   };
 }
@@ -1311,6 +1472,12 @@ function titleize(slug: string): string {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isInteger(value)) return min;
+
+  return Math.min(max, Math.max(min, value));
 }
 
 function uniqueNormalized(values: readonly string[]): string[] {

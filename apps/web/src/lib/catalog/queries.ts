@@ -102,8 +102,11 @@ const COLLECTION_FIELDS_FRAGMENT = gql`
 export const PROJECTS_QUERY = gql`
   ${PROJECT_FIELDS_FRAGMENT}
   query CatalogProjects($query: CatalogQueryInput) {
-    projects(query: $query) {
-      ...CatalogProjectFields
+    projectSearch(query: $query) {
+      projects {
+        ...CatalogProjectFields
+      }
+      totalHits
     }
   }
 `;
@@ -119,9 +122,12 @@ export const PROJECT_BY_SLUG_QUERY = gql`
 
 export const VIEWER_FOLLOWED_PROJECTS_QUERY = gql`
   ${PROJECT_FIELDS_FRAGMENT}
-  query ViewerFollowedProjects {
-    viewerFollowedProjects {
-      ...CatalogProjectFields
+  query ViewerFollowedProjects($limit: Int!, $offset: Int!) {
+    viewerFollowedProjectSearch(limit: $limit, offset: $offset) {
+      projects {
+        ...CatalogProjectFields
+      }
+      totalHits
     }
   }
 `;
@@ -227,6 +233,85 @@ export const VERSIONS_FOR_PROJECT_QUERY = gql`
   }
 `;
 
+export const VERSION_SEARCH_FOR_PROJECT_QUERY = gql`
+  query VersionSearchForProject(
+    $gameVersion: String
+    $limit: Int!
+    $loader: String
+    $offset: Int!
+    $projectSlug: String!
+    $search: String
+  ) {
+    versionSearchForProject(
+      gameVersion: $gameVersion
+      limit: $limit
+      loader: $loader
+      offset: $offset
+      projectSlug: $projectSlug
+      search: $search
+    ) {
+      totalHits
+      versions {
+        author {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        changelog
+        channel
+        createdAt
+        datePublished
+        dependencies {
+          dependencyKind
+          externalFileName
+          id
+          targetProject {
+            id
+            kind
+            slug
+            title
+          }
+          targetVersion {
+            id
+            versionNumber
+          }
+        }
+        downloads
+        featured
+        files {
+          fileName
+          hashes {
+            algorithm
+            value
+          }
+          id
+          kind
+          primary
+          scans {
+            createdAt
+            details
+            id
+            status
+            verdict
+          }
+          sizeBytes
+          url
+        }
+        gameVersions
+        id
+        loaders
+        name
+        requestedStatus
+        sortOrder
+        status
+        updatedAt
+        versionNumber
+      }
+    }
+  }
+`;
+
 export const PROJECT_MEMBERS_QUERY = gql`
   query ProjectMembers($projectSlug: String!) {
     projectMembers(projectSlug: $projectSlug) {
@@ -241,6 +326,35 @@ export const PROJECT_MEMBERS_QUERY = gql`
         id
         username
       }
+    }
+  }
+`;
+
+export const PROJECT_MEMBER_SEARCH_QUERY = gql`
+  query ProjectMemberSearch(
+    $projectSlug: String!
+    $limit: Int!
+    $offset: Int!
+  ) {
+    projectMemberSearch(
+      projectSlug: $projectSlug
+      limit: $limit
+      offset: $offset
+    ) {
+      members {
+        accepted
+        owner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
+      totalHits
     }
   }
 `;
@@ -367,9 +481,12 @@ export const CREATE_VERSION_REPORT_MUTATION = gql`
 
 export const PUBLIC_COLLECTIONS_QUERY = gql`
   ${COLLECTION_FIELDS_FRAGMENT}
-  query PublicCollections($search: String) {
-    publicCollections(search: $search) {
-      ...CatalogCollectionFields
+  query PublicCollections($search: String, $limit: Int!, $offset: Int!) {
+    publicCollectionSearch(search: $search, limit: $limit, offset: $offset) {
+      collections {
+        ...CatalogCollectionFields
+      }
+      totalHits
     }
   }
 `;
@@ -379,6 +496,38 @@ export const PUBLIC_COLLECTION_BY_SLUG_QUERY = gql`
   query PublicCollectionBySlug($ownerUsername: String!, $slug: String!) {
     publicCollectionBySlug(ownerUsername: $ownerUsername, slug: $slug) {
       ...CatalogCollectionFields
+    }
+  }
+`;
+
+export const PUBLIC_COLLECTION_ITEM_SEARCH_QUERY = gql`
+  ${PROJECT_FIELDS_FRAGMENT}
+  query PublicCollectionItemSearch(
+    $ownerUsername: String!
+    $slug: String!
+    $limit: Int!
+    $offset: Int!
+  ) {
+    publicCollectionItemSearch(
+      ownerUsername: $ownerUsername
+      slug: $slug
+      limit: $limit
+      offset: $offset
+    ) {
+      items {
+        addedBy {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+        createdAt
+        project {
+          ...CatalogProjectFields
+        }
+        sortOrder
+      }
+      totalHits
     }
   }
 `;

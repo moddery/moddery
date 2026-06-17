@@ -74,31 +74,7 @@ interface UserProfileRow {
   };
   avatarUrl: string | null;
   bio: string | null;
-  collections: {
-    _count: {
-      projects: number;
-    };
-    color: string | null;
-    createdAt: Date;
-    description: string | null;
-    iconUrl: string | null;
-    id: string;
-    name: string;
-    projects: {
-      addedBy: {
-        avatarUrl: string | null;
-        displayName: string | null;
-        id: string;
-        username: string;
-      } | null;
-      createdAt: Date;
-      project: UserProjectRow;
-      sortOrder: number;
-    }[];
-    slug: string;
-    updatedAt: Date;
-    visibility: string;
-  }[];
+  collections: UserCollectionRow[];
   createdAt: Date;
   displayName: string | null;
   email: string | null;
@@ -109,11 +85,7 @@ interface UserProfileRow {
   newsletterOptIn: boolean;
   role: string;
   status: string;
-  teamMemberships: {
-    team: {
-      project: UserProjectRow | null;
-    };
-  }[];
+  teamMemberships: UserProjectMembershipRow[];
   twoFactorEnabled: boolean;
   username: string;
 }
@@ -129,11 +101,60 @@ interface FriendshipRow {
   state: FriendState;
 }
 
+interface UserProjectMembershipRow {
+  team: {
+    project: UserProjectRow | null;
+  };
+}
+
+interface UserCollectionRow {
+  _count: {
+    projects: number;
+  };
+  color: string | null;
+  createdAt: Date;
+  description: string | null;
+  iconUrl: string | null;
+  id: string;
+  name: string;
+  projects: UserCollectionProjectItemRow[];
+  slug: string;
+  updatedAt: Date;
+  visibility: string;
+}
+
+interface UserCollectionProjectItemRow {
+  addedBy: FriendshipUserRow | null;
+  createdAt: Date;
+  project: UserProjectRow;
+  sortOrder: number;
+}
+
 interface FriendshipUserRow {
   avatarUrl: string | null;
   displayName: string | null;
   id: string;
   username: string;
+}
+
+export interface UserSearchResultContract {
+  totalHits: number;
+  users: ReturnType<typeof userProfileRowToContract>[];
+}
+
+export interface UserProjectSearchResultContract {
+  projects: ReturnType<typeof projectRowToContract>[];
+  totalHits: number;
+}
+
+export interface UserCollectionSearchResultContract {
+  collections: ReturnType<typeof userCollectionRowToContract>[];
+  totalHits: number;
+}
+
+export interface FriendshipSearchResultContract {
+  friendships: ReturnType<typeof friendshipRowToContract>[];
+  totalHits: number;
 }
 
 @Injectable()
@@ -169,23 +190,124 @@ export class UsersService {
   }
 
   async findPublicUsers({
+    limit = 50,
+    offset = 0,
+    search,
+  }: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+  } = {}): Promise<UserSearchResultContract> {
+    const where = publicUserWhere(search);
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: userProfileSelect({
+          includePrivateAccountFields: false,
+          includePrivateCollections: false,
+        }),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      totalHits,
+      users: users.map((user) =>
+        userProfileRowToContract(user, { includePrivateAccountFields: false }),
+      ),
+    };
+  }
+
+  async findPublicUserList({
     search,
   }: {
     search?: string | null;
   } = {}) {
-    const users = await this.prisma.user.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: userProfileSelect({
-        includePrivateAccountFields: false,
-        includePrivateCollections: false,
-      }),
-      take: 50,
-      where: publicUserWhere(search),
-    });
+    const result = await this.findPublicUsers({ search });
 
-    return users.map((user) =>
-      userProfileRowToContract(user, { includePrivateAccountFields: false }),
-    );
+    return result.users;
+  }
+
+  async findPublicUserProjects(
+    username: string,
+    {
+      limit = 20,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<UserProjectSearchResultContract> {
+    const user = await this.findActiveUserByUsername(username);
+    const where = {
+      acceptedAt: { not: null },
+      team: { project: { is: { status: 'APPROVED' as const } } },
+      userId: user.id,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, memberships] = await Promise.all([
+      this.prisma.teamMember.count({ where }),
+      this.prisma.teamMember.findMany({
+        orderBy: [
+          { isOwner: 'desc' as const },
+          { sortOrder: 'asc' as const },
+          { createdAt: 'desc' as const },
+        ],
+        select: userProjectMembershipSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      projects: memberships.flatMap(({ team }) =>
+        team.project === null ? [] : [projectRowToContract(team.project)],
+      ),
+      totalHits,
+    };
+  }
+
+  async findPublicUserCollections(
+    username: string,
+    {
+      limit = 10,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<UserCollectionSearchResultContract> {
+    const user = await this.findActiveUserByUsername(username);
+    const where = {
+      ownerId: user.id,
+      visibility: 'PUBLIC' as const,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, collections] = await Promise.all([
+      this.prisma.collection.count({ where }),
+      this.prisma.collection.findMany({
+        orderBy: [{ updatedAt: 'desc' as const }],
+        select: publicUserCollectionSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      collections: collections.map((collection) =>
+        userCollectionRowToContract(collection, collection.owner),
+      ),
+      totalHits,
+    };
   }
 
   async updateViewerProfile(id: string, input: UpdateViewerProfileInput) {
@@ -210,19 +332,44 @@ export class UsersService {
     return this.findById(id);
   }
 
-  async findAdminUsers() {
-    const users = await this.prisma.user.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: userProfileSelect({
-        includePrivateAccountFields: true,
-        includePrivateCollections: true,
+  async findAdminUsers({
+    limit = 50,
+    offset = 0,
+    search,
+  }: {
+    limit?: number;
+    offset?: number;
+    search?: string | null;
+  } = {}): Promise<UserSearchResultContract> {
+    const where = adminUserWhere(search);
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: userProfileSelect({
+          includePrivateAccountFields: true,
+          includePrivateCollections: true,
+        }),
+        skip,
+        take,
+        where,
       }),
-      take: 50,
-    });
+    ]);
 
-    return users.map((user) =>
-      userProfileRowToContract(user, { includePrivateAccountFields: true }),
-    );
+    return {
+      totalHits,
+      users: users.map((user) =>
+        userProfileRowToContract(user, { includePrivateAccountFields: true }),
+      ),
+    };
+  }
+
+  async findAdminUserList() {
+    const result = await this.findAdminUsers();
+
+    return result.users;
   }
 
   async updateUserAccount(input: UpdateUserAccountInput, actorId: string) {
@@ -272,52 +419,127 @@ export class UsersService {
       : friendshipRowToContract(friendship, viewerId);
   }
 
-  async findViewerFriends(viewerId: string) {
-    const friendships = await this.prisma.friend.findMany({
-      orderBy: [{ acceptedAt: 'desc' }, { createdAt: 'desc' }],
-      select: friendshipSelect(),
-      take: 100,
-      where: {
-        state: FriendState.ACCEPTED,
-        OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
-      },
-    });
+  async findViewerFriends(
+    viewerId: string,
+    {
+      limit = 50,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<FriendshipSearchResultContract> {
+    const where = {
+      state: FriendState.ACCEPTED,
+      OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, friendships] = await Promise.all([
+      this.prisma.friend.count({ where }),
+      this.prisma.friend.findMany({
+        orderBy: [{ acceptedAt: 'desc' }, { createdAt: 'desc' }],
+        select: friendshipSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
 
-    return friendships.map((friendship) =>
-      friendshipRowToContract(friendship, viewerId),
-    );
+    return {
+      friendships: friendships.map((friendship) =>
+        friendshipRowToContract(friendship, viewerId),
+      ),
+      totalHits,
+    };
   }
 
-  async findViewerFriendRequests(viewerId: string) {
-    const friendships = await this.prisma.friend.findMany({
-      orderBy: [{ createdAt: 'desc' }],
-      select: friendshipSelect(),
-      take: 100,
-      where: {
-        state: FriendState.PENDING,
-        OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
-      },
-    });
+  async findViewerFriendList(viewerId: string) {
+    const result = await this.findViewerFriends(viewerId);
 
-    return friendships.map((friendship) =>
-      friendshipRowToContract(friendship, viewerId),
-    );
+    return result.friendships;
   }
 
-  async findViewerBlockedUsers(viewerId: string) {
-    const friendships = await this.prisma.friend.findMany({
-      orderBy: [{ updatedAt: 'desc' }],
-      select: friendshipSelect(),
-      take: 100,
-      where: {
-        requesterId: viewerId,
-        state: FriendState.BLOCKED,
-      },
-    });
+  async findViewerFriendRequests(
+    viewerId: string,
+    {
+      limit = 50,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<FriendshipSearchResultContract> {
+    const where = {
+      state: FriendState.PENDING,
+      OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, friendships] = await Promise.all([
+      this.prisma.friend.count({ where }),
+      this.prisma.friend.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        select: friendshipSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
 
-    return friendships.map((friendship) =>
-      friendshipRowToContract(friendship, viewerId),
-    );
+    return {
+      friendships: friendships.map((friendship) =>
+        friendshipRowToContract(friendship, viewerId),
+      ),
+      totalHits,
+    };
+  }
+
+  async findViewerFriendRequestList(viewerId: string) {
+    const result = await this.findViewerFriendRequests(viewerId);
+
+    return result.friendships;
+  }
+
+  async findViewerBlockedUsers(
+    viewerId: string,
+    {
+      limit = 50,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<FriendshipSearchResultContract> {
+    const where = {
+      requesterId: viewerId,
+      state: FriendState.BLOCKED,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, friendships] = await Promise.all([
+      this.prisma.friend.count({ where }),
+      this.prisma.friend.findMany({
+        orderBy: [{ updatedAt: 'desc' }],
+        select: friendshipSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      friendships: friendships.map((friendship) =>
+        friendshipRowToContract(friendship, viewerId),
+      ),
+      totalHits,
+    };
+  }
+
+  async findViewerBlockedUserList(viewerId: string) {
+    const result = await this.findViewerBlockedUsers(viewerId);
+
+    return result.friendships;
   }
 
   async sendFriendRequest(viewerId: string, username: string) {
@@ -391,9 +613,14 @@ export class UsersService {
     }
 
     const existing = await this.findFriendshipBetween(viewerId, target.id);
-    if (existing === null) return true;
+    if (existing === null) {
+      return true;
+    }
 
-    await this.prisma.friend.delete({ where: { id: existing.id } });
+    await this.prisma.friend.delete({
+      where: { id: existing.id },
+    });
+
     return true;
   }
 
@@ -443,6 +670,22 @@ export class UsersService {
         username: { equals: username, mode: 'insensitive' },
       },
     });
+  }
+
+  private async findActiveUserByUsername(username: string) {
+    const user = await this.prisma.user.findFirst({
+      select: { id: true },
+      where: {
+        status: AccountStatus.ACTIVE,
+        username: { equals: username, mode: 'insensitive' },
+      },
+    });
+
+    if (user === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
   }
 
   private findFriendshipBetween(userId: string, targetId: string) {
@@ -515,6 +758,26 @@ function publicUserWhere(search: string | null | undefined) {
   };
 }
 
+function adminUserWhere(search: string | null | undefined) {
+  const trimmed = search?.trim() ?? '';
+  if (trimmed === '') {
+    return {};
+  }
+
+  const role = optionalAccountRole(trimmed);
+  const status = optionalAccountStatus(trimmed);
+
+  return {
+    OR: [
+      { username: { contains: trimmed, mode: 'insensitive' as const } },
+      { displayName: { contains: trimmed, mode: 'insensitive' as const } },
+      { email: { contains: trimmed, mode: 'insensitive' as const } },
+      ...(role === undefined ? [] : [{ role }]),
+      ...(status === undefined ? [] : [{ status }]),
+    ],
+  };
+}
+
 function userProfileSelect({
   includePrivateAccountFields,
   includePrivateCollections,
@@ -545,44 +808,7 @@ function userProfileSelect({
     bio: true,
     collections: {
       orderBy: [{ updatedAt: 'desc' as const }],
-      select: {
-        _count: {
-          select: {
-            projects: true,
-          },
-        },
-        color: true,
-        createdAt: true,
-        description: true,
-        iconUrl: true,
-        id: true,
-        name: true,
-        projects: {
-          orderBy: [
-            { sortOrder: 'asc' as const },
-            { createdAt: 'desc' as const },
-          ],
-          select: {
-            addedBy: {
-              select: {
-                avatarUrl: true,
-                displayName: true,
-                id: true,
-                username: true,
-              },
-            },
-            createdAt: true,
-            project: {
-              select: projectSelect(),
-            },
-            sortOrder: true,
-          },
-          take: 4,
-        },
-        slug: true,
-        updatedAt: true,
-        visibility: true,
-      },
+      select: userCollectionSelect(),
       take: 4,
       where: collectionVisibilityFilter,
     },
@@ -604,15 +830,7 @@ function userProfileSelect({
     status: true,
     teamMemberships: {
       orderBy: [{ isOwner: 'desc' as const }, { sortOrder: 'asc' as const }],
-      select: {
-        team: {
-          select: {
-            project: {
-              select: projectSelect(),
-            },
-          },
-        },
-      },
+      select: userProjectMembershipSelect(),
       take: 8,
       where: {
         acceptedAt: { not: null },
@@ -621,6 +839,64 @@ function userProfileSelect({
     },
     twoFactorEnabled: includePrivateAccountFields,
     username: true,
+  };
+}
+
+function userProjectMembershipSelect() {
+  return {
+    team: {
+      select: {
+        project: {
+          select: projectSelect(),
+        },
+      },
+    },
+  };
+}
+
+function userCollectionSelect() {
+  return {
+    _count: {
+      select: {
+        projects: true,
+      },
+    },
+    color: true,
+    createdAt: true,
+    description: true,
+    iconUrl: true,
+    id: true,
+    name: true,
+    projects: {
+      orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'desc' as const }],
+      select: userCollectionProjectItemSelect(),
+      take: 4,
+    },
+    slug: true,
+    updatedAt: true,
+    visibility: true,
+  };
+}
+
+function publicUserCollectionSelect() {
+  return {
+    ...userCollectionSelect(),
+    owner: {
+      select: friendshipUserSelect(),
+    },
+  };
+}
+
+function userCollectionProjectItemSelect() {
+  return {
+    addedBy: {
+      select: friendshipUserSelect(),
+    },
+    createdAt: true,
+    project: {
+      select: projectSelect(),
+    },
+    sortOrder: true,
   };
 }
 
@@ -732,35 +1008,15 @@ function userProfileRowToContract(
     includePrivateAccountFields: boolean;
   },
 ) {
-  const collections = user.collections.map((collection) => {
-    const items = collection.projects.map((item) => ({
-      addedBy: item.addedBy,
-      createdAt: item.createdAt,
-      project: projectRowToContract(item.project),
-      sortOrder: item.sortOrder,
-    }));
-
-    return {
-      color: collection.color,
-      createdAt: collection.createdAt,
-      description: collection.description,
-      iconUrl: collection.iconUrl,
-      id: collection.id,
-      items,
-      name: collection.name,
-      owner: {
-        avatarUrl: user.avatarUrl,
-        displayName: user.displayName,
-        id: user.id,
-        username: user.username,
-      },
-      projectCount: collection._count.projects,
-      projects: items.map((item) => item.project),
-      slug: collection.slug,
-      updatedAt: collection.updatedAt,
-      visibility: collection.visibility,
-    };
-  });
+  const owner = {
+    avatarUrl: user.avatarUrl,
+    displayName: user.displayName,
+    id: user.id,
+    username: user.username,
+  };
+  const collections = user.collections.map((collection) =>
+    userCollectionRowToContract(collection, owner),
+  );
 
   return {
     avatarUrl: user.avatarUrl,
@@ -786,6 +1042,34 @@ function userProfileRowToContract(
       ? user.twoFactorEnabled
       : false,
     username: user.username,
+  };
+}
+
+function userCollectionRowToContract(
+  collection: UserCollectionRow,
+  owner: FriendshipUserRow,
+) {
+  const items = collection.projects.map((item) => ({
+    addedBy: item.addedBy,
+    createdAt: item.createdAt,
+    project: projectRowToContract(item.project),
+    sortOrder: item.sortOrder,
+  }));
+
+  return {
+    color: collection.color,
+    createdAt: collection.createdAt,
+    description: collection.description,
+    iconUrl: collection.iconUrl,
+    id: collection.id,
+    items,
+    name: collection.name,
+    owner,
+    projectCount: collection._count.projects,
+    projects: items.map((item) => item.project),
+    slug: collection.slug,
+    updatedAt: collection.updatedAt,
+    visibility: collection.visibility,
   };
 }
 
@@ -854,6 +1138,30 @@ function accountStatus(
   if (normalized === AccountStatus.SUSPENDED) return AccountStatus.SUSPENDED;
   if (normalized === AccountStatus.DELETED) return AccountStatus.DELETED;
   throw new ForbiddenException('Unsupported account status');
+}
+
+function optionalAccountRole(value: string): AccountRole | undefined {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === AccountRole.USER) return AccountRole.USER;
+  if (normalized === AccountRole.MODERATOR) return AccountRole.MODERATOR;
+  if (normalized === AccountRole.ADMIN) return AccountRole.ADMIN;
+
+  return undefined;
+}
+
+function optionalAccountStatus(value: string): AccountStatus | undefined {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === AccountStatus.ACTIVE) return AccountStatus.ACTIVE;
+  if (normalized === AccountStatus.SUSPENDED) return AccountStatus.SUSPENDED;
+  if (normalized === AccountStatus.DELETED) return AccountStatus.DELETED;
+
+  return undefined;
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isInteger(value)) return min;
+
+  return Math.min(max, Math.max(min, value));
 }
 
 function projectRowToContract(project: UserProjectRow) {

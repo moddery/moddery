@@ -1,12 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
-import { fetchOrganizationProfile } from '../../lib/organizations.ts';
+import {
+  fetchOrganizationMembers,
+  fetchOrganizationProfile,
+  fetchOrganizationProjects,
+} from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
 import { EmptyState } from '../EmptyState.tsx';
 import { OrganizationHeader } from './OrganizationHeader.tsx';
 import { OrganizationMembers } from './OrganizationMembers.tsx';
 import { OrganizationProjectList } from './OrganizationProjectList.tsx';
 import { OrganizationSkeleton } from './OrganizationSkeletons.tsx';
+
+const memberPageSize = 24;
+const projectPageSize = 12;
 
 export function OrganizationDetail({
   slug,
@@ -15,9 +23,23 @@ export function OrganizationDetail({
   slug: string;
   onOpenProject: (mod: Mod) => void;
 }) {
+  const [memberPage, setMemberPage] = useState(1);
+  const [projectPage, setProjectPage] = useState(1);
   const organizationQuery = useQuery({
     queryFn: ({ signal }) => fetchOrganizationProfile(slug, signal),
     queryKey: ['organizations', slug],
+  });
+  const membersQuery = useQuery({
+    enabled: Boolean(organizationQuery.data),
+    queryFn: ({ signal }) =>
+      fetchOrganizationMembers(slug, memberPage, memberPageSize, signal),
+    queryKey: ['organizations', slug, 'members', memberPage],
+  });
+  const projectsQuery = useQuery({
+    enabled: Boolean(organizationQuery.data),
+    queryFn: ({ signal }) =>
+      fetchOrganizationProjects(slug, projectPage, projectPageSize, signal),
+    queryKey: ['organizations', slug, 'projects', projectPage],
   });
 
   if (organizationQuery.isLoading) {
@@ -36,14 +58,29 @@ export function OrganizationDetail({
   }
 
   const organization = organizationQuery.data;
+  const memberTotal = membersQuery.data?.totalHits ?? organization.memberCount;
+  const projectTotal =
+    projectsQuery.data?.totalHits ?? organization.projectCount;
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
       <OrganizationHeader organization={organization} />
-      <OrganizationMembers organization={organization} />
+      <OrganizationMembers
+        isLoading={membersQuery.isLoading}
+        members={membersQuery.data?.members ?? organization.members}
+        onPage={setMemberPage}
+        organization={organization}
+        page={memberPage}
+        totalPages={Math.max(1, Math.ceil(memberTotal / memberPageSize))}
+      />
       <OrganizationProjectList
+        isLoading={projectsQuery.isLoading}
+        onPage={setProjectPage}
         organization={organization}
         onOpenProject={onOpenProject}
+        page={projectPage}
+        projects={projectsQuery.data?.projects ?? organization.projects}
+        totalPages={Math.max(1, Math.ceil(projectTotal / projectPageSize))}
       />
     </main>
   );

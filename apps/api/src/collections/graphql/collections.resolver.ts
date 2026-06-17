@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
@@ -8,7 +8,11 @@ import { CreateCollectionInput } from '../dto/create-collection.input.js';
 import { RemoveProjectFromCollectionInput } from '../dto/remove-project-from-collection.input.js';
 import { UpdateCollectionInput } from '../dto/update-collection.input.js';
 import { CollectionsService } from '../services/collections.service.js';
-import { CollectionSummary } from './collection-summary.model.js';
+import {
+  CollectionProjectItemSearchResult,
+  CollectionSearchResult,
+  CollectionSummary,
+} from './collection-summary.model.js';
 
 @Resolver(() => CollectionSummary)
 export class CollectionsResolver {
@@ -20,7 +24,24 @@ export class CollectionsResolver {
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
   ) {
-    return this.collectionsService.findPublicCollections({ search });
+    return this.collectionsService.findPublicCollectionList({ search });
+  }
+
+  @Public()
+  @Query(() => CollectionSearchResult)
+  publicCollectionSearch(
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    return this.collectionsService.findPublicCollections({
+      limit: limit ?? undefined,
+      offset: offset ?? undefined,
+      search,
+    });
   }
 
   @Public()
@@ -32,6 +53,26 @@ export class CollectionsResolver {
     return this.collectionsService.findPublicCollectionBySlug(
       ownerUsername,
       slug,
+    );
+  }
+
+  @Public()
+  @Query(() => CollectionProjectItemSearchResult)
+  publicCollectionItemSearch(
+    @Args('ownerUsername') ownerUsername: string,
+    @Args('slug') slug: string,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+  ) {
+    return this.collectionsService.findPublicCollectionItems(
+      ownerUsername,
+      slug,
+      {
+        limit: limit ?? undefined,
+        offset: offset ?? undefined,
+      },
     );
   }
 

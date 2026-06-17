@@ -13,5 +13,6 @@ export interface SearchProjectDocument {
   readonly summary: string;
   readonly tags: readonly string[];
   readonly title: string;
+  readonly titleSort: string;
   readonly updatedAt: string;
 }

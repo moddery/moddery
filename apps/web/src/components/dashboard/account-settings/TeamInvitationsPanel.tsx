@@ -4,19 +4,26 @@ import { useState } from 'react';
 import {
   acceptTeamInvitation,
   declineTeamInvitation,
-  fetchViewerTeamInvitations,
+  fetchViewerTeamInvitationSearch,
 } from '../../../lib/dashboard.ts';
 import { type TeamInvitationSummary } from '../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../lib/format.ts';
+import { Pagination } from '../../Pagination.tsx';
+
+const pageSize = 20;
 
 export function TeamInvitationsPanel() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const invitationsQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerTeamInvitations(signal),
-    queryKey: ['dashboard', 'team-invitations'],
+    queryFn: ({ signal }) =>
+      fetchViewerTeamInvitationSearch(page, pageSize, signal),
+    queryKey: ['dashboard', 'team-invitations', page],
   });
-  const invitations = invitationsQuery.data ?? [];
+  const invitations = invitationsQuery.data?.invitations ?? [];
+  const totalHits = invitationsQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
 
   async function act(
     invitationId: string,
@@ -59,15 +66,39 @@ export function TeamInvitationsPanel() {
         ) : invitations.length === 0 ? (
           <p className="text-sm text-muted">No pending team invitations.</p>
         ) : (
-          invitations.map((invitation) => (
-            <TeamInvitationRow
-              busy={busyId === invitation.id}
-              invitation={invitation}
-              key={invitation.id}
-              onAccept={(id) => act(id, acceptTeamInvitation)}
-              onDecline={(id) => act(id, declineTeamInvitation)}
-            />
-          ))
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-muted">
+                Showing {invitations.length.toLocaleString('en-US')} of{' '}
+                {totalHits.toLocaleString('en-US')} pending invitations
+              </p>
+              {totalPages > 1 && (
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPage={setPage}
+                />
+              )}
+            </div>
+            {invitations.map((invitation) => (
+              <TeamInvitationRow
+                busy={busyId === invitation.id}
+                invitation={invitation}
+                key={invitation.id}
+                onAccept={(id) => act(id, acceptTeamInvitation)}
+                onDecline={(id) => act(id, declineTeamInvitation)}
+              />
+            ))}
+            {totalPages > 1 && (
+              <div className="flex justify-end">
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPage={setPage}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

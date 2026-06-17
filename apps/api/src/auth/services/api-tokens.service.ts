@@ -20,7 +20,42 @@ export class ApiTokensService {
     private readonly prisma: PrismaService,
   ) {}
 
-  findViewerTokens(
+  async findViewerTokens(
+    userId: string,
+    {
+      includeRevoked,
+      limit = 20,
+      offset = 0,
+    }: {
+      includeRevoked?: boolean | null;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
+    const where = {
+      ...(includeRevoked ? {} : { revokedAt: null }),
+      userId,
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, tokens] = await Promise.all([
+      this.prisma.apiToken.count({ where }),
+      this.prisma.apiToken.findMany({
+        orderBy: [{ revokedAt: 'asc' }, { createdAt: 'desc' }],
+        select: apiTokenSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      tokens,
+      totalHits,
+    };
+  }
+
+  async findViewerTokenList(
     userId: string,
     {
       includeRevoked,
@@ -28,14 +63,9 @@ export class ApiTokensService {
       includeRevoked?: boolean | null;
     } = {},
   ) {
-    return this.prisma.apiToken.findMany({
-      orderBy: [{ revokedAt: 'asc' }, { createdAt: 'desc' }],
-      select: apiTokenSelect(),
-      where: {
-        ...(includeRevoked ? {} : { revokedAt: null }),
-        userId,
-      },
-    });
+    const result = await this.findViewerTokens(userId, { includeRevoked });
+
+    return result.tokens;
   }
 
   async createViewerToken(input: {
@@ -126,4 +156,12 @@ function sanitizeScopes(
     .map((scope) => scope.trim())
     .filter((scope) => scope.length > 0)
     .sort();
+}
+
+function clampInteger(value: number, minimum: number, maximum: number): number {
+  if (!Number.isFinite(value)) {
+    return minimum;
+  }
+
+  return Math.min(maximum, Math.max(minimum, Math.floor(value)));
 }

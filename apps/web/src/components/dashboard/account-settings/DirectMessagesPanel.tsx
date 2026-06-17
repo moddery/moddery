@@ -9,18 +9,22 @@ import {
 } from '../../../lib/dashboard/actions/account.ts';
 import { type DirectThread } from '../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../lib/format.ts';
+import { Pagination } from '../../Pagination.tsx';
 import { DashboardField } from './shared.tsx';
+
+const pageSize = 20;
 
 export function DirectMessagesPanel() {
   const [body, setBody] = useState('');
   const [messageBodyByThread, setMessageBodyByThread] = useState<
     Record<string, string>
   >({});
+  const [page, setPage] = useState(1);
   const [status, setStatus] = useState<string | null>(null);
   const [username, setUsername] = useState('');
   const threadsQuery = useQuery({
-    queryFn: ({ signal }) => fetchViewerDirectThreads(signal),
-    queryKey: ['dashboard', 'direct-threads'],
+    queryFn: ({ signal }) => fetchViewerDirectThreads(page, pageSize, signal),
+    queryKey: ['dashboard', 'direct-threads', page],
   });
 
   async function startThread(event: FormEvent<HTMLFormElement>) {
@@ -30,6 +34,7 @@ export function DirectMessagesPanel() {
       await createDirectThread({ body, username });
       setBody('');
       setUsername('');
+      setPage(1);
       await threadsQuery.refetch();
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : 'Message failed');
@@ -52,7 +57,9 @@ export function DirectMessagesPanel() {
     }
   }
 
-  const threads = threadsQuery.data ?? [];
+  const threads = threadsQuery.data?.threads ?? [];
+  const totalHits = threadsQuery.data?.totalHits ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
 
   return (
     <section className="mt-8 border-t border-line pt-6">
@@ -62,7 +69,9 @@ export function DirectMessagesPanel() {
             Messages
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Send direct messages to other users.
+            {threadsQuery.data
+              ? `${totalHits.toLocaleString('en-US')} direct threads`
+              : 'Send direct messages to other users.'}
           </p>
         </div>
         {status && (
@@ -101,20 +110,40 @@ export function DirectMessagesPanel() {
         ) : threads.length === 0 ? (
           <p className="text-sm text-muted">No messages yet.</p>
         ) : (
-          threads.map((thread) => (
-            <DirectThreadRow
-              key={thread.id}
-              thread={thread}
-              value={messageBodyByThread[thread.id] ?? ''}
-              onChange={(value) =>
-                setMessageBodyByThread((current) => ({
-                  ...current,
-                  [thread.id]: value,
-                }))
-              }
-              onReply={() => replyToThread(thread.id)}
-            />
-          ))
+          <>
+            {totalPages > 1 && (
+              <div className="flex justify-end">
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPage={setPage}
+                />
+              </div>
+            )}
+            {threads.map((thread) => (
+              <DirectThreadRow
+                key={thread.id}
+                thread={thread}
+                value={messageBodyByThread[thread.id] ?? ''}
+                onChange={(value) =>
+                  setMessageBodyByThread((current) => ({
+                    ...current,
+                    [thread.id]: value,
+                  }))
+                }
+                onReply={() => replyToThread(thread.id)}
+              />
+            ))}
+            {totalPages > 1 && (
+              <div className="flex justify-end">
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPage={setPage}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

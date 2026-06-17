@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
@@ -8,7 +8,10 @@ import { RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import { UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
 import { UpdateVersionInput } from '../dto/update-version.input.js';
 import { VersionsService } from '../services/versions.service.js';
-import { VersionSummary } from './version-summary.model.js';
+import {
+  VersionSearchResult,
+  VersionSummary,
+} from './version-summary.model.js';
 
 @Resolver(() => VersionSummary)
 export class VersionsResolver {
@@ -20,6 +23,30 @@ export class VersionsResolver {
     @Args('projectSlug', { type: () => String }) projectSlug: string,
   ): Promise<VersionSummary[]> {
     return this.versionsService.findByProjectSlug(projectSlug);
+  }
+
+  @Public()
+  @Query(() => VersionSearchResult)
+  async versionSearchForProject(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @Args('gameVersion', { nullable: true, type: () => String })
+    gameVersion?: string | null,
+    @Args('limit', { nullable: true, type: () => Int })
+    limit?: number | null,
+    @Args('loader', { nullable: true, type: () => String })
+    loader?: string | null,
+    @Args('offset', { nullable: true, type: () => Int })
+    offset?: number | null,
+    @Args('search', { nullable: true, type: () => String })
+    search?: string | null,
+  ): Promise<VersionSearchResult> {
+    return this.versionsService.searchByProjectSlug(projectSlug, {
+      gameVersion,
+      limit: limit ?? undefined,
+      loader,
+      offset: offset ?? undefined,
+      search,
+    });
   }
 
   @Mutation(() => VersionSummary)

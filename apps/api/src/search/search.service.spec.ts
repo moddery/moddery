@@ -28,6 +28,7 @@ describe(SearchService.name, () => {
           body: {
             hits: {
               hits: [{ _id: 'project-a' }],
+              total: { value: 23 },
             },
           },
         });
@@ -37,13 +38,16 @@ describe(SearchService.name, () => {
 
     const result = await service.searchProjects({
       search: 'sodium',
+      limit: 12,
+      offset: 24,
       tags: ['kind:MOD', 'loader:fabric', 'category:optimization'],
     });
 
-    expect(result.ids).toEqual(['project-a']);
+    expect(result).toEqual({ ids: ['project-a'], total: 23 });
     expect(searches[0]).toEqual(
       expect.objectContaining({
         body: expect.objectContaining({
+          from: 24,
           query: {
             bool: {
               filter: [
@@ -61,6 +65,7 @@ describe(SearchService.name, () => {
               ],
             },
           },
+          size: 12,
         }),
       }),
     );

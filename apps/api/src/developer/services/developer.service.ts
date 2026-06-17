@@ -19,12 +19,40 @@ export class DeveloperService {
     private readonly prisma: PrismaService,
   ) {}
 
-  findViewerOAuthClients(userId: string) {
-    return this.prisma.oAuthClient.findMany({
-      orderBy: [{ revokedAt: 'asc' }, { createdAt: 'desc' }],
-      select: oauthClientSelect(),
-      where: { ownerId: userId },
-    });
+  async findViewerOAuthClients(
+    userId: string,
+    {
+      limit = 20,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
+    const where = { ownerId: userId };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, clients] = await Promise.all([
+      this.prisma.oAuthClient.count({ where }),
+      this.prisma.oAuthClient.findMany({
+        orderBy: [{ revokedAt: 'asc' }, { createdAt: 'desc' }],
+        select: oauthClientSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      clients,
+      totalHits,
+    };
+  }
+
+  async findViewerOAuthClientList(userId: string) {
+    const result = await this.findViewerOAuthClients(userId);
+
+    return result.clients;
   }
 
   async createViewerOAuthClient({
@@ -156,4 +184,12 @@ function sanitizeScopes(
     .map((scope) => scope.trim())
     .filter((scope) => scope.length > 0)
     .sort();
+}
+
+function clampInteger(value: number, minimum: number, maximum: number): number {
+  if (!Number.isFinite(value)) {
+    return minimum;
+  }
+
+  return Math.min(maximum, Math.max(minimum, Math.floor(value)));
 }

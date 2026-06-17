@@ -9,6 +9,65 @@ describe(DeveloperService.name, () => {
     hashToken: (token: string) => `hash:${token}`,
   } as AuthTokenService;
 
+  test('loads viewer applications with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = new DeveloperService(authTokenService, {
+      oAuthClient: {
+        count: (query: unknown) => {
+          queries.push({ count: query });
+          return Promise.resolve(7);
+        },
+        findMany: (query: unknown) => {
+          queries.push({ findMany: query });
+          return Promise.resolve([oauthClientRow({ id: 'client-b' })]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findViewerOAuthClients('user-a', {
+      limit: 1,
+      offset: 2,
+    });
+
+    expect(result.totalHits).toBe(7);
+    expect(result.clients).toHaveLength(1);
+    expect(queries).toEqual([
+      {
+        count: {
+          where: { ownerId: 'user-a' },
+        },
+      },
+      {
+        findMany: expect.objectContaining({
+          orderBy: [{ revokedAt: 'asc' }, { createdAt: 'desc' }],
+          skip: 2,
+          take: 1,
+          where: { ownerId: 'user-a' },
+        }),
+      },
+    ]);
+  });
+
+  test('loads the legacy viewer application list from search results', async () => {
+    const service = new DeveloperService(authTokenService, {
+      oAuthClient: {
+        count: () => Promise.resolve(2),
+        findMany: () =>
+          Promise.resolve([
+            oauthClientRow({ id: 'client-a' }),
+            oauthClientRow({ id: 'client-b' }),
+          ]),
+      },
+    } as unknown as PrismaService);
+
+    const clients = await service.findViewerOAuthClientList('user-a');
+
+    expect(clients.map((client) => client.id)).toEqual([
+      'client-a',
+      'client-b',
+    ]);
+  });
+
   test('creates viewer applications with normalized redirect URIs', async () => {
     const creates: unknown[] = [];
     const service = new DeveloperService(authTokenService, {
@@ -114,14 +173,15 @@ describe(DeveloperService.name, () => {
 });
 
 function oauthClientRow({
+  id = 'client-a',
   revokedAt = null,
-}: { revokedAt?: Date | null } = {}) {
+}: { id?: string; revokedAt?: Date | null } = {}) {
   return {
     clientId: 'mdy_client_test',
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     description: 'Test app',
     homepageUrl: 'https://example.com',
-    id: 'client-a',
+    id,
     name: 'CLI tool',
     redirectUris: [
       {

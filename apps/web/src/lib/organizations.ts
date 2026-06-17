@@ -64,12 +64,49 @@ interface OrganizationBySlugQueryData {
   organizationBySlug: OrganizationProfile | null;
 }
 
+interface OrganizationMemberSearchQueryData {
+  organizationMemberSearch: OrganizationMemberSearchResult;
+}
+
+interface OrganizationMemberSearchQueryVariables {
+  limit: number;
+  offset: number;
+  slug: string;
+}
+
+interface OrganizationProjectSearchQueryData {
+  organizationProjectSearch: OrganizationProjectSearchResult;
+}
+
+interface OrganizationProjectSearchQueryVariables {
+  limit: number;
+  offset: number;
+  slug: string;
+}
+
 interface PublicOrganizationsQueryData {
-  publicOrganizations: OrganizationProfile[];
+  publicOrganizationSearch: PublicOrganizationsResult;
 }
 
 interface PublicOrganizationsQueryVariables {
+  limit: number;
+  offset: number;
   search?: string | null;
+}
+
+export interface PublicOrganizationsResult {
+  organizations: OrganizationProfile[];
+  totalHits: number;
+}
+
+export interface OrganizationMemberSearchResult {
+  members: OrganizationMember[];
+  totalHits: number;
+}
+
+export interface OrganizationProjectSearchResult {
+  projects: OrganizationProjectPreview[];
+  totalHits: number;
 }
 
 interface OrganizationBySlugQueryVariables {
@@ -145,20 +182,58 @@ const ORGANIZATION_BY_SLUG_QUERY = gql`
   }
 `;
 
+const ORGANIZATION_MEMBER_SEARCH_QUERY = gql`
+  query OrganizationMemberSearch($slug: String!, $limit: Int!, $offset: Int!) {
+    organizationMemberSearch(slug: $slug, limit: $limit, offset: $offset) {
+      members {
+        isOwner
+        permissions
+        role
+        sortOrder
+        user {
+          avatarUrl
+          displayName
+          id
+          username
+        }
+      }
+      totalHits
+    }
+  }
+`;
+
+const ORGANIZATION_PROJECT_SEARCH_QUERY = gql`
+  ${ORGANIZATION_PROJECT_PREVIEW_FRAGMENT}
+  query OrganizationProjectSearch($slug: String!, $limit: Int!, $offset: Int!) {
+    organizationProjectSearch(slug: $slug, limit: $limit, offset: $offset) {
+      projects {
+        ...OrganizationProjectPreviewFields
+      }
+      totalHits
+    }
+  }
+`;
+
 const PUBLIC_ORGANIZATIONS_QUERY = gql`
   ${ORGANIZATION_PROFILE_FRAGMENT}
-  query PublicOrganizations($search: String) {
-    publicOrganizations(search: $search) {
-      ...OrganizationProfileFields
+  query PublicOrganizations($search: String, $limit: Int!, $offset: Int!) {
+    publicOrganizationSearch(search: $search, limit: $limit, offset: $offset) {
+      organizations {
+        ...OrganizationProfileFields
+      }
+      totalHits
     }
   }
 `;
 
 export async function fetchPublicOrganizations(
   search?: string | null,
+  page = 1,
+  limit = 20,
   signal?: AbortSignal,
-): Promise<OrganizationProfile[]> {
+): Promise<PublicOrganizationsResult> {
   const normalizedSearch = search?.trim() ?? '';
+  const offset = Math.max(0, page - 1) * limit;
   const { data } = await apolloClient.query<
     PublicOrganizationsQueryData,
     PublicOrganizationsQueryVariables
@@ -167,11 +242,59 @@ export async function fetchPublicOrganizations(
     fetchPolicy: 'network-only',
     query: PUBLIC_ORGANIZATIONS_QUERY,
     variables: {
+      limit,
+      offset,
       search: normalizedSearch === '' ? null : normalizedSearch,
     },
   });
 
-  return data.publicOrganizations;
+  return data.publicOrganizationSearch;
+}
+
+export async function fetchOrganizationMembers(
+  slug: string,
+  page = 1,
+  limit = 24,
+  signal?: AbortSignal,
+): Promise<OrganizationMemberSearchResult> {
+  const { data } = await apolloClient.query<
+    OrganizationMemberSearchQueryData,
+    OrganizationMemberSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: ORGANIZATION_MEMBER_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      slug,
+    },
+  });
+
+  return data.organizationMemberSearch;
+}
+
+export async function fetchOrganizationProjects(
+  slug: string,
+  page = 1,
+  limit = 12,
+  signal?: AbortSignal,
+): Promise<OrganizationProjectSearchResult> {
+  const { data } = await apolloClient.query<
+    OrganizationProjectSearchQueryData,
+    OrganizationProjectSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: ORGANIZATION_PROJECT_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      slug,
+    },
+  });
+
+  return data.organizationProjectSearch;
 }
 
 export async function fetchOrganizationProfile(

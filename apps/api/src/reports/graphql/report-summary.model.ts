@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class ReportProjectTarget {
@@ -82,4 +82,13 @@ export class ReportSummary {
 
   @Field(() => String, { nullable: true })
   versionId!: string | null;
+}
+
+@ObjectType()
+export class ReportSearchResult {
+  @Field(() => [ReportSummary])
+  reports!: ReportSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }

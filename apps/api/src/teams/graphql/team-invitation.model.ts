@@ -1,4 +1,4 @@
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class TeamInvitationTarget {
@@ -31,4 +31,13 @@ export class TeamInvitationSummary {
 
   @Field(() => TeamInvitationTarget)
   target!: TeamInvitationTarget;
+}
+
+@ObjectType()
+export class TeamInvitationSearchResult {
+  @Field(() => [TeamInvitationSummary])
+  invitations!: TeamInvitationSummary[];
+
+  @Field(() => Int)
+  totalHits!: number;
 }

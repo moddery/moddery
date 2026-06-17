@@ -60,7 +60,9 @@ export function ProjectPage({
         members={page.members}
         onDownloadLatest={() => void page.downloadLatestFile()}
         onSelectTab={page.selectTab}
+        onSelectVersion={page.selectVersion}
         project={page.project}
+        selectedVersion={page.selectedVersion}
         supportedVersions={page.supportedVersions}
         versions={page.versions}
       />
