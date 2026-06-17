@@ -35,7 +35,8 @@ export function ProjectTeamManagementForm({
           Manage project team
         </h2>
         <p className="text-sm leading-6 text-muted">
-          Add an existing user to a project team or remove a non-owner member.
+          Invite an existing user to a project team or remove a non-owner
+          member.
         </p>
       </div>
 
@@ -67,7 +68,7 @@ export function ProjectTeamManagementForm({
             disabled={state.submitting}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {state.submitting ? 'Saving...' : 'Add team member'}
+            {state.submitting ? 'Saving...' : 'Invite member'}
           </button>
           <button
             type="button"

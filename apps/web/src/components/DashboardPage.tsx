@@ -3,8 +3,11 @@ import { EmptyState } from './EmptyState.tsx';
 import { AccountSecurityPanels } from './dashboard/AccountSecurityPanels.tsx';
 import {
   AccountProfileForm,
+  DirectMessagesPanel,
+  FriendsPanel,
   NotificationPreferencesPanel,
   SendNotificationPanel,
+  TeamInvitationsPanel,
 } from './dashboard/AccountSettingsPanels.tsx';
 import {
   AdminUsersPanel,
@@ -78,6 +81,12 @@ export function DashboardPage({
       <AccountProfileForm dashboard={dashboard} onUpdated={refreshDashboard} />
 
       <NotificationPreferencesPanel />
+
+      <FriendsPanel />
+
+      <TeamInvitationsPanel />
+
+      <DirectMessagesPanel />
 
       {canModerate && <SendNotificationPanel />}
 

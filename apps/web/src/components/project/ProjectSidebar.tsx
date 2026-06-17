@@ -27,6 +27,7 @@ export function ProjectSidebar({
   followState,
   latestFile,
   members,
+  onDownloadLatest,
   project,
   supportedVersions,
 }: {
@@ -34,19 +35,21 @@ export function ProjectSidebar({
   followState: ProjectFollowState | null;
   latestFile: ProjectVersion['files'][number] | undefined;
   members: ProjectMember[];
+  onDownloadLatest: () => void;
   project: ProjectDetails;
   supportedVersions: string[];
 }) {
   return (
     <aside className="lg:sticky lg:top-32 lg:self-start">
       {latestFile && (
-        <a
-          href={latestFile.url}
+        <button
+          type="button"
+          onClick={onDownloadLatest}
           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 text-sm font-bold text-white no-underline transition-colors hover:bg-accent-strong"
         >
           <Download className="size-4" />
           Download latest
-        </a>
+        </button>
       )}
       <FollowProjectButton project={project} initialState={followState} />
 

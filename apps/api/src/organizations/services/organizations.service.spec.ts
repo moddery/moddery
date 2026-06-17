@@ -130,27 +130,40 @@ describe(OrganizationsService.name, () => {
   });
 
   test('adds organization team members for member managers', async () => {
+    const notifications: unknown[] = [];
     const upserts: unknown[] = [];
-    const service = new OrganizationsService({
-      organization: {
-        findFirst: (query: { where?: { id?: string; team?: unknown } }) => {
-          if (query.where?.team !== undefined) {
-            return Promise.resolve({ id: 'org-a', teamId: 'team-a' });
-          }
+    const service = new OrganizationsService(
+      {
+        organization: {
+          findFirst: (query: { where?: { id?: string; team?: unknown } }) => {
+            if (query.where?.team !== undefined) {
+              return Promise.resolve({
+                id: 'org-a',
+                name: 'Iris Labs',
+                teamId: 'team-a',
+              });
+            }
 
-          return Promise.resolve(organizationRow());
+            return Promise.resolve(organizationRow());
+          },
         },
-      },
-      teamMember: {
-        upsert: (query: unknown) => {
-          upserts.push(query);
+        teamMember: {
+          upsert: (query: unknown) => {
+            upserts.push(query);
+            return Promise.resolve({});
+          },
+        },
+        user: {
+          findFirst: () => Promise.resolve({ id: 'user-b' }),
+        },
+      } as unknown as PrismaService,
+      {
+        sendUserNotification: (input: unknown) => {
+          notifications.push(input);
           return Promise.resolve({});
         },
-      },
-      user: {
-        findFirst: () => Promise.resolve({ id: 'user-b' }),
-      },
-    } as unknown as PrismaService);
+      } as never,
+    );
 
     const organization = await service.addOrganizationTeamMember(
       {
@@ -165,18 +178,25 @@ describe(OrganizationsService.name, () => {
     expect(upserts[0]).toEqual(
       expect.objectContaining({
         create: expect.objectContaining({
+          acceptedAt: null,
           permissions: ['MANAGE_DETAILS'],
           role: 'Maintainer',
           teamId: 'team-a',
           userId: 'user-b',
         }),
         update: {
-          acceptedAt: expect.any(Date),
           permissions: ['MANAGE_DETAILS'],
           role: 'Maintainer',
         },
       }),
     );
+    expect(notifications[0]).toEqual({
+      actionUrl: '/dashboard',
+      body: 'You were invited to collaborate with Iris Labs.',
+      title: 'Team invitation for Iris Labs',
+      type: 'team',
+      userId: 'user-b',
+    });
     expect(organization.id).toBe('org-a');
   });
 

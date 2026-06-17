@@ -8,6 +8,7 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { CollectionsModule } from './collections/collections.module.js';
 import { validateEnvironment } from './config/env.validation.js';
+import { DeveloperModule } from './developer/developer.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MailModule } from './mail/mail.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -17,6 +18,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { SearchModule } from './search/search.module.js';
 import { StorageModule } from './storage/storage.module.js';
+import { TeamsModule } from './teams/teams.module.js';
 import { UsersModule } from './users/users.module.js';
 import { VersionsModule } from './versions/versions.module.js';
 
@@ -38,6 +40,7 @@ import { VersionsModule } from './versions/versions.module.js';
     AnalyticsModule,
     CatalogModule,
     CollectionsModule,
+    DeveloperModule,
     HealthModule,
     MailModule,
     NotificationsModule,
@@ -47,6 +50,7 @@ import { VersionsModule } from './versions/versions.module.js';
     ReportsModule,
     SearchModule,
     StorageModule,
+    TeamsModule,
     UsersModule,
     VersionsModule,
   ],

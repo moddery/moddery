@@ -249,4 +249,52 @@ describe(NotificationsService.name, () => {
     ).toEqual(['EMAIL', 'IN_APP']);
     expect(notification.id).toBe('notification-a');
   });
+
+  test('sends internal notifications by user id', async () => {
+    const creates: unknown[] = [];
+    const service = new NotificationsService({
+      notification: {
+        create: (query: unknown) => {
+          creates.push(query);
+          return Promise.resolve({
+            id: 'notification-a',
+            title: 'New message',
+            type: 'message',
+          });
+        },
+      },
+      notificationPreference: {
+        findMany: () => Promise.resolve([]),
+      },
+    } as unknown as PrismaService);
+
+    const notification = await service.sendUserNotification({
+      actionUrl: '/dashboard',
+      body: 'Hello.',
+      title: 'New message',
+      type: 'message',
+      userId: 'user-b',
+    });
+
+    expect(creates[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actionUrl: '/dashboard',
+          body: 'Hello.',
+          state: 'PENDING',
+          title: 'New message',
+          type: 'message',
+          userId: 'user-b',
+        }),
+      }),
+    );
+    expect(
+      (
+        creates[0] as {
+          data: { deliveries: { create: { channel: string }[] } };
+        }
+      ).data.deliveries.create,
+    ).toEqual([{ channel: 'IN_APP' }]);
+    expect(notification.id).toBe('notification-a');
+  });
 });

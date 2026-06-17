@@ -81,6 +81,7 @@ export interface DashboardProject {
   };
   links: DashboardProjectLink[];
   loaders: string[];
+  moderationLock: DashboardModerationLock | null;
   owner?: {
     avatarUrl: string | null;
     displayName: string | null;
@@ -104,6 +105,17 @@ export interface DashboardProject {
   title: string;
   updatedAt: string;
   wikiUrl: string | null;
+}
+
+export interface DashboardModerationLock {
+  createdAt: string;
+  expiresAt: string;
+  id: string;
+  moderator: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
 }
 
 export interface DashboardProjectLink {
@@ -148,6 +160,46 @@ export interface SessionSummary {
 export interface CreatedApiToken {
   token: string;
   tokenSummary: ApiTokenSummary;
+}
+
+export interface OAuthClientRedirectUri {
+  createdAt: string;
+  id: string;
+  uri: string;
+}
+
+export interface OAuthClientSummary {
+  clientId: string | null;
+  createdAt: string;
+  description: string | null;
+  homepageUrl: string | null;
+  id: string;
+  name: string;
+  redirectUris: OAuthClientRedirectUri[];
+  revokedAt: string | null;
+  scopes: string[];
+  status: string;
+  updatedAt: string;
+}
+
+export interface CreatedOAuthClient {
+  client: OAuthClientSummary;
+  clientSecret: string;
+}
+
+export interface TeamInvitationTarget {
+  id: string;
+  name: string;
+  slug: string;
+  type: 'ORGANIZATION' | 'PROJECT';
+}
+
+export interface TeamInvitationSummary {
+  createdAt: string;
+  id: string;
+  permissions: string[];
+  role: string;
+  target: TeamInvitationTarget;
 }
 
 export interface NotificationPreference {
@@ -471,3 +523,5 @@ export interface ReportThread {
   subject: string;
   updatedAt: string;
 }
+
+export type DirectThread = ReportThread;

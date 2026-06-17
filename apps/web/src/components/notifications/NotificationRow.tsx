@@ -55,15 +55,7 @@ export function NotificationRow({
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-2">
-        {item.actionUrl && (
-          <a
-            href={item.actionUrl}
-            className="inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
-          >
-            Open
-            <ExternalLink className="size-4" />
-          </a>
-        )}
+        {item.actionUrl && <NotificationActionLink url={item.actionUrl} />}
         {unread && (
           <button
             type="button"
@@ -76,6 +68,36 @@ export function NotificationRow({
         )}
       </div>
     </article>
+  );
+}
+
+function NotificationActionLink({ url }: { url: string }) {
+  const className =
+    'inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-bold text-ink transition-colors hover:bg-control-hover';
+
+  if (url.startsWith('/')) {
+    return (
+      <a
+        href={url}
+        onClick={(event) => {
+          event.preventDefault();
+          window.history.pushState(null, '', url);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          window.scrollTo({ top: 0 });
+        }}
+        className={className}
+      >
+        Open
+        <ExternalLink className="size-4" />
+      </a>
+    );
+  }
+
+  return (
+    <a href={url} className={className}>
+      Open
+      <ExternalLink className="size-4" />
+    </a>
   );
 }
 

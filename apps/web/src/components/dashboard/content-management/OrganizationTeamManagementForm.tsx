@@ -1,11 +1,7 @@
-import { useState } from 'react';
-
-import {
-  addOrganizationTeamMember,
-  removeOrganizationTeamMember,
-  type DashboardOrganization,
-} from '../../../lib/dashboard.ts';
-import { DashboardField } from './shared.tsx';
+import { type DashboardOrganization } from '../../../lib/dashboard.ts';
+import { OrganizationTeamFields } from './organization-team/OrganizationTeamFields.tsx';
+import { OrganizationTeamMembersList } from './organization-team/OrganizationTeamMembersList.tsx';
+import { useOrganizationTeamManagementState } from './organization-team/useOrganizationTeamManagementState.ts';
 
 export function OrganizationTeamManagementForm({
   onChanged,
@@ -14,67 +10,20 @@ export function OrganizationTeamManagementForm({
   onChanged: () => Promise<void>;
   organizations: DashboardOrganization[];
 }) {
-  const [organizationId, setOrganizationId] = useState(
-    organizations[0]?.id ?? '',
+  const state = useOrganizationTeamManagementState(organizations);
+  const organization = organizations.find(
+    ({ id }) => id === state.organizationId,
   );
-  const [username, setUsername] = useState('');
-  const [role, setRole] = useState('Member');
-  const [permissions, setPermissions] = useState('MANAGE_DETAILS');
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const organization = organizations.find(({ id }) => id === organizationId);
 
   async function addMember(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSubmitting(true);
-    setMessage(null);
-
-    try {
-      const nextOrganization = await addOrganizationTeamMember({
-        organizationId,
-        permissions: splitList(permissions),
-        role,
-        username,
-      });
-      setUsername('');
-      setMessage(
-        `${nextOrganization.name} now has ${nextOrganization.memberCount.toLocaleString(
-          'en-US',
-        )} members.`,
-      );
+    if (await state.addMember(event)) {
       await onChanged();
-    } catch (caught) {
-      setMessage(
-        caught instanceof Error ? caught.message : 'Team update failed',
-      );
-    } finally {
-      setSubmitting(false);
     }
   }
 
   async function removeMember() {
-    setSubmitting(true);
-    setMessage(null);
-
-    try {
-      const nextOrganization = await removeOrganizationTeamMember({
-        organizationId,
-        username,
-      });
-      setUsername('');
-      setMessage(
-        `${nextOrganization.name} now has ${nextOrganization.memberCount.toLocaleString(
-          'en-US',
-        )} members.`,
-      );
+    if (await state.removeMember()) {
       await onChanged();
-    } catch (caught) {
-      setMessage(
-        caught instanceof Error ? caught.message : 'Team update failed',
-      );
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -89,7 +38,7 @@ export function OrganizationTeamManagementForm({
           Manage organization team
         </h2>
         <p className="text-sm leading-6 text-muted">
-          Add an existing user to an organization team or remove a non-owner
+          Invite an existing user to an organization team or remove a non-owner
           member.
         </p>
       </div>
@@ -98,88 +47,37 @@ export function OrganizationTeamManagementForm({
         onSubmit={(event) => void addMember(event)}
         className="mt-4 grid gap-3"
       >
-        <div className="grid gap-3 md:grid-cols-3">
-          <label className="grid gap-1 text-sm font-bold text-ink">
-            Organization
-            <select
-              value={organizationId}
-              onChange={(event) => setOrganizationId(event.target.value)}
-              className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
-            >
-              {organizations.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <DashboardField
-            label="Username"
-            value={username}
-            onChange={setUsername}
-            required
-          />
-          <DashboardField label="Role" value={role} onChange={setRole} />
-        </div>
-        <DashboardField
-          label="Permissions"
-          value={permissions}
-          onChange={setPermissions}
-          placeholder="MANAGE_DETAILS, VIEW_ANALYTICS"
+        <OrganizationTeamFields
+          organizationId={state.organizationId}
+          organizations={organizations}
+          permissions={state.permissions}
+          role={state.role}
+          setOrganizationId={state.setOrganizationId}
+          setPermissions={state.setPermissions}
+          setRole={state.setRole}
+          setUsername={state.setUsername}
+          username={state.username}
         />
 
-        {organization && (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {organization.members.map((member) => {
-              const name = member.user.displayName ?? member.user.username;
+        <OrganizationTeamMembersList organization={organization} />
 
-              return (
-                <div
-                  key={member.user.id}
-                  className="min-w-0 rounded-lg border border-line bg-surface px-3 py-2"
-                >
-                  <div className="truncate text-sm font-extrabold text-ink">
-                    {name}
-                  </div>
-                  <div className="truncate text-xs font-semibold text-muted">
-                    {member.role}
-                    {member.isOwner ? ' · Owner' : ''}
-                  </div>
-                  {member.permissions.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {member.permissions.map((permission) => (
-                        <span
-                          key={permission}
-                          className="rounded-md bg-control px-2 py-1 text-[11px] font-bold text-muted"
-                        >
-                          {permission}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {message && (
+        {state.message && (
           <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold text-ink">
-            {message}
+            {state.message}
           </p>
         )}
 
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={state.submitting}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Saving...' : 'Add team member'}
+            {state.submitting ? 'Saving...' : 'Invite member'}
           </button>
           <button
             type="button"
-            disabled={submitting || username.trim() === ''}
+            disabled={state.submitting || state.username.trim() === ''}
             onClick={() => void removeMember()}
             className="inline-flex h-10 items-center rounded-lg border border-line bg-control px-4 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -189,11 +87,4 @@ export function OrganizationTeamManagementForm({
       </form>
     </section>
   );
-}
-
-function splitList(value: string): string[] {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
 }

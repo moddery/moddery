@@ -8,6 +8,8 @@ import {
   UPDATE_REPORT_STATE_MUTATION,
   REPORT_THREAD_QUERY,
   CREATE_REPORT_THREAD_MESSAGE_MUTATION,
+  LOCK_PROJECT_FOR_MODERATION_MUTATION,
+  RELEASE_PROJECT_MODERATION_LOCK_MUTATION,
 } from '../graphql.js';
 import {
   type ModerationReportsQueryData,
@@ -23,6 +25,9 @@ import {
   type UpdateUserAccountMutationVariables,
   type ModerateProjectMutationData,
   type ModerateProjectMutationVariables,
+  type LockProjectForModerationMutationData,
+  type ReleaseProjectModerationLockMutationData,
+  type ProjectModerationLockMutationVariables,
 } from '../internal-types.js';
 import {
   type AdminUserAccount,
@@ -125,6 +130,42 @@ export async function moderateProject(input: {
   }
 
   return data.moderateProject;
+}
+
+export async function lockProjectForModeration(
+  projectSlug: string,
+): Promise<DashboardProject> {
+  const { data } = await apolloClient.mutate<
+    LockProjectForModerationMutationData,
+    ProjectModerationLockMutationVariables
+  >({
+    mutation: LOCK_PROJECT_FOR_MODERATION_MUTATION,
+    variables: { projectSlug },
+  });
+
+  if (!data?.lockProjectForModeration) {
+    throw new Error('Project lock did not return from the API');
+  }
+
+  return data.lockProjectForModeration;
+}
+
+export async function releaseProjectModerationLock(
+  projectSlug: string,
+): Promise<DashboardProject> {
+  const { data } = await apolloClient.mutate<
+    ReleaseProjectModerationLockMutationData,
+    ProjectModerationLockMutationVariables
+  >({
+    mutation: RELEASE_PROJECT_MODERATION_LOCK_MUTATION,
+    variables: { projectSlug },
+  });
+
+  if (!data?.releaseProjectModerationLock) {
+    throw new Error('Project lock release did not return from the API');
+  }
+
+  return data.releaseProjectModerationLock;
 }
 
 export async function fetchReportThread(

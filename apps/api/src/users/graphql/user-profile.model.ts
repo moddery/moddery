@@ -48,6 +48,9 @@ export class UserProfile {
   followedProjectCount!: number;
 
   @Field(() => Int)
+  friendCount!: number;
+
+  @Field(() => Int)
   projectCount!: number;
 
   @Field(() => [ProjectSummary])

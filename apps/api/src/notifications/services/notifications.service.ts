@@ -147,6 +147,42 @@ export class NotificationsService {
     });
   }
 
+  async sendUserNotification({
+    actionUrl,
+    body,
+    title,
+    type,
+    userId,
+  }: {
+    actionUrl: string | null;
+    body: string | null;
+    title: string;
+    type: string;
+    userId: string;
+  }) {
+    const normalizedType = requiredTrim(
+      type,
+      'Notification type is required',
+    ).toLowerCase();
+    const preferences = await this.enabledPreferences(userId, normalizedType);
+
+    return this.prisma.notification.create({
+      data: {
+        actionUrl,
+        body,
+        deliveries: {
+          create: preferences.map((preference) => ({
+            channel: preference.channel,
+          })),
+        },
+        state: 'PENDING',
+        title: requiredTrim(title, 'Notification title is required'),
+        type: normalizedType,
+        userId,
+      },
+    });
+  }
+
   private async enabledPreferences(userId: string, type: string) {
     const saved = await this.prisma.notificationPreference.findMany({
       where: { type, userId },
@@ -200,6 +236,8 @@ function defaultPreferences() {
     { channel: NotificationChannel.EMAIL, enabled: true, type: 'project' },
     { channel: NotificationChannel.IN_APP, enabled: true, type: 'moderation' },
     { channel: NotificationChannel.EMAIL, enabled: false, type: 'moderation' },
+    { channel: NotificationChannel.IN_APP, enabled: true, type: 'message' },
+    { channel: NotificationChannel.EMAIL, enabled: false, type: 'message' },
     { channel: NotificationChannel.IN_APP, enabled: true, type: 'team' },
     { channel: NotificationChannel.EMAIL, enabled: true, type: 'team' },
   ];

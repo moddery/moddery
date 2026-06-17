@@ -104,6 +104,7 @@ export interface ProjectSummaryContract {
   readonly title: string;
   readonly owner?: ProjectOwnerContract | null;
   readonly organization?: ProjectOrganizationContract | null;
+  readonly moderationLock?: ProjectModerationLockContract | null;
   readonly approvedAt?: string | null;
   readonly archivedAt?: string | null;
   readonly publishedAt?: string | null;
@@ -126,6 +127,17 @@ export interface ProjectSummaryContract {
   readonly sourceUrl?: string | null;
   readonly updatedAt: string;
   readonly wikiUrl?: string | null;
+}
+
+export interface ProjectModerationLockContract {
+  readonly createdAt: string;
+  readonly expiresAt: string;
+  readonly id: string;
+  readonly moderator: {
+    readonly displayName?: string | null;
+    readonly id: string;
+    readonly username: string;
+  };
 }
 
 export interface ProjectOwnerContract {

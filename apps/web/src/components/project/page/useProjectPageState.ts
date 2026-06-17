@@ -7,6 +7,7 @@ import {
   fetchProjectMembers,
   fetchProjectVersions,
   fetchViewerProjectFollowState,
+  recordDownload,
   recordProjectView,
 } from '../../../lib/catalog.ts';
 import { compareVersions } from '../../../lib/format.ts';
@@ -109,6 +110,15 @@ export function useProjectPageState({
     version.changelog?.trim(),
   );
 
+  async function downloadLatestFile() {
+    if (latestFile === undefined) {
+      return;
+    }
+
+    await recordDownload(latestFile.id);
+    window.location.assign(latestFile.url);
+  }
+
   return {
     activeTab,
     analytics,
@@ -119,6 +129,7 @@ export function useProjectPageState({
     gallery,
     latestFile,
     members,
+    downloadLatestFile,
     project,
     projectQuery,
     projectType,

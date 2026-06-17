@@ -2,6 +2,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { isGameVersionTag, type ProjectSummaryContract } from '@moddery/shared';
 import {
@@ -14,6 +15,7 @@ import {
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SearchService } from '../../search/search.service.js';
+import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { type AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.js';
 import { type AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
 import { type CatalogQueryInput } from '../dto/catalog-query.input.js';
@@ -46,6 +48,16 @@ interface ProjectRow {
   license: { key: string; name: string; url: string | null } | null;
   links: { kind: string; label: string | null; url: string }[];
   loaders: { loader: ProjectSummaryContract['loaders'][number] }[];
+  moderationLock: {
+    createdAt: Date;
+    expiresAt: Date;
+    id: string;
+    moderator: {
+      displayName: string | null;
+      id: string;
+      username: string;
+    };
+  } | null;
   organization: {
     color: string | null;
     iconUrl: string | null;
@@ -129,6 +141,8 @@ export class CatalogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
   ) {}
 
   async findProjects(
@@ -368,6 +382,80 @@ export class CatalogService {
     return contract;
   }
 
+  async lockProjectForModeration(
+    projectSlug: string,
+    moderatorId: string,
+  ): Promise<ProjectSummaryContract> {
+    const project = await this.prisma.project.findUnique({
+      select: { id: true },
+      where: { slug: projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+
+    await this.prisma.moderationLock.upsert({
+      create: {
+        expiresAt,
+        moderatorId,
+        projectId: project.id,
+      },
+      update: {
+        expiresAt,
+        moderatorId,
+      },
+      where: { projectId: project.id },
+    });
+
+    const updated = await this.prisma.project.findUniqueOrThrow({
+      select: projectSelect(),
+      where: { id: project.id },
+    });
+
+    return projectRowToContract(updated);
+  }
+
+  async releaseProjectModerationLock(
+    projectSlug: string,
+    moderatorId: string,
+  ): Promise<ProjectSummaryContract> {
+    const project = await this.prisma.project.findUnique({
+      select: {
+        id: true,
+        moderationLock: {
+          select: { moderatorId: true },
+        },
+      },
+      where: { slug: projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (
+      project.moderationLock !== null &&
+      project.moderationLock.moderatorId !== moderatorId
+    ) {
+      throw new ForbiddenException('Only the lock owner can release this lock');
+    }
+
+    await this.prisma.moderationLock.deleteMany({
+      where: { projectId: project.id },
+    });
+
+    const updated = await this.prisma.project.findUniqueOrThrow({
+      select: projectSelect(),
+      where: { id: project.id },
+    });
+
+    return projectRowToContract(updated);
+  }
+
   async addProjectGalleryImage(
     input: AddProjectGalleryImageInput,
     userId: string,
@@ -467,6 +555,7 @@ export class CatalogService {
       select: {
         id: true,
         teamId: true,
+        title: true,
       },
       where: {
         slug: projectSlug,
@@ -545,14 +634,13 @@ export class CatalogService {
 
     await this.prisma.teamMember.upsert({
       create: {
-        acceptedAt: new Date(),
+        acceptedAt: null,
         permissions: projectMemberPermissions(input.permissions),
         role: input.role.trim() || 'Member',
         teamId: project.teamId,
         userId: user.id,
       },
       update: {
-        acceptedAt: new Date(),
         permissions: projectMemberPermissions(input.permissions),
         role: input.role.trim() || 'Member',
       },
@@ -564,7 +652,25 @@ export class CatalogService {
       },
     });
 
+    await this.sendTeamInviteNotification({
+      targetName: project.title,
+      userId: user.id,
+    });
+
     return this.findProjectMembers(input.projectSlug);
+  }
+
+  private async sendTeamInviteNotification(input: {
+    targetName: string;
+    userId: string;
+  }) {
+    await this.notificationsService?.sendUserNotification({
+      actionUrl: `/dashboard`,
+      body: `You were invited to collaborate on ${input.targetName}.`,
+      title: `Team invitation for ${input.targetName}`,
+      type: 'team',
+      userId: input.userId,
+    });
   }
 
   async removeProjectTeamMember(
@@ -745,6 +851,20 @@ function projectSelect() {
     },
     loaders: {
       select: { loader: true },
+    },
+    moderationLock: {
+      select: {
+        createdAt: true,
+        expiresAt: true,
+        id: true,
+        moderator: {
+          select: {
+            displayName: true,
+            id: true,
+            username: true,
+          },
+        },
+      },
     },
     organization: {
       select: {
@@ -1055,6 +1175,14 @@ function projectRowToContract(project: ProjectRow): ProjectSummaryContract {
     },
     links: projectLinksToContract(project),
     loaders: project.loaders.map(({ loader }) => loader),
+    moderationLock:
+      project.moderationLock === null
+        ? null
+        : {
+            ...project.moderationLock,
+            createdAt: project.moderationLock.createdAt.toISOString(),
+            expiresAt: project.moderationLock.expiresAt.toISOString(),
+          },
     organization: project.organization,
     owner: project.team.members[0]?.user ?? null,
     publishedAt: project.publishedAt?.toISOString() ?? null,

@@ -83,6 +83,21 @@ export class ProjectOrganization {
 }
 
 @ObjectType()
+export class ProjectModerationLock {
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => Date)
+  expiresAt!: Date;
+
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => ProjectOwner)
+  moderator!: ProjectOwner;
+}
+
+@ObjectType()
 export class ProjectSummary {
   @Field(() => String)
   body!: string;
@@ -113,6 +128,9 @@ export class ProjectSummary {
 
   @Field(() => ProjectOrganization, { nullable: true })
   organization?: ProjectOrganization | null;
+
+  @Field(() => ProjectModerationLock, { nullable: true })
+  moderationLock?: ProjectModerationLock | null;
 
   @Field(() => Date, { nullable: true })
   approvedAt!: Date | null;

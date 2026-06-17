@@ -44,6 +44,12 @@ enum FileKind {
   SERVER
 }
 
+enum FriendState {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
 enum HashAlgorithm {
   SHA1
   SHA256
@@ -87,6 +93,11 @@ enum NotificationState {
   SENT
   READ
   FAILED
+}
+
+enum OAuthClientStatus {
+  ACTIVE
+  REVOKED
 }
 
 enum ProjectKind {
@@ -157,6 +168,8 @@ model User {
   emailVerifiedAt         DateTime?
   bio                     String?
   avatarUrl               String?
+  friendRequestsReceived  Friend[]                 @relation("FriendAddressee")
+  friendRequestsSent      Friend[]                 @relation("FriendRequester")
   role                    AccountRole              @default(USER)
   status                  AccountStatus            @default(ACTIVE)
   twoFactorEnabled        Boolean                  @default(false)
@@ -168,10 +181,12 @@ model User {
   collections             Collection[]
   collectionItemsAdded    CollectionProject[]
   moderationActions       ModerationAction[]
+  moderationLocks         ModerationLock[]
   moderationNotesAuthored ModerationNote[]         @relation("ModerationNotesAuthored")
   moderationNotesReceived ModerationNote[]         @relation("ModerationNotesReceived")
   notificationPreferences NotificationPreference[]
   notifications           Notification[]
+  oauthClients            OAuthClient[]
   ownedOrganizations      Organization[]
   projectFollows          ProjectFollow[]
   projectViews            ProjectViewEvent[]
@@ -187,6 +202,23 @@ model User {
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+model Friend {
+  id          String      @id @default(cuid())
+  requesterId String
+  addresseeId String
+  state       FriendState @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  acceptedAt  DateTime?
+  requester   User        @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User        @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, state])
+  @@index([requesterId, state])
+  @@map("friends")
 }
 
 model PasswordCredential {
@@ -242,6 +274,37 @@ model ApiToken {
 
   @@index([userId])
   @@map("api_tokens")
+}
+
+model OAuthClient {
+  id               String                   @id @default(cuid())
+  ownerId          String
+  clientId         String                   @unique
+  clientSecretHash String
+  name             String
+  description      String?
+  homepageUrl      String?
+  status           OAuthClientStatus        @default(ACTIVE)
+  scopes           String[]                 @default([])
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  revokedAt        DateTime?
+  owner            User                     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  redirectUris     OAuthClientRedirectUri[]
+
+  @@index([ownerId, status])
+  @@map("oauth_clients")
+}
+
+model OAuthClientRedirectUri {
+  id        String      @id @default(cuid())
+  clientId  String
+  uri       String
+  createdAt DateTime    @default(now())
+  client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, uri])
+  @@map("oauth_client_redirect_uris")
 }
 
 model Team {
@@ -329,6 +392,7 @@ model Project {
   license            License?              @relation(fields: [licenseId], references: [id], onDelete: SetNull)
   loaders            ProjectLoader[]
   moderationActions  ModerationAction[]
+  moderationLock     ModerationLock?
   organization       Organization?         @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   projectCollections CollectionProject[]
   reports            Report[]
@@ -666,6 +730,21 @@ model ModerationAction {
   @@index([moderatorId])
   @@index([projectId])
   @@map("moderation_actions")
+}
+
+model ModerationLock {
+  id          String   @id @default(cuid())
+  moderatorId String
+  projectId   String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  moderator   User     @relation(fields: [moderatorId], references: [id], onDelete: Cascade)
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([moderatorId])
+  @@index([expiresAt])
+  @@map("moderation_locks")
 }
 
 model ModerationNote {

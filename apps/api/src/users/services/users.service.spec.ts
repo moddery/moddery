@@ -22,6 +22,8 @@ describe(UsersService.name, () => {
             displayName: 'Creator',
             email: 'creator@example.test',
             emailVerifiedAt: null,
+            friendRequestsReceived: [],
+            friendRequestsSent: [],
             id: 'user-a',
             newsletterOptIn: true,
             role: 'USER',
@@ -79,6 +81,8 @@ describe(UsersService.name, () => {
             displayName: null,
             email: 'moderator@example.test',
             emailVerifiedAt: null,
+            friendRequestsReceived: [],
+            friendRequestsSent: [],
             id: where.id,
             newsletterOptIn: false,
             role: 'MODERATOR',
@@ -112,5 +116,157 @@ describe(UsersService.name, () => {
     });
     expect(profile.role).toBe('MODERATOR');
     expect(profile.status).toBe('SUSPENDED');
+  });
+
+  test('accepts an incoming friend request when sending one back', async () => {
+    const updates: unknown[] = [];
+    const service = new UsersService({
+      friend: {
+        findFirst: () =>
+          Promise.resolve({
+            acceptedAt: null,
+            addressee: {
+              avatarUrl: null,
+              displayName: 'Creator',
+              id: 'user-a',
+              username: 'creator',
+            },
+            addresseeId: 'user-a',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            id: 'friend-a',
+            requester: {
+              avatarUrl: null,
+              displayName: 'Builder',
+              id: 'user-b',
+              username: 'builder',
+            },
+            requesterId: 'user-b',
+            state: 'PENDING',
+          }),
+        update: (query: unknown) => {
+          updates.push(query);
+          return Promise.resolve({
+            acceptedAt: new Date('2026-01-02T00:00:00.000Z'),
+            addressee: {
+              avatarUrl: null,
+              displayName: 'Creator',
+              id: 'user-a',
+              username: 'creator',
+            },
+            addresseeId: 'user-a',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            id: 'friend-a',
+            requester: {
+              avatarUrl: null,
+              displayName: 'Builder',
+              id: 'user-b',
+              username: 'builder',
+            },
+            requesterId: 'user-b',
+            state: 'ACCEPTED',
+          });
+        },
+      },
+      user: {
+        findFirst: () =>
+          Promise.resolve({
+            avatarUrl: null,
+            displayName: 'Builder',
+            id: 'user-b',
+            username: 'builder',
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const friendship = await service.sendFriendRequest('user-a', 'builder');
+
+    expect(updates[0]).toEqual({
+      data: {
+        acceptedAt: expect.any(Date) as Date,
+        state: 'ACCEPTED',
+      },
+      select: expect.any(Object) as object,
+      where: { id: 'friend-a' },
+    });
+    expect(friendship.direction).toBe('MUTUAL');
+    expect(friendship.state).toBe('ACCEPTED');
+    expect(friendship.user.username).toBe('builder');
+  });
+
+  test('blocks an existing friend relationship as the viewer', async () => {
+    const updates: unknown[] = [];
+    const service = new UsersService({
+      friend: {
+        findFirst: () =>
+          Promise.resolve({
+            acceptedAt: new Date('2026-01-02T00:00:00.000Z'),
+            addressee: {
+              avatarUrl: null,
+              displayName: 'Builder',
+              id: 'user-b',
+              username: 'builder',
+            },
+            addresseeId: 'user-b',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            id: 'friend-a',
+            requester: {
+              avatarUrl: null,
+              displayName: 'Creator',
+              id: 'user-a',
+              username: 'creator',
+            },
+            requesterId: 'user-a',
+            state: 'ACCEPTED',
+          }),
+        update: (query: unknown) => {
+          updates.push(query);
+          return Promise.resolve({
+            acceptedAt: null,
+            addressee: {
+              avatarUrl: null,
+              displayName: 'Builder',
+              id: 'user-b',
+              username: 'builder',
+            },
+            addresseeId: 'user-b',
+            createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            id: 'friend-a',
+            requester: {
+              avatarUrl: null,
+              displayName: 'Creator',
+              id: 'user-a',
+              username: 'creator',
+            },
+            requesterId: 'user-a',
+            state: 'BLOCKED',
+          });
+        },
+      },
+      user: {
+        findFirst: () =>
+          Promise.resolve({
+            avatarUrl: null,
+            displayName: 'Builder',
+            id: 'user-b',
+            username: 'builder',
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const friendship = await service.blockUser('user-a', 'builder');
+
+    expect(updates[0]).toEqual({
+      data: {
+        acceptedAt: null,
+        addresseeId: 'user-b',
+        requesterId: 'user-a',
+        state: 'BLOCKED',
+      },
+      select: expect.any(Object) as object,
+      where: { id: 'friend-a' },
+    });
+    expect(friendship.direction).toBe('OUTGOING');
+    expect(friendship.state).toBe('BLOCKED');
+    expect(friendship.user.username).toBe('builder');
   });
 });

@@ -2,10 +2,12 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { type ProjectKind, type ProjectStatus } from '@moddery/shared';
 import { TeamPermission } from '@prisma/client';
 
+import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type AddOrganizationTeamMemberInput } from '../dto/add-organization-team-member.input.js';
 import { type AddProjectToOrganizationInput } from '../dto/add-project-to-organization.input.js';
@@ -102,7 +104,11 @@ interface OrganizationRow {
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
+  ) {}
 
   async addProjectToOrganization(
     input: AddProjectToOrganizationInput,
@@ -210,14 +216,13 @@ export class OrganizationsService {
 
     await this.prisma.teamMember.upsert({
       create: {
-        acceptedAt: new Date(),
+        acceptedAt: null,
         permissions: organizationMemberPermissions(input.permissions),
         role: input.role.trim() || 'Member',
         teamId: organization.teamId,
         userId: user.id,
       },
       update: {
-        acceptedAt: new Date(),
         permissions: organizationMemberPermissions(input.permissions),
         role: input.role.trim() || 'Member',
       },
@@ -229,7 +234,25 @@ export class OrganizationsService {
       },
     });
 
+    await this.sendTeamInviteNotification({
+      organizationName: organization.name,
+      userId: user.id,
+    });
+
     return this.findViewerOrganization(organization.id, userId);
+  }
+
+  private async sendTeamInviteNotification(input: {
+    organizationName: string;
+    userId: string;
+  }) {
+    await this.notificationsService?.sendUserNotification({
+      actionUrl: `/dashboard`,
+      body: `You were invited to collaborate with ${input.organizationName}.`,
+      title: `Team invitation for ${input.organizationName}`,
+      type: 'team',
+      userId: input.userId,
+    });
   }
 
   async findPublicOrganizations() {
@@ -401,6 +424,7 @@ export class OrganizationsService {
     const organization = await this.prisma.organization.findFirst({
       select: {
         id: true,
+        name: true,
         teamId: true,
       },
       where: {

@@ -1,10 +1,11 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { type ProjectKind, type ProjectStatus } from '@moddery/shared';
-import { AccountRole, AccountStatus } from '@prisma/client';
+import { AccountRole, AccountStatus, FriendState } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type UpdateUserAccountInput } from '../dto/update-user-account.input.js';
@@ -102,6 +103,8 @@ interface UserProfileRow {
   displayName: string | null;
   email: string | null;
   emailVerifiedAt: Date | null;
+  friendRequestsReceived: { id: string }[];
+  friendRequestsSent: { id: string }[];
   id: string;
   newsletterOptIn: boolean;
   role: string;
@@ -112,6 +115,24 @@ interface UserProfileRow {
     };
   }[];
   twoFactorEnabled: boolean;
+  username: string;
+}
+
+interface FriendshipRow {
+  acceptedAt: Date | null;
+  addressee: FriendshipUserRow;
+  addresseeId: string;
+  createdAt: Date;
+  id: string;
+  requester: FriendshipUserRow;
+  requesterId: string;
+  state: FriendState;
+}
+
+interface FriendshipUserRow {
+  avatarUrl: string | null;
+  displayName: string | null;
+  id: string;
   username: string;
 }
 
@@ -220,6 +241,201 @@ export class UsersService {
 
     return updated;
   }
+
+  async findViewerFriendship(viewerId: string, username: string) {
+    const target = await this.findFriendTarget(username);
+    if (target === null || target.id === viewerId) return null;
+
+    const friendship = await this.findFriendshipBetween(viewerId, target.id);
+    return friendship === null
+      ? null
+      : friendshipRowToContract(friendship, viewerId);
+  }
+
+  async findViewerFriends(viewerId: string) {
+    const friendships = await this.prisma.friend.findMany({
+      orderBy: [{ acceptedAt: 'desc' }, { createdAt: 'desc' }],
+      select: friendshipSelect(),
+      take: 100,
+      where: {
+        state: FriendState.ACCEPTED,
+        OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
+      },
+    });
+
+    return friendships.map((friendship) =>
+      friendshipRowToContract(friendship, viewerId),
+    );
+  }
+
+  async findViewerFriendRequests(viewerId: string) {
+    const friendships = await this.prisma.friend.findMany({
+      orderBy: [{ createdAt: 'desc' }],
+      select: friendshipSelect(),
+      take: 100,
+      where: {
+        state: FriendState.PENDING,
+        OR: [{ requesterId: viewerId }, { addresseeId: viewerId }],
+      },
+    });
+
+    return friendships.map((friendship) =>
+      friendshipRowToContract(friendship, viewerId),
+    );
+  }
+
+  async findViewerBlockedUsers(viewerId: string) {
+    const friendships = await this.prisma.friend.findMany({
+      orderBy: [{ updatedAt: 'desc' }],
+      select: friendshipSelect(),
+      take: 100,
+      where: {
+        requesterId: viewerId,
+        state: FriendState.BLOCKED,
+      },
+    });
+
+    return friendships.map((friendship) =>
+      friendshipRowToContract(friendship, viewerId),
+    );
+  }
+
+  async sendFriendRequest(viewerId: string, username: string) {
+    const target = await this.findFriendTarget(username);
+    if (target === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (target.id === viewerId) {
+      throw new BadRequestException('Cannot add yourself as a friend');
+    }
+
+    const existing = await this.findFriendshipBetween(viewerId, target.id);
+    if (existing !== null) {
+      if (
+        existing.state === FriendState.PENDING &&
+        existing.requesterId === target.id
+      ) {
+        return this.acceptFriendRequest(viewerId, username);
+      }
+
+      return friendshipRowToContract(existing, viewerId);
+    }
+
+    const friendship = await this.prisma.friend.create({
+      data: {
+        addresseeId: target.id,
+        requesterId: viewerId,
+      },
+      select: friendshipSelect(),
+    });
+
+    return friendshipRowToContract(friendship, viewerId);
+  }
+
+  async acceptFriendRequest(viewerId: string, username: string) {
+    const target = await this.findFriendTarget(username);
+    if (target === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    const existing = await this.prisma.friend.findFirst({
+      select: friendshipSelect(),
+      where: {
+        addresseeId: viewerId,
+        requesterId: target.id,
+        state: FriendState.PENDING,
+      },
+    });
+
+    if (existing === null) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    const friendship = await this.prisma.friend.update({
+      data: {
+        acceptedAt: new Date(),
+        state: FriendState.ACCEPTED,
+      },
+      select: friendshipSelect(),
+      where: { id: existing.id },
+    });
+
+    return friendshipRowToContract(friendship, viewerId);
+  }
+
+  async removeFriend(viewerId: string, username: string) {
+    const target = await this.findFriendTarget(username);
+    if (target === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    const existing = await this.findFriendshipBetween(viewerId, target.id);
+    if (existing === null) return true;
+
+    await this.prisma.friend.delete({ where: { id: existing.id } });
+    return true;
+  }
+
+  async blockUser(viewerId: string, username: string) {
+    const target = await this.findFriendTarget(username);
+    if (target === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (target.id === viewerId) {
+      throw new BadRequestException('Cannot block yourself');
+    }
+
+    const existing = await this.findFriendshipBetween(viewerId, target.id);
+    if (existing !== null) {
+      const friendship = await this.prisma.friend.update({
+        data: {
+          acceptedAt: null,
+          addresseeId: target.id,
+          requesterId: viewerId,
+          state: FriendState.BLOCKED,
+        },
+        select: friendshipSelect(),
+        where: { id: existing.id },
+      });
+
+      return friendshipRowToContract(friendship, viewerId);
+    }
+
+    const friendship = await this.prisma.friend.create({
+      data: {
+        addresseeId: target.id,
+        requesterId: viewerId,
+        state: FriendState.BLOCKED,
+      },
+      select: friendshipSelect(),
+    });
+
+    return friendshipRowToContract(friendship, viewerId);
+  }
+
+  private findFriendTarget(username: string) {
+    return this.prisma.user.findFirst({
+      select: friendshipUserSelect(),
+      where: {
+        status: AccountStatus.ACTIVE,
+        username: { equals: username, mode: 'insensitive' },
+      },
+    });
+  }
+
+  private findFriendshipBetween(userId: string, targetId: string) {
+    return this.prisma.friend.findFirst({
+      select: friendshipSelect(),
+      where: {
+        OR: [
+          { addresseeId: targetId, requesterId: userId },
+          { addresseeId: userId, requesterId: targetId },
+        ],
+      },
+    });
+  }
 }
 
 function nullableTrim(value: string | null | undefined): string | null {
@@ -302,6 +518,14 @@ function userProfileSelect({
     displayName: true,
     email: includePrivateAccountFields,
     emailVerifiedAt: includePrivateAccountFields,
+    friendRequestsReceived: {
+      select: { id: true },
+      where: { state: 'ACCEPTED' as const },
+    },
+    friendRequestsSent: {
+      select: { id: true },
+      where: { state: 'ACCEPTED' as const },
+    },
     id: true,
     newsletterOptIn: includePrivateAccountFields,
     role: true,
@@ -476,6 +700,8 @@ function userProfileRowToContract(
     email: includePrivateAccountFields ? user.email : null,
     emailVerifiedAt: includePrivateAccountFields ? user.emailVerifiedAt : null,
     followedProjectCount: user._count.projectFollows,
+    friendCount:
+      user.friendRequestsReceived.length + user.friendRequestsSent.length,
     id: user.id,
     newsletterOptIn: includePrivateAccountFields ? user.newsletterOptIn : false,
     projectCount: user._count.teamMemberships,
@@ -488,6 +714,51 @@ function userProfileRowToContract(
       ? user.twoFactorEnabled
       : false,
     username: user.username,
+  };
+}
+
+function friendshipSelect() {
+  return {
+    acceptedAt: true,
+    addressee: { select: friendshipUserSelect() },
+    addresseeId: true,
+    createdAt: true,
+    id: true,
+    requester: { select: friendshipUserSelect() },
+    requesterId: true,
+    state: true,
+  };
+}
+
+function friendshipUserSelect() {
+  return {
+    avatarUrl: true,
+    displayName: true,
+    id: true,
+    username: true,
+  };
+}
+
+function friendshipRowToContract(friendship: FriendshipRow, viewerId: string) {
+  const viewerIsRequester = friendship.requesterId === viewerId;
+  const user = viewerIsRequester ? friendship.addressee : friendship.requester;
+
+  return {
+    acceptedAt: friendship.acceptedAt,
+    createdAt: friendship.createdAt,
+    direction:
+      friendship.state === FriendState.BLOCKED
+        ? viewerIsRequester
+          ? 'OUTGOING'
+          : 'INCOMING'
+        : friendship.state === FriendState.ACCEPTED
+          ? 'MUTUAL'
+          : viewerIsRequester
+            ? 'OUTGOING'
+            : 'INCOMING',
+    id: friendship.id,
+    state: friendship.state,
+    user,
   };
 }
 

@@ -8,6 +8,10 @@ import {
   CreateProjectModerationNoteInput,
   CreateUserModerationNoteInput,
 } from './create-moderation-note.input.js';
+import {
+  CreateDirectThreadInput,
+  CreateDirectThreadMessageInput,
+} from './create-direct-thread-message.input.js';
 import { CreateReportThreadMessageInput } from './create-report-thread-message.input.js';
 import {
   CreateProjectReportInput,
@@ -36,6 +40,11 @@ export class ReportsResolver {
   ) {
     assertCanModerate(user);
     return this.reportsService.findReportThread(reportId);
+  }
+
+  @Query(() => [ThreadSummary])
+  viewerDirectThreads(@CurrentUser() user: AuthenticatedUser) {
+    return this.reportsService.findViewerDirectThreads(user.id);
   }
 
   @Query(() => [ModerationNoteSummary])
@@ -117,6 +126,30 @@ export class ReportsResolver {
       authorId: user.id,
       body: input.body,
       reportId: input.reportId,
+    });
+  }
+
+  @Mutation(() => ThreadSummary)
+  createDirectThread(
+    @Args('input') input: CreateDirectThreadInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.reportsService.createDirectThread({
+      authorId: user.id,
+      body: input.body,
+      username: input.username,
+    });
+  }
+
+  @Mutation(() => ThreadSummary)
+  createDirectThreadMessage(
+    @Args('input') input: CreateDirectThreadMessageInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.reportsService.createDirectThreadMessage({
+      authorId: user.id,
+      body: input.body,
+      threadId: input.threadId,
     });
   }
 

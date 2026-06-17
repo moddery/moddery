@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 import { type ProjectKind, type ReportReason } from '@moddery/shared';
 
-import { apolloClient } from '../apollo.js';
+import { apolloClient, authTokenStorageKey } from '../apollo.js';
 import { type Mod } from '../types.js';
 import { projectTypeFromKind } from './projectTypes.js';
 
@@ -13,6 +13,7 @@ export interface PublicUserProfile {
   createdAt: string;
   displayName: string | null;
   followedProjectCount: number;
+  friendCount: number;
   id: string;
   isAdmin: boolean;
   projectCount: number;
@@ -72,6 +73,20 @@ export interface UserReportSummary {
   versionId: string | null;
 }
 
+export interface FriendshipSummary {
+  acceptedAt: string | null;
+  createdAt: string;
+  direction: 'INCOMING' | 'OUTGOING' | 'MUTUAL';
+  id: string;
+  state: 'PENDING' | 'ACCEPTED' | 'BLOCKED';
+  user: {
+    avatarUrl: string | null;
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+}
+
 interface UserByUsernameQueryData {
   userByUsername: PublicUserProfile | null;
 }
@@ -90,6 +105,35 @@ interface CreateUserReportMutationVariables {
     reason: ReportReason;
     username: string;
   };
+}
+
+interface ViewerFriendshipQueryData {
+  viewer: { username: string } | null;
+  viewerFriendship: FriendshipSummary | null;
+}
+
+interface ViewerFriendshipsQueryData {
+  viewerBlockedUsers?: FriendshipSummary[];
+  viewerFriendRequests?: FriendshipSummary[];
+  viewerFriends?: FriendshipSummary[];
+}
+
+interface ViewerFriendshipQueryVariables {
+  username: string;
+}
+
+interface FriendshipMutationData {
+  blockUser?: FriendshipSummary;
+  acceptFriendRequest?: FriendshipSummary;
+  sendFriendRequest?: FriendshipSummary;
+}
+
+interface FriendshipMutationVariables {
+  username: string;
+}
+
+interface RemoveFriendMutationData {
+  removeFriend: boolean;
 }
 
 const USER_BY_USERNAME_QUERY = gql`
@@ -137,6 +181,7 @@ const USER_BY_USERNAME_QUERY = gql`
       createdAt
       displayName
       followedProjectCount
+      friendCount
       id
       isAdmin
       projectCount
@@ -169,6 +214,153 @@ const USER_BY_USERNAME_QUERY = gql`
       }
       role
       username
+    }
+  }
+`;
+
+const VIEWER_FRIENDSHIP_QUERY = gql`
+  fragment FriendshipSummaryFields on FriendshipSummary {
+    acceptedAt
+    createdAt
+    direction
+    id
+    state
+    user {
+      avatarUrl
+      displayName
+      id
+      username
+    }
+  }
+
+  query ViewerFriendship($username: String!) {
+    viewer {
+      username
+    }
+    viewerFriendship(username: $username) {
+      ...FriendshipSummaryFields
+    }
+  }
+`;
+
+const SEND_FRIEND_REQUEST_MUTATION = gql`
+  fragment SendFriendRequestFields on FriendshipSummary {
+    acceptedAt
+    createdAt
+    direction
+    id
+    state
+    user {
+      avatarUrl
+      displayName
+      id
+      username
+    }
+  }
+
+  mutation SendFriendRequest($username: String!) {
+    sendFriendRequest(username: $username) {
+      ...SendFriendRequestFields
+    }
+  }
+`;
+
+const ACCEPT_FRIEND_REQUEST_MUTATION = gql`
+  fragment AcceptFriendRequestFields on FriendshipSummary {
+    acceptedAt
+    createdAt
+    direction
+    id
+    state
+    user {
+      avatarUrl
+      displayName
+      id
+      username
+    }
+  }
+
+  mutation AcceptFriendRequest($username: String!) {
+    acceptFriendRequest(username: $username) {
+      ...AcceptFriendRequestFields
+    }
+  }
+`;
+
+const VIEWER_FRIENDS_QUERY = gql`
+  query ViewerFriends {
+    viewerFriends {
+      acceptedAt
+      createdAt
+      direction
+      id
+      state
+      user {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+    }
+  }
+`;
+
+const VIEWER_FRIEND_REQUESTS_QUERY = gql`
+  query ViewerFriendRequests {
+    viewerFriendRequests {
+      acceptedAt
+      createdAt
+      direction
+      id
+      state
+      user {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+    }
+  }
+`;
+
+const VIEWER_BLOCKED_USERS_QUERY = gql`
+  query ViewerBlockedUsers {
+    viewerBlockedUsers {
+      acceptedAt
+      createdAt
+      direction
+      id
+      state
+      user {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+    }
+  }
+`;
+
+const REMOVE_FRIEND_MUTATION = gql`
+  mutation RemoveFriend($username: String!) {
+    removeFriend(username: $username)
+  }
+`;
+
+const BLOCK_USER_MUTATION = gql`
+  mutation BlockUser($username: String!) {
+    blockUser(username: $username) {
+      acceptedAt
+      createdAt
+      direction
+      id
+      state
+      user {
+        avatarUrl
+        displayName
+        id
+        username
+      }
     }
   }
 `;
@@ -224,6 +416,124 @@ export async function createUserReport(input: {
   }
 
   return data.createUserReport;
+}
+
+export async function fetchViewerFriendship(username: string): Promise<{
+  friendship: FriendshipSummary | null;
+  viewerUsername: string | null;
+}> {
+  const { data } = await apolloClient.query<
+    ViewerFriendshipQueryData,
+    ViewerFriendshipQueryVariables
+  >({
+    fetchPolicy: 'network-only',
+    query: VIEWER_FRIENDSHIP_QUERY,
+    variables: { username },
+  });
+
+  return {
+    friendship: data.viewerFriendship,
+    viewerUsername: data.viewer?.username ?? null,
+  };
+}
+
+export async function fetchViewerFriends(): Promise<FriendshipSummary[]> {
+  const { data } = await apolloClient.query<ViewerFriendshipsQueryData>({
+    fetchPolicy: 'network-only',
+    query: VIEWER_FRIENDS_QUERY,
+  });
+
+  return data.viewerFriends ?? [];
+}
+
+export async function fetchViewerFriendRequests(): Promise<
+  FriendshipSummary[]
+> {
+  const { data } = await apolloClient.query<ViewerFriendshipsQueryData>({
+    fetchPolicy: 'network-only',
+    query: VIEWER_FRIEND_REQUESTS_QUERY,
+  });
+
+  return data.viewerFriendRequests ?? [];
+}
+
+export async function fetchViewerBlockedUsers(): Promise<FriendshipSummary[]> {
+  const { data } = await apolloClient.query<ViewerFriendshipsQueryData>({
+    fetchPolicy: 'network-only',
+    query: VIEWER_BLOCKED_USERS_QUERY,
+  });
+
+  return data.viewerBlockedUsers ?? [];
+}
+
+export async function sendFriendRequest(
+  username: string,
+): Promise<FriendshipSummary> {
+  const { data } = await apolloClient.mutate<
+    FriendshipMutationData,
+    FriendshipMutationVariables
+  >({
+    mutation: SEND_FRIEND_REQUEST_MUTATION,
+    variables: { username },
+  });
+
+  if (!data?.sendFriendRequest) {
+    throw new Error('Friend request did not return from the API');
+  }
+
+  return data.sendFriendRequest;
+}
+
+export async function acceptFriendRequest(
+  username: string,
+): Promise<FriendshipSummary> {
+  const { data } = await apolloClient.mutate<
+    FriendshipMutationData,
+    FriendshipMutationVariables
+  >({
+    mutation: ACCEPT_FRIEND_REQUEST_MUTATION,
+    variables: { username },
+  });
+
+  if (!data?.acceptFriendRequest) {
+    throw new Error('Friend request acceptance did not return from the API');
+  }
+
+  return data.acceptFriendRequest;
+}
+
+export async function removeFriend(username: string): Promise<void> {
+  const { data } = await apolloClient.mutate<
+    RemoveFriendMutationData,
+    FriendshipMutationVariables
+  >({
+    mutation: REMOVE_FRIEND_MUTATION,
+    variables: { username },
+  });
+
+  if (data?.removeFriend !== true) {
+    throw new Error('Friend removal did not return from the API');
+  }
+}
+
+export async function blockUser(username: string): Promise<FriendshipSummary> {
+  const { data } = await apolloClient.mutate<
+    FriendshipMutationData,
+    FriendshipMutationVariables
+  >({
+    mutation: BLOCK_USER_MUTATION,
+    variables: { username },
+  });
+
+  if (!data?.blockUser) {
+    throw new Error('Block did not return from the API');
+  }
+
+  return data.blockUser;
+}
+
+export function hasAuthToken(): boolean {
+  return localStorage.getItem(authTokenStorageKey) !== null;
 }
 
 export function userProjectToMod(project: UserProjectPreview): Mod {

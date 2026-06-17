@@ -14,6 +14,7 @@ import { type AuthenticatedUser } from '../../auth/services/auth-token.service.j
 import { UpdateUserAccountInput } from '../dto/update-user-account.input.js';
 import { UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
 import { UsersService } from '../services/users.service.js';
+import { FriendshipSummary } from './friendship-summary.model.js';
 import { UserProfile } from './user-profile.model.js';
 
 @Resolver(() => UserProfile)
@@ -50,6 +51,67 @@ export class UsersResolver {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<UserProfile | null> {
     return this.usersService.updateViewerProfile(user.id, input);
+  }
+
+  @Query(() => FriendshipSummary, { nullable: true })
+  viewerFriendship(
+    @Args('username', { type: () => String }) username: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<FriendshipSummary | null> {
+    return this.usersService.findViewerFriendship(user.id, username);
+  }
+
+  @Query(() => [FriendshipSummary])
+  viewerFriends(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<FriendshipSummary[]> {
+    return this.usersService.findViewerFriends(user.id);
+  }
+
+  @Query(() => [FriendshipSummary])
+  viewerFriendRequests(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<FriendshipSummary[]> {
+    return this.usersService.findViewerFriendRequests(user.id);
+  }
+
+  @Query(() => [FriendshipSummary])
+  viewerBlockedUsers(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<FriendshipSummary[]> {
+    return this.usersService.findViewerBlockedUsers(user.id);
+  }
+
+  @Mutation(() => FriendshipSummary)
+  sendFriendRequest(
+    @Args('username', { type: () => String }) username: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<FriendshipSummary> {
+    return this.usersService.sendFriendRequest(user.id, username);
+  }
+
+  @Mutation(() => FriendshipSummary)
+  acceptFriendRequest(
+    @Args('username', { type: () => String }) username: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<FriendshipSummary> {
+    return this.usersService.acceptFriendRequest(user.id, username);
+  }
+
+  @Mutation(() => Boolean)
+  removeFriend(
+    @Args('username', { type: () => String }) username: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<boolean> {
+    return this.usersService.removeFriend(user.id, username);
+  }
+
+  @Mutation(() => FriendshipSummary)
+  blockUser(
+    @Args('username', { type: () => String }) username: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<FriendshipSummary> {
+    return this.usersService.blockUser(user.id, username);
   }
 
   @Mutation(() => UserProfile)

@@ -10,6 +10,7 @@ import {
   type CreateOrganizationInput,
   type CreateProjectInput,
   type CreatedApiToken,
+  type CreatedOAuthClient,
   type CreateVersionInput,
   type DashboardCollection,
   type DashboardData,
@@ -17,15 +18,18 @@ import {
   type DashboardProject,
   type DashboardProjectMember,
   type DashboardVersion,
+  type DirectThread,
   type GameVersionTaxonomy,
   type LicenseTaxonomy,
   type ModerationReport,
   type ModerationReportState,
   type NotificationPreference,
+  type OAuthClientSummary,
   type RemoveOrganizationTeamMemberInput,
   type RemoveProjectTeamMemberInput,
   type ReportThread,
   type SessionSummary,
+  type TeamInvitationSummary,
   type UpdateCollectionInput,
   type UpdateOrganizationInput,
   type UpdateProjectInput,
@@ -82,6 +86,32 @@ export interface CreateReportThreadMessageMutationVariables {
   };
 }
 
+export interface ViewerDirectThreadsQueryData {
+  viewerDirectThreads: DirectThread[];
+}
+
+export interface CreateDirectThreadMutationData {
+  createDirectThread: DirectThread;
+}
+
+export interface CreateDirectThreadMutationVariables {
+  input: {
+    body: string;
+    username: string;
+  };
+}
+
+export interface CreateDirectThreadMessageMutationData {
+  createDirectThreadMessage: DirectThread;
+}
+
+export interface CreateDirectThreadMessageMutationVariables {
+  input: {
+    body: string;
+    threadId: string;
+  };
+}
+
 export interface ViewerApiTokensQueryData {
   viewerApiTokens: ApiTokenSummary[];
 }
@@ -116,6 +146,48 @@ export interface RevokeSessionMutationData {
 
 export interface RevokeSessionMutationVariables {
   sessionId: string;
+}
+
+export interface ViewerOAuthClientsQueryData {
+  viewerOAuthClients: OAuthClientSummary[];
+}
+
+export interface CreateOAuthClientMutationData {
+  createOAuthClient: CreatedOAuthClient;
+}
+
+export interface CreateOAuthClientMutationVariables {
+  input: {
+    description: string | null;
+    homepageUrl: string | null;
+    name: string;
+    redirectUris: string[];
+    scopes: string[] | null;
+  };
+}
+
+export interface RevokeOAuthClientMutationData {
+  revokeOAuthClient: OAuthClientSummary;
+}
+
+export interface RevokeOAuthClientMutationVariables {
+  clientId: string;
+}
+
+export interface ViewerTeamInvitationsQueryData {
+  viewerTeamInvitations: TeamInvitationSummary[];
+}
+
+export interface AcceptTeamInvitationMutationData {
+  acceptTeamInvitation: TeamInvitationSummary;
+}
+
+export interface DeclineTeamInvitationMutationData {
+  declineTeamInvitation: TeamInvitationSummary;
+}
+
+export interface TeamInvitationMutationVariables {
+  invitationId: string;
 }
 
 export interface NotificationPreferencesQueryData {
@@ -398,10 +470,22 @@ export interface ModerateProjectMutationData {
   moderateProject: DashboardProject;
 }
 
+export interface LockProjectForModerationMutationData {
+  lockProjectForModeration: DashboardProject;
+}
+
+export interface ReleaseProjectModerationLockMutationData {
+  releaseProjectModerationLock: DashboardProject;
+}
+
 export interface ModerateProjectMutationVariables {
   input: {
     action: string;
     projectSlug: string;
     reason: string | null;
   };
+}
+
+export interface ProjectModerationLockMutationVariables {
+  projectSlug: string;
 }

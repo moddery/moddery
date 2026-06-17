@@ -489,6 +489,7 @@ describe(CatalogService.name, () => {
   });
 
   test('adds project team members for managers', async () => {
+    const notifications: unknown[] = [];
     const upserts: unknown[] = [];
     const service = new CatalogService(
       {
@@ -496,7 +497,9 @@ describe(CatalogService.name, () => {
           findFirst: () =>
             Promise.resolve({
               id: 'project-a',
+              slug: 'iris',
               teamId: 'team-a',
+              title: 'Iris',
             }),
           findUnique: () => Promise.resolve(projectMembersRow()),
         },
@@ -511,6 +514,12 @@ describe(CatalogService.name, () => {
         },
       } as unknown as PrismaService,
       { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+      {
+        sendUserNotification: (input: unknown) => {
+          notifications.push(input);
+          return Promise.resolve({});
+        },
+      } as never,
     );
 
     const members = await service.addProjectTeamMember(
@@ -526,7 +535,7 @@ describe(CatalogService.name, () => {
     expect(upserts[0]).toEqual(
       expect.objectContaining({
         create: expect.objectContaining({
-          acceptedAt: expect.any(Date),
+          acceptedAt: null,
           permissions: ['MANAGE_VERSIONS'],
           role: 'Maintainer',
           teamId: 'team-a',
@@ -540,6 +549,13 @@ describe(CatalogService.name, () => {
         },
       }),
     );
+    expect(notifications[0]).toEqual({
+      actionUrl: '/dashboard',
+      body: 'You were invited to collaborate on Iris.',
+      title: 'Team invitation for Iris',
+      type: 'team',
+      userId: 'user-b',
+    });
     expect(members[0]?.role).toBe('Owner');
   });
 
@@ -679,6 +695,85 @@ describe(CatalogService.name, () => {
     expect(project.status).toBe('APPROVED');
   });
 
+  test('locks projects for moderator review', async () => {
+    const upserts: unknown[] = [];
+    const service = new CatalogService(
+      {
+        moderationLock: {
+          upsert: (query: unknown) => {
+            upserts.push(query);
+            return Promise.resolve({});
+          },
+        },
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+          findUniqueOrThrow: () =>
+            Promise.resolve(
+              projectRow({
+                moderationLock: moderationLockRow(),
+                status: 'PENDING_REVIEW',
+                title: 'Queued',
+              }),
+            ),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+    );
+
+    const project = await service.lockProjectForModeration(
+      'example',
+      'moderator-a',
+    );
+
+    expect(upserts[0]).toEqual(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          moderatorId: 'moderator-a',
+          projectId: 'project-a',
+        }),
+        update: expect.objectContaining({
+          moderatorId: 'moderator-a',
+        }),
+        where: { projectId: 'project-a' },
+      }),
+    );
+    expect(project.moderationLock?.moderator.username).toBe('moderator');
+  });
+
+  test('releases project moderation locks owned by the moderator', async () => {
+    const deletes: unknown[] = [];
+    const service = new CatalogService(
+      {
+        moderationLock: {
+          deleteMany: (query: unknown) => {
+            deletes.push(query);
+            return Promise.resolve({ count: 1 });
+          },
+        },
+        project: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'project-a',
+              moderationLock: { moderatorId: 'moderator-a' },
+            }),
+          findUniqueOrThrow: () =>
+            Promise.resolve(
+              projectRow({ status: 'PENDING_REVIEW', title: 'Queued' }),
+            ),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [] }) } as never,
+    );
+
+    const project = await service.releaseProjectModerationLock(
+      'example',
+      'moderator-a',
+    );
+
+    expect(deletes[0]).toEqual({ where: { projectId: 'project-a' } });
+    expect(project.moderationLock).toBeNull();
+  });
+
   test('loads project moderation actions newest first', async () => {
     const queries: unknown[] = [];
     const service = new CatalogService(
@@ -762,6 +857,7 @@ function projectRow({
   gallery = [],
   license = { key: 'mit', name: 'MIT', url: null },
   links = [],
+  moderationLock = null,
   status = 'APPROVED',
   title,
 }: {
@@ -776,10 +872,15 @@ function projectRow({
   }[];
   license?: { key: string; name: string; url: string | null };
   links?: { kind: string; label: string | null; url: string }[];
+  moderationLock?: ReturnType<typeof moderationLockRow> | null;
   status?: 'APPROVED' | 'PENDING_REVIEW' | 'REJECTED' | 'ARCHIVED';
   title: string;
 }) {
   return {
+    approvedAt:
+      status === 'APPROVED' ? new Date('2026-01-01T00:00:00.000Z') : null,
+    archivedAt:
+      status === 'ARCHIVED' ? new Date('2026-01-01T00:00:00.000Z') : null,
     categories: [{ category: { slug: 'utility' } }],
     color: '#f97316',
     description: 'Updated body',
@@ -795,6 +896,7 @@ function projectRow({
     license,
     links,
     loaders: [{ loader: 'FABRIC' }],
+    moderationLock,
     organization: {
       color: '#1d9bf0',
       iconUrl: 'https://example.test/org.png',
@@ -803,6 +905,9 @@ function projectRow({
       slug: 'example-org',
     },
     publishedAt: new Date('2025-12-15T00:00:00.000Z'),
+    queuedAt:
+      status === 'PENDING_REVIEW' ? new Date('2026-01-01T00:00:00.000Z') : null,
+    requestedStatus: null,
     slug: 'example',
     sourceUrl: 'https://example.test/source',
     status,
@@ -822,5 +927,18 @@ function projectRow({
     title,
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     wikiUrl: null,
+  };
+}
+
+function moderationLockRow() {
+  return {
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: new Date('2026-01-01T00:30:00.000Z'),
+    id: 'lock-a',
+    moderator: {
+      displayName: 'Moderator',
+      id: 'moderator-a',
+      username: 'moderator',
+    },
   };
 }

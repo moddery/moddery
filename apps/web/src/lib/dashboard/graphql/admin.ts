@@ -63,6 +63,16 @@ export const MODERATION_PROJECTS_QUERY = gql`
         url
       }
       loaders
+      moderationLock {
+        createdAt
+        expiresAt
+        id
+        moderator {
+          displayName
+          id
+          username
+        }
+      }
       owner {
         avatarUrl
         displayName
@@ -125,6 +135,160 @@ export const MODERATE_PROJECT_MUTATION = gql`
         url
       }
       loaders
+      moderationLock {
+        createdAt
+        expiresAt
+        id
+        moderator {
+          displayName
+          id
+          username
+        }
+      }
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      organization {
+        color
+        iconUrl
+        id
+        name
+        slug
+      }
+      publishedAt
+      queuedAt
+      requestedStatus
+      slug
+      sourceUrl
+      status
+      summary
+      title
+      updatedAt
+      wikiUrl
+    }
+  }
+`;
+
+export const LOCK_PROJECT_FOR_MODERATION_MUTATION = gql`
+  mutation LockProjectForModeration($projectSlug: String!) {
+    lockProjectForModeration(projectSlug: $projectSlug) {
+      approvedAt
+      archivedAt
+      body
+      categories
+      color
+      discordUrl
+      downloads
+      followers
+      gallery {
+        createdAt
+        description
+        displayUrl
+        featured
+        rawUrl
+        sortOrder
+        title
+      }
+      gameVersions
+      iconUrl
+      issuesUrl
+      kind
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
+      loaders
+      moderationLock {
+        createdAt
+        expiresAt
+        id
+        moderator {
+          displayName
+          id
+          username
+        }
+      }
+      owner {
+        avatarUrl
+        displayName
+        id
+        username
+      }
+      organization {
+        color
+        iconUrl
+        id
+        name
+        slug
+      }
+      publishedAt
+      queuedAt
+      requestedStatus
+      slug
+      sourceUrl
+      status
+      summary
+      title
+      updatedAt
+      wikiUrl
+    }
+  }
+`;
+
+export const RELEASE_PROJECT_MODERATION_LOCK_MUTATION = gql`
+  mutation ReleaseProjectModerationLock($projectSlug: String!) {
+    releaseProjectModerationLock(projectSlug: $projectSlug) {
+      approvedAt
+      archivedAt
+      body
+      categories
+      color
+      discordUrl
+      downloads
+      followers
+      gallery {
+        createdAt
+        description
+        displayUrl
+        featured
+        rawUrl
+        sortOrder
+        title
+      }
+      gameVersions
+      iconUrl
+      issuesUrl
+      kind
+      license {
+        id
+        name
+        url
+      }
+      links {
+        kind
+        label
+        url
+      }
+      loaders
+      moderationLock {
+        createdAt
+        expiresAt
+        id
+        moderator {
+          displayName
+          id
+          username
+        }
+      }
       owner {
         avatarUrl
         displayName

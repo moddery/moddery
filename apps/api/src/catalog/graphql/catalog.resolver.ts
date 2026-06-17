@@ -126,6 +126,33 @@ export class CatalogResolver {
     );
   }
 
+  @Mutation(() => ProjectSummary)
+  async lockProjectForModeration(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+
+    return projectToGraphql(
+      await this.catalogService.lockProjectForModeration(projectSlug, user.id),
+    );
+  }
+
+  @Mutation(() => ProjectSummary)
+  async releaseProjectModerationLock(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    assertCanModerate(user);
+
+    return projectToGraphql(
+      await this.catalogService.releaseProjectModerationLock(
+        projectSlug,
+        user.id,
+      ),
+    );
+  }
+
   @Mutation(() => [ProjectMemberSummary])
   removeProjectTeamMember(
     @Args('input') input: RemoveProjectTeamMemberInput,
@@ -172,6 +199,7 @@ function assertCanModerate(user: AuthenticatedUser): void {
 
 function projectToGraphql(project: {
   gallery: readonly { createdAt: string }[];
+  moderationLock?: { createdAt: string; expiresAt: string } | null;
   updatedAt: string;
 }) {
   return {
@@ -180,6 +208,14 @@ function projectToGraphql(project: {
       ...image,
       createdAt: new Date(image.createdAt),
     })),
+    moderationLock:
+      project.moderationLock === null || project.moderationLock === undefined
+        ? null
+        : {
+            ...project.moderationLock,
+            createdAt: new Date(project.moderationLock.createdAt),
+            expiresAt: new Date(project.moderationLock.expiresAt),
+          },
     updatedAt: new Date(project.updatedAt),
   };
 }

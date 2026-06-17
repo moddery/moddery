@@ -3,6 +3,7 @@ import { Flag } from 'lucide-react';
 
 import { timeAgo } from '../../lib/format.ts';
 import { type PublicUserProfile } from '../../lib/users.ts';
+import { FriendshipAction } from './FriendshipAction.tsx';
 import { ProfileAvatar } from './profile-header/ProfileAvatar.tsx';
 import { ProfileReportForm } from './profile-header/ProfileReportForm.tsx';
 import { ProfileStats } from './profile-header/ProfileStats.tsx';
@@ -27,6 +28,7 @@ export function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
                 Admin
               </span>
             )}
+            <FriendshipAction profile={profile} />
             <button
               type="button"
               onClick={() => setReportOpen((current) => !current)}

@@ -3,7 +3,9 @@ import { useState } from 'react';
 
 import {
   fetchModerationProjects,
+  lockProjectForModeration,
   moderateProject,
+  releaseProjectModerationLock,
 } from '../../../lib/dashboard.ts';
 import { type Mod } from '../../../types.ts';
 import { ProjectModerationRow } from './projects/ProjectModerationRow.tsx';
@@ -42,6 +44,26 @@ export function ProjectModerationQueue({
     } catch (caught) {
       setMessage(
         caught instanceof Error ? caught.message : 'Project moderation failed',
+      );
+    } finally {
+      setBusySlug(null);
+    }
+  }
+
+  async function updateLock(projectSlug: string, action: 'lock' | 'release') {
+    setBusySlug(projectSlug);
+    setMessage(null);
+
+    try {
+      if (action === 'lock') {
+        await lockProjectForModeration(projectSlug);
+      } else {
+        await releaseProjectModerationLock(projectSlug);
+      }
+      await projectsQuery.refetch();
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'Project lock update failed',
       );
     } finally {
       setBusySlug(null);
@@ -88,6 +110,10 @@ export function ProjectModerationQueue({
               busy={busySlug === project.slug}
               key={project.slug}
               onAction={act}
+              onLock={(projectSlug) => updateLock(projectSlug, 'lock')}
+              onReleaseLock={(projectSlug) =>
+                updateLock(projectSlug, 'release')
+              }
               onOpenProject={onOpenProject}
               project={project}
             />

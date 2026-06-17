@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { BookMarked, Download, Heart, Package } from 'lucide-react';
+import { BookMarked, Heart, Package, Users } from 'lucide-react';
 
 import { type PublicUserProfile } from '../../../lib/users.ts';
 
@@ -22,12 +22,9 @@ export function ProfileStats({ profile }: { profile: PublicUserProfile }) {
         value={profile.followedProjectCount}
       />
       <ProfileStat
-        icon={<Download className="size-4" />}
-        label="Downloads"
-        value={profile.projects.reduce(
-          (total, project) => total + project.downloads,
-          0,
-        )}
+        icon={<Users className="size-4" />}
+        label="Friends"
+        value={profile.friendCount}
       />
     </div>
   );

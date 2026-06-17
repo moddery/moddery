@@ -1,0 +1,173 @@
+import { useQuery } from '@tanstack/react-query';
+import { type FormEvent } from 'react';
+import { useState } from 'react';
+
+import {
+  createDirectThread,
+  createDirectThreadMessage,
+  fetchViewerDirectThreads,
+} from '../../../lib/dashboard/actions/account.ts';
+import { type DirectThread } from '../../../lib/dashboard/types.ts';
+import { DashboardField } from './shared.tsx';
+
+export function DirectMessagesPanel() {
+  const [body, setBody] = useState('');
+  const [messageBodyByThread, setMessageBodyByThread] = useState<
+    Record<string, string>
+  >({});
+  const [status, setStatus] = useState<string | null>(null);
+  const [username, setUsername] = useState('');
+  const threadsQuery = useQuery({
+    queryFn: ({ signal }) => fetchViewerDirectThreads(signal),
+    queryKey: ['dashboard', 'direct-threads'],
+  });
+
+  async function startThread(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus(null);
+    try {
+      await createDirectThread({ body, username });
+      setBody('');
+      setUsername('');
+      await threadsQuery.refetch();
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : 'Message failed');
+    }
+  }
+
+  async function replyToThread(threadId: string) {
+    const body = messageBodyByThread[threadId]?.trim() ?? '';
+    if (body.length === 0) {
+      return;
+    }
+
+    setStatus(null);
+    try {
+      await createDirectThreadMessage({ body, threadId });
+      setMessageBodyByThread((current) => ({ ...current, [threadId]: '' }));
+      await threadsQuery.refetch();
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : 'Message failed');
+    }
+  }
+
+  const threads = threadsQuery.data ?? [];
+
+  return (
+    <section className="mt-8 border-t border-line pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            Messages
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Send direct messages to other users.
+          </p>
+        </div>
+        {status && (
+          <span className="text-sm font-semibold text-muted">{status}</span>
+        )}
+      </div>
+
+      <form onSubmit={startThread} className="mt-4 grid gap-3 md:grid-cols-3">
+        <DashboardField
+          required
+          label="Username"
+          placeholder="handle"
+          value={username}
+          onChange={setUsername}
+        />
+        <label className="grid gap-1 text-sm font-bold text-ink md:col-span-2">
+          Message
+          <div className="flex gap-2">
+            <input
+              required
+              value={body}
+              placeholder="Write a message"
+              onChange={(event) => setBody(event.target.value)}
+              className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+            />
+            <button className="rounded-lg bg-accent px-4 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong">
+              Send
+            </button>
+          </div>
+        </label>
+      </form>
+
+      <div className="mt-4 grid gap-3">
+        {threadsQuery.isLoading ? (
+          <p className="text-sm text-muted">Loading messages...</p>
+        ) : threads.length === 0 ? (
+          <p className="text-sm text-muted">No messages yet.</p>
+        ) : (
+          threads.map((thread) => (
+            <DirectThreadRow
+              key={thread.id}
+              thread={thread}
+              value={messageBodyByThread[thread.id] ?? ''}
+              onChange={(value) =>
+                setMessageBodyByThread((current) => ({
+                  ...current,
+                  [thread.id]: value,
+                }))
+              }
+              onReply={() => replyToThread(thread.id)}
+            />
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DirectThreadRow({
+  onChange,
+  onReply,
+  thread,
+  value,
+}: {
+  onChange: (value: string) => void;
+  onReply: () => void;
+  thread: DirectThread;
+  value: string;
+}) {
+  const latestMessage = thread.messages.at(-1);
+  const participants = thread.members
+    .map((member) => member.user.displayName ?? member.user.username)
+    .join(', ');
+
+  return (
+    <article className="rounded-lg border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-bold text-ink">{participants}</h3>
+        <span className="text-xs font-semibold uppercase text-muted">
+          {new Date(thread.updatedAt).toLocaleDateString()}
+        </span>
+      </div>
+      {latestMessage && (
+        <p className="mt-2 text-sm text-muted">
+          <span className="font-bold text-ink">
+            {latestMessage.author.displayName ?? latestMessage.author.username}
+            :{' '}
+          </span>
+          {latestMessage.body}
+        </p>
+      )}
+      <div className="mt-3 flex gap-2">
+        <input
+          value={value}
+          placeholder="Reply"
+          onChange={(event) => onChange(event.target.value)}
+          className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+        />
+        <button
+          type="button"
+          onClick={onReply}
+          className="rounded-lg border border-line px-4 text-sm font-extrabold text-ink transition-colors hover:bg-control-hover"
+        >
+          Reply
+        </button>
+      </div>
+    </article>
+  );
+}
