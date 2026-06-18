@@ -1,10 +1,19 @@
-import { CheckCircle2, Download, FileCode2, ShieldAlert } from 'lucide-react';
+import {
+  CheckCircle2,
+  Clock3,
+  Download,
+  FileCode2,
+  ShieldAlert,
+  ShieldCheck,
+} from 'lucide-react';
 import { type ReactNode } from 'react';
 
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
+import { cn } from '../../../../lib/cn.ts';
 import { formatBytes, timeAgo } from '../../../../lib/format.ts';
 import { Chip } from '../../../Chips.tsx';
 import { shortHash } from './helpers.ts';
+import { scanStatusMeta } from './scan-status.ts';
 
 type VersionFile = ProjectVersion['files'][number];
 
@@ -122,17 +131,30 @@ function FileMetadataBlock({
 }
 
 function ScanSummary({ scan }: { scan: VersionFile['scans'][number] }) {
-  const label = scan.verdict ?? scan.status;
-  const clean = label.toLowerCase().includes('clean');
+  const meta = scanStatusMeta(scan);
+  const Icon = scanIcon(meta.tone);
 
   return (
-    <span className="inline-flex items-center gap-1">
-      <CheckCircle2
-        className={clean ? 'size-3.5 text-accent-icon' : 'size-3.5 text-muted'}
-      />
-      Scan {label}
+    <span
+      className={cn(
+        'inline-flex items-center gap-1',
+        meta.tone === 'clean' && 'text-accent-icon',
+        meta.tone === 'failed' && 'text-danger',
+        meta.tone === 'pending' && 'text-muted',
+        meta.tone === 'warning' && 'text-warning',
+      )}
+    >
+      <Icon className="size-3.5" />
+      Scan {meta.label}
     </span>
   );
+}
+
+function scanIcon(tone: ReturnType<typeof scanStatusMeta>['tone']) {
+  if (tone === 'clean') return ShieldCheck;
+  if (tone === 'failed') return ShieldAlert;
+  if (tone === 'pending') return Clock3;
+  return CheckCircle2;
 }
 
 function fileKindLabel(kind: VersionFile['kind']): string {

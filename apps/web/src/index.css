@@ -26,6 +26,8 @@
   --color-accent-selected: #1f3a52;
 
   --color-error: #ef5d5d;
+  --color-danger: #ef5d5d;
+  --color-warning: #f5b84b;
 }
 
 @layer base {
