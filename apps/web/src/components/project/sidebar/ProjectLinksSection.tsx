@@ -8,10 +8,6 @@ export function ProjectLinksSection({ project }: { project: ProjectDetails }) {
     { href: project.issuesUrl, label: 'Issues' },
     { href: project.wikiUrl, label: 'Wiki' },
     { href: project.discordUrl, label: 'Discord' },
-    {
-      href: project.license.url,
-      label: `License (${project.license.id})`,
-    },
   ].filter((link): link is { href: string; label: string } =>
     Boolean(link.href),
   );
