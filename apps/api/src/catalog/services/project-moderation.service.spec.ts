@@ -6,8 +6,15 @@ import { ProjectModerationService } from './project-moderation.service.js';
 function createProjectModerationService(
   prisma: PrismaService,
   searchService: unknown,
+  auditEvents: unknown[] = [],
 ) {
   return new ProjectModerationService(
+    {
+      recordProjectModeration: (event: unknown) => {
+        auditEvents.push(event);
+        return Promise.resolve();
+      },
+    } as never,
     prisma,
     searchService as never,
     fakeRedis(),
@@ -96,6 +103,7 @@ describe(ProjectModerationService.name, () => {
   });
 
   test('approves projects and records moderation actions', async () => {
+    const auditEvents: unknown[] = [];
     const transactionSteps: unknown[] = [];
     const indexed: unknown[] = [];
     const service = createProjectModerationService(
@@ -120,7 +128,14 @@ describe(ProjectModerationService.name, () => {
             },
           }),
         project: {
-          findUnique: () => Promise.resolve({ id: 'project-a' }),
+          findUnique: () =>
+            Promise.resolve({
+              id: 'project-a',
+              requestedStatus: 'APPROVED',
+              slug: 'example',
+              status: 'PENDING_REVIEW',
+              title: 'Queued',
+            }),
         },
       } as unknown as PrismaService,
       {
@@ -130,6 +145,7 @@ describe(ProjectModerationService.name, () => {
         },
         searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
       },
+      auditEvents,
     );
 
     const project = await service.moderateProject(
@@ -159,6 +175,25 @@ describe(ProjectModerationService.name, () => {
       },
     });
     expect(indexed).toHaveLength(1);
+    expect(auditEvents[0]).toEqual({
+      action: 'APPROVE',
+      actorId: 'moderator-a',
+      after: {
+        id: 'project-a',
+        requestedStatus: null,
+        slug: 'example',
+        status: 'APPROVED',
+        title: 'Ok',
+      },
+      before: {
+        id: 'project-a',
+        requestedStatus: 'APPROVED',
+        slug: 'example',
+        status: 'PENDING_REVIEW',
+        title: 'Queued',
+      },
+      reason: 'Looks good',
+    });
     expect(project.status).toBe('APPROVED');
   });
 

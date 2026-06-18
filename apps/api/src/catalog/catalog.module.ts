@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AuditModule } from '../audit/audit.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { RedisModule } from '../redis/redis.module.js';
@@ -23,7 +24,13 @@ import { ProjectModerationService } from './services/project-moderation.service.
     ProjectModerationLocksService,
     ProjectModerationService,
   ],
-  imports: [NotificationsModule, PrismaModule, RedisModule, SearchModule],
+  imports: [
+    AuditModule,
+    NotificationsModule,
+    PrismaModule,
+    RedisModule,
+    SearchModule,
+  ],
   providers: [
     CatalogResolver,
     CatalogService,

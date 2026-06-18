@@ -70,8 +70,20 @@ export interface AdminAuditLog {
   before: UserAccountAuditSnapshot | null;
   createdAt: string;
   id: string;
+  moderationAction: string | null;
+  projectAfter: ProjectAuditSnapshot | null;
+  projectBefore: ProjectAuditSnapshot | null;
+  reason: string | null;
   targetUser: AdminAuditUser | null;
   targetUserId: string | null;
+}
+
+export interface ProjectAuditSnapshot {
+  id: string;
+  requestedStatus: string | null;
+  slug: string;
+  status: string;
+  title: string;
 }
 
 export interface AdminAuditLogSearchResult {

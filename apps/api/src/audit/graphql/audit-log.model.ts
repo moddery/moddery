@@ -22,6 +22,24 @@ export class UserAccountAuditSnapshot {
 }
 
 @ObjectType()
+export class ProjectAuditSnapshot {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String, { nullable: true })
+  requestedStatus!: string | null;
+
+  @Field(() => String)
+  slug!: string;
+
+  @Field(() => String)
+  status!: string;
+
+  @Field(() => String)
+  title!: string;
+}
+
+@ObjectType()
 export class AuditLogSummary {
   @Field(() => String)
   action!: string;
@@ -43,6 +61,18 @@ export class AuditLogSummary {
 
   @Field(() => String)
   id!: string;
+
+  @Field(() => String, { nullable: true })
+  moderationAction!: string | null;
+
+  @Field(() => ProjectAuditSnapshot, { nullable: true })
+  projectAfter!: ProjectAuditSnapshot | null;
+
+  @Field(() => ProjectAuditSnapshot, { nullable: true })
+  projectBefore!: ProjectAuditSnapshot | null;
+
+  @Field(() => String, { nullable: true })
+  reason!: string | null;
 
   @Field(() => AuditUserSummary, { nullable: true })
   targetUser!: AuditUserSummary | null;

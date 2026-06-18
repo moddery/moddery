@@ -27,7 +27,7 @@ export function AuditLogPanel() {
             Audit log
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Recent administrative account changes.
+            Recent administrative account and project moderation changes.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -66,9 +66,13 @@ export function AuditLogPanel() {
                     {auditActionLabel(auditLog.action)}
                   </h3>
                   <p className="mt-1 text-sm text-muted">
-                    {auditActorLabel(auditLog)} changed{' '}
-                    {auditTargetLabel(auditLog)} {timeAgo(auditLog.createdAt)}
+                    {auditDescription(auditLog)} {timeAgo(auditLog.createdAt)}
                   </p>
+                  {auditLog.reason && (
+                    <p className="mt-2 text-sm text-muted">
+                      Reason: {auditLog.reason}
+                    </p>
+                  )}
                 </div>
                 <span className="rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted">
                   {auditLog.action.toLowerCase().replaceAll('_', ' ')}
@@ -78,6 +82,18 @@ export function AuditLogPanel() {
                 <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                   <AuditSnapshot label="Before" snapshot={auditLog.before} />
                   <AuditSnapshot label="After" snapshot={auditLog.after} />
+                </dl>
+              )}
+              {(auditLog.projectBefore || auditLog.projectAfter) && (
+                <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                  <ProjectAuditSnapshot
+                    label="Before"
+                    snapshot={auditLog.projectBefore}
+                  />
+                  <ProjectAuditSnapshot
+                    label="After"
+                    snapshot={auditLog.projectAfter}
+                  />
                 </dl>
               )}
             </article>
@@ -94,6 +110,35 @@ export function AuditLogPanel() {
         </div>
       )}
     </section>
+  );
+}
+
+function ProjectAuditSnapshot({
+  label,
+  snapshot,
+}: {
+  label: string;
+  snapshot: {
+    requestedStatus: string | null;
+    slug: string;
+    status: string;
+    title: string;
+  } | null;
+}) {
+  return (
+    <div className="rounded-md border border-line bg-surface px-3 py-2">
+      <dt className="text-xs font-bold uppercase text-faint">{label}</dt>
+      <dd className="mt-1 font-semibold text-ink">
+        {snapshot
+          ? `${snapshot.title} / ${snapshot.status}${snapshot.requestedStatus ? ` -> ${snapshot.requestedStatus}` : ''}`
+          : 'Unavailable'}
+      </dd>
+      {snapshot && (
+        <dd className="mt-1 text-xs font-semibold text-muted">
+          /projects/{snapshot.slug}
+        </dd>
+      )}
+    </div>
   );
 }
 
@@ -118,9 +163,40 @@ function AuditSnapshot({
 }
 
 function auditActionLabel(action: string) {
-  return action === 'USER_ACCOUNT_UPDATED'
-    ? 'User account updated'
-    : action.toLowerCase().replaceAll('_', ' ');
+  if (action === 'USER_ACCOUNT_UPDATED') {
+    return 'User account updated';
+  }
+
+  if (action === 'PROJECT_MODERATED') {
+    return 'Project moderated';
+  }
+
+  return action.toLowerCase().replaceAll('_', ' ');
+}
+
+function auditDescription(auditLog: {
+  action: string;
+  actor: { displayName: string | null; username: string } | null;
+  actorId: string | null;
+  moderationAction: string | null;
+  projectAfter: { title: string } | null;
+  projectBefore: { title: string } | null;
+  targetUser: { displayName: string | null; username: string } | null;
+  targetUserId: string | null;
+}) {
+  if (auditLog.action === 'PROJECT_MODERATED') {
+    const projectTitle =
+      auditLog.projectAfter?.title ??
+      auditLog.projectBefore?.title ??
+      'project';
+    const moderationAction = auditLog.moderationAction
+      ? auditLog.moderationAction.toLowerCase()
+      : 'moderated';
+
+    return `${auditActorLabel(auditLog)} ${moderationAction} ${projectTitle}`;
+  }
+
+  return `${auditActorLabel(auditLog)} changed ${auditTargetLabel(auditLog)}`;
 }
 
 function auditActorLabel({

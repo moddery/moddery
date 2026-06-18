@@ -84,6 +84,22 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
         }
         createdAt
         id
+        moderationAction
+        projectAfter {
+          id
+          requestedStatus
+          slug
+          status
+          title
+        }
+        projectBefore {
+          id
+          requestedStatus
+          slug
+          status
+          title
+        }
+        reason
         targetUser {
           displayName
           id

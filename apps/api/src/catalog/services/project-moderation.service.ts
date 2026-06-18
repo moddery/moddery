@@ -10,6 +10,7 @@ import {
   type Prisma,
 } from '@prisma/client';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { SearchService } from '../../search/search.service.js';
@@ -57,6 +58,7 @@ export interface ModerationActionSearchResultContract {
 @Injectable()
 export class ProjectModerationService {
   constructor(
+    private readonly auditService: AuditService,
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
     private readonly redis: RedisService,
@@ -152,7 +154,7 @@ export class ProjectModerationService {
   ): Promise<ProjectSummaryContract> {
     const action = moderationAction(input.action);
     const project = await this.prisma.project.findUnique({
-      select: { id: true },
+      select: moderationProjectAuditSelect(),
       where: { slug: input.projectSlug },
     });
 
@@ -181,6 +183,26 @@ export class ProjectModerationService {
       });
     });
 
+    await this.auditService.recordProjectModeration({
+      action,
+      actorId: moderatorId,
+      after: {
+        id: updated.id,
+        requestedStatus: updated.requestedStatus,
+        slug: updated.slug,
+        status: updated.status,
+        title: updated.title,
+      },
+      before: {
+        id: project.id,
+        requestedStatus: project.requestedStatus,
+        slug: project.slug,
+        status: project.status,
+        title: project.title,
+      },
+      reason: nullableTrim(input.reason),
+    });
+
     const contract = projectRowToContract(updated);
     if (contract.status === 'APPROVED') {
       await this.searchService.indexProjects([
@@ -195,6 +217,16 @@ export class ProjectModerationService {
   private invalidateProjectBySlugCache(slug: string): Promise<void> {
     return this.redis.delete(projectBySlugCacheKey(slug));
   }
+}
+
+function moderationProjectAuditSelect() {
+  return {
+    id: true,
+    requestedStatus: true,
+    slug: true,
+    status: true,
+    title: true,
+  };
 }
 
 function moderationAction(action: string): ModerationActionKind {
