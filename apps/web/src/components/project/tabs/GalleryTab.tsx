@@ -26,7 +26,7 @@ export function GalleryTab({ images }: { images: ProjectGalleryImage[] }) {
   }
 
   const slides = images.map((image) => ({
-    src: image.raw_url || image.url,
+    src: image.rawUrl || image.url,
     alt: image.title ?? 'Project gallery image',
     title: image.title ?? undefined,
     description: image.description ?? undefined,
@@ -48,7 +48,7 @@ export function GalleryTab({ images }: { images: ProjectGalleryImage[] }) {
             className="block w-full overflow-hidden rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:opacity-90"
           >
             <img
-              src={image.url || image.raw_url}
+              src={image.url || image.rawUrl}
               alt={image.title ?? 'Project gallery image'}
               loading="lazy"
               className="aspect-video w-full bg-surface-2 object-cover"

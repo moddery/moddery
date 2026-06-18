@@ -5,7 +5,7 @@ import { type Mod, type ProjectType } from '../../../types.js';
 export interface ProjectDetails {
   id: string;
   slug: string;
-  project_type: ProjectType;
+  projectType: ProjectType;
   title: string;
   author: string;
   authorUsername?: string | null;
@@ -29,21 +29,21 @@ export interface ProjectDetails {
   downloads: number;
   followers: number;
   categories: string[];
-  additional_categories: string[];
+  additionalCategories: string[];
   loaders: string[];
-  game_versions: string[];
-  icon_url: string | null;
-  issues_url: string | null;
-  source_url: string | null;
-  wiki_url: string | null;
-  discord_url: string | null;
-  donation_urls: { id: string; platform: string; url: string }[];
+  gameVersions: string[];
+  iconUrl: string | null;
+  issuesUrl: string | null;
+  sourceUrl: string | null;
+  wikiUrl: string | null;
+  discordUrl: string | null;
+  donationUrls: { id: string; platform: string; url: string }[];
   gallery: ProjectGalleryImage[];
 }
 
 export interface ProjectGalleryImage {
   url: string;
-  raw_url: string;
+  rawUrl: string;
   featured: boolean;
   title: string | null;
   description: string | null;

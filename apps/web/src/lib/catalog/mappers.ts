@@ -63,15 +63,15 @@ export function projectDetailsFromSummary(
     project.discordUrl ?? projectLinkUrl(project.links, 'DISCORD');
 
   return {
-    additional_categories: [],
+    additionalCategories: [],
     author: mod.author,
     authorUsername: mod.authorUsername,
     body: project.body,
     categories: mod.categories,
     color: colorNumberFromHex(project.color),
     description: project.summary,
-    discord_url: discordUrl,
-    donation_urls: project.links
+    discordUrl,
+    donationUrls: project.links
       .filter((link) => link.kind === 'DONATION')
       .map((link) => ({
         id: link.label ?? link.url,
@@ -85,24 +85,24 @@ export function projectDetailsFromSummary(
       description: image.description,
       featured: image.featured,
       ordering: image.sortOrder,
-      raw_url: image.rawUrl,
+      rawUrl: image.rawUrl,
       title: image.title,
       url: image.displayUrl,
     })),
-    game_versions: mod.gameVersions,
-    icon_url: mod.icon,
+    gameVersions: mod.gameVersions,
+    iconUrl: mod.icon,
     id: project.id,
-    issues_url: issuesUrl,
+    issuesUrl,
     license: project.license,
     loaders: mod.loaders,
     organization: mod.organization ?? null,
-    project_type: mod.projectType ?? 'mod',
+    projectType: mod.projectType ?? 'mod',
     published: project.publishedAt ?? project.updatedAt,
     slug: project.slug,
-    source_url: sourceUrl,
+    sourceUrl,
     title: project.title,
     updated: project.updatedAt,
-    wiki_url: wikiUrl,
+    wikiUrl,
   };
 }
 

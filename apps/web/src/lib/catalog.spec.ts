@@ -12,33 +12,64 @@ describe(fetchProjectDetails.name, () => {
     spyOn(apolloClient, 'query').mockRestore();
   });
 
-  test('maps project follower counts from GraphQL details', async () => {
+  test('maps project details from GraphQL into the frontend shape', async () => {
     spyOn(apolloClient, 'query').mockResolvedValue({
       data: {
         projectBySlug: {
           body: 'Project body',
           categories: ['utility'],
           color: '#f97316',
+          discordUrl: null,
           downloads: 42,
           followers: 12,
-          gallery: [],
+          gallery: [
+            {
+              createdAt: '2025-12-20T00:00:00.000Z',
+              description: 'Screenshot description',
+              displayUrl: 'https://cdn.example.test/display.webp',
+              featured: true,
+              rawUrl: 'https://cdn.example.test/raw.webp',
+              sortOrder: 2,
+              title: 'Screenshot',
+            },
+          ],
           gameVersions: ['1.21.6'],
           iconUrl: null,
           id: 'project-a',
+          issuesUrl: null,
           kind: 'MOD',
           license: {
             id: 'mit',
             name: 'MIT',
             url: null,
           },
-          links: [],
+          links: [
+            {
+              kind: 'SOURCE',
+              label: null,
+              url: 'https://git.example.test/project',
+            },
+            {
+              kind: 'DONATION',
+              label: 'Sponsor',
+              url: 'https://sponsor.example.test/project',
+            },
+          ],
           loaders: ['fabric'],
+          owner: {
+            avatarUrl: null,
+            displayName: 'Creator',
+            id: 'user-a',
+            username: 'creator',
+          },
           publishedAt: '2025-12-15T00:00:00.000Z',
           slug: 'example',
           status: 'APPROVED',
+          sourceUrl: null,
           summary: 'Project summary',
           title: 'Example',
           updatedAt: '2026-01-01T00:00:00.000Z',
+          wikiUrl: null,
         },
       },
     } as never);
@@ -48,6 +79,25 @@ describe(fetchProjectDetails.name, () => {
     expect(project.followers).toBe(12);
     expect(project.published).toBe('2025-12-15T00:00:00.000Z');
     expect(project.color).toBe(0xf97316);
+    expect(project.projectType).toBe('mod');
+    expect(project.gameVersions).toEqual(['1.21.6']);
+    expect(project.sourceUrl).toBe('https://git.example.test/project');
+    expect(project.donationUrls).toEqual([
+      {
+        id: 'Sponsor',
+        platform: 'Sponsor',
+        url: 'https://sponsor.example.test/project',
+      },
+    ]);
+    expect(project.gallery[0]).toEqual({
+      created: '2025-12-20T00:00:00.000Z',
+      description: 'Screenshot description',
+      featured: true,
+      ordering: 2,
+      rawUrl: 'https://cdn.example.test/raw.webp',
+      title: 'Screenshot',
+      url: 'https://cdn.example.test/display.webp',
+    });
   });
 });
 

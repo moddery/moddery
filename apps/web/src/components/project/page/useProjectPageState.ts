@@ -103,12 +103,12 @@ export function useProjectPageState({
   const latestFile =
     latestVersion?.files.find((file) => file.primary) ??
     latestVersion?.files[0];
-  const projectType = project?.project_type ?? projectTypeHint;
-  const supportedVersions = [...(project?.game_versions ?? [])]
+  const projectType = project?.projectType ?? projectTypeHint;
+  const supportedVersions = [...(project?.gameVersions ?? [])]
     .sort((a, b) => compareVersions(b, a))
     .slice(0, 14);
   const categories = project
-    ? [...project.categories, ...project.additional_categories]
+    ? [...project.categories, ...project.additionalCategories]
     : [];
   const gallery = [...(project?.gallery ?? [])].sort((a, b) => {
     if (a.featured !== b.featured) return a.featured ? -1 : 1;

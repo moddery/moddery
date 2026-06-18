@@ -21,9 +21,9 @@ export function ProjectHero({
   return (
     <header className="mt-5 pb-2">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        {project.icon_url ? (
+        {project.iconUrl ? (
           <img
-            src={project.icon_url}
+            src={project.iconUrl}
             alt={`${project.title} icon`}
             width={96}
             height={96}
