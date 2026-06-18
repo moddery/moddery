@@ -39,6 +39,11 @@ const ProjectPage = lazy(() =>
     default: module.ProjectPage,
   })),
 );
+const StatusPage = lazy(() =>
+  import('../components/StatusPage.tsx').then((module) => ({
+    default: module.StatusPage,
+  })),
+);
 const UserProfilePage = lazy(() =>
   import('../components/UserProfilePage.tsx').then((module) => ({
     default: module.UserProfilePage,
@@ -110,6 +115,8 @@ export function AppPages({ app }: AppPagesProps) {
         />
       ) : app.appView === 'notifications' ? (
         <NotificationsPage />
+      ) : app.appView === 'status' ? (
+        <StatusPage />
       ) : app.appView === 'users' ? (
         <UsersPage onOpenProject={app.openProject} />
       ) : app.appView === 'organization' ? (

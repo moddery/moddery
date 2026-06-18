@@ -24,6 +24,7 @@ import {
   writeProfileToUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
+  writeStatusToUrl,
   writeUsersToUrl,
   type AppView,
   type SelectedCollection,
@@ -173,6 +174,12 @@ export function useAppShellState() {
     scrollToTop();
   }
 
+  function openStatus() {
+    resetSelection('status');
+    writeStatusToUrl();
+    scrollToTop();
+  }
+
   function openOrganizations() {
     resetSelection('organization');
     writeOrganizationsToUrl();
@@ -275,6 +282,11 @@ export function useAppShellState() {
       return true;
     }
 
+    if (url.pathname === '/status') {
+      openStatus();
+      return true;
+    }
+
     return false;
   }
 
@@ -300,6 +312,7 @@ export function useAppShellState() {
     openOrganizations,
     openProject,
     openProfile,
+    openStatus,
     openUsers,
     navigateToUrl,
     projectType,

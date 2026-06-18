@@ -42,6 +42,7 @@ export function App() {
         onCollections={app.openCollections}
         onUsers={app.openUsers}
         onOrganizations={app.openOrganizations}
+        onStatus={app.openStatus}
         onDashboard={app.openDashboard}
         isDiscoverActive={
           app.appView === 'discover' || Boolean(app.selectedProject)
@@ -49,6 +50,7 @@ export function App() {
         isCollectionsActive={app.appView === 'collections'}
         isUsersActive={app.appView === 'users' || app.appView === 'profile'}
         isOrganizationsActive={app.appView === 'organization'}
+        isStatusActive={app.appView === 'status'}
         showContentTabs={
           !homePage &&
           (app.appView === 'discover' || Boolean(app.selectedProject))

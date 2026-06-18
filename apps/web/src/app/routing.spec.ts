@@ -8,6 +8,7 @@ import {
   viewFromUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
+  writeStatusToUrl,
 } from './routing.ts';
 
 const originalWindow = Reflect.get(globalThis, 'window') as Window | undefined;
@@ -83,6 +84,19 @@ describe('routing helpers', () => {
     writeProjectListToUrl('resourcepack');
 
     expect(fakeWindow.location.pathname).toBe('/resource-packs');
+    expect(fakeWindow.location.search).toBe('');
+  });
+
+  test('reads and writes the status route', () => {
+    const fakeWindow = setWindowUrl(
+      'https://moddery.test/status?project=old&type=plugin&tab=versions',
+    );
+
+    expect(viewFromUrl()).toBe('status');
+
+    writeStatusToUrl();
+
+    expect(fakeWindow.location.pathname).toBe('/status');
     expect(fakeWindow.location.search).toBe('');
   });
 });
