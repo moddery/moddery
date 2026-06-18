@@ -7,6 +7,7 @@ import {
   organizationPath,
   profileFromUrl,
   projectFromUrl,
+  projectPath,
   userPath,
   viewFromUrl,
   writeOrganizationToUrl,
@@ -75,6 +76,12 @@ describe('routing helpers', () => {
         slug: 'tech packs',
       }),
     ).toBe('/collections/creator%20one/tech%20packs');
+  });
+
+  test('builds encoded project paths', () => {
+    expect(projectPath('modpack', 'tech pack')).toBe(
+      '/modpacks?project=tech%20pack&type=modpack',
+    );
   });
 
   test('writes project URLs and clears stale project state', () => {

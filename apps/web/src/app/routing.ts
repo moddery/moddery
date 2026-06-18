@@ -84,6 +84,11 @@ export function organizationPath(slug: string) {
   return `/organizations/${encodeURIComponent(slug)}`;
 }
 
+export function projectPath(projectType: ProjectType, slug: string) {
+  const meta = projectTypeMeta(projectType);
+  return `/${meta.path}?project=${encodeURIComponent(slug)}&type=${encodeURIComponent(meta.type)}`;
+}
+
 export function writeProfileToUrl(username: string) {
   const url = new URL(window.location.href);
   url.pathname = userPath(username);
@@ -147,7 +152,11 @@ export function organizationFromUrl(): string | null {
 export function writeProjectToUrl(project: SelectedProject | null) {
   const url = new URL(window.location.href);
   if (project) {
-    url.pathname = `/${projectTypeMeta(project.projectType).path}`;
+    const nextUrl = new URL(
+      projectPath(project.projectType, project.slug),
+      url,
+    );
+    url.pathname = nextUrl.pathname;
     url.searchParams.set('project', project.slug);
     url.searchParams.set('type', project.projectType);
     url.searchParams.delete('view');

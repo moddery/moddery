@@ -1,20 +1,14 @@
 import { Clock, Download, Heart } from 'lucide-react';
-import type { Mod, ProjectType } from '../../types.ts';
-import { organizationPath, userPath } from '../../app/routing.ts';
+import type { Mod } from '../../types.ts';
+import { organizationPath, projectPath, userPath } from '../../app/routing.ts';
 import { environmentOf } from '../../types.ts';
 import { cn } from '../../lib/cn.ts';
 import { formatCount, timeAgo } from '../../lib/format.ts';
-import { projectTypeMeta } from '../../lib/projectTypes.ts';
 import { CategoryTag, EnvTag, LoaderTag } from '../Chips.tsx';
 import type { SearchTag } from '../ModCard.tsx';
 
 export function projectHref(mod: Mod) {
   return projectPath(mod.projectType ?? 'mod', mod.slug);
-}
-
-export function projectPath(projectType: ProjectType, slug: string) {
-  const meta = projectTypeMeta(projectType);
-  return `/${meta.path}?project=${encodeURIComponent(slug)}&type=${encodeURIComponent(meta.type)}`;
 }
 
 export function AuthorLink({

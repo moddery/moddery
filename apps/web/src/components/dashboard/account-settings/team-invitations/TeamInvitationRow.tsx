@@ -1,9 +1,8 @@
-import { organizationPath } from '../../../../app/routing.ts';
+import { organizationPath, projectPath } from '../../../../app/routing.ts';
 import { type TeamInvitationSummary } from '../../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 import { permissionLabel } from '../../../../lib/permissions.ts';
 import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
-import { projectPath } from '../../../mod-card/ModCardParts.tsx';
 
 export function TeamInvitationRow({
   busy,

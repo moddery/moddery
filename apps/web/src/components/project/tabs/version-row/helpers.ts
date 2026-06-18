@@ -1,6 +1,6 @@
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
-import { projectPath } from '../../../mod-card/ModCardParts.tsx';
+import { projectPath } from '../../../../app/routing.ts';
 
 export function shortHash(value: string): string {
   return value.length <= 12 ? value : `${value.slice(0, 12)}...`;

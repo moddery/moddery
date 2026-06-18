@@ -5,12 +5,12 @@ import {
 import {
   collectionPath,
   organizationPath,
+  projectPath,
   type SelectedProject,
 } from '../../../app/routing.ts';
 import { timeAgo } from '../../../lib/format.ts';
 import { projectTypeFromKind } from '../../../lib/projectTypes.ts';
 import { collectionVisibilityMeta } from '../../collection/collectionVisibility.ts';
-import { projectPath } from '../../mod-card/ModCardParts.tsx';
 
 export function OrganizationRow({
   onOpenOrganization,

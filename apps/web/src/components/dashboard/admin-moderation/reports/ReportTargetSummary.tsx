@@ -1,10 +1,9 @@
 import { Flag } from 'lucide-react';
 
-import { userPath } from '../../../../app/routing.ts';
+import { projectPath, userPath } from '../../../../app/routing.ts';
 import { type ModerationReport } from '../../../../lib/dashboard.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
 import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
-import { projectPath } from '../../../mod-card/ModCardParts.tsx';
 
 export function ReportTargetSummary({ report }: { report: ModerationReport }) {
   const target = resolveReportTarget(report);
