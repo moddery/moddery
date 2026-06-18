@@ -1,9 +1,12 @@
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
-import { paginationOptions } from '../../common/graphql/pagination.js';
+import {
+  PaginationArgs,
+  paginationOptions,
+} from '../../common/graphql/pagination.js';
 import { CreateVersionInput } from '../dto/create-version.input.js';
 import { RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import { UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
@@ -38,19 +41,16 @@ export class VersionsResolver {
     @Args('projectSlug', { type: () => String }) projectSlug: string,
     @Args('gameVersion', { nullable: true, type: () => String })
     gameVersion?: string | null,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
     @Args('loader', { nullable: true, type: () => String })
     loader?: string | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<VersionSearchResult> {
     return this.versionDirectoryService.searchByProjectSlug(projectSlug, {
       gameVersion,
       loader,
-      ...paginationOptions({ limit, offset }),
+      ...paginationOptions(pagination ?? {}),
       search,
     });
   }

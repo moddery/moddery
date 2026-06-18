@@ -1,9 +1,12 @@
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
-import { paginationOptions } from '../../common/graphql/pagination.js';
+import {
+  PaginationArgs,
+  paginationOptions,
+} from '../../common/graphql/pagination.js';
 import { AddOrganizationTeamMemberInput } from '../dto/add-organization-team-member.input.js';
 import { AddProjectToOrganizationInput } from '../dto/add-project-to-organization.input.js';
 import { CreateOrganizationInput } from '../dto/create-organization.input.js';
@@ -44,13 +47,10 @@ export class OrganizationsResolver {
   publicOrganizationSearch(
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<OrganizationSearchResult> {
     return this.organizationDirectoryService.findPublicOrganizations({
-      ...paginationOptions({ limit, offset }),
+      ...paginationOptions(pagination ?? {}),
       search,
     });
   }
@@ -67,14 +67,11 @@ export class OrganizationsResolver {
   @Query(() => OrganizationMemberSearchResult)
   organizationMemberSearch(
     @Args('slug', { type: () => String }) slug: string,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<OrganizationMemberSearchResult> {
     return this.organizationDirectoryService.findOrganizationMembers(
       slug,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -82,14 +79,11 @@ export class OrganizationsResolver {
   @Query(() => OrganizationProjectSearchResult)
   organizationProjectSearch(
     @Args('slug', { type: () => String }) slug: string,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<OrganizationProjectSearchResult> {
     return this.organizationDirectoryService.findOrganizationProjects(
       slug,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 

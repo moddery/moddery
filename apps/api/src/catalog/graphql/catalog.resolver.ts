@@ -1,10 +1,13 @@
 import { ForbiddenException } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
-import { paginationOptions } from '../../common/graphql/pagination.js';
+import {
+  PaginationArgs,
+  paginationOptions,
+} from '../../common/graphql/pagination.js';
 import { AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.js';
 import { AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
 import { CatalogQueryInput } from '../dto/catalog-query.input.js';
@@ -87,14 +90,11 @@ export class CatalogResolver {
   @Query(() => ProjectSearchResult)
   async viewerFollowedProjectSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     const result = await this.projectFollowsService.findViewerFollowedProjects(
       user.id,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
 
     return {
@@ -115,15 +115,12 @@ export class CatalogResolver {
   @Query(() => ProjectSearchResult)
   async moderationProjectSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     assertCanModerate(user);
     const result =
       await this.projectModerationService.findProjectsForModeration(
-        paginationOptions({ limit, offset }),
+        paginationOptions(pagination ?? {}),
       );
 
     return {
@@ -147,15 +144,12 @@ export class CatalogResolver {
   projectModerationActionSearch(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     assertCanModerate(user);
     return this.projectModerationService.findProjectModerationActions(
       projectSlug,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -171,14 +165,11 @@ export class CatalogResolver {
   @Query(() => ProjectMemberSearchResult)
   projectMemberSearch(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     return this.projectMembersService.findProjectMemberSearch(
       projectSlug,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 

@@ -1,8 +1,11 @@
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
-import { paginationOptions } from '../../common/graphql/pagination.js';
+import {
+  PaginationArgs,
+  paginationOptions,
+} from '../../common/graphql/pagination.js';
 import { TeamsService } from '../services/teams.service.js';
 import {
   TeamInvitationSearchResult,
@@ -21,12 +24,11 @@ export class TeamsResolver {
   @Query(() => TeamInvitationSearchResult)
   viewerTeamInvitationSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int }) limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int }) offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     return this.teamsService.findViewerInvitations(
       user.id,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 

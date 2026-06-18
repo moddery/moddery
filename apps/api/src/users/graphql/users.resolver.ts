@@ -1,7 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import {
   Args,
-  Int,
   Mutation,
   Parent,
   Query,
@@ -12,7 +11,10 @@ import {
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
-import { paginationOptions } from '../../common/graphql/pagination.js';
+import {
+  PaginationArgs,
+  paginationOptions,
+} from '../../common/graphql/pagination.js';
 import { UpdateUserAccountInput } from '../dto/update-user-account.input.js';
 import { UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
 import { UserAdminService } from '../services/user-admin.service.js';
@@ -66,13 +68,10 @@ export class UsersResolver {
   publicUserSearch(
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<UserSearchResult> {
     return this.userDirectoryService.findPublicUsers({
-      ...paginationOptions({ limit, offset }),
+      ...paginationOptions(pagination ?? {}),
       search,
     });
   }
@@ -81,14 +80,11 @@ export class UsersResolver {
   @Query(() => UserProjectSearchResult)
   publicUserProjectSearch(
     @Args('username', { type: () => String }) username: string,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<UserProjectSearchResult> {
     return this.userDirectoryService.findPublicUserProjects(
       username,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -96,14 +92,11 @@ export class UsersResolver {
   @Query(() => UserCollectionSearchResult)
   publicUserCollectionSearch(
     @Args('username', { type: () => String }) username: string,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<UserCollectionSearchResult> {
     return this.userDirectoryService.findPublicUserCollections(
       username,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -123,14 +116,11 @@ export class UsersResolver {
     @CurrentUser() user: AuthenticatedUser,
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<UserSearchResult> {
     assertAdmin(user);
     return this.userAdminService.findAdminUsers({
-      ...paginationOptions({ limit, offset }),
+      ...paginationOptions(pagination ?? {}),
       search,
     });
   }
@@ -161,14 +151,11 @@ export class UsersResolver {
   @Query(() => FriendshipSearchResult)
   viewerFriendSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<FriendshipSearchResult> {
     return this.userFriendshipsService.findViewerFriends(
       user.id,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -182,14 +169,11 @@ export class UsersResolver {
   @Query(() => FriendshipSearchResult)
   viewerFriendRequestSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<FriendshipSearchResult> {
     return this.userFriendshipsService.findViewerFriendRequests(
       user.id,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -203,14 +187,11 @@ export class UsersResolver {
   @Query(() => FriendshipSearchResult)
   viewerBlockedUserSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ): Promise<FriendshipSearchResult> {
     return this.userFriendshipsService.findViewerBlockedUsers(
       user.id,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 

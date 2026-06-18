@@ -1,9 +1,12 @@
 import { ForbiddenException } from '@nestjs/common';
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
-import { paginationOptions } from '../../common/graphql/pagination.js';
+import {
+  PaginationArgs,
+  paginationOptions,
+} from '../../common/graphql/pagination.js';
 import { ReportDirectThreadsService } from '../services/report-direct-threads.service.js';
 import { ReportModerationNotesService } from '../services/report-moderation-notes.service.js';
 import { ReportThreadsService } from '../services/report-threads.service.js';
@@ -48,14 +51,11 @@ export class ReportsResolver {
   @Query(() => ReportSearchResult)
   moderationReportSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     assertCanModerate(user);
     return this.reportsService.findModerationReports(
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -76,14 +76,11 @@ export class ReportsResolver {
   @Query(() => ThreadSearchResult)
   viewerDirectThreadSearch(
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     return this.reportDirectThreadsService.findViewerDirectThreads(
       user.id,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -102,15 +99,12 @@ export class ReportsResolver {
   projectModerationNoteSearch(
     @Args('projectSlug') projectSlug: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     assertCanModerate(user);
     return this.reportModerationNotesService.findProjectModerationNotes(
       projectSlug,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 
@@ -129,15 +123,12 @@ export class ReportsResolver {
   userModerationNoteSearch(
     @Args('username') username: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Args('limit', { nullable: true, type: () => Int })
-    limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int })
-    offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     assertCanModerate(user);
     return this.reportModerationNotesService.findUserModerationNotes(
       username,
-      paginationOptions({ limit, offset }),
+      paginationOptions(pagination ?? {}),
     );
   }
 

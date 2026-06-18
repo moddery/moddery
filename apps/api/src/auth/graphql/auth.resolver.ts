@@ -1,4 +1,4 @@
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../decorators/current-user.decorator.js';
 import { CreateApiTokenInput } from '../dto/create-api-token.input.js';
@@ -8,7 +8,10 @@ import { RegisterInput } from '../dto/register.input.js';
 import { ApiTokensService } from '../services/api-tokens.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { type AuthenticatedUser } from '../services/auth-token.service.js';
-import { paginationOptions } from '../../common/graphql/pagination.js';
+import {
+  PaginationArgs,
+  paginationOptions,
+} from '../../common/graphql/pagination.js';
 import { UsersService } from '../../users/services/users.service.js';
 import {
   ApiTokenSearchResult,
@@ -71,12 +74,11 @@ export class AuthResolver {
     @CurrentUser() user: AuthenticatedUser,
     @Args('includeRevoked', { nullable: true, type: () => Boolean })
     includeRevoked?: boolean | null,
-    @Args('limit', { nullable: true, type: () => Int }) limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int }) offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     return this.apiTokensService.findViewerTokens(user.id, {
       includeRevoked,
-      ...paginationOptions({ limit, offset }),
+      ...paginationOptions(pagination ?? {}),
     });
   }
 
@@ -94,12 +96,11 @@ export class AuthResolver {
     @CurrentUser() user: AuthenticatedUser,
     @Args('includeRevoked', { nullable: true, type: () => Boolean })
     includeRevoked?: boolean | null,
-    @Args('limit', { nullable: true, type: () => Int }) limit?: number | null,
-    @Args('offset', { nullable: true, type: () => Int }) offset?: number | null,
+    @Args() pagination?: PaginationArgs,
   ) {
     return this.authService.findViewerSessions(user.id, {
       includeRevoked,
-      ...paginationOptions({ limit, offset }),
+      ...paginationOptions(pagination ?? {}),
     });
   }
 
