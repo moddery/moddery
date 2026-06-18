@@ -6,7 +6,7 @@ import {
   type UpdateProjectInput,
 } from '../../../lib/dashboard.ts';
 import { parseProjectLinks, projectLinksText } from './projectLinks.ts';
-import { nullableText, splitList } from './shared.tsx';
+import { nullableText } from './shared.tsx';
 
 export function useProjectMetadataFormState(
   projects: DashboardProject[],
@@ -38,14 +38,14 @@ export function useProjectMetadataFormState(
   const [extraLinks, setExtraLinks] = useState(
     projectLinksText(selectedProject),
   );
-  const [loaders, setLoaders] = useState(
-    selectedProject?.loaders.join(', ') ?? '',
+  const [loaders, setLoaders] = useState<string[]>(
+    selectedProject?.loaders ?? [],
   );
-  const [gameVersions, setGameVersions] = useState(
-    selectedProject?.gameVersions.join(', ') ?? '',
+  const [gameVersions, setGameVersions] = useState<string[]>(
+    selectedProject?.gameVersions ?? [],
   );
-  const [categories, setCategories] = useState(
-    selectedProject?.categories.join(', ') ?? '',
+  const [categories, setCategories] = useState<string[]>(
+    selectedProject?.categories ?? [],
   );
 
   function selectProject(slug: string) {
@@ -64,9 +64,9 @@ export function useProjectMetadataFormState(
     setLicenseName(nextProject?.license.name ?? '');
     setLicenseUrl(nextProject?.license.url ?? '');
     setExtraLinks(projectLinksText(nextProject));
-    setLoaders(nextProject?.loaders.join(', ') ?? '');
-    setGameVersions(nextProject?.gameVersions.join(', ') ?? '');
-    setCategories(nextProject?.categories.join(', ') ?? '');
+    setLoaders(nextProject?.loaders ?? []);
+    setGameVersions(nextProject?.gameVersions ?? []);
+    setCategories(nextProject?.categories ?? []);
   }
 
   function selectLicense(key: string) {
@@ -120,18 +120,18 @@ export function useProjectMetadataFormState(
 
   function buildInput(): UpdateProjectInput {
     return {
-      categories: splitList(categories),
+      categories,
       color: nullableText(color),
       description,
       discordUrl: nullableText(discordUrl),
-      gameVersions: splitList(gameVersions),
+      gameVersions,
       iconUrl: nullableText(iconUrl),
       issuesUrl: nullableText(issuesUrl),
       licenseKey,
       licenseName,
       licenseUrl: nullableText(licenseUrl),
       links: parseProjectLinks(extraLinks),
-      loaders: splitList(loaders),
+      loaders,
       projectSlug,
       sourceUrl: nullableText(sourceUrl),
       summary,

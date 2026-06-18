@@ -3,6 +3,8 @@ import { type FormEvent, useState } from 'react';
 
 import {
   fetchLicenseTaxonomy,
+  fetchCategoryTaxonomy,
+  fetchGameVersionTaxonomy,
   updateProject,
   type DashboardProject,
   uploadProjectFile,
@@ -20,6 +22,14 @@ export function ProjectMetadataForm({
   const licensesQuery = useQuery({
     queryFn: ({ signal }) => fetchLicenseTaxonomy(signal),
     queryKey: ['dashboard', 'taxonomy-licenses'],
+  });
+  const categoriesQuery = useQuery({
+    queryFn: ({ signal }) => fetchCategoryTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-categories'],
+  });
+  const gameVersionsQuery = useQuery({
+    queryFn: ({ signal }) => fetchGameVersionTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-game-versions'],
   });
   const metadataForm = useProjectMetadataFormState(
     projects,
@@ -83,6 +93,8 @@ export function ProjectMetadataForm({
       >
         <ProjectMetadataFields
           {...metadataForm.fields}
+          categoryOptions={categoriesQuery.data ?? []}
+          gameVersionOptions={gameVersionsQuery.data ?? []}
           onIconFileChange={setLocalIconFile}
           onProjectChange={selectProject}
         />

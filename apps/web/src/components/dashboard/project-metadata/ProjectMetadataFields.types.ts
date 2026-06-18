@@ -1,26 +1,32 @@
-import { type DashboardProject } from '../../../lib/dashboard.ts';
-import { type LicenseTaxonomy } from '../../../lib/dashboard.ts';
+import {
+  type CategoryTaxonomy,
+  type DashboardProject,
+  type GameVersionTaxonomy,
+  type LicenseTaxonomy,
+} from '../../../lib/dashboard.ts';
 
 export interface ProjectMetadataFieldsProps {
-  categories: string;
+  categories: string[];
+  categoryOptions: CategoryTaxonomy[];
   color: string;
   description: string;
   discordUrl: string;
   extraLinks: string;
-  gameVersions: string;
+  gameVersionOptions: GameVersionTaxonomy[];
+  gameVersions: string[];
   iconUrl: string;
   issuesUrl: string;
   licenseKey: string;
   licenseName: string;
   licenseUrl: string;
   licenses: LicenseTaxonomy[];
-  loaders: string;
-  onCategoriesChange: (value: string) => void;
+  loaders: string[];
+  onCategoriesChange: (value: string[]) => void;
   onColorChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onDiscordUrlChange: (value: string) => void;
   onExtraLinksChange: (value: string) => void;
-  onGameVersionsChange: (value: string) => void;
+  onGameVersionsChange: (value: string[]) => void;
   onIconUrlChange: (value: string) => void;
   onIconFileChange: (value: File | null) => void;
   onIssuesUrlChange: (value: string) => void;
@@ -28,7 +34,7 @@ export interface ProjectMetadataFieldsProps {
   onLicenseNameChange: (value: string) => void;
   onLicenseUrlChange: (value: string) => void;
   onLicenseSelect: (key: string) => void;
-  onLoadersChange: (value: string) => void;
+  onLoadersChange: (value: string[]) => void;
   onProjectChange: (value: string) => void;
   onSourceUrlChange: (value: string) => void;
   onSummaryChange: (value: string) => void;

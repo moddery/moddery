@@ -8,10 +8,12 @@ import { DashboardTextarea } from './shared.tsx';
 
 export function ProjectMetadataFields({
   categories,
+  categoryOptions,
   color,
   description,
   discordUrl,
   extraLinks,
+  gameVersionOptions,
   gameVersions,
   iconUrl,
   issuesUrl,
@@ -72,11 +74,15 @@ export function ProjectMetadataFields({
       />
       <ProjectTaxonomyFields
         categories={categories}
+        categoryOptions={categoryOptions}
+        gameVersionOptions={gameVersionOptions}
         gameVersions={gameVersions}
         loaders={loaders}
         onCategoriesChange={onCategoriesChange}
         onGameVersionsChange={onGameVersionsChange}
         onLoadersChange={onLoadersChange}
+        projectSlug={projectSlug}
+        projects={projects}
       />
       <ProjectLinkFields
         discordUrl={discordUrl}
