@@ -16,10 +16,13 @@ export function DashboardSectionNav({
     >
       <div className="flex gap-2 overflow-x-auto">
         {items.map((item) => (
-          <button
+          <a
+            href={dashboardSectionHref(item.id)}
             key={item.id}
-            type="button"
-            onClick={() => scrollToSection(item.id)}
+            onClick={(event) => {
+              event.preventDefault();
+              scrollToDashboardSection(item.id);
+            }}
             className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             {item.label}
@@ -28,14 +31,22 @@ export function DashboardSectionNav({
                 {item.count.toLocaleString('en-US')}
               </span>
             )}
-          </button>
+          </a>
         ))}
       </div>
     </nav>
   );
 }
 
-function scrollToSection(id: string) {
+export function dashboardSectionHref(id: string) {
+  return `#${encodeURIComponent(id)}`;
+}
+
+export function scrollToDashboardSection(id: string) {
+  const url = new URL(window.location.href);
+  url.hash = id;
+  window.history.pushState(null, '', url);
+
   document.getElementById(id)?.scrollIntoView({
     behavior: 'smooth',
     block: 'start',
