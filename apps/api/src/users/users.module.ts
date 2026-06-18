@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AuditModule } from '../audit/audit.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { UsersResolver } from './graphql/users.resolver.js';
 import { UserAdminService } from './services/user-admin.service.js';
@@ -16,7 +17,7 @@ import { UsersService } from './services/users.service.js';
     UserFriendshipsService,
     UsersService,
   ],
-  imports: [PrismaModule],
+  imports: [AuditModule, PrismaModule],
   providers: [
     UserAdminService,
     UserDirectoryService,

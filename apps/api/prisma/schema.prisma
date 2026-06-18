@@ -198,10 +198,28 @@ model User {
   threadMemberships       ThreadMember[]
   uploadedVersions        Version[]
   passwordCredential      PasswordCredential?
+  auditLogsAuthored       AuditLog[]               @relation("AuditLogActor")
+  auditLogsTargetingUser  AuditLog[]               @relation("AuditLogTargetUser")
 
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String?
+  targetUserId String?
+  action       String
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  actor        User?    @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUser   User?    @relation("AuditLogTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetUserId, createdAt])
+  @@map("audit_logs")
 }
 
 model Friend {

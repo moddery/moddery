@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { AccountRole, AccountStatus } from '@prisma/client';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type UpdateUserAccountInput } from '../dto/update-user-account.input.js';
 import {
@@ -15,7 +16,10 @@ import {
 
 @Injectable()
 export class UserAdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async findAdminUsers({
     limit = 50,
@@ -70,7 +74,7 @@ export class UserAdminService {
     }
 
     const user = await this.prisma.user.findUnique({
-      select: { id: true },
+      select: { id: true, role: true, status: true },
       where: { id: input.userId },
     });
 
@@ -97,6 +101,19 @@ export class UserAdminService {
     if (updated === null) {
       throw new NotFoundException('User not found');
     }
+
+    await this.auditService.recordUserAccountUpdate({
+      actorId,
+      after: {
+        role: updated.role,
+        status: updated.status,
+      },
+      before: {
+        role: user.role,
+        status: user.status,
+      },
+      targetUserId: input.userId,
+    });
 
     return userProfileRowToContract(updated, {
       includePrivateAccountFields: true,

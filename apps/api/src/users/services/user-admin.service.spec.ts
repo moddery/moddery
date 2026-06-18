@@ -1,43 +1,52 @@
 import { describe, expect, test } from 'bun:test';
 
+import { type AuditService } from '../../audit/audit.service.js';
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { UserAdminService } from './user-admin.service.js';
 
 describe(UserAdminService.name, () => {
   test('updates user account role and status for admins', async () => {
+    const auditEvents: unknown[] = [];
+    let findUniqueCalls = 0;
     const updates: unknown[] = [];
-    const service = new UserAdminService({
-      user: {
-        findUnique: ({ where }: { where: { id: string } }) =>
-          Promise.resolve({
-            _count: {
-              collections: 0,
-              projectFollows: 0,
-              teamMemberships: 0,
-            },
-            avatarUrl: null,
-            bio: null,
-            collections: [],
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            displayName: null,
-            email: 'moderator@example.test',
-            emailVerifiedAt: null,
-            friendRequestsReceived: [],
-            friendRequestsSent: [],
-            id: where.id,
-            newsletterOptIn: false,
-            role: 'MODERATOR',
-            status: 'SUSPENDED',
-            teamMemberships: [],
-            twoFactorEnabled: false,
-            username: 'moderator',
-          }),
-        update: (query: unknown) => {
-          updates.push(query);
-          return Promise.resolve({});
+    const service = createUserAdminService(
+      {
+        user: {
+          findUnique: ({ where }: { where: { id: string } }) => {
+            findUniqueCalls += 1;
+
+            return Promise.resolve({
+              _count: {
+                collections: 0,
+                projectFollows: 0,
+                teamMemberships: 0,
+              },
+              avatarUrl: null,
+              bio: null,
+              collections: [],
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              displayName: null,
+              email: 'moderator@example.test',
+              emailVerifiedAt: null,
+              friendRequestsReceived: [],
+              friendRequestsSent: [],
+              id: where.id,
+              newsletterOptIn: false,
+              role: findUniqueCalls === 1 ? 'USER' : 'MODERATOR',
+              status: findUniqueCalls === 1 ? 'ACTIVE' : 'SUSPENDED',
+              teamMemberships: [],
+              twoFactorEnabled: false,
+              username: 'moderator',
+            });
+          },
+          update: (query: unknown) => {
+            updates.push(query);
+            return Promise.resolve({});
+          },
         },
-      },
-    } as unknown as PrismaService);
+      } as unknown as PrismaService,
+      auditEvents,
+    );
 
     const profile = await service.updateUserAccount(
       {
@@ -57,11 +66,23 @@ describe(UserAdminService.name, () => {
     });
     expect(profile.role).toBe('MODERATOR');
     expect(profile.status).toBe('SUSPENDED');
+    expect(auditEvents[0]).toEqual({
+      actorId: 'admin-a',
+      after: {
+        role: 'MODERATOR',
+        status: 'SUSPENDED',
+      },
+      before: {
+        role: 'USER',
+        status: 'ACTIVE',
+      },
+      targetUserId: 'user-b',
+    });
   });
 
   test('loads admin users with pagination and private fields', async () => {
     const queries: unknown[] = [];
-    const service = new UserAdminService({
+    const service = createUserAdminService({
       user: {
         count: (query: unknown) => {
           queries.push({ count: query });
@@ -119,7 +140,7 @@ describe(UserAdminService.name, () => {
 
   test('loads the legacy admin user list from admin search results', async () => {
     const queries: unknown[] = [];
-    const service = new UserAdminService({
+    const service = createUserAdminService({
       user: {
         count: () => Promise.resolve(1),
         findMany: (query: unknown) => {
@@ -140,6 +161,20 @@ describe(UserAdminService.name, () => {
     expect(users[0]?.username).toBe('creator');
   });
 });
+
+function createUserAdminService(
+  prisma: PrismaService,
+  auditEvents: unknown[] = [],
+) {
+  const auditService = {
+    recordUserAccountUpdate: (event: unknown) => {
+      auditEvents.push(event);
+      return Promise.resolve();
+    },
+  } as AuditService;
+
+  return new UserAdminService(auditService, prisma);
+}
 
 function userProfileRow() {
   return {
