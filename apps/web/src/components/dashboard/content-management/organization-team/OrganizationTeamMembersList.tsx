@@ -1,4 +1,5 @@
 import { type DashboardOrganization } from '../../../../lib/dashboard.ts';
+import { permissionLabel } from '../../../../lib/permissions.ts';
 
 export function OrganizationTeamMembersList({
   organization,
@@ -33,7 +34,7 @@ export function OrganizationTeamMembersList({
                     key={permission}
                     className="rounded-md bg-control px-2 py-1 text-[11px] font-bold text-muted"
                   >
-                    {permission}
+                    {permissionLabel(permission)}
                   </span>
                 ))}
               </div>

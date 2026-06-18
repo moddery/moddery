@@ -1,9 +1,11 @@
 import { Crown, UserRound } from 'lucide-react';
+import { type ReactNode } from 'react';
 
 import {
   type OrganizationMember,
   type OrganizationProfile,
 } from '../../lib/organizations.ts';
+import { permissionLabel } from '../../lib/permissions.ts';
 import { Pagination } from '../Pagination.tsx';
 
 export function OrganizationMembers({
@@ -63,7 +65,7 @@ function MemberGrid({ members }: { members: OrganizationMember[] }) {
           <a
             key={member.user.id}
             href={`/users/${member.user.username}`}
-            className="flex min-w-0 items-center gap-3 rounded-lg border border-line bg-surface px-3 py-3 transition-colors hover:border-accent/50"
+            className="flex min-w-0 items-start gap-3 rounded-lg border border-line bg-surface px-3 py-3 transition-colors hover:border-accent/50"
           >
             <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-surface-2 text-muted">
               {member.user.avatarUrl ? (
@@ -88,10 +90,33 @@ function MemberGrid({ members }: { members: OrganizationMember[] }) {
               <p className="truncate text-xs font-semibold text-muted">
                 {member.role}
               </p>
+              {(member.isOwner || member.permissions.length > 0) && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {member.isOwner && <MemberBadge>Owner</MemberBadge>}
+                  {member.permissions.slice(0, 3).map((permission) => (
+                    <MemberBadge key={permission}>
+                      {permissionLabel(permission)}
+                    </MemberBadge>
+                  ))}
+                  {member.permissions.length > 3 && (
+                    <MemberBadge>
+                      +{(member.permissions.length - 3).toLocaleString('en-US')}
+                    </MemberBadge>
+                  )}
+                </div>
+              )}
             </div>
           </a>
         );
       })}
     </div>
+  );
+}
+
+function MemberBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-bold text-muted">
+      {children}
+    </span>
   );
 }

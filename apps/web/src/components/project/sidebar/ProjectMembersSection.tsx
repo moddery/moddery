@@ -7,6 +7,7 @@ import {
   fetchProjectMemberSearch,
   type ProjectMember,
 } from '../../../lib/catalog.ts';
+import { permissionLabel } from '../../../lib/permissions.ts';
 import { Pagination } from '../../Pagination.tsx';
 
 const pageSize = 12;
@@ -109,12 +110,4 @@ function MemberBadge({ children }: { children: ReactNode }) {
       {children}
     </span>
   );
-}
-
-function permissionLabel(permission: string): string {
-  return permission
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
 }
