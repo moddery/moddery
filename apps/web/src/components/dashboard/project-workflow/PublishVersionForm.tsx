@@ -3,9 +3,11 @@ import { type FormEvent, useState } from 'react';
 import {
   computeVersionFileHashes,
   createVersion,
+  fetchGameVersionTaxonomy,
   type DashboardData,
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
+import { useQuery } from '@tanstack/react-query';
 import { PublishVersionFields } from './publish-version/PublishVersionFields.tsx';
 import { usePublishVersionFormState } from './publish-version/usePublishVersionFormState.ts';
 
@@ -15,6 +17,10 @@ export function PublishVersionForm({
   projects: DashboardData['projects'];
 }) {
   const form = usePublishVersionFormState(projects);
+  const gameVersionsQuery = useQuery({
+    queryFn: ({ signal }) => fetchGameVersionTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-game-versions'],
+  });
   const [localFile, setLocalFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +81,7 @@ export function PublishVersionForm({
       >
         <PublishVersionFields
           {...form.fields}
+          gameVersionOptions={gameVersionsQuery.data ?? []}
           hasLocalFile={localFile !== null}
           onLocalFileChange={(file) => {
             setLocalFile(file);

@@ -9,6 +9,7 @@ export function PublishVersionFields({
   fileName,
   fileSize,
   fileUrl,
+  gameVersionOptions,
   gameVersions,
   hasLocalFile,
   loaders,
@@ -36,6 +37,7 @@ export function PublishVersionFields({
     <>
       <PublishVersionMetadataFields
         channel={channel}
+        gameVersionOptions={gameVersionOptions}
         gameVersions={gameVersions}
         loaders={loaders}
         name={name}

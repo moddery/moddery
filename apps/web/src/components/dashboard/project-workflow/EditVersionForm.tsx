@@ -1,6 +1,11 @@
 import { type FormEvent, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-import { updateVersion, type DashboardData } from '../../../lib/dashboard.ts';
+import {
+  fetchGameVersionTaxonomy,
+  updateVersion,
+  type DashboardData,
+} from '../../../lib/dashboard.ts';
 import { EditVersionFields } from './edit-version/EditVersionFields.tsx';
 import { EditVersionSelectors } from './edit-version/EditVersionSelectors.tsx';
 import { useEditVersionFormState } from './edit-version/useEditVersionFormState.ts';
@@ -11,6 +16,10 @@ export function EditVersionForm({
   projects: DashboardData['projects'];
 }) {
   const form = useEditVersionFormState(projects);
+  const gameVersionsQuery = useQuery({
+    queryFn: ({ signal }) => fetchGameVersionTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-game-versions'],
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [updated, setUpdated] = useState<string | null>(null);
@@ -81,7 +90,10 @@ export function EditVersionForm({
             Publish a version before editing release metadata.
           </p>
         ) : (
-          <EditVersionFields {...form.fields} />
+          <EditVersionFields
+            {...form.fields}
+            gameVersionOptions={gameVersionsQuery.data ?? []}
+          />
         )}
 
         {error && (

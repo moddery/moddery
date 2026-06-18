@@ -1,10 +1,15 @@
+import { SUPPORTED_LOADERS } from '@moddery/shared';
+
 import { type CreateVersionInput } from '../../../../lib/dashboard.ts';
+import { enumLabel } from '../../../../lib/labels.ts';
+import { TaxonomyCheckboxGroup } from '../../TaxonomyCheckboxGroup.tsx';
 import { DashboardField } from '../shared.tsx';
 import { type PublishVersionFieldsProps } from './PublishVersionFields.types.ts';
 
 type MetadataFieldsProps = Pick<
   PublishVersionFieldsProps,
   | 'channel'
+  | 'gameVersionOptions'
   | 'gameVersions'
   | 'loaders'
   | 'name'
@@ -21,6 +26,7 @@ type MetadataFieldsProps = Pick<
 
 export function PublishVersionMetadataFields({
   channel,
+  gameVersionOptions,
   gameVersions,
   loaders,
   name,
@@ -34,6 +40,10 @@ export function PublishVersionMetadataFields({
   onProjectSlugChange,
   onVersionNumberChange,
 }: MetadataFieldsProps) {
+  const activeGameVersions = gameVersionOptions.filter(
+    (version) => version.isActive,
+  );
+
   return (
     <>
       <div className="grid gap-3 md:grid-cols-3">
@@ -64,7 +74,7 @@ export function PublishVersionMetadataFields({
           required
         />
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3">
         <label className="grid gap-1 text-sm font-bold text-ink">
           Channel
           <select
@@ -81,14 +91,22 @@ export function PublishVersionMetadataFields({
             <option value="ALPHA">Alpha</option>
           </select>
         </label>
-        <DashboardField
+        <TaxonomyCheckboxGroup
           label="Loaders"
-          value={loaders}
+          options={SUPPORTED_LOADERS.map((loader) => ({
+            label: enumLabel(loader),
+            value: loader,
+          }))}
+          selected={loaders}
           onChange={onLoadersChange}
         />
-        <DashboardField
+        <TaxonomyCheckboxGroup
           label="Game versions"
-          value={gameVersions}
+          options={activeGameVersions.map((version) => ({
+            label: version.version,
+            value: version.version,
+          }))}
+          selected={gameVersions}
           onChange={onGameVersionsChange}
         />
       </div>

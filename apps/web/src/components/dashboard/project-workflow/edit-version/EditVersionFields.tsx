@@ -1,11 +1,15 @@
-import { VERSION_CHANNELS } from '@moddery/shared';
+import { SUPPORTED_LOADERS, VERSION_CHANNELS } from '@moddery/shared';
 
+import { type GameVersionTaxonomy } from '../../../../lib/dashboard.ts';
+import { enumLabel } from '../../../../lib/labels.ts';
+import { TaxonomyCheckboxGroup } from '../../TaxonomyCheckboxGroup.tsx';
 import { DashboardField } from '../shared.tsx';
 import { type VersionChannel } from './versionChannel.ts';
 
 export function EditVersionFields({
   channel,
   changelog,
+  gameVersionOptions,
   gameVersions,
   loaders,
   name,
@@ -19,17 +23,22 @@ export function EditVersionFields({
 }: {
   channel: VersionChannel;
   changelog: string;
-  gameVersions: string;
-  loaders: string;
+  gameVersionOptions: GameVersionTaxonomy[];
+  gameVersions: string[];
+  loaders: string[];
   name: string;
   versionNumber: string;
   onChannelChange: (value: VersionChannel) => void;
   onChangelogChange: (value: string) => void;
-  onGameVersionsChange: (value: string) => void;
-  onLoadersChange: (value: string) => void;
+  onGameVersionsChange: (value: string[]) => void;
+  onLoadersChange: (value: string[]) => void;
   onNameChange: (value: string) => void;
   onVersionNumberChange: (value: string) => void;
 }) {
+  const activeGameVersions = gameVersionOptions.filter(
+    (version) => version.isActive,
+  );
+
   return (
     <>
       <div className="grid gap-3 md:grid-cols-3">
@@ -62,15 +71,23 @@ export function EditVersionFields({
           </select>
         </label>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <DashboardField
+      <div className="grid gap-3">
+        <TaxonomyCheckboxGroup
           label="Loaders"
-          value={loaders}
+          options={SUPPORTED_LOADERS.map((loader) => ({
+            label: enumLabel(loader),
+            value: loader,
+          }))}
+          selected={loaders}
           onChange={onLoadersChange}
         />
-        <DashboardField
+        <TaxonomyCheckboxGroup
           label="Game versions"
-          value={gameVersions}
+          options={activeGameVersions.map((version) => ({
+            label: version.version,
+            value: version.version,
+          }))}
+          selected={gameVersions}
           onChange={onGameVersionsChange}
         />
       </div>

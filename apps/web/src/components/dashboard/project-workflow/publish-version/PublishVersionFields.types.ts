@@ -1,6 +1,7 @@
 import {
   type CreateVersionInput,
   type DashboardData,
+  type GameVersionTaxonomy,
 } from '../../../../lib/dashboard.ts';
 
 export interface PublishVersionFieldsProps {
@@ -9,9 +10,10 @@ export interface PublishVersionFieldsProps {
   fileName: string;
   fileSize: string;
   fileUrl: string;
-  gameVersions: string;
+  gameVersionOptions: GameVersionTaxonomy[];
+  gameVersions: string[];
   hasLocalFile: boolean;
-  loaders: string;
+  loaders: string[];
   name: string;
   projectSlug: string;
   projects: DashboardData['projects'];
@@ -24,8 +26,8 @@ export interface PublishVersionFieldsProps {
   onFileSizeChange: (value: string) => void;
   onFileUrlChange: (value: string) => void;
   onLocalFileChange: (value: File | null) => void;
-  onGameVersionsChange: (value: string) => void;
-  onLoadersChange: (value: string) => void;
+  onGameVersionsChange: (value: string[]) => void;
+  onLoadersChange: (value: string[]) => void;
   onNameChange: (value: string) => void;
   onProjectSlugChange: (value: string) => void;
   onSha1Change: (value: string) => void;

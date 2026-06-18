@@ -4,7 +4,7 @@ import {
   type CreateVersionInput,
   type DashboardData,
 } from '../../../../lib/dashboard.ts';
-import { splitList, versionFileHashes } from '../shared.tsx';
+import { versionFileHashes } from '../shared.tsx';
 
 export function usePublishVersionFormState(
   projects: DashboardData['projects'],
@@ -20,10 +20,17 @@ export function usePublishVersionFormState(
   const [fileSize, setFileSize] = useState('0');
   const [sha1, setSha1] = useState('');
   const [sha256, setSha256] = useState('');
-  const [loaders, setLoaders] = useState(projects[0]?.loaders.join(', ') ?? '');
-  const [gameVersions, setGameVersions] = useState(
-    projects[0]?.gameVersions.join(', ') ?? '',
+  const [loaders, setLoaders] = useState<string[]>(projects[0]?.loaders ?? []);
+  const [gameVersions, setGameVersions] = useState<string[]>(
+    projects[0]?.gameVersions ?? [],
   );
+
+  function selectProject(slug: string) {
+    const project = projects.find((item) => item.slug === slug);
+    setProjectSlug(slug);
+    setLoaders(project?.loaders ?? []);
+    setGameVersions(project?.gameVersions ?? []);
+  }
 
   const fields = {
     channel,
@@ -52,7 +59,7 @@ export function usePublishVersionFormState(
     onGameVersionsChange: setGameVersions,
     onLoadersChange: setLoaders,
     onNameChange: setName,
-    onProjectSlugChange: setProjectSlug,
+    onProjectSlugChange: selectProject,
     onSha1Change: setSha1,
     onSha256Change: setSha256,
     onVersionNumberChange: setVersionNumber,
@@ -71,8 +78,8 @@ export function usePublishVersionFormState(
           url: fileUrl,
         },
       ],
-      gameVersions: splitList(gameVersions),
-      loaders: splitList(loaders),
+      gameVersions,
+      loaders,
       name,
       projectSlug,
       versionNumber,

@@ -9,7 +9,6 @@ import {
   fetchProjectVersions,
   type ProjectVersion,
 } from '../../../../lib/catalog.ts';
-import { splitList } from '../shared.tsx';
 import {
   type VersionChannel,
   versionChannelFromProjectVersion,
@@ -29,8 +28,8 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
   const [versionNumber, setVersionNumber] = useState('');
   const [channel, setChannel] = useState<VersionChannel>('RELEASE');
   const [changelog, setChangelog] = useState('');
-  const [loaders, setLoaders] = useState('');
-  const [gameVersions, setGameVersions] = useState('');
+  const [loaders, setLoaders] = useState<string[]>([]);
+  const [gameVersions, setGameVersions] = useState<string[]>([]);
 
   useEffect(() => {
     if (versionId === '' && versions[0]) {
@@ -54,8 +53,8 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     setVersionNumber(version?.version_number ?? '');
     setChannel(versionChannelFromProjectVersion(version));
     setChangelog(version?.changelog ?? '');
-    setLoaders(version?.loaders.join(', ') ?? '');
-    setGameVersions(version?.game_versions.join(', ') ?? '');
+    setLoaders(version?.loaders ?? []);
+    setGameVersions(version?.game_versions ?? []);
   }
 
   const fields = {
@@ -79,8 +78,8 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     return {
       changelog: changelog.trim() || null,
       channel,
-      gameVersions: splitList(gameVersions),
-      loaders: splitList(loaders),
+      gameVersions,
+      loaders,
       name,
       versionId: selectedVersion.id,
       versionNumber,
