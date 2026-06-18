@@ -74,8 +74,19 @@ export interface AdminAuditLog {
   projectAfter: ProjectAuditSnapshot | null;
   projectBefore: ProjectAuditSnapshot | null;
   reason: string | null;
+  resource: AuditResourceSnapshot | null;
   targetUser: AdminAuditUser | null;
   targetUserId: string | null;
+  teamMemberAction: string | null;
+  teamMemberAfter: TeamMemberAuditSnapshot | null;
+  teamMemberBefore: TeamMemberAuditSnapshot | null;
+}
+
+export interface AuditResourceSnapshot {
+  id: string;
+  kind: 'ORGANIZATION' | 'PROJECT';
+  name: string;
+  slug: string;
 }
 
 export interface ProjectAuditSnapshot {
@@ -84,6 +95,14 @@ export interface ProjectAuditSnapshot {
   slug: string;
   status: string;
   title: string;
+}
+
+export interface TeamMemberAuditSnapshot {
+  accepted: boolean;
+  owner: boolean;
+  permissions: string[];
+  role: string;
+  username: string;
 }
 
 export interface AdminAuditLogSearchResult {

@@ -100,12 +100,33 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
           title
         }
         reason
+        resource {
+          id
+          kind
+          name
+          slug
+        }
         targetUser {
           displayName
           id
           username
         }
         targetUserId
+        teamMemberAction
+        teamMemberAfter {
+          accepted
+          owner
+          permissions
+          role
+          username
+        }
+        teamMemberBefore {
+          accepted
+          owner
+          permissions
+          role
+          username
+        }
       }
       totalHits
     }

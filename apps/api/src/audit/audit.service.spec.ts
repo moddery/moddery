@@ -126,4 +126,77 @@ describe(AuditService.name, () => {
       reason: 'Needs more context',
     });
   });
+
+  test('loads team membership audit metadata', async () => {
+    const service = new AuditService({
+      auditLog: {
+        count: () => Promise.resolve(1),
+        findMany: () =>
+          Promise.resolve([
+            {
+              action: 'TEAM_MEMBERSHIP_CHANGED',
+              actor: {
+                displayName: 'Admin',
+                id: 'user-a',
+                username: 'admin',
+              },
+              actorId: 'user-a',
+              createdAt: new Date('2026-01-03T00:00:00.000Z'),
+              id: 'audit-c',
+              metadata: {
+                action: 'UPDATE',
+                after: {
+                  accepted: false,
+                  owner: false,
+                  permissions: ['MANAGE_DETAILS'],
+                  role: 'Maintainer',
+                  username: 'builder',
+                },
+                before: {
+                  accepted: false,
+                  owner: false,
+                  permissions: [],
+                  role: 'Member',
+                  username: 'builder',
+                },
+                resource: {
+                  id: 'project-a',
+                  kind: 'PROJECT',
+                  name: 'Example',
+                  slug: 'example',
+                },
+              },
+              targetUser: {
+                displayName: 'Builder',
+                id: 'user-b',
+                username: 'builder',
+              },
+              targetUserId: 'user-b',
+            },
+          ]),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findAdminAuditLogs();
+
+    expect(result.auditLogs[0]).toMatchObject({
+      action: 'TEAM_MEMBERSHIP_CHANGED',
+      moderationAction: null,
+      resource: {
+        kind: 'PROJECT',
+        name: 'Example',
+      },
+      teamMemberAction: 'UPDATE',
+      teamMemberAfter: {
+        permissions: ['MANAGE_DETAILS'],
+        role: 'Maintainer',
+        username: 'builder',
+      },
+      teamMemberBefore: {
+        permissions: [],
+        role: 'Member',
+        username: 'builder',
+      },
+    });
+  });
 });

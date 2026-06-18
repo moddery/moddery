@@ -3,8 +3,21 @@ import { describe, expect, test } from 'bun:test';
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { ProjectMembersService } from './project-members.service.js';
 
-function createService(prisma: PrismaService, notifications: unknown = {}) {
-  return new ProjectMembersService(notifications as never, prisma);
+function createService(
+  prisma: PrismaService,
+  notifications: unknown = {},
+  auditEvents: unknown[] = [],
+) {
+  return new ProjectMembersService(
+    {
+      recordTeamMembershipChange: (event: unknown) => {
+        auditEvents.push(event);
+        return Promise.resolve();
+      },
+    } as never,
+    notifications as never,
+    prisma,
+  );
 }
 
 describe(ProjectMembersService.name, () => {
@@ -119,6 +132,7 @@ describe(ProjectMembersService.name, () => {
   });
 
   test('adds project team members for managers', async () => {
+    const auditEvents: unknown[] = [];
     const notifications: unknown[] = [];
     const upserts: unknown[] = [];
     const service = createService(
@@ -135,10 +149,24 @@ describe(ProjectMembersService.name, () => {
         },
         teamMember: {
           count: () => Promise.resolve(1),
+          findUnique: () => Promise.resolve(null),
           findMany: () => Promise.resolve([projectMemberRow()]),
           upsert: (query: unknown) => {
             upserts.push(query);
-            return Promise.resolve({});
+            return Promise.resolve(
+              projectMemberRow({
+                acceptedAt: null,
+                isOwner: false,
+                permissions: ['MANAGE_VERSIONS'],
+                role: 'Maintainer',
+                user: {
+                  avatarUrl: null,
+                  displayName: null,
+                  id: 'user-b',
+                  username: 'maintainer',
+                },
+              }),
+            );
           },
         },
         user: {
@@ -151,6 +179,7 @@ describe(ProjectMembersService.name, () => {
           return Promise.resolve({});
         },
       },
+      auditEvents,
     );
 
     const members = await service.addProjectTeamMember(
@@ -187,35 +216,71 @@ describe(ProjectMembersService.name, () => {
       type: 'team',
       userId: 'user-b',
     });
+    expect(auditEvents[0]).toEqual({
+      action: 'ADD',
+      actorId: 'user-a',
+      after: {
+        accepted: false,
+        owner: false,
+        permissions: ['MANAGE_VERSIONS'],
+        role: 'Maintainer',
+        username: 'maintainer',
+      },
+      before: null,
+      resource: {
+        id: 'project-a',
+        kind: 'PROJECT',
+        name: 'Iris',
+        slug: 'iris',
+      },
+      targetUserId: 'user-b',
+    });
     expect(members[0]?.role).toBe('Owner');
   });
 
   test('removes non-owner project team members for managers', async () => {
+    const auditEvents: unknown[] = [];
     const deletes: unknown[] = [];
-    const service = createService({
-      project: {
-        findFirst: () =>
-          Promise.resolve({
-            id: 'project-a',
-            teamId: 'team-a',
-          }),
-        findUnique: () => Promise.resolve({ teamId: 'team-a' }),
-      },
-      teamMember: {
-        count: () => Promise.resolve(1),
-        delete: (query: unknown) => {
-          deletes.push(query);
-          return Promise.resolve({});
+    const service = createService(
+      {
+        project: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'project-a',
+              slug: 'iris',
+              teamId: 'team-a',
+              title: 'Iris',
+            }),
+          findUnique: () => Promise.resolve({ teamId: 'team-a' }),
         },
-        findMany: () => Promise.resolve([projectMemberRow()]),
-        findFirst: () =>
-          Promise.resolve({
-            id: 'member-b',
-            isOwner: false,
-            user: { username: 'maintainer' },
-          }),
-      },
-    } as unknown as PrismaService);
+        teamMember: {
+          count: () => Promise.resolve(1),
+          delete: (query: unknown) => {
+            deletes.push(query);
+            return Promise.resolve({});
+          },
+          findMany: () => Promise.resolve([projectMemberRow()]),
+          findFirst: () =>
+            Promise.resolve({
+              id: 'member-b',
+              ...projectMemberRow({
+                acceptedAt: null,
+                isOwner: false,
+                permissions: ['MANAGE_DETAILS'],
+                role: 'Maintainer',
+                user: {
+                  avatarUrl: null,
+                  displayName: null,
+                  id: 'user-b',
+                  username: 'maintainer',
+                },
+              }),
+            }),
+        },
+      } as unknown as PrismaService,
+      {},
+      auditEvents,
+    );
 
     const members = await service.removeProjectTeamMember(
       {
@@ -226,6 +291,25 @@ describe(ProjectMembersService.name, () => {
     );
 
     expect(deletes[0]).toEqual({ where: { id: 'member-b' } });
+    expect(auditEvents[0]).toEqual({
+      action: 'REMOVE',
+      actorId: 'user-a',
+      after: null,
+      before: {
+        accepted: false,
+        owner: false,
+        permissions: ['MANAGE_DETAILS'],
+        role: 'Maintainer',
+        username: 'maintainer',
+      },
+      resource: {
+        id: 'project-a',
+        kind: 'PROJECT',
+        name: 'Iris',
+        slug: 'iris',
+      },
+      targetUserId: 'user-b',
+    });
     expect(members[0]?.owner).toBe(true);
   });
 });

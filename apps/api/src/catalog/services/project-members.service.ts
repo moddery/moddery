@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { TeamPermission } from '@prisma/client';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.js';
@@ -46,6 +47,7 @@ export interface ProjectMemberSearchResultContract {
 @Injectable()
 export class ProjectMembersService {
   constructor(
+    private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
     private readonly prisma: PrismaService,
   ) {}
@@ -113,7 +115,16 @@ export class ProjectMembersService {
       throw new NotFoundException('User not found');
     }
 
-    await this.prisma.teamMember.upsert({
+    const before = await this.prisma.teamMember.findUnique({
+      select: projectMemberSelect(),
+      where: {
+        teamId_userId: {
+          teamId: project.teamId,
+          userId: user.id,
+        },
+      },
+    });
+    const member = await this.prisma.teamMember.upsert({
       create: {
         acceptedAt: null,
         permissions: projectMemberPermissions(input.permissions),
@@ -131,8 +142,22 @@ export class ProjectMembersService {
           userId: user.id,
         },
       },
+      select: projectMemberSelect(),
     });
 
+    await this.auditService.recordTeamMembershipChange({
+      action: before === null ? 'ADD' : 'UPDATE',
+      actorId: userId,
+      after: projectMemberRowToAuditSnapshot(member),
+      before: before === null ? null : projectMemberRowToAuditSnapshot(before),
+      resource: {
+        id: project.id,
+        kind: 'PROJECT',
+        name: project.title,
+        slug: project.slug,
+      },
+      targetUserId: user.id,
+    });
     await this.sendTeamInviteNotification({
       targetName: project.title,
       userId: user.id,
@@ -152,8 +177,7 @@ export class ProjectMembersService {
     const member = await this.prisma.teamMember.findFirst({
       select: {
         id: true,
-        isOwner: true,
-        user: { select: { username: true } },
+        ...projectMemberSelect(),
       },
       where: {
         teamId: project.teamId,
@@ -170,6 +194,19 @@ export class ProjectMembersService {
     }
 
     await this.prisma.teamMember.delete({ where: { id: member.id } });
+    await this.auditService.recordTeamMembershipChange({
+      action: 'REMOVE',
+      actorId: userId,
+      after: null,
+      before: projectMemberRowToAuditSnapshot(member),
+      resource: {
+        id: project.id,
+        kind: 'PROJECT',
+        name: project.title,
+        slug: input.projectSlug,
+      },
+      targetUserId: member.user.id,
+    });
 
     return this.findProjectMembers(input.projectSlug);
   }
@@ -181,6 +218,7 @@ export class ProjectMembersService {
     const project = await this.prisma.project.findFirst({
       select: {
         id: true,
+        slug: true,
         teamId: true,
         title: true,
       },
@@ -250,6 +288,16 @@ function projectMemberSelect() {
         username: true,
       },
     },
+  };
+}
+
+function projectMemberRowToAuditSnapshot(member: ProjectMemberRow) {
+  return {
+    accepted: member.acceptedAt !== null,
+    owner: member.isOwner,
+    permissions: member.permissions,
+    role: member.role,
+    username: member.user.username,
   };
 }
 

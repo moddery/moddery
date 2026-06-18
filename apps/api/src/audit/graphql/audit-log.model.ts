@@ -40,6 +40,39 @@ export class ProjectAuditSnapshot {
 }
 
 @ObjectType()
+export class AuditResourceSnapshot {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  kind!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  slug!: string;
+}
+
+@ObjectType()
+export class TeamMemberAuditSnapshot {
+  @Field(() => Boolean)
+  accepted!: boolean;
+
+  @Field(() => Boolean)
+  owner!: boolean;
+
+  @Field(() => [String])
+  permissions!: string[];
+
+  @Field(() => String)
+  role!: string;
+
+  @Field(() => String)
+  username!: string;
+}
+
+@ObjectType()
 export class AuditLogSummary {
   @Field(() => String)
   action!: string;
@@ -74,11 +107,23 @@ export class AuditLogSummary {
   @Field(() => String, { nullable: true })
   reason!: string | null;
 
+  @Field(() => AuditResourceSnapshot, { nullable: true })
+  resource!: AuditResourceSnapshot | null;
+
   @Field(() => AuditUserSummary, { nullable: true })
   targetUser!: AuditUserSummary | null;
 
   @Field(() => String, { nullable: true })
   targetUserId!: string | null;
+
+  @Field(() => String, { nullable: true })
+  teamMemberAction!: string | null;
+
+  @Field(() => TeamMemberAuditSnapshot, { nullable: true })
+  teamMemberAfter!: TeamMemberAuditSnapshot | null;
+
+  @Field(() => TeamMemberAuditSnapshot, { nullable: true })
+  teamMemberBefore!: TeamMemberAuditSnapshot | null;
 }
 
 @ObjectType()

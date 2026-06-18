@@ -2,10 +2,10 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import { TeamPermission } from '@prisma/client';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type AddOrganizationTeamMemberInput } from '../dto/add-organization-team-member.input.js';
@@ -23,8 +23,8 @@ import {
 export class OrganizationManagementService {
   constructor(
     private readonly prisma: PrismaService,
-    @Optional()
-    private readonly notificationsService?: NotificationsService,
+    private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async addProjectToOrganization(
@@ -87,7 +87,16 @@ export class OrganizationManagementService {
       throw new NotFoundException('User not found');
     }
 
-    await this.prisma.teamMember.upsert({
+    const before = await this.prisma.teamMember.findUnique({
+      select: organizationMemberSelect(),
+      where: {
+        teamId_userId: {
+          teamId: organization.teamId,
+          userId: user.id,
+        },
+      },
+    });
+    const member = await this.prisma.teamMember.upsert({
       create: {
         acceptedAt: null,
         permissions: organizationMemberPermissions(input.permissions),
@@ -105,8 +114,23 @@ export class OrganizationManagementService {
           userId: user.id,
         },
       },
+      select: organizationMemberSelect(),
     });
 
+    await this.auditService.recordTeamMembershipChange({
+      action: before === null ? 'ADD' : 'UPDATE',
+      actorId: userId,
+      after: organizationMemberRowToAuditSnapshot(member),
+      before:
+        before === null ? null : organizationMemberRowToAuditSnapshot(before),
+      resource: {
+        id: organization.id,
+        kind: 'ORGANIZATION',
+        name: organization.name,
+        slug: organization.slug,
+      },
+      targetUserId: user.id,
+    });
     await this.sendTeamInviteNotification({
       organizationName: organization.name,
       userId: user.id,
@@ -170,7 +194,7 @@ export class OrganizationManagementService {
     const member = await this.prisma.teamMember.findFirst({
       select: {
         id: true,
-        isOwner: true,
+        ...organizationMemberSelect(),
       },
       where: {
         teamId: organization.teamId,
@@ -187,6 +211,19 @@ export class OrganizationManagementService {
     }
 
     await this.prisma.teamMember.delete({ where: { id: member.id } });
+    await this.auditService.recordTeamMembershipChange({
+      action: 'REMOVE',
+      actorId: userId,
+      after: null,
+      before: organizationMemberRowToAuditSnapshot(member),
+      resource: {
+        id: organization.id,
+        kind: 'ORGANIZATION',
+        name: organization.name,
+        slug: organization.slug,
+      },
+      targetUserId: member.user.id,
+    });
 
     return this.findViewerOrganization(organization.id, userId);
   }
@@ -227,7 +264,7 @@ export class OrganizationManagementService {
     organizationName: string;
     userId: string;
   }) {
-    await this.notificationsService?.sendUserNotification({
+    await this.notificationsService.sendUserNotification({
       actionUrl: `/dashboard`,
       body: `You were invited to collaborate with ${input.organizationName}.`,
       title: `Team invitation for ${input.organizationName}`,
@@ -263,6 +300,7 @@ export class OrganizationManagementService {
       select: {
         id: true,
         name: true,
+        slug: true,
         teamId: true,
       },
       where: {
@@ -288,6 +326,44 @@ export class OrganizationManagementService {
 
     return organization;
   }
+}
+
+interface OrganizationMemberRow {
+  acceptedAt: Date | null;
+  isOwner: boolean;
+  permissions: string[];
+  role: string;
+  sortOrder: number;
+  user: {
+    id: string;
+    username: string;
+  };
+}
+
+function organizationMemberSelect() {
+  return {
+    acceptedAt: true,
+    isOwner: true,
+    permissions: true,
+    role: true,
+    sortOrder: true,
+    user: {
+      select: {
+        id: true,
+        username: true,
+      },
+    },
+  };
+}
+
+function organizationMemberRowToAuditSnapshot(member: OrganizationMemberRow) {
+  return {
+    accepted: member.acceptedAt !== null,
+    owner: member.isOwner,
+    permissions: member.permissions,
+    role: member.role,
+    username: member.user.username,
+  };
 }
 
 function organizationMemberPermissions(
