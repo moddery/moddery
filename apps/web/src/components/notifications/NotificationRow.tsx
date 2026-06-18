@@ -2,6 +2,7 @@ import { Check, ExternalLink } from 'lucide-react';
 
 import { cn } from '../../lib/cn.ts';
 import { timeAgo } from '../../lib/format.ts';
+import { enumLabel } from '../../lib/labels.ts';
 import {
   type NotificationDelivery,
   type NotificationItem,
@@ -29,7 +30,7 @@ export function NotificationRow({
             {item.title}
           </h2>
           <span className="rounded-full border border-line px-2 py-0.5 text-xs font-bold uppercase text-muted">
-            {item.type}
+            {enumLabel(item.type)}
           </span>
           {unread && (
             <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-white">
@@ -43,7 +44,7 @@ export function NotificationRow({
           </p>
         )}
         <p className="mt-2 text-xs font-semibold text-faint">
-          {timeAgo(item.createdAt)} · {item.state.toLowerCase()}
+          {timeAgo(item.createdAt)} · {enumLabel(item.state)}
         </p>
         {item.deliveries.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
@@ -104,9 +105,9 @@ function NotificationActionLink({ url }: { url: string }) {
 function DeliveryPill({ delivery }: { delivery: NotificationDelivery }) {
   return (
     <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-line bg-surface-2 px-2 py-1 text-xs font-bold text-muted">
-      <span>{delivery.channel.toLowerCase()}</span>
+      <span>{enumLabel(delivery.channel)}</span>
       <span>·</span>
-      <span>{delivery.state.toLowerCase()}</span>
+      <span>{enumLabel(delivery.state)}</span>
       {delivery.attempts > 0 && (
         <>
           <span>·</span>
