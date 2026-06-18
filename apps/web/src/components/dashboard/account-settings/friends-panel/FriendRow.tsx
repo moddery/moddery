@@ -1,6 +1,7 @@
 import { Check, ShieldOff, UserRoundMinus, X } from 'lucide-react';
 import { type ReactNode } from 'react';
 
+import { userPath } from '../../../../app/routing.ts';
 import { type FriendshipSummary } from '../../../../lib/users.ts';
 
 export function FriendRow({
@@ -25,7 +26,7 @@ export function FriendRow({
     <div className="flex items-center justify-between gap-3 border-t border-line py-3 first:border-t-0">
       <div className="min-w-0">
         <a
-          href={`/users/${friendship.user.username}`}
+          href={userPath(friendship.user.username)}
           className="block truncate text-sm font-bold text-ink transition-colors hover:text-accent"
         >
           {name}

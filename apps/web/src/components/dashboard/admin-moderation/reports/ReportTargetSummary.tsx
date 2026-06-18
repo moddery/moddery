@@ -1,5 +1,6 @@
 import { Flag } from 'lucide-react';
 
+import { userPath } from '../../../../app/routing.ts';
 import { type ModerationReport } from '../../../../lib/dashboard.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
 import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
@@ -94,7 +95,7 @@ export function resolveReportTarget(report: ModerationReport) {
   if (report.userTarget) {
     return {
       context: report.userTarget.username,
-      href: `/users/${report.userTarget.username}`,
+      href: userPath(report.userTarget.username),
       kind: 'User',
       name: report.userTarget.displayName ?? report.userTarget.username,
       version: null,

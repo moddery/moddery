@@ -1,3 +1,4 @@
+import { userPath } from '../../../../app/routing.ts';
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 import { cn } from '../../../../lib/cn.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
@@ -69,7 +70,7 @@ export function VersionSummary({
           <span>Order {version.sortOrder}</span>
           {version.author && authorName && (
             <a
-              href={`/users/${version.author.username}`}
+              href={userPath(version.author.username)}
               className="transition-colors hover:text-accent"
             >
               by {authorName}

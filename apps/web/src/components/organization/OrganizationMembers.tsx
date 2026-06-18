@@ -1,6 +1,7 @@
 import { Crown, UserRound } from 'lucide-react';
 import { type ReactNode } from 'react';
 
+import { userPath } from '../../app/routing.ts';
 import {
   type OrganizationMember,
   type OrganizationProfile,
@@ -64,7 +65,7 @@ function MemberGrid({ members }: { members: OrganizationMember[] }) {
         return (
           <a
             key={member.user.id}
-            href={`/users/${member.user.username}`}
+            href={userPath(member.user.username)}
             className="flex min-w-0 items-start gap-3 rounded-lg border border-line bg-surface px-3 py-3 transition-colors hover:border-accent/50"
           >
             <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-line bg-surface-2 text-muted">

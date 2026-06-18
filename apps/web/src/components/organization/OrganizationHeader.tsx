@@ -1,6 +1,7 @@
 import { Building2, Package, UsersRound } from 'lucide-react';
 import { type ReactNode } from 'react';
 
+import { userPath } from '../../app/routing.ts';
 import { formatDate, timeAgo } from '../../lib/format.ts';
 import { type OrganizationProfile } from '../../lib/organizations.ts';
 import { CopyLinkButton } from '../CopyLinkButton.tsx';
@@ -44,7 +45,7 @@ export function OrganizationHeader({
             <span>
               owned by{' '}
               <a
-                href={`/users/${organization.owner.username}`}
+                href={userPath(organization.owner.username)}
                 className="text-ink transition-colors hover:text-accent"
               >
                 {ownerName}

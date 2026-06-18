@@ -70,9 +70,13 @@ export function writeUsersToUrl() {
   writeStaticViewToUrl('/users');
 }
 
+export function userPath(username: string) {
+  return `/users/${encodeURIComponent(username)}`;
+}
+
 export function writeProfileToUrl(username: string) {
   const url = new URL(window.location.href);
-  url.pathname = `/users/${encodeURIComponent(username)}`;
+  url.pathname = userPath(username);
   clearProjectSearchParams(url);
 
   window.history.pushState(null, '', url);

@@ -1,5 +1,6 @@
 import { UserRound } from 'lucide-react';
 
+import { userPath } from '../../app/routing.ts';
 import { type PublicCollectionItem } from '../../lib/catalog.ts';
 import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
@@ -42,7 +43,7 @@ function CollectionItemAttribution({ item }: { item: PublicCollectionItem }) {
     <p className="mt-1 flex min-w-0 items-center gap-1.5 px-1 text-xs font-semibold text-muted">
       Added by{' '}
       <a
-        href={`/users/${encodeURIComponent(item.addedBy.username)}`}
+        href={userPath(item.addedBy.username)}
         className="inline-flex min-w-0 items-center gap-1 text-ink transition-colors hover:text-accent"
       >
         <span className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-md border border-line bg-surface-2 text-faint">

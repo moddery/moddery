@@ -27,6 +27,22 @@ describe(resolveReportTarget.name, () => {
       '/mods?project=required-lib&type=mod',
     );
   });
+
+  test('links user report targets with encoded profile paths', () => {
+    const target = resolveReportTarget({
+      ...reportFixture(),
+      userTarget: {
+        displayName: null,
+        id: 'user-b',
+        username: 'space user',
+      },
+      userTargetId: 'user-b',
+      version: null,
+      versionId: null,
+    });
+
+    expect(target.href).toBe('/users/space%20user');
+  });
 });
 
 function reportFixture(): ModerationReport {

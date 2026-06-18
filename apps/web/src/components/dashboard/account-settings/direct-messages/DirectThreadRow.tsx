@@ -1,3 +1,4 @@
+import { userPath } from '../../../../app/routing.ts';
 import { type DirectThread } from '../../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 
@@ -50,7 +51,7 @@ function ThreadHeader({ thread }: { thread: DirectThread }) {
           return (
             <a
               key={member.user.id}
-              href={`/users/${member.user.username}`}
+              href={userPath(member.user.username)}
               className="font-bold text-ink transition-colors hover:text-accent"
             >
               {name}
@@ -81,7 +82,7 @@ function ThreadMessages({ messages }: { messages: DirectThread['messages'] }) {
             >
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-muted">
                 <a
-                  href={`/users/${message.author.username}`}
+                  href={userPath(message.author.username)}
                   className="text-ink transition-colors hover:text-accent"
                 >
                   {author}

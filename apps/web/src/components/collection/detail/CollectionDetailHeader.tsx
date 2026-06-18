@@ -1,3 +1,4 @@
+import { userPath } from '../../../app/routing.ts';
 import { type PublicCollection } from '../../../lib/catalog.ts';
 import { formatDate, timeAgo } from '../../../lib/format.ts';
 import { CopyLinkButton } from '../../CopyLinkButton.tsx';
@@ -59,7 +60,7 @@ export function CollectionDetailHeader({
             <span>
               by{' '}
               <a
-                href={`/users/${collection.owner.username}`}
+                href={userPath(collection.owner.username)}
                 className="text-ink transition-colors hover:text-accent"
               >
                 {ownerName}

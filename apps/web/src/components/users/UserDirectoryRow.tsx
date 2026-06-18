@@ -1,4 +1,5 @@
 import { userProjectToMod, type PublicUserListItem } from '../../lib/users.ts';
+import { userPath } from '../../app/routing.ts';
 import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
 import { ModCard, type SearchTag } from '../ModCard.tsx';
@@ -22,7 +23,7 @@ export function UserDirectoryRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <a
-              href={`/users/${user.username}`}
+              href={userPath(user.username)}
               className="truncate font-display text-xl font-extrabold text-ink transition-colors hover:text-accent"
             >
               {name}

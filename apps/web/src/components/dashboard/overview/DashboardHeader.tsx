@@ -1,6 +1,7 @@
 import { Building2, FolderKanban, Heart, ShieldCheck } from 'lucide-react';
 import { type ReactNode } from 'react';
 
+import { userPath } from '../../../app/routing.ts';
 import { type DashboardData } from '../../../lib/dashboard.ts';
 
 export function DashboardHeader({ dashboard }: { dashboard: DashboardData }) {
@@ -16,7 +17,7 @@ export function DashboardHeader({ dashboard }: { dashboard: DashboardData }) {
           <p className="mt-2 text-sm font-semibold text-muted">
             Managing as{' '}
             <a
-              href={`/users/${dashboard.username}`}
+              href={userPath(dashboard.username)}
               className="text-ink transition-colors hover:text-accent"
             >
               {displayName}

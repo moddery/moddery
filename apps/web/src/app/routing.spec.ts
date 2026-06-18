@@ -5,6 +5,7 @@ import {
   organizationFromUrl,
   profileFromUrl,
   projectFromUrl,
+  userPath,
   viewFromUrl,
   writeOrganizationToUrl,
   writeDashboardToUrl,
@@ -58,6 +59,10 @@ describe('routing helpers', () => {
 
     setWindowUrl('https://moddery.test/organizations/build%20team');
     expect(organizationFromUrl()).toBe('build team');
+  });
+
+  test('builds encoded user profile paths', () => {
+    expect(userPath('creator one')).toBe('/users/creator%20one');
   });
 
   test('writes project URLs and clears stale project state', () => {

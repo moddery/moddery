@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { type ReactNode } from 'react';
 import { useState } from 'react';
 
+import { userPath } from '../../../app/routing.ts';
 import {
   fetchProjectMemberSearch,
   type ProjectMember,
@@ -55,7 +56,7 @@ export function ProjectMembersSection({
           return (
             <a
               key={member.user.id}
-              href={`/users/${member.user.username}`}
+              href={userPath(member.user.username)}
               className="flex min-w-0 items-start gap-2 rounded-md px-2 py-1.5"
             >
               {member.user.avatarUrl ? (

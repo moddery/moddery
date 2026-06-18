@@ -1,3 +1,4 @@
+import { userPath } from '../../app/routing.ts';
 import { type PublicCollection } from '../../lib/catalog.ts';
 import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
@@ -56,7 +57,7 @@ export function CollectionSection({
         <p className="text-sm font-semibold text-muted">
           {collection.projectCount.toLocaleString('en-US')} projects by{' '}
           <a
-            href={`/users/${collection.owner.username}`}
+            href={userPath(collection.owner.username)}
             className="text-ink transition-colors hover:text-accent"
           >
             {ownerName}

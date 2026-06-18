@@ -1,5 +1,6 @@
 import { Clock, Download, Heart } from 'lucide-react';
 import type { Mod, ProjectType } from '../../types.ts';
+import { userPath } from '../../app/routing.ts';
 import { environmentOf } from '../../types.ts';
 import { cn } from '../../lib/cn.ts';
 import { formatCount, timeAgo } from '../../lib/format.ts';
@@ -17,7 +18,7 @@ export function projectPath(projectType: ProjectType, slug: string) {
 }
 
 export function authorHref(username: string) {
-  return `/users/${encodeURIComponent(username)}`;
+  return userPath(username);
 }
 
 export function organizationHref(slug: string) {

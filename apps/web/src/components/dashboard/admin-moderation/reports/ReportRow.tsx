@@ -2,6 +2,7 @@ import {
   type ModerationReport,
   type ModerationReportState,
 } from '../../../../lib/dashboard.ts';
+import { userPath } from '../../../../app/routing.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 import { ReportActionButton } from '../shared.tsx';
 import { ReportTargetSummary } from './ReportTargetSummary.tsx';
@@ -29,7 +30,7 @@ export function ReportRow({
             Reported by{' '}
             {report.reporter ? (
               <a
-                href={`/users/${report.reporter.username}`}
+                href={userPath(report.reporter.username)}
                 className="text-ink transition-colors hover:text-accent"
               >
                 {reporterName}

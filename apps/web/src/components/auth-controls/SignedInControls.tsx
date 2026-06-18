@@ -1,3 +1,4 @@
+import { userPath } from '../../app/routing.ts';
 import { controlButton } from './styles.ts';
 import { NotificationsMenu } from './NotificationsMenu.tsx';
 import { type NotificationItem } from './types.ts';
@@ -24,7 +25,7 @@ export function SignedInControls({
   return (
     <div className="flex items-center gap-2">
       <a
-        href={username ? `/users/${username}` : undefined}
+        href={username ? userPath(username) : undefined}
         onClick={(event) => {
           if (!username || !onOpenProfile) return;
           if (

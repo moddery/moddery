@@ -1,3 +1,4 @@
+import { userPath } from '../../../../../app/routing.ts';
 import { type ReportThread } from '../../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../../lib/format.ts';
 
@@ -18,7 +19,7 @@ export function ReportThreadMessages({ thread }: { thread: ReportThread }) {
             <p className="text-sm leading-6 text-ink">{message.body}</p>
             <p className="mt-1 text-xs font-bold text-muted">
               <a
-                href={`/users/${message.author.username}`}
+                href={userPath(message.author.username)}
                 className="text-ink transition-colors hover:text-accent"
               >
                 {author}
