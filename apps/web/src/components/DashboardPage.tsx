@@ -23,6 +23,10 @@ import {
   OrganizationTeamManagementForm,
 } from './dashboard/ContentManagementPanels.tsx';
 import { DashboardHeader } from './dashboard/overview/DashboardHeader.tsx';
+import {
+  DashboardSectionNav,
+  type DashboardSectionNavItem,
+} from './dashboard/overview/DashboardSectionNav.tsx';
 import { DashboardSkeleton } from './dashboard/overview/DashboardSkeleton.tsx';
 import { DashboardSummarySections } from './dashboard/overview/DashboardSummarySections.tsx';
 import { useDashboardPageState } from './dashboard/overview/useDashboardPageState.ts';
@@ -76,65 +80,82 @@ export function DashboardPage({
     );
   }
 
+  const sectionItems = dashboardSectionItems({
+    canModerate,
+    collectionCount: dashboard.collectionCount,
+    organizationCount: dashboard.organizations.length,
+    projectCount: dashboard.projectCount,
+  });
+
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
       <DashboardHeader dashboard={dashboard} />
 
-      <AccountProfileForm dashboard={dashboard} onUpdated={refreshDashboard} />
+      <DashboardSectionNav items={sectionItems} />
 
-      <NotificationPreferencesPanel />
+      <section id="dashboard-account" className="scroll-mt-32">
+        <AccountProfileForm
+          dashboard={dashboard}
+          onUpdated={refreshDashboard}
+        />
+        <NotificationPreferencesPanel />
+        <FriendsPanel />
+        <TeamInvitationsPanel />
+        <DirectMessagesPanel />
+        {canModerate && <SendNotificationPanel />}
+      </section>
 
-      <FriendsPanel />
+      <section id="dashboard-security" className="scroll-mt-32">
+        <AccountSecurityPanels />
+      </section>
 
-      <TeamInvitationsPanel />
-
-      <DirectMessagesPanel />
-
-      {canModerate && <SendNotificationPanel />}
-
-      <AccountSecurityPanels />
-
-      <CreateOrganizationForm
-        organizations={dashboard.organizations}
-        projects={dashboard.projects}
-        onCreated={refreshDashboard}
-      />
-
-      {dashboard.organizations.length > 0 && (
-        <OrganizationTeamManagementForm
+      <section id="dashboard-content" className="scroll-mt-32">
+        <CreateOrganizationForm
           organizations={dashboard.organizations}
+          projects={dashboard.projects}
+          onCreated={refreshDashboard}
+        />
+
+        {dashboard.organizations.length > 0 && (
+          <OrganizationTeamManagementForm
+            organizations={dashboard.organizations}
+            onChanged={refreshDashboard}
+          />
+        )}
+      </section>
+
+      <section id="dashboard-projects" className="scroll-mt-32">
+        <PublishProjectForm onCreated={refreshDashboard} />
+
+        {dashboard.projects.length > 0 && (
+          <>
+            <ProjectMetadataForm
+              projects={dashboard.projects}
+              onUpdated={refreshDashboard}
+            />
+            <AddGalleryImageForm
+              projects={dashboard.projects}
+              onAdded={refreshDashboard}
+            />
+            <ProjectTeamManagementForm projects={dashboard.projects} />
+            <ProjectAnalyticsPanel projects={dashboard.projects} />
+            <EditVersionForm projects={dashboard.projects} />
+            <EditVersionDependencyForm projects={dashboard.projects} />
+            <PublishVersionForm projects={dashboard.projects} />
+          </>
+        )}
+      </section>
+
+      <section id="dashboard-collections" className="scroll-mt-32">
+        <CollectionManagement
+          collections={dashboard.collections}
+          projects={dashboard.projects}
           onChanged={refreshDashboard}
         />
-      )}
-
-      <PublishProjectForm onCreated={refreshDashboard} />
-
-      {dashboard.projects.length > 0 && (
-        <>
-          <ProjectMetadataForm
-            projects={dashboard.projects}
-            onUpdated={refreshDashboard}
-          />
-          <AddGalleryImageForm
-            projects={dashboard.projects}
-            onAdded={refreshDashboard}
-          />
-          <ProjectTeamManagementForm projects={dashboard.projects} />
-          <ProjectAnalyticsPanel projects={dashboard.projects} />
-          <EditVersionForm projects={dashboard.projects} />
-          <EditVersionDependencyForm projects={dashboard.projects} />
-          <PublishVersionForm projects={dashboard.projects} />
-        </>
-      )}
-
-      <CollectionManagement
-        collections={dashboard.collections}
-        projects={dashboard.projects}
-        onChanged={refreshDashboard}
-      />
+      </section>
 
       {canModerate && (
-        <>
+        <section id="dashboard-moderation" className="scroll-mt-32">
           {canAdmin && (
             <>
               <InfrastructureStatusPanel />
@@ -145,14 +166,54 @@ export function DashboardPage({
           <FileScanForm projects={dashboard.projects} />
           <ProjectModerationQueue onOpenProject={onOpenProject} />
           <ModerationQueue />
-        </>
+        </section>
       )}
 
-      <DashboardSummarySections
-        dashboard={dashboard}
-        onOpenCollection={onOpenCollection}
-        onOpenProject={onOpenProject}
-      />
+      <section id="dashboard-overview" className="scroll-mt-32">
+        <DashboardSummarySections
+          dashboard={dashboard}
+          onOpenCollection={onOpenCollection}
+          onOpenProject={onOpenProject}
+        />
+      </section>
     </main>
   );
+}
+
+function dashboardSectionItems({
+  canModerate,
+  collectionCount,
+  organizationCount,
+  projectCount,
+}: {
+  canModerate: boolean;
+  collectionCount: number;
+  organizationCount: number;
+  projectCount: number;
+}): DashboardSectionNavItem[] {
+  const items: DashboardSectionNavItem[] = [
+    { id: 'dashboard-account', label: 'Account' },
+    { id: 'dashboard-security', label: 'Security' },
+    {
+      count: organizationCount,
+      id: 'dashboard-content',
+      label: 'Organizations',
+    },
+    { count: projectCount, id: 'dashboard-projects', label: 'Projects' },
+    {
+      count: collectionCount,
+      id: 'dashboard-collections',
+      label: 'Collections',
+    },
+    { id: 'dashboard-overview', label: 'Overview' },
+  ];
+
+  if (canModerate) {
+    items.splice(items.length - 1, 0, {
+      id: 'dashboard-moderation',
+      label: 'Moderation',
+    });
+  }
+
+  return items;
 }
