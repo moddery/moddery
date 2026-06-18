@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  ACCOUNT_ROLES,
+  ACCOUNT_STATUSES,
   PROJECT_KINDS,
   PROJECT_TYPES,
   SUPPORTED_GAME_VERSIONS,
@@ -17,5 +19,10 @@ describe('shared platform constants', () => {
     expect(PROJECT_KINDS).toContain('RESOURCE_PACK');
     expect(PROJECT_TYPES).toContain('resourcepack');
     expect(PROJECT_KINDS.length).toBe(PROJECT_TYPES.length);
+  });
+
+  test('defines account moderation states', () => {
+    expect(ACCOUNT_ROLES).toEqual(['USER', 'MODERATOR', 'ADMIN']);
+    expect(ACCOUNT_STATUSES).toEqual(['ACTIVE', 'SUSPENDED', 'DELETED']);
   });
 });

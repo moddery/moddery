@@ -1,3 +1,5 @@
+import { VERSION_CHANNELS } from '@moddery/shared';
+
 import { DashboardField } from '../shared.tsx';
 import { type VersionChannel } from './versionChannel.ts';
 
@@ -52,9 +54,11 @@ export function EditVersionFields({
             }
             className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
           >
-            <option value="RELEASE">Release</option>
-            <option value="BETA">Beta</option>
-            <option value="ALPHA">Alpha</option>
+            {VERSION_CHANNELS.map((value) => (
+              <option key={value} value={value}>
+                {channelLabel(value)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
@@ -80,4 +84,8 @@ export function EditVersionFields({
       </label>
     </>
   );
+}
+
+function channelLabel(channel: VersionChannel): string {
+  return channel.toLowerCase().replace(/^\w/, (letter) => letter.toUpperCase());
 }

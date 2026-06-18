@@ -1,6 +1,8 @@
+import { type VersionChannel } from '@moddery/shared';
+
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 
-export type VersionChannel = 'ALPHA' | 'BETA' | 'RELEASE';
+export { type VersionChannel };
 
 export function versionChannelFromProjectVersion(
   version: ProjectVersion | null,

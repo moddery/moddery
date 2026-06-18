@@ -1,4 +1,8 @@
-import { type ProjectKind } from '@moddery/shared';
+import {
+  type AccountRole,
+  type AccountStatus,
+  type ProjectKind,
+} from '@moddery/shared';
 import {
   type AddProjectGalleryImageInput,
   type AddOrganizationTeamMemberInput,
@@ -348,8 +352,8 @@ export interface UpdateUserAccountMutationData {
 
 export interface UpdateUserAccountMutationVariables {
   input: {
-    role: string | null;
-    status: string | null;
+    role: AccountRole | null;
+    status: AccountStatus | null;
     userId: string;
   };
 }

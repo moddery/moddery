@@ -1,3 +1,5 @@
+import { type AccountRole, type AccountStatus } from '@moddery/shared';
+
 import { apolloClient } from '../../../apollo.js';
 import {
   ADMIN_USER_SEARCH_QUERY,
@@ -138,8 +140,8 @@ export async function fetchAdminUserSearch(
 }
 
 export async function updateUserAccount(input: {
-  role: string | null;
-  status: string | null;
+  role: AccountRole | null;
+  status: AccountStatus | null;
   userId: string;
 }): Promise<AdminUserAccount> {
   const { data } = await apolloClient.mutate<

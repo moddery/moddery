@@ -1,7 +1,10 @@
 import {
+  type AccountRole,
+  type AccountStatus,
   type CollectionVisibility,
   type DependencyKind,
   type ProjectKind,
+  type ReportState,
 } from '@moddery/shared';
 
 export * from './types/account.js';
@@ -21,8 +24,8 @@ export interface DashboardData {
   organizations: DashboardOrganization[];
   projectCount: number;
   projects: DashboardProject[];
-  role: string;
-  status: string;
+  role: AccountRole;
+  status: AccountStatus;
   twoFactorEnabled: boolean;
   username: string;
 }
@@ -32,8 +35,8 @@ export interface AdminUserAccount {
   createdAt: string;
   displayName: string | null;
   id: string;
-  role: string;
-  status: string;
+  role: AccountRole;
+  status: AccountStatus;
   username: string;
 }
 
@@ -456,7 +459,7 @@ export interface ModerationReportSearchResult {
   totalHits: number;
 }
 
-export type ModerationReportState = 'OPEN' | 'TRIAGED' | 'CLOSED';
+export type ModerationReportState = ReportState;
 
 export interface ReportThreadMessage {
   author: {

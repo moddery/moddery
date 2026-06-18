@@ -1,3 +1,4 @@
+import { type AccountRole, type AccountStatus } from '@moddery/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -8,8 +9,8 @@ import {
 } from '../../../../lib/dashboard.ts';
 
 export interface UpdateUserAccountInput {
-  role?: string;
-  status?: string;
+  role?: AccountRole;
+  status?: AccountStatus;
 }
 
 const pageSize = 20;

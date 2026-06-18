@@ -1,10 +1,9 @@
+import { ACCOUNT_ROLES, ACCOUNT_STATUSES } from '@moddery/shared';
+
 import { type AdminUserAccount } from '../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 import { ReportActionButton } from '../shared.tsx';
 import { type UpdateUserAccountInput } from './useAdminUsersPanelState.ts';
-
-const ROLES = ['USER', 'MODERATOR', 'ADMIN'];
-const STATUSES = ['ACTIVE', 'SUSPENDED', 'DELETED'];
 
 interface AdminUserRowProps {
   busy: boolean;
@@ -39,7 +38,7 @@ export function AdminUserRow({
         </span>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {ROLES.map((role) => (
+        {ACCOUNT_ROLES.map((role) => (
           <ReportActionButton
             key={role}
             disabled={busy || user.role === role || (self && role !== 'ADMIN')}
@@ -51,7 +50,7 @@ export function AdminUserRow({
         ))}
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
-        {STATUSES.map((status) => (
+        {ACCOUNT_STATUSES.map((status) => (
           <ReportActionButton
             key={status}
             disabled={

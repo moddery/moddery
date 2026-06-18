@@ -51,6 +51,18 @@ export const SUPPORTED_LOADERS = [
   'quilt',
 ] as const satisfies readonly ModLoader[];
 
+export const ACCOUNT_ROLES = [
+  'USER',
+  'MODERATOR',
+  'ADMIN',
+] as const satisfies readonly AccountRole[];
+
+export const ACCOUNT_STATUSES = [
+  'ACTIVE',
+  'SUSPENDED',
+  'DELETED',
+] as const satisfies readonly AccountStatus[];
+
 export const PROJECT_KINDS = [
   'MOD',
   'MODPACK',
