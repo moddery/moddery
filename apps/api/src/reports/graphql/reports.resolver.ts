@@ -5,6 +5,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { ReportDirectThreadsService } from '../services/report-direct-threads.service.js';
 import { ReportModerationNotesService } from '../services/report-moderation-notes.service.js';
+import { ReportThreadsService } from '../services/report-threads.service.js';
 import { ReportsService } from '../services/reports.service.js';
 import {
   CreateProjectModerationNoteInput,
@@ -33,6 +34,7 @@ export class ReportsResolver {
   constructor(
     private readonly reportDirectThreadsService: ReportDirectThreadsService,
     private readonly reportModerationNotesService: ReportModerationNotesService,
+    private readonly reportThreadsService: ReportThreadsService,
     private readonly reportsService: ReportsService,
   ) {}
 
@@ -63,7 +65,7 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findReportThread(reportId);
+    return this.reportThreadsService.findReportThread(reportId);
   }
 
   @Query(() => [ThreadSummary])
@@ -199,7 +201,7 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.createReportThreadMessage({
+    return this.reportThreadsService.createReportThreadMessage({
       authorId: user.id,
       body: input.body,
       reportId: input.reportId,

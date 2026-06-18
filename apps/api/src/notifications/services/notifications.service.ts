@@ -1,16 +1,17 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { NotificationChannel } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type SendNotificationInput } from '../graphql/send-notification.input.js';
+import { NotificationDispatchService } from './notification-dispatch.service.js';
+import { NotificationPreferencesService } from './notification-preferences.service.js';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationDispatchService: NotificationDispatchService,
+    private readonly notificationPreferencesService: NotificationPreferencesService,
+  ) {}
 
   async findViewerNotifications(
     userId: string,
@@ -113,21 +114,7 @@ export class NotificationsService {
   }
 
   async findViewerPreferences(userId: string) {
-    const saved = await this.prisma.notificationPreference.findMany({
-      orderBy: [{ type: 'asc' }, { channel: 'asc' }],
-      where: { userId },
-    });
-    const savedKeys = new Set(
-      saved.map((preference) => preferenceKey(preference)),
-    );
-    const defaults = defaultPreferences()
-      .filter((preference) => !savedKeys.has(preferenceKey(preference)))
-      .map((preference) => ({
-        ...preference,
-        updatedAt: new Date(0),
-      }));
-
-    return [...saved, ...defaults].sort(comparePreferences);
+    return this.notificationPreferencesService.findViewerPreferences(userId);
   }
 
   updatePreference({
@@ -141,64 +128,16 @@ export class NotificationsService {
     type: string;
     userId: string;
   }) {
-    const normalizedType = type.trim().toLowerCase();
-    const normalizedChannel = notificationChannel(channel);
-
-    return this.prisma.notificationPreference.upsert({
-      create: {
-        channel: normalizedChannel,
-        enabled,
-        type: normalizedType,
-        userId,
-      },
-      update: { enabled },
-      where: {
-        userId_type_channel: {
-          channel: normalizedChannel,
-          type: normalizedType,
-          userId,
-        },
-      },
+    return this.notificationPreferencesService.updatePreference({
+      channel,
+      enabled,
+      type,
+      userId,
     });
   }
 
   async sendNotification(input: SendNotificationInput) {
-    const type = requiredTrim(
-      input.type,
-      'Notification type is required',
-    ).toLowerCase();
-    const title = requiredTrim(input.title, 'Notification title is required');
-    const recipient = await this.prisma.user.findFirst({
-      select: { id: true },
-      where: {
-        username: {
-          equals: input.username.trim(),
-          mode: 'insensitive',
-        },
-      },
-    });
-
-    if (recipient === null) {
-      throw new NotFoundException('User not found');
-    }
-
-    const preferences = await this.enabledPreferences(recipient.id, type);
-
-    return this.prisma.notification.create({
-      data: {
-        actionUrl: nullableTrim(input.actionUrl),
-        body: nullableTrim(input.body),
-        deliveries: {
-          create: preferences.map((preference) => ({
-            channel: preference.channel,
-          })),
-        },
-        state: 'PENDING',
-        title,
-        type,
-        userId: recipient.id,
-      },
-    });
+    return this.notificationDispatchService.sendNotification(input);
   }
 
   async sendUserNotification({
@@ -214,47 +153,13 @@ export class NotificationsService {
     type: string;
     userId: string;
   }) {
-    const normalizedType = requiredTrim(
+    return this.notificationDispatchService.sendUserNotification({
+      actionUrl,
+      body,
+      title,
       type,
-      'Notification type is required',
-    ).toLowerCase();
-    const preferences = await this.enabledPreferences(userId, normalizedType);
-
-    return this.prisma.notification.create({
-      data: {
-        actionUrl,
-        body,
-        deliveries: {
-          create: preferences.map((preference) => ({
-            channel: preference.channel,
-          })),
-        },
-        state: 'PENDING',
-        title: requiredTrim(title, 'Notification title is required'),
-        type: normalizedType,
-        userId,
-      },
+      userId,
     });
-  }
-
-  private async enabledPreferences(userId: string, type: string) {
-    const saved = await this.prisma.notificationPreference.findMany({
-      where: { type, userId },
-    });
-    const savedByChannel = new Map(
-      saved.map((preference) => [preference.channel, preference]),
-    );
-
-    return defaultPreferences()
-      .filter((preference) => preference.type === type)
-      .map(
-        (preference) =>
-          savedByChannel.get(preference.channel) ?? {
-            ...preference,
-            userId,
-          },
-      )
-      .filter((preference) => preference.enabled);
   }
 }
 
@@ -303,62 +208,8 @@ function notificationWhere(
   };
 }
 
-function defaultPreferences() {
-  return [
-    { channel: NotificationChannel.IN_APP, enabled: true, type: 'project' },
-    { channel: NotificationChannel.EMAIL, enabled: true, type: 'project' },
-    { channel: NotificationChannel.IN_APP, enabled: true, type: 'moderation' },
-    { channel: NotificationChannel.EMAIL, enabled: false, type: 'moderation' },
-    { channel: NotificationChannel.IN_APP, enabled: true, type: 'message' },
-    { channel: NotificationChannel.EMAIL, enabled: false, type: 'message' },
-    { channel: NotificationChannel.IN_APP, enabled: true, type: 'team' },
-    { channel: NotificationChannel.EMAIL, enabled: true, type: 'team' },
-  ];
-}
-
-function notificationChannel(channel: string): NotificationChannel {
-  const normalized = channel.trim().toUpperCase();
-  return normalized === NotificationChannel.EMAIL
-    ? NotificationChannel.EMAIL
-    : NotificationChannel.IN_APP;
-}
-
-function nullableTrim(value: string | null | undefined): string | null {
-  const trimmed = value?.trim() ?? '';
-  return trimmed.length === 0 ? null : trimmed;
-}
-
-function requiredTrim(value: string, message: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    throw new BadRequestException(message);
-  }
-
-  return trimmed;
-}
-
 function clampInteger(value: number, min: number, max: number): number {
   if (!Number.isInteger(value)) return min;
 
   return Math.min(max, Math.max(min, value));
-}
-
-function preferenceKey({
-  channel,
-  type,
-}: {
-  channel: string;
-  type: string;
-}): string {
-  return `${type}:${channel}`;
-}
-
-function comparePreferences(
-  left: { channel: string; type: string },
-  right: { channel: string; type: string },
-): number {
-  return (
-    left.type.localeCompare(right.type) ||
-    left.channel.localeCompare(right.channel)
-  );
 }

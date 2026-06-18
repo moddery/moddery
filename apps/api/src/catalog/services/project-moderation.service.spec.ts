@@ -162,85 +162,6 @@ describe(ProjectModerationService.name, () => {
     expect(project.status).toBe('APPROVED');
   });
 
-  test('locks projects for moderator review', async () => {
-    const upserts: unknown[] = [];
-    const service = createProjectModerationService(
-      {
-        moderationLock: {
-          upsert: (query: unknown) => {
-            upserts.push(query);
-            return Promise.resolve({});
-          },
-        },
-        project: {
-          findUnique: () => Promise.resolve({ id: 'project-a' }),
-          findUniqueOrThrow: () =>
-            Promise.resolve(
-              projectRow({
-                moderationLock: moderationLockRow(),
-                status: 'PENDING_REVIEW',
-                title: 'Queued',
-              }),
-            ),
-        },
-      } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
-    );
-
-    const project = await service.lockProjectForModeration(
-      'example',
-      'moderator-a',
-    );
-
-    expect(upserts[0]).toEqual(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          moderatorId: 'moderator-a',
-          projectId: 'project-a',
-        }),
-        update: expect.objectContaining({
-          moderatorId: 'moderator-a',
-        }),
-        where: { projectId: 'project-a' },
-      }),
-    );
-    expect(project.moderationLock?.moderator.username).toBe('moderator');
-  });
-
-  test('releases project moderation locks owned by the moderator', async () => {
-    const deletes: unknown[] = [];
-    const service = createProjectModerationService(
-      {
-        moderationLock: {
-          deleteMany: (query: unknown) => {
-            deletes.push(query);
-            return Promise.resolve({ count: 1 });
-          },
-        },
-        project: {
-          findUnique: () =>
-            Promise.resolve({
-              id: 'project-a',
-              moderationLock: { moderatorId: 'moderator-a' },
-            }),
-          findUniqueOrThrow: () =>
-            Promise.resolve(
-              projectRow({ status: 'PENDING_REVIEW', title: 'Queued' }),
-            ),
-        },
-      } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
-    );
-
-    const project = await service.releaseProjectModerationLock(
-      'example',
-      'moderator-a',
-    );
-
-    expect(deletes[0]).toEqual({ where: { projectId: 'project-a' } });
-    expect(project.moderationLock).toBeNull();
-  });
-
   test('loads project moderation actions newest first with pagination', async () => {
     const queries: unknown[] = [];
     const service = createProjectModerationService(
@@ -368,7 +289,16 @@ function projectRow({
   }[];
   license?: { key: string; name: string; url: string | null };
   links?: { kind: string; label: string | null; url: string }[];
-  moderationLock?: ReturnType<typeof moderationLockRow> | null;
+  moderationLock?: {
+    createdAt: Date;
+    expiresAt: Date;
+    id: string;
+    moderator: {
+      displayName: string | null;
+      id: string;
+      username: string;
+    };
+  } | null;
   status?: 'APPROVED' | 'PENDING_REVIEW' | 'REJECTED' | 'ARCHIVED';
   title: string;
 }) {
@@ -423,18 +353,5 @@ function projectRow({
     title,
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     wikiUrl: null,
-  };
-}
-
-function moderationLockRow() {
-  return {
-    createdAt: new Date('2026-01-01T00:00:00.000Z'),
-    expiresAt: new Date('2026-01-01T00:30:00.000Z'),
-    id: 'lock-a',
-    moderator: {
-      displayName: 'Moderator',
-      id: 'moderator-a',
-      username: 'moderator',
-    },
   };
 }

@@ -1,12 +1,21 @@
 import { describe, expect, test } from 'bun:test';
 
 import { type PrismaService } from '../../prisma/prisma.service.js';
+import { UserFriendshipActionsService } from './user-friendship-actions.service.js';
+import { UserFriendshipReadsService } from './user-friendship-reads.service.js';
 import { UserFriendshipsService } from './user-friendships.service.js';
+
+function createUserFriendshipsService(prisma: PrismaService) {
+  return new UserFriendshipsService(
+    new UserFriendshipActionsService(prisma),
+    new UserFriendshipReadsService(prisma),
+  );
+}
 
 describe(UserFriendshipsService.name, () => {
   test('loads viewer friends with pagination', async () => {
     const queries: unknown[] = [];
-    const service = new UserFriendshipsService({
+    const service = createUserFriendshipsService({
       friend: {
         count: (query: unknown) => {
           queries.push({ count: query });
@@ -50,7 +59,7 @@ describe(UserFriendshipsService.name, () => {
 
   test('loads the legacy viewer friend list from friend search results', async () => {
     const queries: unknown[] = [];
-    const service = new UserFriendshipsService({
+    const service = createUserFriendshipsService({
       friend: {
         count: () => Promise.resolve(1),
         findMany: (query: unknown) => {
@@ -75,7 +84,7 @@ describe(UserFriendshipsService.name, () => {
 
   test('loads viewer friend requests with pagination', async () => {
     const queries: unknown[] = [];
-    const service = new UserFriendshipsService({
+    const service = createUserFriendshipsService({
       friend: {
         count: (query: unknown) => {
           queries.push({ count: query });
@@ -124,7 +133,7 @@ describe(UserFriendshipsService.name, () => {
 
   test('loads viewer blocked users with pagination', async () => {
     const queries: unknown[] = [];
-    const service = new UserFriendshipsService({
+    const service = createUserFriendshipsService({
       friend: {
         count: (query: unknown) => {
           queries.push({ count: query });
@@ -172,7 +181,7 @@ describe(UserFriendshipsService.name, () => {
 
   test('accepts an incoming friend request when sending one back', async () => {
     const updates: unknown[] = [];
-    const service = new UserFriendshipsService({
+    const service = createUserFriendshipsService({
       friend: {
         findFirst: () =>
           Promise.resolve({
@@ -247,7 +256,7 @@ describe(UserFriendshipsService.name, () => {
 
   test('blocks an existing friend relationship as the viewer', async () => {
     const updates: unknown[] = [];
-    const service = new UserFriendshipsService({
+    const service = createUserFriendshipsService({
       friend: {
         findFirst: () =>
           Promise.resolve({

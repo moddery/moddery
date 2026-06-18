@@ -5,6 +5,7 @@ import { PrismaModule } from '../prisma/prisma.module.js';
 import { ReportsResolver } from './graphql/reports.resolver.js';
 import { ReportDirectThreadsService } from './services/report-direct-threads.service.js';
 import { ReportModerationNotesService } from './services/report-moderation-notes.service.js';
+import { ReportThreadsService } from './services/report-threads.service.js';
 import { ReportsService } from './services/reports.service.js';
 
 @Module({
@@ -12,6 +13,7 @@ import { ReportsService } from './services/reports.service.js';
   providers: [
     ReportDirectThreadsService,
     ReportModerationNotesService,
+    ReportThreadsService,
     ReportsResolver,
     ReportsService,
   ],

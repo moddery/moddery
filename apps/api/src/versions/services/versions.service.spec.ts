@@ -1,12 +1,17 @@
 import { describe, expect, test } from 'bun:test';
 
 import { type PrismaService } from '../../prisma/prisma.service.js';
+import { VersionDependenciesService } from './version-dependencies.service.js';
 import { VersionsService } from './versions.service.js';
+
+function createVersionsService(prisma: PrismaService) {
+  return new VersionsService(prisma, new VersionDependenciesService(prisma));
+}
 
 describe(VersionsService.name, () => {
   test('replaces version dependencies for accepted project members', async () => {
     const operations: string[] = [];
-    const service = new VersionsService({
+    const service = createVersionsService({
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           project: {
@@ -69,7 +74,7 @@ describe(VersionsService.name, () => {
 
   test('updates versions for accepted project members', async () => {
     const operations: string[] = [];
-    const service = new VersionsService({
+    const service = createVersionsService({
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           gameVersion: {
@@ -135,7 +140,7 @@ describe(VersionsService.name, () => {
 
   test('creates approved versions for accepted project members', async () => {
     const transactionSteps: string[] = [];
-    const service = new VersionsService({
+    const service = createVersionsService({
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           gameVersion: {

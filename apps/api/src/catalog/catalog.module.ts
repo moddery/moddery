@@ -10,6 +10,7 @@ import { ProjectFollowsService } from './services/project-follows.service.js';
 import { ProjectGalleryService } from './services/project-gallery.service.js';
 import { ProjectManagementService } from './services/project-management.service.js';
 import { ProjectMembersService } from './services/project-members.service.js';
+import { ProjectModerationLocksService } from './services/project-moderation-locks.service.js';
 import { ProjectModerationService } from './services/project-moderation.service.js';
 
 @Module({
@@ -19,6 +20,7 @@ import { ProjectModerationService } from './services/project-moderation.service.
     ProjectGalleryService,
     ProjectManagementService,
     ProjectMembersService,
+    ProjectModerationLocksService,
     ProjectModerationService,
   ],
   imports: [NotificationsModule, PrismaModule, RedisModule, SearchModule],
@@ -29,6 +31,7 @@ import { ProjectModerationService } from './services/project-moderation.service.
     ProjectGalleryService,
     ProjectManagementService,
     ProjectMembersService,
+    ProjectModerationLocksService,
     ProjectModerationService,
   ],
 })

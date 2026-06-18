@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,11 +8,10 @@ import { HashAlgorithm, Loader, type Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type CreateVersionInput } from '../dto/create-version.input.js';
-import {
-  type UpdateVersionDependenciesInput,
-  type VersionDependencyInput,
-} from '../dto/update-version-dependencies.input.js';
+import { type UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
 import { type UpdateVersionInput } from '../dto/update-version.input.js';
+import { VersionDependenciesService } from './version-dependencies.service.js';
+import { findManagedVersion } from './version-management.js';
 import {
   type VersionSummaryContract,
   versionRowToContract,
@@ -22,7 +20,10 @@ import {
 
 @Injectable()
 export class VersionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly versionDependenciesService: VersionDependenciesService,
+  ) {}
 
   async createVersion(
     input: CreateVersionInput,
@@ -92,7 +93,11 @@ export class VersionsService {
     input: UpdateVersionInput,
     userId: string,
   ): Promise<VersionSummaryContract> {
-    const version = await this.findManagedVersion(input.versionId, userId);
+    const version = await findManagedVersion(
+      this.prisma,
+      input.versionId,
+      userId,
+    );
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.version.update({
@@ -121,111 +126,11 @@ export class VersionsService {
     input: UpdateVersionDependenciesInput,
     userId: string,
   ): Promise<VersionSummaryContract> {
-    const version = await this.findManagedVersion(input.versionId, userId);
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.versionDependency.deleteMany({
-        where: { versionId: version.id },
-      });
-
-      for (const dependency of input.dependencies.slice(0, 32)) {
-        await createVersionDependency(tx, version.id, dependency);
-      }
-
-      return tx.version.findUniqueOrThrow({
-        select: versionSelect(),
-        where: { id: version.id },
-      });
-    });
-
-    return versionRowToContract(updated);
+    return this.versionDependenciesService.updateVersionDependencies(
+      input,
+      userId,
+    );
   }
-
-  private async findManagedVersion(versionId: string, userId: string) {
-    const version = await this.prisma.version.findFirst({
-      select: {
-        id: true,
-        project: {
-          select: {
-            team: {
-              select: {
-                members: {
-                  select: { userId: true },
-                  take: 1,
-                  where: {
-                    acceptedAt: { not: null },
-                    userId,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      where: { id: versionId },
-    });
-
-    if (version === null) {
-      throw new NotFoundException('Version not found');
-    }
-
-    if (version.project.team.members.length === 0) {
-      throw new ForbiddenException('Project membership required');
-    }
-
-    return version;
-  }
-}
-
-async function createVersionDependency(
-  tx: Prisma.TransactionClient,
-  versionId: string,
-  input: VersionDependencyInput,
-): Promise<void> {
-  const targetProjectSlug = nullableTrim(input.targetProjectSlug);
-  const externalFileName = nullableTrim(input.externalFileName);
-  const targetVersionId = nullableTrim(input.targetVersionId);
-
-  if (
-    targetProjectSlug === null &&
-    externalFileName === null &&
-    targetVersionId === null
-  ) {
-    throw new BadRequestException('Dependency target required');
-  }
-
-  const targetProject =
-    targetProjectSlug === null
-      ? null
-      : await tx.project.findUnique({
-          select: { id: true },
-          where: { slug: targetProjectSlug },
-        });
-
-  if (targetProjectSlug !== null && targetProject === null) {
-    throw new NotFoundException('Dependency project not found');
-  }
-
-  if (targetVersionId !== null) {
-    const targetVersion = await tx.version.findUnique({
-      select: { id: true },
-      where: { id: targetVersionId },
-    });
-
-    if (targetVersion === null) {
-      throw new NotFoundException('Dependency version not found');
-    }
-  }
-
-  await tx.versionDependency.create({
-    data: {
-      dependencyKind: input.dependencyKind,
-      externalFileName,
-      targetProjectId: targetProject?.id ?? null,
-      targetVersionId,
-      versionId,
-    },
-  });
 }
 
 async function replaceVersionGameVersions(
