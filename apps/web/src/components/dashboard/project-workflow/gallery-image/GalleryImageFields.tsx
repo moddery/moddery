@@ -5,6 +5,7 @@ export function GalleryImageFields({
   description,
   displayUrl,
   featured,
+  hasLocalFile,
   projectSlug,
   projects,
   rawUrl,
@@ -22,6 +23,7 @@ export function GalleryImageFields({
   description: string;
   displayUrl: string;
   featured: boolean;
+  hasLocalFile: boolean;
   projectSlug: string;
   projects: DashboardProject[];
   rawUrl: string;
@@ -88,13 +90,13 @@ export function GalleryImageFields({
         label="Raw image URL"
         value={rawUrl}
         onChange={onRawUrlChange}
-        required
+        required={!hasLocalFile}
       />
       <DashboardField
         label="Display image URL"
         value={displayUrl}
         onChange={onDisplayUrlChange}
-        required
+        required={!hasLocalFile}
       />
       <label className="grid gap-1 text-sm font-bold text-ink">
         Description

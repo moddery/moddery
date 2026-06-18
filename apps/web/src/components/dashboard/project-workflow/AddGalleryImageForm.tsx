@@ -93,6 +93,7 @@ export function AddGalleryImageForm({
           description={description}
           displayUrl={displayUrl}
           featured={featured}
+          hasLocalFile={localFile !== null}
           projectSlug={projectSlug}
           projects={projects}
           rawUrl={rawUrl}

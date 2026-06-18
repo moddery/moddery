@@ -26,6 +26,7 @@ export function ProjectMetadataFields({
   onDiscordUrlChange,
   onExtraLinksChange,
   onGameVersionsChange,
+  onIconFileChange,
   onIconUrlChange,
   onIssuesUrlChange,
   onLicenseKeyChange,
@@ -58,6 +59,7 @@ export function ProjectMetadataFields({
         summary={summary}
         title={title}
         onColorChange={onColorChange}
+        onIconFileChange={onIconFileChange}
         onIconUrlChange={onIconUrlChange}
         onSummaryChange={onSummaryChange}
         onTitleChange={onTitleChange}

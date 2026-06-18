@@ -5,6 +5,7 @@ import {
   fetchLicenseTaxonomy,
   updateProject,
   type DashboardProject,
+  uploadProjectFile,
 } from '../../lib/dashboard.ts';
 import { ProjectMetadataFields } from './project-metadata/ProjectMetadataFields.tsx';
 import { useProjectMetadataFormState } from './project-metadata/useProjectMetadataFormState.ts';
@@ -26,10 +27,12 @@ export function ProjectMetadataForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localIconFile, setLocalIconFile] = useState<File | null>(null);
   const [updated, setUpdated] = useState<string | null>(null);
 
   function selectProject(slug: string) {
     metadataForm.selectProject(slug);
+    setLocalIconFile(null);
     setError(null);
     setUpdated(null);
   }
@@ -41,8 +44,18 @@ export function ProjectMetadataForm({
     setUpdated(null);
 
     try {
-      const project = await updateProject(metadataForm.buildInput());
+      const input = metadataForm.buildInput();
+      if (localIconFile !== null) {
+        const target = await uploadProjectFile({
+          file: localIconFile,
+          projectSlug: input.projectSlug,
+          uploadKind: 'project-icon',
+        });
+        input.iconUrl = target.objectUrl;
+      }
+      const project = await updateProject(input);
       setUpdated(project.title);
+      setLocalIconFile(null);
       await onUpdated();
     } catch (caught) {
       setError(
@@ -70,6 +83,7 @@ export function ProjectMetadataForm({
       >
         <ProjectMetadataFields
           {...metadataForm.fields}
+          onIconFileChange={setLocalIconFile}
           onProjectChange={selectProject}
         />
 

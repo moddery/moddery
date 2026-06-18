@@ -22,6 +22,7 @@ export interface ProjectMetadataFieldsProps {
   onExtraLinksChange: (value: string) => void;
   onGameVersionsChange: (value: string) => void;
   onIconUrlChange: (value: string) => void;
+  onIconFileChange: (value: File | null) => void;
   onIssuesUrlChange: (value: string) => void;
   onLicenseKeyChange: (value: string) => void;
   onLicenseNameChange: (value: string) => void;
