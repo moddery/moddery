@@ -60,14 +60,18 @@ function resolveReportTarget(report: ModerationReport) {
       projectTypeFromKind(report.version.project.kind),
       report.version.project.slug,
     );
+    const versionHref = reportVersionHref(
+      projectHref,
+      report.version.versionNumber,
+    );
 
     return {
       context: null,
-      href: projectHref,
+      href: versionHref,
       kind: 'Version',
       name: report.version.name,
       version: {
-        projectHref,
+        projectHref: versionHref,
         projectTitle: report.version.project.title,
         versionNumber: report.version.versionNumber,
       },
@@ -109,4 +113,10 @@ function resolveReportTarget(report: ModerationReport) {
       'Unknown target',
     version: null,
   };
+}
+
+export function reportVersionHref(projectHref: string, versionNumber: string) {
+  return `${projectHref}&tab=versions&version=${encodeURIComponent(
+    versionNumber,
+  )}`;
 }
