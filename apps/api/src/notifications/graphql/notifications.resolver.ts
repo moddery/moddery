@@ -3,6 +3,7 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { paginationOptions } from '../../common/graphql/pagination.js';
 import { NotificationsService } from '../services/notifications.service.js';
 import { NotificationPreferenceSummary } from './notification-preference.model.js';
 import {
@@ -61,8 +62,7 @@ export class NotificationsResolver {
     offset?: number | null,
   ) {
     return this.notificationsService.findViewerNotifications(user.id, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
+      ...paginationOptions({ limit, offset }),
       type,
       unreadOnly,
     });

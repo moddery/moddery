@@ -8,6 +8,7 @@ import { RegisterInput } from '../dto/register.input.js';
 import { ApiTokensService } from '../services/api-tokens.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { type AuthenticatedUser } from '../services/auth-token.service.js';
+import { paginationOptions } from '../../common/graphql/pagination.js';
 import { UsersService } from '../../users/services/users.service.js';
 import {
   ApiTokenSearchResult,
@@ -75,8 +76,7 @@ export class AuthResolver {
   ) {
     return this.apiTokensService.findViewerTokens(user.id, {
       includeRevoked,
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
+      ...paginationOptions({ limit, offset }),
     });
   }
 
@@ -99,8 +99,7 @@ export class AuthResolver {
   ) {
     return this.authService.findViewerSessions(user.id, {
       includeRevoked,
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
+      ...paginationOptions({ limit, offset }),
     });
   }
 

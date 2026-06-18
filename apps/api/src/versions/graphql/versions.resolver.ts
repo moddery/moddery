@@ -3,6 +3,7 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
+import { paginationOptions } from '../../common/graphql/pagination.js';
 import { CreateVersionInput } from '../dto/create-version.input.js';
 import { RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import { UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
@@ -48,9 +49,8 @@ export class VersionsResolver {
   ): Promise<VersionSearchResult> {
     return this.versionDirectoryService.searchByProjectSlug(projectSlug, {
       gameVersion,
-      limit: limit ?? undefined,
       loader,
-      offset: offset ?? undefined,
+      ...paginationOptions({ limit, offset }),
       search,
     });
   }

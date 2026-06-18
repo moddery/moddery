@@ -3,6 +3,7 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { paginationOptions } from '../../common/graphql/pagination.js';
 import { AddOrganizationTeamMemberInput } from '../dto/add-organization-team-member.input.js';
 import { AddProjectToOrganizationInput } from '../dto/add-project-to-organization.input.js';
 import { CreateOrganizationInput } from '../dto/create-organization.input.js';
@@ -49,8 +50,7 @@ export class OrganizationsResolver {
     offset?: number | null,
   ): Promise<OrganizationSearchResult> {
     return this.organizationDirectoryService.findPublicOrganizations({
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
+      ...paginationOptions({ limit, offset }),
       search,
     });
   }
@@ -72,10 +72,10 @@ export class OrganizationsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<OrganizationMemberSearchResult> {
-    return this.organizationDirectoryService.findOrganizationMembers(slug, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.organizationDirectoryService.findOrganizationMembers(
+      slug,
+      paginationOptions({ limit, offset }),
+    );
   }
 
   @Public()
@@ -87,10 +87,10 @@ export class OrganizationsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<OrganizationProjectSearchResult> {
-    return this.organizationDirectoryService.findOrganizationProjects(slug, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.organizationDirectoryService.findOrganizationProjects(
+      slug,
+      paginationOptions({ limit, offset }),
+    );
   }
 
   @Mutation(() => OrganizationSummary)

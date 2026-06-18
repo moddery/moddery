@@ -3,6 +3,7 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { paginationOptions } from '../../common/graphql/pagination.js';
 import { AddProjectToCollectionInput } from '../dto/add-project-to-collection.input.js';
 import { CreateCollectionInput } from '../dto/create-collection.input.js';
 import { RemoveProjectFromCollectionInput } from '../dto/remove-project-from-collection.input.js';
@@ -42,8 +43,7 @@ export class CollectionsResolver {
     offset?: number | null,
   ) {
     return this.publicCollectionsService.findPublicCollections({
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
+      ...paginationOptions({ limit, offset }),
       search,
     });
   }
@@ -73,10 +73,7 @@ export class CollectionsResolver {
     return this.publicCollectionsService.findPublicCollectionItems(
       ownerUsername,
       slug,
-      {
-        limit: limit ?? undefined,
-        offset: offset ?? undefined,
-      },
+      paginationOptions({ limit, offset }),
     );
   }
 

@@ -4,6 +4,7 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
+import { paginationOptions } from '../../common/graphql/pagination.js';
 import { AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.js';
 import { AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
 import { CatalogQueryInput } from '../dto/catalog-query.input.js';
@@ -93,10 +94,7 @@ export class CatalogResolver {
   ) {
     const result = await this.projectFollowsService.findViewerFollowedProjects(
       user.id,
-      {
-        limit: limit ?? undefined,
-        offset: offset ?? undefined,
-      },
+      paginationOptions({ limit, offset }),
     );
 
     return {
@@ -124,10 +122,9 @@ export class CatalogResolver {
   ) {
     assertCanModerate(user);
     const result =
-      await this.projectModerationService.findProjectsForModeration({
-        limit: limit ?? undefined,
-        offset: offset ?? undefined,
-      });
+      await this.projectModerationService.findProjectsForModeration(
+        paginationOptions({ limit, offset }),
+      );
 
     return {
       projects: result.projects.map(projectToGraphql),
@@ -158,10 +155,7 @@ export class CatalogResolver {
     assertCanModerate(user);
     return this.projectModerationService.findProjectModerationActions(
       projectSlug,
-      {
-        limit: limit ?? undefined,
-        offset: offset ?? undefined,
-      },
+      paginationOptions({ limit, offset }),
     );
   }
 
@@ -182,10 +176,10 @@ export class CatalogResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ) {
-    return this.projectMembersService.findProjectMemberSearch(projectSlug, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.projectMembersService.findProjectMemberSearch(
+      projectSlug,
+      paginationOptions({ limit, offset }),
+    );
   }
 
   @Mutation(() => [ProjectMemberSummary])

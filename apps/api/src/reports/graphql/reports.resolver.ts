@@ -3,6 +3,7 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { paginationOptions } from '../../common/graphql/pagination.js';
 import { ReportDirectThreadsService } from '../services/report-direct-threads.service.js';
 import { ReportModerationNotesService } from '../services/report-moderation-notes.service.js';
 import { ReportThreadsService } from '../services/report-threads.service.js';
@@ -53,10 +54,9 @@ export class ReportsResolver {
     offset?: number | null,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findModerationReports({
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.reportsService.findModerationReports(
+      paginationOptions({ limit, offset }),
+    );
   }
 
   @Query(() => ThreadSummary)
@@ -81,10 +81,10 @@ export class ReportsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ) {
-    return this.reportDirectThreadsService.findViewerDirectThreads(user.id, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.reportDirectThreadsService.findViewerDirectThreads(
+      user.id,
+      paginationOptions({ limit, offset }),
+    );
   }
 
   @Query(() => [ModerationNoteSummary])
@@ -110,10 +110,7 @@ export class ReportsResolver {
     assertCanModerate(user);
     return this.reportModerationNotesService.findProjectModerationNotes(
       projectSlug,
-      {
-        limit: limit ?? undefined,
-        offset: offset ?? undefined,
-      },
+      paginationOptions({ limit, offset }),
     );
   }
 
@@ -138,10 +135,10 @@ export class ReportsResolver {
     offset?: number | null,
   ) {
     assertCanModerate(user);
-    return this.reportModerationNotesService.findUserModerationNotes(username, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.reportModerationNotesService.findUserModerationNotes(
+      username,
+      paginationOptions({ limit, offset }),
+    );
   }
 
   @Mutation(() => ReportSummary)
