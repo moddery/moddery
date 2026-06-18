@@ -1,8 +1,8 @@
-import { Check, Copy, Lock, Unlock, Users } from 'lucide-react';
-import { useState } from 'react';
+import { Lock, Unlock, Users } from 'lucide-react';
 
 import { type PublicCollection } from '../../../lib/catalog.ts';
 import { formatDate, timeAgo } from '../../../lib/format.ts';
+import { CopyLinkButton } from '../../CopyLinkButton.tsx';
 
 export function CollectionDetailHeader({
   collection,
@@ -10,14 +10,7 @@ export function CollectionDetailHeader({
   collection: PublicCollection;
 }) {
   const ownerName = collection.owner.displayName ?? collection.owner.username;
-  const [copied, setCopied] = useState(false);
   const visibility = collectionVisibilityMeta(collection.visibility);
-
-  async function copyCollectionLink() {
-    await navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  }
 
   return (
     <header className="mt-5 border-b border-line pb-6">
@@ -80,14 +73,7 @@ export function CollectionDetailHeader({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => void copyCollectionLink()}
-          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
-        >
-          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-          {copied ? 'Copied' : 'Copy link'}
-        </button>
+        <CopyLinkButton />
       </div>
     </header>
   );

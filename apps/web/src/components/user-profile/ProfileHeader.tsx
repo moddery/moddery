@@ -3,6 +3,7 @@ import { Flag } from 'lucide-react';
 
 import { timeAgo } from '../../lib/format.ts';
 import { type PublicUserProfile } from '../../lib/users.ts';
+import { CopyLinkButton } from '../CopyLinkButton.tsx';
 import { FriendshipAction } from './FriendshipAction.tsx';
 import { ProfileAvatar } from './profile-header/ProfileAvatar.tsx';
 import { ProfileReportForm } from './profile-header/ProfileReportForm.tsx';
@@ -37,6 +38,7 @@ export function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
               <Flag className="size-3.5 text-accent-icon" />
               Report
             </button>
+            <CopyLinkButton />
           </div>
           <p className="mt-1 text-sm font-semibold text-muted">
             @{profile.username} · joined {timeAgo(profile.createdAt)}

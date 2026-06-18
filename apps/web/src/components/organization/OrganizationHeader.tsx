@@ -1,9 +1,9 @@
-import { Building2, Check, Copy, Package, UsersRound } from 'lucide-react';
+import { Building2, Package, UsersRound } from 'lucide-react';
 import { type ReactNode } from 'react';
-import { useState } from 'react';
 
 import { formatDate, timeAgo } from '../../lib/format.ts';
 import { type OrganizationProfile } from '../../lib/organizations.ts';
+import { CopyLinkButton } from '../CopyLinkButton.tsx';
 
 export function OrganizationHeader({
   organization,
@@ -12,13 +12,6 @@ export function OrganizationHeader({
 }) {
   const ownerName =
     organization.owner.displayName ?? organization.owner.username;
-  const [copied, setCopied] = useState(false);
-
-  async function copyOrganizationLink() {
-    await navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
-  }
 
   return (
     <header className="border-b border-line pb-6">
@@ -69,14 +62,7 @@ export function OrganizationHeader({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => void copyOrganizationLink()}
-          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
-        >
-          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-          {copied ? 'Copied' : 'Copy link'}
-        </button>
+        <CopyLinkButton />
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
