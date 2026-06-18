@@ -1,4 +1,5 @@
 import { userProjectToMod, type PublicUserListItem } from '../../lib/users.ts';
+import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
 import { ModCard } from '../ModCard.tsx';
 import { ProfileAvatar } from '../user-profile/profile-header/ProfileAvatar.tsx';
@@ -31,9 +32,10 @@ export function UserDirectoryRow({
             )}
           </div>
           <p className="mt-1 text-sm font-semibold text-muted">
-            @{user.username} · {user.projectCount.toLocaleString('en-US')}{' '}
-            projects · {user.collectionCount.toLocaleString('en-US')}{' '}
-            collections · {user.friendCount.toLocaleString('en-US')} friends
+            @{user.username} · joined {timeAgo(user.createdAt)} ·{' '}
+            {user.projectCount.toLocaleString('en-US')} projects ·{' '}
+            {user.collectionCount.toLocaleString('en-US')} collections ·{' '}
+            {user.friendCount.toLocaleString('en-US')} friends
           </p>
           {user.bio && (
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
