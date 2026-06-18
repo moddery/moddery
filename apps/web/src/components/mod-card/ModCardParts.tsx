@@ -142,7 +142,7 @@ export function Tags({
 }) {
   function tagClick(kind: SearchTag['kind'], value: string) {
     if (onTagSearch === undefined) return undefined;
-    return () => onTagSearch({ kind, value });
+    return () => onTagSearch({ kind, projectType: mod.projectType, value });
   }
 
   return (

@@ -80,7 +80,12 @@ export function ProjectHero({
                 onClick={
                   onTagSearch === undefined
                     ? undefined
-                    : () => onTagSearch({ kind: 'loader', value: loader })
+                    : () =>
+                        onTagSearch({
+                          kind: 'loader',
+                          projectType,
+                          value: loader,
+                        })
                 }
               />
             ))}
@@ -91,7 +96,12 @@ export function ProjectHero({
                 onClick={
                   onTagSearch === undefined
                     ? undefined
-                    : () => onTagSearch({ kind: 'category', value: category })
+                    : () =>
+                        onTagSearch({
+                          kind: 'category',
+                          projectType,
+                          value: category,
+                        })
                 }
               />
             ))}

@@ -3,9 +3,11 @@ import { VersionTag } from '../../Chips.tsx';
 
 export function SupportedVersionsSection({
   onTagSearch,
+  projectType,
   versions,
 }: {
   onTagSearch?: (tag: SearchTag) => void;
+  projectType: SearchTag['projectType'];
   versions: string[];
 }) {
   if (versions.length === 0) return null;
@@ -23,7 +25,12 @@ export function SupportedVersionsSection({
             onClick={
               onTagSearch === undefined
                 ? undefined
-                : () => onTagSearch({ kind: 'version', value: version })
+                : () =>
+                    onTagSearch({
+                      kind: 'version',
+                      projectType,
+                      value: version,
+                    })
             }
           />
         ))}

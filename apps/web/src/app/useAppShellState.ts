@@ -86,7 +86,10 @@ export function useAppShellState() {
   }, []);
 
   function searchByTag(tag: SearchTag) {
+    const nextProjectType = tag.projectType ?? projectType;
+
     resetSelection('discover');
+    setProjectType(nextProjectType);
     discover.setMobileFiltersOpen(false);
     discover.setQuery('');
     discover.setSelectedVersions(
@@ -99,7 +102,7 @@ export function useAppShellState() {
       tag.kind === 'category' ? new Set([tag.value]) : new Set(),
     );
     discover.setPage(1);
-    writeProjectListToUrl(projectType);
+    writeProjectListToUrl(nextProjectType);
     scrollToTop();
   }
 

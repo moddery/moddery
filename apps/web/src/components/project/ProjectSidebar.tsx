@@ -103,6 +103,7 @@ export function ProjectSidebar({
         version={latestVersion}
         onSelectVersion={onSelectVersion}
         onTagSearch={onTagSearch}
+        projectType={project.projectType}
       />
 
       <ProjectLinksSection project={project} />
@@ -117,6 +118,7 @@ export function ProjectSidebar({
       <SupportedVersionsSection
         versions={supportedVersions}
         onTagSearch={onTagSearch}
+        projectType={project.projectType}
       />
     </aside>
   );

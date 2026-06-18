@@ -9,10 +9,12 @@ import { type SearchTag } from '../../ModCard.tsx';
 export function LatestVersionSection({
   onTagSearch,
   onSelectVersion,
+  projectType,
   version,
 }: {
   onTagSearch?: (tag: SearchTag) => void;
   onSelectVersion: (versionNumber: string | null) => void;
+  projectType: SearchTag['projectType'];
   version: ProjectVersion | undefined;
 }) {
   if (version === undefined) return null;
@@ -53,7 +55,8 @@ export function LatestVersionSection({
             onClick={
               onTagSearch === undefined
                 ? undefined
-                : () => onTagSearch({ kind: 'loader', value: loader })
+                : () =>
+                    onTagSearch({ kind: 'loader', projectType, value: loader })
             }
           />
         ))}
@@ -64,7 +67,12 @@ export function LatestVersionSection({
             onClick={
               onTagSearch === undefined
                 ? undefined
-                : () => onTagSearch({ kind: 'version', value: gameVersion })
+                : () =>
+                    onTagSearch({
+                      kind: 'version',
+                      projectType,
+                      value: gameVersion,
+                    })
             }
           />
         ))}
