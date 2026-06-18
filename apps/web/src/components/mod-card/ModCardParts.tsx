@@ -13,7 +13,7 @@ export function projectHref(mod: Mod) {
 
 export function projectPath(projectType: ProjectType, slug: string) {
   const meta = projectTypeMeta(projectType);
-  return `/?type=${encodeURIComponent(meta.type)}&project=${encodeURIComponent(slug)}`;
+  return `/${meta.path}?project=${encodeURIComponent(slug)}&type=${encodeURIComponent(meta.type)}`;
 }
 
 export function authorHref(username: string) {

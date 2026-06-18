@@ -19,7 +19,7 @@ describe(dependencyProjectHref.name, () => {
     });
 
     expect(dependencyProjectHref(dependency)).toBe(
-      '/?type=mod&project=required-lib&tab=versions&version=1.0.0%2Bfabric',
+      '/mods?project=required-lib&type=mod&tab=versions&version=1.0.0%2Bfabric',
     );
   });
 
@@ -35,7 +35,7 @@ describe(dependencyProjectHref.name, () => {
     });
 
     expect(dependencyProjectHref(dependency)).toBe(
-      '/?type=plugin&project=required-plugin',
+      '/plugins?project=required-plugin&type=plugin',
     );
   });
 
