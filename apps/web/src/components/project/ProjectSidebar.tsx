@@ -19,6 +19,7 @@ import { FollowProjectButton } from './sidebar/FollowProjectButton.tsx';
 import { LatestVersionSection } from './sidebar/LatestVersionSection.tsx';
 import { MetaRow } from './sidebar/MetaRow.tsx';
 import { ProjectAnalyticsSection } from './sidebar/ProjectAnalyticsSection.tsx';
+import { ProjectCategoriesSection } from './sidebar/ProjectCategoriesSection.tsx';
 import { ProjectCollectionSave } from './sidebar/ProjectCollectionSave.tsx';
 import { ProjectLifecycleSection } from './sidebar/ProjectLifecycleSection.tsx';
 import { ProjectLinksSection } from './sidebar/ProjectLinksSection.tsx';
@@ -107,6 +108,12 @@ export function ProjectSidebar({
       />
 
       <ProjectLinksSection project={project} />
+
+      <ProjectCategoriesSection
+        categories={project.categories}
+        onTagSearch={onTagSearch}
+        projectType={project.projectType}
+      />
 
       {members.length > 0 && (
         <ProjectMembersSection members={members} projectSlug={project.slug} />
