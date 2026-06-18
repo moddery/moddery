@@ -14,6 +14,7 @@ import {
   timeAgo,
 } from '../../lib/format.ts';
 import { CopyLinkButton } from '../CopyLinkButton.tsx';
+import { type SearchTag } from '../ModCard.tsx';
 import { FollowProjectButton } from './sidebar/FollowProjectButton.tsx';
 import { LatestVersionSection } from './sidebar/LatestVersionSection.tsx';
 import { MetaRow } from './sidebar/MetaRow.tsx';
@@ -35,6 +36,7 @@ export function ProjectSidebar({
   onDownloadLatest,
   onFollowChanged,
   onSelectVersion,
+  onTagSearch,
   project,
   supportedVersions,
 }: {
@@ -46,6 +48,7 @@ export function ProjectSidebar({
   onDownloadLatest: () => void;
   onFollowChanged: (state: ProjectFollowState) => void;
   onSelectVersion: (versionNumber: string | null) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   project: ProjectDetails;
   supportedVersions: string[];
 }) {
@@ -99,6 +102,7 @@ export function ProjectSidebar({
       <LatestVersionSection
         version={latestVersion}
         onSelectVersion={onSelectVersion}
+        onTagSearch={onTagSearch}
       />
 
       <ProjectLinksSection project={project} />
@@ -110,7 +114,10 @@ export function ProjectSidebar({
       <ProjectReportSection project={project} />
       <ProjectModerationNotes projectSlug={project.slug} />
 
-      <SupportedVersionsSection versions={supportedVersions} />
+      <SupportedVersionsSection
+        versions={supportedVersions}
+        onTagSearch={onTagSearch}
+      />
     </aside>
   );
 }

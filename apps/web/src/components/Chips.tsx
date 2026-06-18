@@ -134,3 +134,13 @@ export function CategoryTag({
     </Chip>
   );
 }
+
+export function VersionTag({
+  version,
+  onClick,
+}: {
+  version: string;
+  onClick?: () => void;
+}) {
+  return <Chip onClick={onClick}>{version}</Chip>;
+}

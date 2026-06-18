@@ -89,7 +89,9 @@ export function useAppShellState() {
     resetSelection('discover');
     discover.setMobileFiltersOpen(false);
     discover.setQuery('');
-    discover.setSelectedVersions(new Set());
+    discover.setSelectedVersions(
+      tag.kind === 'version' ? new Set([tag.value]) : new Set(),
+    );
     discover.setSelectedLoaders(
       tag.kind === 'loader' ? new Set([tag.value]) : new Set(),
     );

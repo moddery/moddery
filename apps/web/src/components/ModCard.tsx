@@ -12,7 +12,8 @@ import {
 export type Layout = 'list' | 'grid';
 export type SearchTag =
   | { kind: 'category'; value: string }
-  | { kind: 'loader'; value: string };
+  | { kind: 'loader'; value: string }
+  | { kind: 'version'; value: string };
 
 const listRow =
   'group relative border-b border-line px-3 py-4 text-ink transition-colors hover:bg-surface';

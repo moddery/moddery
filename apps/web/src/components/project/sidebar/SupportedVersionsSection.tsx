@@ -1,6 +1,13 @@
-import { Chip } from '../../Chips.tsx';
+import { type SearchTag } from '../../ModCard.tsx';
+import { VersionTag } from '../../Chips.tsx';
 
-export function SupportedVersionsSection({ versions }: { versions: string[] }) {
+export function SupportedVersionsSection({
+  onTagSearch,
+  versions,
+}: {
+  onTagSearch?: (tag: SearchTag) => void;
+  versions: string[];
+}) {
   if (versions.length === 0) return null;
 
   return (
@@ -10,7 +17,15 @@ export function SupportedVersionsSection({ versions }: { versions: string[] }) {
       </h2>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {versions.map((version) => (
-          <Chip key={version}>{version}</Chip>
+          <VersionTag
+            key={version}
+            version={version}
+            onClick={
+              onTagSearch === undefined
+                ? undefined
+                : () => onTagSearch({ kind: 'version', value: version })
+            }
+          />
         ))}
       </div>
     </section>

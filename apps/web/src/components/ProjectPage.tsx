@@ -64,6 +64,7 @@ export function ProjectPage({
         onFollowChanged={page.updateFollowState}
         onSelectTab={page.selectTab}
         onSelectVersion={page.selectVersion}
+        onTagSearch={onTagSearch}
         project={page.project}
         selectedVersion={page.selectedVersion}
         supportedVersions={page.supportedVersions}

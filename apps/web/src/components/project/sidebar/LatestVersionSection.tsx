@@ -3,12 +3,15 @@ import { CalendarClock, GitBranch } from 'lucide-react';
 import { type ProjectVersion } from '../../../lib/catalog.ts';
 import { formatCount, timeAgo } from '../../../lib/format.ts';
 import { enumLabel } from '../../../lib/labels.ts';
-import { Chip, LoaderTag } from '../../Chips.tsx';
+import { Chip, LoaderTag, VersionTag } from '../../Chips.tsx';
+import { type SearchTag } from '../../ModCard.tsx';
 
 export function LatestVersionSection({
+  onTagSearch,
   onSelectVersion,
   version,
 }: {
+  onTagSearch?: (tag: SearchTag) => void;
   onSelectVersion: (versionNumber: string | null) => void;
   version: ProjectVersion | undefined;
 }) {
@@ -44,10 +47,26 @@ export function LatestVersionSection({
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {version.loaders.slice(0, 3).map((loader) => (
-          <LoaderTag key={loader} loader={loader} />
+          <LoaderTag
+            key={loader}
+            loader={loader}
+            onClick={
+              onTagSearch === undefined
+                ? undefined
+                : () => onTagSearch({ kind: 'loader', value: loader })
+            }
+          />
         ))}
         {version.gameVersions.slice(0, 4).map((gameVersion) => (
-          <Chip key={gameVersion}>{gameVersion}</Chip>
+          <VersionTag
+            key={gameVersion}
+            version={gameVersion}
+            onClick={
+              onTagSearch === undefined
+                ? undefined
+                : () => onTagSearch({ kind: 'version', value: gameVersion })
+            }
+          />
         ))}
       </div>
 

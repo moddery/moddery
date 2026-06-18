@@ -18,6 +18,7 @@ import {
   VersionsTab,
 } from '../ProjectContentTabs.tsx';
 import { ProjectSidebar } from '../ProjectSidebar.tsx';
+import { type SearchTag } from '../../ModCard.tsx';
 
 export function ProjectPageContent({
   activeTab,
@@ -33,6 +34,7 @@ export function ProjectPageContent({
   onFollowChanged,
   onSelectTab,
   onSelectVersion,
+  onTagSearch,
   project,
   selectedVersion,
   supportedVersions,
@@ -51,6 +53,7 @@ export function ProjectPageContent({
   onFollowChanged: (state: ProjectFollowState) => void;
   onSelectTab: (tab: ProjectTab) => void;
   onSelectVersion: (versionNumber: string | null) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   project: ProjectDetails;
   selectedVersion: string | null;
   supportedVersions: string[];
@@ -109,6 +112,7 @@ export function ProjectPageContent({
           onDownloadLatest={onDownloadLatest}
           onFollowChanged={onFollowChanged}
           onSelectVersion={onSelectVersion}
+          onTagSearch={onTagSearch}
           project={project}
           supportedVersions={supportedVersions}
         />
