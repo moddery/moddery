@@ -1,3 +1,5 @@
+import { UserRound } from 'lucide-react';
+
 import { type PublicCollectionItem } from '../../lib/catalog.ts';
 import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
@@ -12,9 +14,6 @@ export function CollectionProjectItem({
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
-  const addedBy =
-    item.addedBy?.displayName ?? item.addedBy?.username ?? 'Unknown user';
-
   return (
     <div className="min-w-0">
       <ModCard
@@ -23,9 +22,44 @@ export function CollectionProjectItem({
         onOpen={onOpenProject}
         onTagSearch={onTagSearch}
       />
-      <p className="mt-1 px-1 text-xs font-semibold text-muted">
-        Added by {addedBy} · {timeAgo(item.createdAt)}
-      </p>
+      <CollectionItemAttribution item={item} />
     </div>
+  );
+}
+
+function CollectionItemAttribution({ item }: { item: PublicCollectionItem }) {
+  if (item.addedBy === null) {
+    return (
+      <p className="mt-1 px-1 text-xs font-semibold text-muted">
+        Added {timeAgo(item.createdAt)}
+      </p>
+    );
+  }
+
+  const addedBy = item.addedBy.displayName ?? item.addedBy.username;
+
+  return (
+    <p className="mt-1 flex min-w-0 items-center gap-1.5 px-1 text-xs font-semibold text-muted">
+      Added by{' '}
+      <a
+        href={`/users/${encodeURIComponent(item.addedBy.username)}`}
+        className="inline-flex min-w-0 items-center gap-1 text-ink transition-colors hover:text-accent"
+      >
+        <span className="grid size-5 shrink-0 place-items-center overflow-hidden rounded-md border border-line bg-surface-2 text-faint">
+          {item.addedBy.avatarUrl ? (
+            <img
+              src={item.addedBy.avatarUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : (
+            <UserRound className="size-3" />
+          )}
+        </span>
+        <span className="truncate">{addedBy}</span>
+      </a>
+      <span aria-hidden="true">·</span>
+      <span>{timeAgo(item.createdAt)}</span>
+    </p>
   );
 }
