@@ -1,8 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { fetchAdminAuditLogSearch } from '../../../lib/dashboard.ts';
+import { organizationPath, userPath } from '../../../app/routing.ts';
+import {
+  fetchAdminAuditLogSearch,
+  type AdminAuditLog,
+  type AdminAuditUser,
+  type AuditResourceSnapshot,
+} from '../../../lib/dashboard.ts';
 import { timeAgo } from '../../../lib/format.ts';
+import { enumLabel } from '../../../lib/labels.ts';
 import { Pagination } from '../../Pagination.tsx';
 import { ReportActionButton } from './shared.tsx';
 
@@ -66,7 +73,8 @@ export function AuditLogPanel() {
                     {auditActionLabel(auditLog.action)}
                   </h3>
                   <p className="mt-1 text-sm text-muted">
-                    {auditDescription(auditLog)} {timeAgo(auditLog.createdAt)}
+                    <AuditDescription auditLog={auditLog} />{' '}
+                    {timeAgo(auditLog.createdAt)}
                   </p>
                   {auditLog.reason && (
                     <p className="mt-2 text-sm text-muted">
@@ -75,7 +83,7 @@ export function AuditLogPanel() {
                   )}
                 </div>
                 <span className="rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted">
-                  {auditLog.action.toLowerCase().replaceAll('_', ' ')}
+                  {enumLabel(auditLog.action)}
                 </span>
               </div>
               {(auditLog.before || auditLog.after) && (
@@ -147,9 +155,21 @@ function TeamMemberAuditSnapshot({
     <div className="rounded-md border border-line bg-surface px-3 py-2">
       <dt className="text-xs font-bold uppercase text-faint">{label}</dt>
       <dd className="mt-1 font-semibold text-ink">
-        {snapshot
-          ? `${snapshot.username} / ${snapshot.role}${snapshot.owner ? ' / Owner' : ''}`
-          : 'Unavailable'}
+        {snapshot ? (
+          <>
+            <a
+              className="text-ink transition-colors hover:text-accent"
+              href={userPath(snapshot.username)}
+            >
+              {snapshot.username}
+            </a>
+            {' / '}
+            {snapshot.role}
+            {snapshot.owner && ' / Owner'}
+          </>
+        ) : (
+          'Unavailable'
+        )}
       </dd>
       {snapshot && (
         <dd className="mt-1 text-xs font-semibold text-muted">
@@ -210,76 +230,110 @@ function AuditSnapshot({
 }
 
 function auditActionLabel(action: string) {
-  if (action === 'USER_ACCOUNT_UPDATED') {
-    return 'User account updated';
-  }
-
-  if (action === 'PROJECT_MODERATED') {
-    return 'Project moderated';
-  }
-
-  if (action === 'TEAM_MEMBERSHIP_CHANGED') {
-    return 'Team membership changed';
-  }
-
-  return action.toLowerCase().replaceAll('_', ' ');
+  return enumLabel(action);
 }
 
-function auditDescription(auditLog: {
-  action: string;
-  actor: { displayName: string | null; username: string } | null;
-  actorId: string | null;
-  moderationAction: string | null;
-  projectAfter: { title: string } | null;
-  projectBefore: { title: string } | null;
-  resource: { name: string } | null;
-  targetUser: { displayName: string | null; username: string } | null;
-  targetUserId: string | null;
-  teamMemberAction: string | null;
-}) {
+function AuditDescription({ auditLog }: { auditLog: AdminAuditLog }) {
   if (auditLog.action === 'PROJECT_MODERATED') {
     const projectTitle =
       auditLog.projectAfter?.title ??
       auditLog.projectBefore?.title ??
       'project';
     const moderationAction = auditLog.moderationAction
-      ? auditLog.moderationAction.toLowerCase()
+      ? enumLabel(auditLog.moderationAction).toLowerCase()
       : 'moderated';
 
-    return `${auditActorLabel(auditLog)} ${moderationAction} ${projectTitle}`;
+    return (
+      <>
+        <AuditUserLink
+          fallback={auditLog.actorId ?? 'Unknown actor'}
+          user={auditLog.actor}
+        />{' '}
+        {moderationAction} {projectTitle}
+      </>
+    );
   }
 
   if (auditLog.action === 'TEAM_MEMBERSHIP_CHANGED') {
     const memberAction = auditLog.teamMemberAction
-      ? auditLog.teamMemberAction.toLowerCase()
+      ? enumLabel(auditLog.teamMemberAction).toLowerCase()
       : 'changed';
-    const target = auditTargetLabel(auditLog);
-    const resource = auditLog.resource?.name ?? 'a team';
 
-    return `${auditActorLabel(auditLog)} ${memberAction} ${target} on ${resource}`;
+    return (
+      <>
+        <AuditUserLink
+          fallback={auditLog.actorId ?? 'Unknown actor'}
+          user={auditLog.actor}
+        />{' '}
+        {memberAction}{' '}
+        <AuditUserLink
+          fallback={auditLog.targetUserId ?? 'a user'}
+          user={auditLog.targetUser}
+        />{' '}
+        on <AuditResourceLink resource={auditLog.resource} />
+      </>
+    );
   }
 
-  return `${auditActorLabel(auditLog)} changed ${auditTargetLabel(auditLog)}`;
-}
-
-function auditActorLabel({
-  actor,
-  actorId,
-}: {
-  actor: { displayName: string | null; username: string } | null;
-  actorId: string | null;
-}) {
-  return actor?.displayName ?? actor?.username ?? actorId ?? 'Unknown actor';
-}
-
-function auditTargetLabel({
-  targetUser,
-  targetUserId,
-}: {
-  targetUser: { displayName: string | null; username: string } | null;
-  targetUserId: string | null;
-}) {
   return (
-    targetUser?.displayName ?? targetUser?.username ?? targetUserId ?? 'a user'
+    <>
+      <AuditUserLink
+        fallback={auditLog.actorId ?? 'Unknown actor'}
+        user={auditLog.actor}
+      />{' '}
+      changed{' '}
+      <AuditUserLink
+        fallback={auditLog.targetUserId ?? 'a user'}
+        user={auditLog.targetUser}
+      />
+    </>
   );
+}
+
+function AuditUserLink({
+  fallback,
+  user,
+}: {
+  fallback: string;
+  user: AdminAuditUser | null;
+}) {
+  if (!user) return fallback;
+
+  return (
+    <a
+      className="font-semibold text-ink transition-colors hover:text-accent"
+      href={auditUserHref(user)}
+    >
+      {user.displayName ?? user.username}
+    </a>
+  );
+}
+
+function AuditResourceLink({
+  resource,
+}: {
+  resource: AuditResourceSnapshot | null;
+}) {
+  const href = auditResourceHref(resource);
+
+  if (!href) return resource?.name ?? 'a team';
+
+  return (
+    <a
+      className="font-semibold text-ink transition-colors hover:text-accent"
+      href={href}
+    >
+      {resource?.name}
+    </a>
+  );
+}
+
+export function auditUserHref(user: Pick<AdminAuditUser, 'username'>) {
+  return userPath(user.username);
+}
+
+export function auditResourceHref(resource: AuditResourceSnapshot | null) {
+  return resource?.kind === 'ORGANIZATION'
+    ? organizationPath(resource.slug)
+    : null;
 }
