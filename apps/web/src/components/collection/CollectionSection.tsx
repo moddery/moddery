@@ -1,4 +1,4 @@
-import { userPath } from '../../app/routing.ts';
+import { collectionPath, userPath } from '../../app/routing.ts';
 import { type PublicCollection } from '../../lib/catalog.ts';
 import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
@@ -31,7 +31,10 @@ export function CollectionSection({
               style={{ backgroundColor: collection.color ?? '#1d9bf0' }}
             />
             <a
-              href={collectionHref(collection)}
+              href={collectionPath({
+                ownerUsername: collection.owner.username,
+                slug: collection.slug,
+              })}
               onClick={(event) => {
                 if (!onOpenCollection) return;
                 event.preventDefault();
@@ -78,10 +81,4 @@ export function CollectionSection({
       </div>
     </section>
   );
-}
-
-function collectionHref(collection: PublicCollection): string {
-  return `/collections/${encodeURIComponent(
-    collection.owner.username,
-  )}/${encodeURIComponent(collection.slug)}`;
 }

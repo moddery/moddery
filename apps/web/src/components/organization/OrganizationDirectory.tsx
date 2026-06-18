@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { useDeferredValue, useEffect, useState } from 'react';
 
+import { organizationPath } from '../../app/routing.ts';
 import { fetchPublicOrganizations } from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
 import { EmptyState } from '../EmptyState.tsx';
@@ -108,7 +109,7 @@ export function OrganizationDirectory({
                       }}
                     />
                     <a
-                      href={`/organizations/${organization.slug}`}
+                      href={organizationPath(organization.slug)}
                       className="truncate font-display text-xl font-extrabold text-ink transition-colors hover:text-accent"
                     >
                       {organization.name}

@@ -1,3 +1,4 @@
+import { collectionPath } from '../../app/routing.ts';
 import { timeAgo } from '../../lib/format.ts';
 import {
   userProjectToMod,
@@ -31,7 +32,7 @@ export function CollectionPreview({
           style={{ backgroundColor: collection.color ?? '#1d9bf0' }}
         />
         <a
-          href={collectionHref(ownerUsername, collection.slug)}
+          href={collectionPath({ ownerUsername, slug: collection.slug })}
           onClick={(event) => {
             if (!onOpenCollection) return;
             event.preventDefault();
@@ -69,10 +70,4 @@ export function CollectionPreview({
       </div>
     </section>
   );
-}
-
-function collectionHref(ownerUsername: string, slug: string): string {
-  return `/collections/${encodeURIComponent(
-    ownerUsername,
-  )}/${encodeURIComponent(slug)}`;
 }

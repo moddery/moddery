@@ -74,6 +74,16 @@ export function userPath(username: string) {
   return `/users/${encodeURIComponent(username)}`;
 }
 
+export function collectionPath(collection: SelectedCollection) {
+  return `/collections/${encodeURIComponent(
+    collection.ownerUsername,
+  )}/${encodeURIComponent(collection.slug)}`;
+}
+
+export function organizationPath(slug: string) {
+  return `/organizations/${encodeURIComponent(slug)}`;
+}
+
 export function writeProfileToUrl(username: string) {
   const url = new URL(window.location.href);
   url.pathname = userPath(username);
@@ -84,9 +94,7 @@ export function writeProfileToUrl(username: string) {
 
 export function writeCollectionToUrl(collection: SelectedCollection) {
   const url = new URL(window.location.href);
-  url.pathname = `/collections/${encodeURIComponent(
-    collection.ownerUsername,
-  )}/${encodeURIComponent(collection.slug)}`;
+  url.pathname = collectionPath(collection);
   clearProjectSearchParams(url);
 
   window.history.pushState(null, '', url);
@@ -114,7 +122,7 @@ export function writeOrganizationsToUrl() {
 
 export function writeOrganizationToUrl(slug: string) {
   const url = new URL(window.location.href);
-  url.pathname = `/organizations/${encodeURIComponent(slug)}`;
+  url.pathname = organizationPath(slug);
   clearProjectSearchParams(url);
 
   window.history.pushState(null, '', url);

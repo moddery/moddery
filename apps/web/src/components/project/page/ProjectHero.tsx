@@ -3,7 +3,7 @@ import { type SearchTag } from '../../ModCard.tsx';
 import { CategoryTag, Chip, LoaderTag } from '../../Chips.tsx';
 import { type ProjectDetails } from '../../../lib/catalog.ts';
 import { projectTypeMeta } from '../../../lib/projectTypes.ts';
-import { authorHref, organizationHref } from '../../mod-card/ModCardParts.tsx';
+import { organizationPath, userPath } from '../../../app/routing.ts';
 
 export function ProjectHero({
   categories,
@@ -45,7 +45,7 @@ export function ProjectHero({
               <span className="text-sm font-medium text-muted">
                 by{' '}
                 <a
-                  href={organizationHref(project.organization.slug)}
+                  href={organizationPath(project.organization.slug)}
                   className="text-muted transition-colors hover:text-accent"
                 >
                   {project.organization.name}
@@ -56,7 +56,7 @@ export function ProjectHero({
                 by{' '}
                 {project.authorUsername ? (
                   <a
-                    href={authorHref(project.authorUsername)}
+                    href={userPath(project.authorUsername)}
                     className="text-muted transition-colors hover:text-accent"
                   >
                     {project.author}

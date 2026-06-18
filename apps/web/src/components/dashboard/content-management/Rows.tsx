@@ -2,7 +2,11 @@ import {
   type DashboardCollection,
   type DashboardOrganization,
 } from '../../../lib/dashboard.ts';
-import { type SelectedProject } from '../../../app/routing.ts';
+import {
+  collectionPath,
+  organizationPath,
+  type SelectedProject,
+} from '../../../app/routing.ts';
 import { timeAgo } from '../../../lib/format.ts';
 import { projectTypeFromKind } from '../../../lib/projectTypes.ts';
 import { collectionVisibilityMeta } from '../../collection/collectionVisibility.ts';
@@ -24,7 +28,7 @@ export function OrganizationRow({
           label={organization.name}
         />
         <a
-          href={`/organizations/${organization.slug}`}
+          href={organizationPath(organization.slug)}
           onClick={(event) => {
             if (!onOpenOrganization) return;
             event.preventDefault();
@@ -79,7 +83,10 @@ export function CollectionRow({
         />
         {linkedOwnerUsername !== undefined ? (
           <a
-            href={collectionHref(linkedOwnerUsername, collection.slug)}
+            href={collectionPath({
+              ownerUsername: linkedOwnerUsername,
+              slug: collection.slug,
+            })}
             onClick={(event) => {
               if (!onOpenCollection) return;
               event.preventDefault();
@@ -139,12 +146,6 @@ export function CollectionRow({
       )}
     </article>
   );
-}
-
-function collectionHref(ownerUsername: string, slug: string): string {
-  return `/collections/${encodeURIComponent(
-    ownerUsername,
-  )}/${encodeURIComponent(slug)}`;
 }
 
 function PreviewIcon({

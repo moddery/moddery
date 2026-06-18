@@ -2,7 +2,9 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import {
   collectionFromUrl,
+  collectionPath,
   organizationFromUrl,
+  organizationPath,
   profileFromUrl,
   projectFromUrl,
   userPath,
@@ -63,6 +65,16 @@ describe('routing helpers', () => {
 
   test('builds encoded user profile paths', () => {
     expect(userPath('creator one')).toBe('/users/creator%20one');
+  });
+
+  test('builds encoded organization and collection paths', () => {
+    expect(organizationPath('build team')).toBe('/organizations/build%20team');
+    expect(
+      collectionPath({
+        ownerUsername: 'creator one',
+        slug: 'tech packs',
+      }),
+    ).toBe('/collections/creator%20one/tech%20packs');
   });
 
   test('writes project URLs and clears stale project state', () => {

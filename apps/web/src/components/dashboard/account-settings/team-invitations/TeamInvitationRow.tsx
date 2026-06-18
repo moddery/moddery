@@ -1,3 +1,4 @@
+import { organizationPath } from '../../../../app/routing.ts';
 import { type TeamInvitationSummary } from '../../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 import { permissionLabel } from '../../../../lib/permissions.ts';
@@ -75,7 +76,7 @@ export function teamInvitationTargetHref(
   target: TeamInvitationSummary['target'],
 ) {
   if (target.type === 'ORGANIZATION') {
-    return `/organizations/${encodeURIComponent(target.slug)}`;
+    return organizationPath(target.slug);
   }
 
   if (target.projectKind === null || target.slug.trim() === '') {

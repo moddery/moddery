@@ -1,6 +1,6 @@
 import { Clock, Download, Heart } from 'lucide-react';
 import type { Mod, ProjectType } from '../../types.ts';
-import { userPath } from '../../app/routing.ts';
+import { organizationPath, userPath } from '../../app/routing.ts';
 import { environmentOf } from '../../types.ts';
 import { cn } from '../../lib/cn.ts';
 import { formatCount, timeAgo } from '../../lib/format.ts';
@@ -17,14 +17,6 @@ export function projectPath(projectType: ProjectType, slug: string) {
   return `/${meta.path}?project=${encodeURIComponent(slug)}&type=${encodeURIComponent(meta.type)}`;
 }
 
-export function authorHref(username: string) {
-  return userPath(username);
-}
-
-export function organizationHref(slug: string) {
-  return `/organizations/${encodeURIComponent(slug)}`;
-}
-
 export function AuthorLink({
   mod,
   className,
@@ -38,7 +30,7 @@ export function AuthorLink({
       <p className={cn('truncate text-xs font-medium text-muted', className)}>
         by{' '}
         <a
-          href={organizationHref(mod.organization.slug)}
+          href={organizationPath(mod.organization.slug)}
           onClick={(event) => event.stopPropagation()}
           className="pointer-events-auto relative z-20 text-muted transition-colors hover:text-accent"
         >
@@ -60,7 +52,7 @@ export function AuthorLink({
     <p className={cn('truncate text-xs font-medium text-muted', className)}>
       by{' '}
       <a
-        href={authorHref(mod.authorUsername)}
+        href={userPath(mod.authorUsername)}
         onClick={(event) => event.stopPropagation()}
         className="pointer-events-auto relative z-20 text-muted transition-colors hover:text-accent"
       >
