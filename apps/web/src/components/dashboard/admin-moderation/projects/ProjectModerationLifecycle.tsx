@@ -1,5 +1,6 @@
 import { type DashboardProject } from '../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../lib/format.ts';
+import { enumLabel } from '../../../../lib/labels.ts';
 
 export function ProjectModerationLock({
   project,
@@ -57,7 +58,5 @@ function formatLifecycleValue(value: string | null | undefined): string {
     return '';
   }
 
-  return /^\d{4}-\d{2}-\d{2}T/.test(value)
-    ? timeAgo(value)
-    : value.replaceAll('_', ' ');
+  return /^\d{4}-\d{2}-\d{2}T/.test(value) ? timeAgo(value) : enumLabel(value);
 }

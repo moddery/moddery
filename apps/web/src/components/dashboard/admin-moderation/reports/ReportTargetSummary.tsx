@@ -1,6 +1,7 @@
 import { Flag } from 'lucide-react';
 
 import { type ModerationReport } from '../../../../lib/dashboard.ts';
+import { enumLabel } from '../../../../lib/labels.ts';
 import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
 import { projectPath } from '../../../mod-card/ModCardParts.tsx';
 
@@ -27,7 +28,7 @@ export function ReportTargetSummary({ report }: { report: ModerationReport }) {
           {target.kind}
         </span>
         <span className="rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted">
-          {report.reason.replaceAll('_', ' ')}
+          {enumLabel(report.reason)}
         </span>
       </div>
       {target.version ? (

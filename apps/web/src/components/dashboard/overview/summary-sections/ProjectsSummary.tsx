@@ -4,6 +4,7 @@ import {
   type DashboardProject,
 } from '../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../lib/format.ts';
+import { enumLabel } from '../../../../lib/labels.ts';
 import { type Mod } from '../../../../types.ts';
 import { ModCard } from '../../../ModCard.tsx';
 
@@ -48,8 +49,13 @@ export function ProjectsSummary({
 
 function ProjectLifecycleSummary({ project }: { project: DashboardProject }) {
   const items = [
-    { label: 'Status', value: project.status },
-    { label: 'Requested', value: project.requestedStatus },
+    { label: 'Status', value: enumLabel(project.status) },
+    {
+      label: 'Requested',
+      value: project.requestedStatus
+        ? enumLabel(project.requestedStatus)
+        : null,
+    },
     { label: 'Published', value: formatLifecycleDate(project.publishedAt) },
     { label: 'Queued', value: formatLifecycleDate(project.queuedAt) },
     { label: 'Approved', value: formatLifecycleDate(project.approvedAt) },

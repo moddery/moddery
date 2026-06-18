@@ -2,6 +2,7 @@ import {
   dashboardProjectToMod,
   type DashboardProject,
 } from '../../../../lib/dashboard.ts';
+import { enumLabel } from '../../../../lib/labels.ts';
 import { type Mod } from '../../../../types.ts';
 
 export function ProjectModerationHeader({
@@ -27,7 +28,7 @@ export function ProjectModerationHeader({
           <p className="mt-1 text-sm leading-6 text-muted">{project.summary}</p>
         </div>
         <span className="shrink-0 rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted">
-          {project.status.replaceAll('_', ' ')}
+          {enumLabel(project.status)}
         </span>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
