@@ -1,5 +1,3 @@
-import { ModderyMark } from '../icons.tsx';
-
 export function NavBarBrand({ onHome }: { onHome: () => void }) {
   return (
     <a
@@ -10,7 +8,7 @@ export function NavBarBrand({ onHome }: { onHome: () => void }) {
       }}
       className="flex shrink-0 items-center gap-2.5"
     >
-      <ModderyMark className="size-8 text-accent-icon" />
+      <img src="/favicon.svg" alt="Moddery logo" className="size-8" />
       <span className="font-display text-xl font-extrabold lowercase text-ink">
         moddery
       </span>

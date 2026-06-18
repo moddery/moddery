@@ -1,4 +1,4 @@
-import { lazy, Suspense, type MouseEvent } from 'react';
+import { lazy, Suspense } from 'react';
 
 import { DiscoverRoute } from './routes/DiscoverRoute.tsx';
 import { type useAppShellState } from './useAppShellState.ts';
@@ -54,14 +54,13 @@ type AppShellState = ReturnType<typeof useAppShellState>;
 
 type AppPagesProps = {
   app: AppShellState;
-  onNavigate: (event: MouseEvent<HTMLElement>) => void;
 };
 
 export function isHomePage(app: AppShellState) {
   return app.appView === 'home' && !app.selectedProject;
 }
 
-export function AppPages({ app, onNavigate }: AppPagesProps) {
+export function AppPages({ app }: AppPagesProps) {
   return (
     <Suspense fallback={<PageLoading />}>
       {isHomePage(app) ? (
@@ -73,11 +72,8 @@ export function AppPages({ app, onNavigate }: AppPagesProps) {
               slug: collection.slug,
             })
           }
-          onOpenNotifications={app.openNotifications}
           onOpenProject={app.openProject}
-          onOpenProfile={app.openProfile}
           onTagSearch={app.searchByTag}
-          onNavigate={onNavigate}
         />
       ) : app.selectedProject ? (
         <ProjectPage
