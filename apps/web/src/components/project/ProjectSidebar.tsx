@@ -33,6 +33,7 @@ export function ProjectSidebar({
   latestVersion,
   members,
   onDownloadLatest,
+  onFollowChanged,
   onSelectVersion,
   project,
   supportedVersions,
@@ -43,6 +44,7 @@ export function ProjectSidebar({
   latestVersion: ProjectVersion | undefined;
   members: ProjectMember[];
   onDownloadLatest: () => void;
+  onFollowChanged: (state: ProjectFollowState) => void;
   onSelectVersion: (versionNumber: string | null) => void;
   project: ProjectDetails;
   supportedVersions: string[];
@@ -60,7 +62,11 @@ export function ProjectSidebar({
         </button>
       )}
       <CopyLinkButton className="mt-2 w-full" />
-      <FollowProjectButton project={project} initialState={followState} />
+      <FollowProjectButton
+        project={project}
+        initialState={followState}
+        onChanged={onFollowChanged}
+      />
       <ProjectCollectionSave project={project} />
 
       <div className="mt-4 divide-y divide-line/70">

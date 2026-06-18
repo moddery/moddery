@@ -28,6 +28,7 @@ export function ProjectPageContent({
   latestVersion,
   members,
   onDownloadLatest,
+  onFollowChanged,
   onSelectTab,
   onSelectVersion,
   project,
@@ -44,6 +45,7 @@ export function ProjectPageContent({
   latestVersion: ProjectVersion | undefined;
   members: ProjectMember[];
   onDownloadLatest: () => void;
+  onFollowChanged: (state: ProjectFollowState) => void;
   onSelectTab: (tab: ProjectTab) => void;
   onSelectVersion: (versionNumber: string | null) => void;
   project: ProjectDetails;
@@ -101,6 +103,7 @@ export function ProjectPageContent({
           latestVersion={latestVersion}
           members={members}
           onDownloadLatest={onDownloadLatest}
+          onFollowChanged={onFollowChanged}
           onSelectVersion={onSelectVersion}
           project={project}
           supportedVersions={supportedVersions}

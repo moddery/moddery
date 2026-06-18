@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import {
@@ -9,6 +9,11 @@ import {
   fetchViewerProjectFollowState,
   recordDownload,
   recordProjectView,
+  type ProjectAnalytics,
+  type ProjectDetails,
+  type ProjectFollowState,
+  type ProjectMember,
+  type ProjectVersion,
 } from '../../../lib/catalog.ts';
 import { compareVersions } from '../../../lib/format.ts';
 import { type ProjectType } from '../../../types.ts';
@@ -20,6 +25,14 @@ import {
   writeSelectedVersion,
 } from './projectPageUrlState.ts';
 
+interface ProjectPageQueryData {
+  analytics: ProjectAnalytics | null;
+  followState: ProjectFollowState | null;
+  members: ProjectMember[];
+  project: ProjectDetails;
+  versions: ProjectVersion[];
+}
+
 export function useProjectPageState({
   projectTypeHint,
   slug,
@@ -27,12 +40,14 @@ export function useProjectPageState({
   projectTypeHint: ProjectType;
   slug: string;
 }) {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<ProjectTab>(readProjectTab);
   const [selectedVersion, setSelectedVersion] = useState<string | null>(
     readSelectedVersion,
   );
+  const projectQueryKey = ['catalog', 'project', slug] as const;
   const projectQuery = useQuery({
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal }): Promise<ProjectPageQueryData> => {
       const [project, versions, members, followState, analytics] =
         await Promise.all([
           fetchProjectDetails(slug, signal),
@@ -50,7 +65,7 @@ export function useProjectPageState({
         versions,
       };
     },
-    queryKey: ['catalog', 'project', slug],
+    queryKey: projectQueryKey,
   });
 
   useEffect(() => {
@@ -90,6 +105,24 @@ export function useProjectPageState({
     setActiveTab('versions');
     setSelectedVersion(versionNumber);
     writeSelectedVersion(versionNumber);
+  }
+
+  function updateFollowState(followState: ProjectFollowState) {
+    queryClient.setQueryData<ProjectPageQueryData>(
+      projectQueryKey,
+      (current) => {
+        if (current === undefined) return current;
+
+        return {
+          ...current,
+          followState,
+          project: {
+            ...current.project,
+            followers: followState.followers,
+          },
+        };
+      },
+    );
   }
 
   const project = projectQuery.data?.project;
@@ -146,6 +179,7 @@ export function useProjectPageState({
     selectedVersion,
     selectVersion,
     supportedVersions,
+    updateFollowState,
     versions,
   };
 }

@@ -13,9 +13,11 @@ import { formatCount } from '../../../lib/format.ts';
 export function FollowProjectButton({
   project,
   initialState,
+  onChanged,
 }: {
   project: ProjectDetails;
   initialState: ProjectFollowState | null;
+  onChanged: (state: ProjectFollowState) => void;
 }) {
   const [state, setState] = useState<ProjectFollowState | null>(initialState);
   const [busy, setBusy] = useState(false);
@@ -37,7 +39,9 @@ export function FollowProjectButton({
     setMessage(null);
 
     try {
-      setState(await setProjectFollowing(project.slug, !following));
+      const nextState = await setProjectFollowing(project.slug, !following);
+      setState(nextState);
+      onChanged(nextState);
     } catch (caught) {
       setMessage(
         caught instanceof Error ? caught.message : 'Could not update follow.',

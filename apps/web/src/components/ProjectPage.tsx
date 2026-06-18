@@ -60,6 +60,7 @@ export function ProjectPage({
         latestVersion={page.latestVersion}
         members={page.members}
         onDownloadLatest={() => void page.downloadLatestFile()}
+        onFollowChanged={page.updateFollowState}
         onSelectTab={page.selectTab}
         onSelectVersion={page.selectVersion}
         project={page.project}
