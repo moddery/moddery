@@ -62,7 +62,11 @@ describe(fetchProjectDetails.name, () => {
             id: 'user-a',
             username: 'creator',
           },
+          approvedAt: '2025-12-16T00:00:00.000Z',
+          archivedAt: null,
           publishedAt: '2025-12-15T00:00:00.000Z',
+          queuedAt: '2025-12-14T00:00:00.000Z',
+          requestedStatus: null,
           slug: 'example',
           status: 'APPROVED',
           sourceUrl: null,
@@ -78,6 +82,9 @@ describe(fetchProjectDetails.name, () => {
 
     expect(project.followers).toBe(12);
     expect(project.published).toBe('2025-12-15T00:00:00.000Z');
+    expect(project.approvedAt).toBe('2025-12-16T00:00:00.000Z');
+    expect(project.queuedAt).toBe('2025-12-14T00:00:00.000Z');
+    expect(project.status).toBe('APPROVED');
     expect(project.color).toBe(0xf97316);
     expect(project.projectType).toBe('mod');
     expect(project.gameVersions).toEqual(['1.21.6']);

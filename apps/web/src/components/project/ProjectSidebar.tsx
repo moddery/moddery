@@ -19,6 +19,7 @@ import { LatestVersionSection } from './sidebar/LatestVersionSection.tsx';
 import { MetaRow } from './sidebar/MetaRow.tsx';
 import { ProjectAnalyticsSection } from './sidebar/ProjectAnalyticsSection.tsx';
 import { ProjectCollectionSave } from './sidebar/ProjectCollectionSave.tsx';
+import { ProjectLifecycleSection } from './sidebar/ProjectLifecycleSection.tsx';
 import { ProjectLinksSection } from './sidebar/ProjectLinksSection.tsx';
 import { ProjectMembersSection } from './sidebar/ProjectMembersSection.tsx';
 import { ProjectModerationNotes } from './sidebar/ProjectModerationNotes.tsx';
@@ -86,6 +87,8 @@ export function ProjectSidebar({
       </div>
 
       {analytics && <ProjectAnalyticsSection analytics={analytics} />}
+
+      <ProjectLifecycleSection project={project} />
 
       <LatestVersionSection
         version={latestVersion}

@@ -21,6 +21,11 @@ export interface ProjectDetails {
   body: string;
   published: string;
   updated: string;
+  approvedAt: string | null;
+  archivedAt: string | null;
+  queuedAt: string | null;
+  requestedStatus: string | null;
+  status: string;
   license: {
     id: string;
     name: string;
