@@ -5,16 +5,21 @@ import { OrganizationDirectory } from './organization/OrganizationDirectory.tsx'
 
 export function OrganizationPage({
   slug,
+  onHome,
+  onOrganizations,
   onOpenProject,
   onTagSearch,
 }: {
   slug: string | null;
+  onHome: () => void;
+  onOrganizations: () => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
   if (slug === null) {
     return (
       <OrganizationDirectory
+        onHome={onHome}
         onOpenProject={onOpenProject}
         onTagSearch={onTagSearch}
       />
@@ -24,6 +29,7 @@ export function OrganizationPage({
   return (
     <OrganizationDetail
       slug={slug}
+      onBack={onOrganizations}
       onOpenProject={onOpenProject}
       onTagSearch={onTagSearch}
     />

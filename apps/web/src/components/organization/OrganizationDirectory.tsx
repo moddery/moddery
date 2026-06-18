@@ -14,9 +14,11 @@ import { OrganizationDirectorySkeleton } from './OrganizationSkeletons.tsx';
 const pageSize = 20;
 
 export function OrganizationDirectory({
+  onHome,
   onOpenProject,
   onTagSearch,
 }: {
+  onHome: () => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
@@ -70,9 +72,10 @@ export function OrganizationDirectory({
       {organizationsQuery.isLoading ? (
         <OrganizationDirectorySkeleton />
       ) : organizations.length === 0 && !hasSearch ? (
-        <EmptyState onClear={() => window.history.back()} itemLabel="groups" />
+        <EmptyState actionLabel="Go home" onClear={onHome} itemLabel="groups" />
       ) : organizations.length === 0 ? (
         <EmptyState
+          actionLabel="Clear search"
           onClear={() => {
             setQuery('');
           }}

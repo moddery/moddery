@@ -115,6 +115,7 @@ export function AppPages({ app }: AppPagesProps) {
         )
       ) : app.appView === 'dashboard' ? (
         <DashboardPage
+          onHome={app.openHome}
           onOpenCollection={app.openCollection}
           onOpenOrganization={app.openOrganization}
           onOpenProject={app.openProject}
@@ -129,18 +130,22 @@ export function AppPages({ app }: AppPagesProps) {
         <StatusPage />
       ) : app.appView === 'users' ? (
         <UsersPage
+          onHome={app.openHome}
           onOpenProject={app.openProject}
           onTagSearch={app.searchByTag}
         />
       ) : app.appView === 'organization' ? (
         <OrganizationPage
           slug={app.selectedOrganization}
+          onHome={app.openHome}
+          onOrganizations={app.openOrganizations}
           onOpenProject={app.openProject}
           onTagSearch={app.searchByTag}
         />
       ) : app.appView === 'profile' && app.selectedUsername ? (
         <UserProfilePage
           username={app.selectedUsername}
+          onBack={app.openUsers}
           onOpenCollection={app.openCollection}
           onOpenProject={app.openProject}
           onTagSearch={app.searchByTag}

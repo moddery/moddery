@@ -13,9 +13,11 @@ import { UsersDirectorySkeleton } from './users/UsersDirectorySkeleton.tsx';
 const pageSize = 20;
 
 export function UsersPage({
+  onHome,
   onOpenProject,
   onTagSearch,
 }: {
+  onHome: () => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
@@ -69,9 +71,10 @@ export function UsersPage({
       {usersQuery.isLoading ? (
         <UsersDirectorySkeleton />
       ) : users.length === 0 && !hasSearch ? (
-        <EmptyState onClear={() => window.history.back()} itemLabel="users" />
+        <EmptyState actionLabel="Go home" onClear={onHome} itemLabel="users" />
       ) : users.length === 0 ? (
         <EmptyState
+          actionLabel="Clear search"
           onClear={() => {
             setQuery('');
           }}

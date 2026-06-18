@@ -45,12 +45,14 @@ import {
 } from './dashboard/ProjectWorkflowPanels.tsx';
 
 export function DashboardPage({
+  onHome,
   onOpenCollection,
   onOpenOrganization,
   onOpenProject,
   onOpenProjectReference,
   onTagSearch,
 }: {
+  onHome: () => void;
   onOpenCollection?: (collection: {
     ownerUsername: string;
     slug: string;
@@ -71,7 +73,8 @@ export function DashboardPage({
     return (
       <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
         <EmptyState
-          onClear={() => window.location.assign('/')}
+          actionLabel="Go home"
+          onClear={onHome}
           itemLabel="dashboard"
         />
       </main>
@@ -82,7 +85,8 @@ export function DashboardPage({
     return (
       <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
         <EmptyState
-          onClear={() => window.location.assign('/')}
+          actionLabel="Go home"
+          onClear={onHome}
           itemLabel="account"
         />
       </main>

@@ -19,11 +19,13 @@ const projectPageSize = 12;
 const collectionPageSize = 10;
 
 export function UserProfilePage({
+  onBack,
   onOpenCollection,
   username,
   onOpenProject,
   onTagSearch,
 }: {
+  onBack: () => void;
   onOpenCollection?: (collection: {
     ownerUsername: string;
     slug: string;
@@ -69,7 +71,11 @@ export function UserProfilePage({
   if (!profileQuery.data) {
     return (
       <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
-        <EmptyState onClear={() => window.history.back()} itemLabel="users" />
+        <EmptyState
+          actionLabel="Back to creators"
+          onClear={onBack}
+          itemLabel="users"
+        />
       </main>
     );
   }

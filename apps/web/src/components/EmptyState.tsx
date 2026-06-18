@@ -1,9 +1,11 @@
 import { Search } from 'lucide-react';
 
 export function EmptyState({
+  actionLabel = 'Clear all filters',
   onClear,
   itemLabel = 'mods',
 }: {
+  actionLabel?: string;
   onClear: () => void;
   itemLabel?: string;
 }) {
@@ -23,7 +25,7 @@ export function EmptyState({
         onClick={onClear}
         className="mt-5 inline-flex h-10 items-center rounded-lg bg-control px-4 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
       >
-        Clear all filters
+        {actionLabel}
       </button>
     </div>
   );
