@@ -1,8 +1,7 @@
-import { Lock, Unlock, Users } from 'lucide-react';
-
 import { type PublicCollection } from '../../../lib/catalog.ts';
 import { formatDate, timeAgo } from '../../../lib/format.ts';
 import { CopyLinkButton } from '../../CopyLinkButton.tsx';
+import { collectionVisibilityMeta } from '../collectionVisibility.ts';
 
 export function CollectionDetailHeader({
   collection,
@@ -77,15 +76,4 @@ export function CollectionDetailHeader({
       </div>
     </header>
   );
-}
-
-function collectionVisibilityMeta(visibility: string) {
-  switch (visibility) {
-    case 'PRIVATE':
-      return { Icon: Lock, label: 'Private' };
-    case 'UNLISTED':
-      return { Icon: Unlock, label: 'Unlisted' };
-    default:
-      return { Icon: Users, label: 'Public' };
-  }
 }

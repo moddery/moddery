@@ -3,6 +3,7 @@ import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
 import type { SearchTag } from '../ModCard.tsx';
 import { CollectionProjectItem } from './CollectionProjectItem.tsx';
+import { collectionVisibilityMeta } from './collectionVisibility.ts';
 
 export function CollectionSection({
   collection,
@@ -16,12 +17,13 @@ export function CollectionSection({
   onTagSearch?: (tag: SearchTag) => void;
 }) {
   const ownerName = collection.owner.displayName ?? collection.owner.username;
+  const visibility = collectionVisibilityMeta(collection.visibility);
 
   return (
     <section className="border-b border-line pb-7">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span
               aria-hidden="true"
               className="size-3 rounded-full"
@@ -40,6 +42,10 @@ export function CollectionSection({
                 {collection.name}
               </h2>
             </a>
+            <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-control px-2 text-[11px] font-bold text-muted">
+              <visibility.Icon className="size-3 text-accent-icon" />
+              {visibility.label}
+            </span>
           </div>
           {collection.description && (
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">

@@ -5,6 +5,7 @@ import {
 import { type SelectedProject } from '../../../app/routing.ts';
 import { timeAgo } from '../../../lib/format.ts';
 import { projectTypeFromKind } from '../../../lib/projectTypes.ts';
+import { collectionVisibilityMeta } from '../../collection/collectionVisibility.ts';
 import { projectPath } from '../../mod-card/ModCardParts.tsx';
 
 export function OrganizationRow({
@@ -62,6 +63,7 @@ export function CollectionRow({
   onOpenProjectReference?: (project: SelectedProject) => void;
   ownerUsername?: string;
 }) {
+  const visibility = collectionVisibilityMeta(collection.visibility);
   const linkedOwnerUsername =
     collection.visibility === 'PUBLIC' || collection.visibility === 'UNLISTED'
       ? ownerUsername
@@ -101,10 +103,15 @@ export function CollectionRow({
           {collection.description}
         </p>
       )}
-      <p className="mt-3 text-sm font-semibold text-muted">
-        {collection.projectCount.toLocaleString('en-US')} projects · updated{' '}
-        {timeAgo(collection.updatedAt)} · {collection.visibility.toLowerCase()}
-      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-muted">
+        <span>{collection.projectCount.toLocaleString('en-US')} projects</span>
+        <span aria-hidden="true">·</span>
+        <span>updated {timeAgo(collection.updatedAt)}</span>
+        <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-control px-2 text-[11px] font-bold text-muted">
+          <visibility.Icon className="size-3 text-accent-icon" />
+          {visibility.label}
+        </span>
+      </div>
       {collection.items.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {collection.items.map((item) => (
