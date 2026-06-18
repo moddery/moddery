@@ -7,6 +7,7 @@ import { NavBar } from './components/NavBar.tsx';
 
 export function App() {
   const app = useAppShellState();
+  const homePage = isHomePage(app);
   const handleInternalNavigation = (event: MouseEvent<HTMLElement>) => {
     if (
       event.defaultPrevented ||
@@ -31,10 +32,6 @@ export function App() {
     event.stopPropagation();
   };
 
-  if (isHomePage(app)) {
-    return <AppPages app={app} onNavigate={handleInternalNavigation} />;
-  }
-
   return (
     <div className="min-h-dvh bg-bg" onClickCapture={handleInternalNavigation}>
       <NavBar
@@ -53,7 +50,21 @@ export function App() {
         isUsersActive={app.appView === 'users' || app.appView === 'profile'}
         isOrganizationsActive={app.appView === 'organization'}
         showContentTabs={
-          app.appView === 'discover' || Boolean(app.selectedProject)
+          !homePage &&
+          (app.appView === 'discover' || Boolean(app.selectedProject))
+        }
+        showDashboardButton={!homePage}
+        showPrimaryNav={!homePage}
+        extraActions={
+          homePage ? (
+            <button
+              type="button"
+              onClick={app.openDiscover}
+              className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong"
+            >
+              Explore
+            </button>
+          ) : undefined
         }
         accountSlot={
           <AuthControls
@@ -63,7 +74,7 @@ export function App() {
         }
       />
 
-      <AppPages app={app} onNavigate={handleInternalNavigation} />
+      <AppPages app={app} />
     </div>
   );
 }
