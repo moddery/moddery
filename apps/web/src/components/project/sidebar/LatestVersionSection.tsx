@@ -25,7 +25,7 @@ export function LatestVersionSection({
             {version.name}
           </p>
           <p className="mt-1 text-xs font-semibold text-muted">
-            {version.version_number} · {enumLabel(version.version_type)}
+            {version.versionNumber} · {enumLabel(version.versionType)}
           </p>
         </div>
         {version.featured && <Chip>Featured</Chip>}
@@ -34,7 +34,7 @@ export function LatestVersionSection({
       <div className="mt-3 grid gap-2 text-xs font-semibold text-muted">
         <span className="inline-flex items-center gap-1.5">
           <CalendarClock className="size-3.5 text-accent-icon" />
-          Published {timeAgo(version.date_published)}
+          Published {timeAgo(version.datePublished)}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <GitBranch className="size-3.5 text-accent-icon" />
@@ -46,14 +46,14 @@ export function LatestVersionSection({
         {version.loaders.slice(0, 3).map((loader) => (
           <LoaderTag key={loader} loader={loader} />
         ))}
-        {version.game_versions.slice(0, 4).map((gameVersion) => (
+        {version.gameVersions.slice(0, 4).map((gameVersion) => (
           <Chip key={gameVersion}>{gameVersion}</Chip>
         ))}
       </div>
 
       <button
         type="button"
-        onClick={() => onSelectVersion(version.version_number)}
+        onClick={() => onSelectVersion(version.versionNumber)}
         className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-control px-3 text-sm font-bold text-accent-icon transition-colors hover:bg-control-hover"
       >
         View version

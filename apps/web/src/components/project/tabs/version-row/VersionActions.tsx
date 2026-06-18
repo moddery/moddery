@@ -28,10 +28,10 @@ export function VersionActions({
   return (
     <div className="flex items-center gap-4 text-sm sm:justify-end">
       <span className="hidden font-semibold text-muted sm:inline">
-        {timeAgo(version.date_published)}
+        {timeAgo(version.datePublished)}
       </span>
       <span className="hidden font-semibold text-muted lg:inline">
-        Updated {timeAgo(version.updated_at)}
+        Updated {timeAgo(version.updatedAt)}
       </span>
       <span className="inline-flex items-center gap-1.5 font-bold text-ink tabular-nums">
         <Download className="size-4 text-accent-icon" />
@@ -41,10 +41,10 @@ export function VersionActions({
         <Flag className="size-4" />
       </IconButton>
       <a
-        href={versionHref(version.version_number)}
+        href={versionHref(version.versionNumber)}
         onClick={(event) => {
           event.preventDefault();
-          onSelectVersion(version.version_number);
+          onSelectVersion(version.versionNumber);
         }}
         className="grid size-9 place-items-center rounded-lg bg-control text-accent-icon transition-colors hover:bg-control-hover"
         aria-label={`Link to ${version.name}`}

@@ -89,7 +89,7 @@ export function DependencyTargetFields({
           )}
           {versions.map((version) => (
             <option key={version.id} value={version.id}>
-              {version.name} {version.version_number}
+              {version.name} {version.versionNumber}
             </option>
           ))}
         </select>

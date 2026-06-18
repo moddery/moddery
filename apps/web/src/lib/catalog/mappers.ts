@@ -117,14 +117,14 @@ export function versionFromSummary(version: VersionSummary): ProjectVersion {
       version.author === null
         ? null
         : {
-            avatar_url: version.author.avatarUrl,
-            display_name: version.author.displayName,
+            avatarUrl: version.author.avatarUrl,
+            displayName: version.author.displayName,
             id: version.author.id,
             username: version.author.username,
           },
     changelog: version.changelog,
-    created_at: version.createdAt,
-    date_published: version.datePublished ?? new Date().toISOString(),
+    createdAt: version.createdAt,
+    datePublished: version.datePublished ?? new Date().toISOString(),
     dependencies: version.dependencies,
     downloads: version.downloads,
     featured: version.featured,
@@ -138,17 +138,16 @@ export function versionFromSummary(version: VersionSummary): ProjectVersion {
       size: Number(file.sizeBytes),
       url: file.url,
     })),
-    game_versions: version.gameVersions,
+    gameVersions: version.gameVersions,
     id: version.id,
     loaders: normalizeLoaders(version.loaders),
     name: version.name,
-    requested_status: version.requestedStatus,
-    sort_order: version.sortOrder,
+    requestedStatus: version.requestedStatus,
+    sortOrder: version.sortOrder,
     status: version.status,
-    updated_at: version.updatedAt,
-    version_number: version.versionNumber,
-    version_type:
-      version.channel.toLowerCase() as ProjectVersion['version_type'],
+    updatedAt: version.updatedAt,
+    versionNumber: version.versionNumber,
+    versionType: version.channel.toLowerCase() as ProjectVersion['versionType'],
   };
 }
 

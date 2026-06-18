@@ -50,11 +50,11 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
 
   function fillVersion(version: ProjectVersion | null) {
     setName(version?.name ?? '');
-    setVersionNumber(version?.version_number ?? '');
+    setVersionNumber(version?.versionNumber ?? '');
     setChannel(versionChannelFromProjectVersion(version));
     setChangelog(version?.changelog ?? '');
     setLoaders(version?.loaders ?? []);
-    setGameVersions(version?.game_versions ?? []);
+    setGameVersions(version?.gameVersions ?? []);
   }
 
   const fields = {

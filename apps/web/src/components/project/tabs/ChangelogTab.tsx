@@ -23,13 +23,13 @@ export function ChangelogTab({ versions }: { versions: ProjectVersion[] }) {
               {version.name}
             </h2>
             <span className="text-sm font-bold text-muted">
-              {version.version_number}
+              {version.versionNumber}
             </span>
             <span className="text-xs font-bold uppercase text-accent-icon">
-              {enumLabel(version.version_type)}
+              {enumLabel(version.versionType)}
             </span>
             <span className="text-sm font-semibold text-muted">
-              {timeAgo(version.date_published)}
+              {timeAgo(version.datePublished)}
             </span>
           </div>
           <ProjectMarkdown body={version.changelog ?? ''} />

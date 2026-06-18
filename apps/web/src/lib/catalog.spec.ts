@@ -248,7 +248,7 @@ describe(fetchProjectVersions.name, () => {
       | undefined;
 
     expect(queryOptions?.variables).toEqual({ projectSlug: 'example' });
-    expect(versions[0]?.version_type).toBe('beta');
+    expect(versions[0]?.versionType).toBe('beta');
     expect(versions[0]?.dependencies).toEqual([
       {
         dependencyKind: 'REQUIRED',

@@ -93,7 +93,7 @@ export function useVersionSearchState({
     }
 
     const versionIndex = versions.findIndex(
-      (version) => version.version_number === selectedVersion,
+      (version) => version.versionNumber === selectedVersion,
     );
     if (versionIndex === -1) return;
 

@@ -22,28 +22,28 @@ export interface ProjectFile {
 
 export interface ProjectVersion {
   author: {
-    avatar_url: string | null;
-    display_name: string | null;
+    avatarUrl: string | null;
+    displayName: string | null;
     id: string;
     username: string;
   } | null;
   id: string;
   name: string;
-  version_number: string;
-  version_type: 'release' | 'beta' | 'alpha';
-  created_at: string;
-  date_published: string;
+  versionNumber: string;
+  versionType: 'release' | 'beta' | 'alpha';
+  createdAt: string;
+  datePublished: string;
   downloads: number;
   featured: boolean;
   dependencies: VersionDependency[];
   changelog: string | null;
-  game_versions: string[];
+  gameVersions: string[];
   loaders: string[];
   files: ProjectFile[];
-  requested_status: string | null;
-  sort_order: number;
+  requestedStatus: string | null;
+  sortOrder: number;
   status: string;
-  updated_at: string;
+  updatedAt: string;
 }
 
 export interface VersionDependency {

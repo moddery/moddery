@@ -58,7 +58,7 @@ export function VersionSearchResults({
       {versions.map((version) => (
         <VersionRow
           key={version.id}
-          selected={version.version_number === selectedVersion}
+          selected={version.versionNumber === selectedVersion}
           version={version}
           onSelectVersion={onSelectVersion}
         />

@@ -39,7 +39,7 @@ export function VersionRow({
   function toggleDetails() {
     const nextOpen = !detailsOpen;
     setDetailsOpen(nextOpen);
-    onSelectVersion(nextOpen ? version.version_number : null);
+    onSelectVersion(nextOpen ? version.versionNumber : null);
   }
 
   return (

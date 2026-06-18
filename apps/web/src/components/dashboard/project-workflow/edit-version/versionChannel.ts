@@ -7,7 +7,7 @@ export { type VersionChannel };
 export function versionChannelFromProjectVersion(
   version: ProjectVersion | null,
 ): VersionChannel {
-  if (version?.version_type === 'alpha') return 'ALPHA';
-  if (version?.version_type === 'beta') return 'BETA';
+  if (version?.versionType === 'alpha') return 'ALPHA';
+  if (version?.versionType === 'beta') return 'BETA';
   return 'RELEASE';
 }

@@ -22,7 +22,7 @@ export function buildGameVersionOptions(
   versions: ProjectVersion[],
 ): SelectOption[] {
   const gameVersions = new Set(
-    versions.flatMap((version) => version.game_versions),
+    versions.flatMap((version) => version.gameVersions),
   );
 
   return [
