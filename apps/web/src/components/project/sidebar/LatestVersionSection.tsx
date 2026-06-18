@@ -2,6 +2,7 @@ import { CalendarClock, GitBranch } from 'lucide-react';
 
 import { type ProjectVersion } from '../../../lib/catalog.ts';
 import { formatCount, timeAgo } from '../../../lib/format.ts';
+import { enumLabel } from '../../../lib/labels.ts';
 import { Chip, LoaderTag } from '../../Chips.tsx';
 
 export function LatestVersionSection({
@@ -24,7 +25,7 @@ export function LatestVersionSection({
             {version.name}
           </p>
           <p className="mt-1 text-xs font-semibold text-muted">
-            {version.version_number} · {version.version_type}
+            {version.version_number} · {enumLabel(version.version_type)}
           </p>
         </div>
         {version.featured && <Chip>Featured</Chip>}

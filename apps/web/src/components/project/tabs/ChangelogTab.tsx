@@ -1,5 +1,6 @@
 import { type ProjectVersion } from '../../../lib/catalog.ts';
 import { timeAgo } from '../../../lib/format.ts';
+import { enumLabel } from '../../../lib/labels.ts';
 import { EmptyTab } from './EmptyTab.tsx';
 import { ProjectMarkdown } from './ProjectMarkdown.tsx';
 
@@ -25,7 +26,7 @@ export function ChangelogTab({ versions }: { versions: ProjectVersion[] }) {
               {version.version_number}
             </span>
             <span className="text-xs font-bold uppercase text-accent-icon">
-              {version.version_type}
+              {enumLabel(version.version_type)}
             </span>
             <span className="text-sm font-semibold text-muted">
               {timeAgo(version.date_published)}

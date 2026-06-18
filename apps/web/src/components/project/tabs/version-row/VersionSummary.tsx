@@ -1,5 +1,6 @@
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 import { cn } from '../../../../lib/cn.ts';
+import { enumLabel } from '../../../../lib/labels.ts';
 import { Chip, LoaderTag } from '../../../Chips.tsx';
 import { versionHref } from './helpers.ts';
 import { DependencyChip } from './VersionDependencies.tsx';
@@ -40,12 +41,14 @@ export function VersionSummary({
           {version.version_number}
         </span>
         <span className={cn('text-xs font-bold uppercase', typeClass)}>
-          {version.version_type}
+          {enumLabel(version.version_type)}
         </span>
         {version.featured && <Chip>Featured</Chip>}
-        {version.status !== 'APPROVED' && <Chip>{version.status}</Chip>}
+        {version.status !== 'APPROVED' && (
+          <Chip>{enumLabel(version.status)}</Chip>
+        )}
         {version.requested_status && (
-          <Chip>Requested {version.requested_status}</Chip>
+          <Chip>Requested {enumLabel(version.requested_status)}</Chip>
         )}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
