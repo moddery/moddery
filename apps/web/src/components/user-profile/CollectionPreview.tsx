@@ -4,13 +4,14 @@ import {
   type UserCollectionPreview,
 } from '../../lib/users.ts';
 import type { Mod } from '../../types.ts';
-import { ModCard } from '../ModCard.tsx';
+import { ModCard, type SearchTag } from '../ModCard.tsx';
 
 export function CollectionPreview({
   collection,
   ownerUsername,
   onOpenCollection,
   onOpenProject,
+  onTagSearch,
 }: {
   collection: UserCollectionPreview;
   ownerUsername: string;
@@ -19,6 +20,7 @@ export function CollectionPreview({
     slug: string;
   }) => void;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
 }) {
   return (
     <section className="border-b border-line pb-5">
@@ -60,6 +62,7 @@ export function CollectionPreview({
               mod={mod}
               layout="list"
               onOpen={onOpenProject}
+              onTagSearch={onTagSearch}
             />
           );
         })}

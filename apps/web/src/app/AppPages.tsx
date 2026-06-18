@@ -136,6 +136,7 @@ export function AppPages({ app }: AppPagesProps) {
           username={app.selectedUsername}
           onOpenCollection={app.openCollection}
           onOpenProject={app.openProject}
+          onTagSearch={app.searchByTag}
         />
       ) : (
         <DiscoverRoute app={app} />

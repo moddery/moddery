@@ -1,11 +1,12 @@
 import { userProjectToMod, type UserProjectPreview } from '../../lib/users.ts';
 import type { Mod } from '../../types.ts';
-import { ModCard } from '../ModCard.tsx';
+import { ModCard, type SearchTag } from '../ModCard.tsx';
 import { Pagination } from '../Pagination.tsx';
 
 export function UserProjectsSection({
   loading,
   onOpenProject,
+  onTagSearch,
   page,
   projects,
   setPage,
@@ -14,6 +15,7 @@ export function UserProjectsSection({
 }: {
   loading: boolean;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   page: number;
   projects: UserProjectPreview[];
   setPage: (page: number) => void;
@@ -46,6 +48,7 @@ export function UserProjectsSection({
                   mod={mod}
                   layout="list"
                   onOpen={onOpenProject}
+                  onTagSearch={onTagSearch}
                 />
               );
             })}

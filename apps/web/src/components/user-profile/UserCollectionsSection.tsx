@@ -1,5 +1,6 @@
 import type { UserCollectionPreview } from '../../lib/users.ts';
 import type { Mod } from '../../types.ts';
+import { type SearchTag } from '../ModCard.tsx';
 import { Pagination } from '../Pagination.tsx';
 import { CollectionPreview } from './CollectionPreview.tsx';
 
@@ -8,6 +9,7 @@ export function UserCollectionsSection({
   loading,
   onOpenCollection,
   onOpenProject,
+  onTagSearch,
   ownerUsername,
   page,
   setPage,
@@ -21,6 +23,7 @@ export function UserCollectionsSection({
     slug: string;
   }) => void;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   ownerUsername: string;
   page: number;
   setPage: (page: number) => void;
@@ -52,6 +55,7 @@ export function UserCollectionsSection({
                 ownerUsername={ownerUsername}
                 onOpenCollection={onOpenCollection}
                 onOpenProject={onOpenProject}
+                onTagSearch={onTagSearch}
               />
             ))}
           </div>

@@ -8,6 +8,7 @@ import {
 } from '../lib/users.ts';
 import type { Mod } from '../types.ts';
 import { EmptyState } from './EmptyState.tsx';
+import { type SearchTag } from './ModCard.tsx';
 import { ProfileHeader } from './user-profile/ProfileHeader.tsx';
 import { UserCollectionsSection } from './user-profile/UserCollectionsSection.tsx';
 import { UserModerationNotes } from './user-profile/UserModerationNotes.tsx';
@@ -21,6 +22,7 @@ export function UserProfilePage({
   onOpenCollection,
   username,
   onOpenProject,
+  onTagSearch,
 }: {
   onOpenCollection?: (collection: {
     ownerUsername: string;
@@ -28,6 +30,7 @@ export function UserProfilePage({
   }) => void;
   username: string;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
 }) {
   const [projectPage, setProjectPage] = useState(1);
   const [collectionPage, setCollectionPage] = useState(1);
@@ -94,6 +97,7 @@ export function UserProfilePage({
       <UserProjectsSection
         loading={projectsQuery.isLoading}
         onOpenProject={onOpenProject}
+        onTagSearch={onTagSearch}
         page={projectPage}
         projects={projects}
         setPage={setProjectPage}
@@ -106,6 +110,7 @@ export function UserProfilePage({
         loading={collectionsQuery.isLoading}
         onOpenCollection={onOpenCollection}
         onOpenProject={onOpenProject}
+        onTagSearch={onTagSearch}
         ownerUsername={profile.username}
         page={collectionPage}
         setPage={setCollectionPage}
