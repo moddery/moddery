@@ -12,6 +12,7 @@ import {
 import {
   AdminUsersPanel,
   FileScanForm,
+  InfrastructureStatusPanel,
   ModerationQueue,
   ProjectModerationQueue,
   TaxonomyPanel,
@@ -136,6 +137,7 @@ export function DashboardPage({
         <>
           {canAdmin && (
             <>
+              <InfrastructureStatusPanel />
               <AdminUsersPanel viewerId={dashboard.id} />
               <TaxonomyPanel />
             </>

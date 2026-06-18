@@ -31,6 +31,8 @@ import {
   type NotificationPreference,
   type OAuthClientSearchResult,
   type OAuthClientSummary,
+  type PrepareProjectUploadInput,
+  type ProjectUploadTarget,
   type RemoveOrganizationTeamMemberInput,
   type RemoveProjectTeamMemberInput,
   type ReportThread,
@@ -363,6 +365,14 @@ export interface AddProjectGalleryImageMutationVariables {
 
 export interface AddProjectTeamMemberMutationVariables {
   input: AddProjectTeamMemberInput;
+}
+
+export interface PrepareProjectUploadMutationData {
+  prepareProjectUpload: ProjectUploadTarget;
+}
+
+export interface PrepareProjectUploadMutationVariables {
+  input: PrepareProjectUploadInput;
 }
 
 export interface RemoveProjectTeamMemberMutationVariables {

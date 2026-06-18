@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrganizationsModule } from './organizations/organizations.module.js';
 import { PlatformModule } from './platform/platform.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { RedisModule } from './redis/redis.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { SearchModule } from './search/search.module.js';
 import { StorageModule } from './storage/storage.module.js';
@@ -47,6 +48,7 @@ import { VersionsModule } from './versions/versions.module.js';
     OrganizationsModule,
     PlatformModule,
     PrismaModule,
+    RedisModule,
     ReportsModule,
     SearchModule,
     StorageModule,

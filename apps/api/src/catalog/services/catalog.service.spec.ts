@@ -3,10 +3,105 @@ import { describe, expect, test } from 'bun:test';
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { CatalogService } from './catalog.service.js';
 
+function createCatalogService(
+  prisma: PrismaService,
+  searchService: unknown,
+  notificationsService?: unknown,
+) {
+  return new CatalogService(
+    prisma,
+    searchService as never,
+    fakeRedis(),
+    notificationsService as never,
+  );
+}
+
+function fakeRedis() {
+  return fakeRedisState().redis as never;
+}
+
+function fakeRedisState() {
+  const cache = new Map<string, unknown>();
+  const deletedKeys: string[] = [];
+
+  return {
+    cache,
+    deletedKeys,
+    redis: {
+      delete: (key: string) => {
+        cache.delete(key);
+        deletedKeys.push(key);
+        return Promise.resolve();
+      },
+      getJson: <TValue>(key: string) =>
+        Promise.resolve(cache.get(key) as TValue),
+      setJson: (key: string, value: unknown) => {
+        cache.set(key, value);
+        return Promise.resolve();
+      },
+    },
+  };
+}
+
 describe(CatalogService.name, () => {
+  test('caches projects looked up by slug', async () => {
+    let lookups = 0;
+    const service = createCatalogService(
+      {
+        project: {
+          findUnique: () => {
+            lookups += 1;
+            return Promise.resolve(projectRow({ title: 'Cached Project' }));
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
+    );
+
+    const first = await service.findProjectBySlug('example');
+    const second = await service.findProjectBySlug('example');
+
+    expect(lookups).toBe(1);
+    expect(first?.title).toBe('Cached Project');
+    expect(second?.title).toBe('Cached Project');
+  });
+
+  test('invalidates cached project lookups after follower changes', async () => {
+    const redis = fakeRedisState();
+    const tx = {
+      project: {
+        findUniqueOrThrow: () =>
+          Promise.resolve({ id: 'project-a', slug: 'example' }),
+        update: () => Promise.resolve({}),
+      },
+      projectFollow: {
+        count: () => Promise.resolve(3),
+        upsert: () => Promise.resolve({}),
+      },
+    };
+    const service = new CatalogService(
+      {
+        $transaction: (callback: (transaction: typeof tx) => unknown) =>
+          callback(tx),
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      redis.redis as never,
+    );
+
+    redis.cache.set('catalog:project-by-slug:example', {
+      slug: 'example',
+      title: 'Stale Project',
+    });
+
+    await service.followProject('example', 'user-a');
+
+    expect(redis.deletedKeys).toEqual(['catalog:project-by-slug:example']);
+    expect(redis.cache.has('catalog:project-by-slug:example')).toBe(false);
+  });
+
   test('adds gallery images to managed projects', async () => {
     const creates: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           findFirst: () => Promise.resolve({ id: 'project-a' }),
@@ -35,7 +130,7 @@ describe(CatalogService.name, () => {
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const project = await service.addProjectGalleryImage(
@@ -105,7 +200,7 @@ describe(CatalogService.name, () => {
         },
       },
     };
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         $transaction: (callback: (transaction: typeof tx) => unknown) =>
           callback(tx),
@@ -119,7 +214,7 @@ describe(CatalogService.name, () => {
           return Promise.resolve();
         },
         searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
-      } as never,
+      },
     );
 
     const project = await service.updateProject(
@@ -208,7 +303,7 @@ describe(CatalogService.name, () => {
         },
       },
     };
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         $transaction: (callback: (transaction: typeof tx) => unknown) =>
           callback(tx),
@@ -219,7 +314,7 @@ describe(CatalogService.name, () => {
       {
         indexProjects: () => Promise.resolve(),
         searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
-      } as never,
+      },
     );
 
     const project = await service.updateProject(
@@ -287,7 +382,7 @@ describe(CatalogService.name, () => {
   test('searches projects through OpenSearch tags before hydrating rows', async () => {
     const queries: unknown[] = [];
     const searchQueries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           findMany: (query: unknown) => {
@@ -301,7 +396,7 @@ describe(CatalogService.name, () => {
           searchQueries.push(query);
           return Promise.resolve({ ids: ['project-a'], total: 14 });
         },
-      } as never,
+      },
     );
 
     const result = await service.searchProjects({
@@ -335,7 +430,7 @@ describe(CatalogService.name, () => {
 
   test('loads viewer followed projects newest first', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         projectFollow: {
           count: (query: unknown) => {
@@ -352,7 +447,7 @@ describe(CatalogService.name, () => {
       } as unknown as PrismaService,
       {
         searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
-      } as never,
+      },
     );
 
     const result = await service.findViewerFollowedProjects('user-a', {
@@ -386,7 +481,7 @@ describe(CatalogService.name, () => {
 
   test('loads the legacy viewer followed project list from search results', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         projectFollow: {
           count: (query: unknown) => {
@@ -403,7 +498,7 @@ describe(CatalogService.name, () => {
       } as unknown as PrismaService,
       {
         searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
-      } as never,
+      },
     );
 
     const projects = await service.findViewerFollowedProjectList('user-a');
@@ -423,7 +518,7 @@ describe(CatalogService.name, () => {
 
   test('loads project team members by project slug', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           findUnique: (query: unknown) => {
@@ -456,7 +551,7 @@ describe(CatalogService.name, () => {
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const members = await service.findProjectMembers('iris');
@@ -496,7 +591,7 @@ describe(CatalogService.name, () => {
 
   test('loads project team members with pagination', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           findUnique: (query: unknown) => {
@@ -529,7 +624,7 @@ describe(CatalogService.name, () => {
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const result = await service.findProjectMemberSearch('iris', {
@@ -566,7 +661,7 @@ describe(CatalogService.name, () => {
   });
 
   test('loads viewer project follow state', async () => {
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           findUnique: () =>
@@ -577,7 +672,7 @@ describe(CatalogService.name, () => {
             }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const state = await service.findViewerProjectFollowState('iris', 'user-a');
@@ -613,12 +708,12 @@ describe(CatalogService.name, () => {
         },
       },
     };
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         $transaction: (callback: (transaction: typeof tx) => unknown) =>
           callback(tx),
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const state = await service.followProject('iris', 'user-a');
@@ -639,7 +734,7 @@ describe(CatalogService.name, () => {
   test('adds project team members for managers', async () => {
     const notifications: unknown[] = [];
     const upserts: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           findFirst: () =>
@@ -663,13 +758,13 @@ describe(CatalogService.name, () => {
           findFirst: () => Promise.resolve({ id: 'user-b' }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
       {
         sendUserNotification: (input: unknown) => {
           notifications.push(input);
           return Promise.resolve({});
         },
-      } as never,
+      },
     );
 
     const members = await service.addProjectTeamMember(
@@ -711,7 +806,7 @@ describe(CatalogService.name, () => {
 
   test('removes non-owner project team members for managers', async () => {
     const deletes: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           findFirst: () =>
@@ -736,7 +831,7 @@ describe(CatalogService.name, () => {
             }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const members = await service.removeProjectTeamMember(
@@ -753,7 +848,7 @@ describe(CatalogService.name, () => {
 
   test('loads projects awaiting moderation', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           count: (query: unknown) => {
@@ -768,7 +863,7 @@ describe(CatalogService.name, () => {
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const result = await service.findProjectsForModeration({
@@ -796,7 +891,7 @@ describe(CatalogService.name, () => {
 
   test('loads the legacy project moderation list from search results', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         project: {
           count: () => Promise.resolve(1),
@@ -808,7 +903,7 @@ describe(CatalogService.name, () => {
           },
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const projects = await service.findProjectModerationList();
@@ -828,7 +923,7 @@ describe(CatalogService.name, () => {
   test('approves projects and records moderation actions', async () => {
     const transactionSteps: unknown[] = [];
     const indexed: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
           callback({
@@ -859,7 +954,7 @@ describe(CatalogService.name, () => {
           return Promise.resolve();
         },
         searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
-      } as never,
+      },
     );
 
     const project = await service.moderateProject(
@@ -894,7 +989,7 @@ describe(CatalogService.name, () => {
 
   test('locks projects for moderator review', async () => {
     const upserts: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         moderationLock: {
           upsert: (query: unknown) => {
@@ -914,7 +1009,7 @@ describe(CatalogService.name, () => {
             ),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const project = await service.lockProjectForModeration(
@@ -939,7 +1034,7 @@ describe(CatalogService.name, () => {
 
   test('releases project moderation locks owned by the moderator', async () => {
     const deletes: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         moderationLock: {
           deleteMany: (query: unknown) => {
@@ -959,7 +1054,7 @@ describe(CatalogService.name, () => {
             ),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const project = await service.releaseProjectModerationLock(
@@ -973,7 +1068,7 @@ describe(CatalogService.name, () => {
 
   test('loads project moderation actions newest first with pagination', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         moderationAction: {
           count: (query: unknown) => {
@@ -1002,7 +1097,7 @@ describe(CatalogService.name, () => {
           findUnique: () => Promise.resolve({ id: 'project-a' }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const result = await service.findProjectModerationActions('example', {
@@ -1043,7 +1138,7 @@ describe(CatalogService.name, () => {
 
   test('loads the legacy project moderation action list from search results', async () => {
     const queries: unknown[] = [];
-    const service = new CatalogService(
+    const service = createCatalogService(
       {
         moderationAction: {
           count: (query: unknown) => {
@@ -1072,7 +1167,7 @@ describe(CatalogService.name, () => {
           findUnique: () => Promise.resolve({ id: 'project-a' }),
         },
       } as unknown as PrismaService,
-      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
     );
 
     const actions = await service.findProjectModerationActionList('example');

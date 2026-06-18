@@ -1,0 +1,20 @@
+import { Args, Mutation, Resolver } from '@nestjs/graphql';
+
+import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
+import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { PrepareProjectUploadInput } from '../dto/prepare-project-upload.input.js';
+import { StorageService } from '../storage.service.js';
+import { ProjectUploadTarget } from './project-upload.model.js';
+
+@Resolver(() => ProjectUploadTarget)
+export class StorageResolver {
+  constructor(private readonly storageService: StorageService) {}
+
+  @Mutation(() => ProjectUploadTarget)
+  prepareProjectUpload(
+    @Args('input') input: PrepareProjectUploadInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.storageService.prepareProjectUpload(input, user.id);
+  }
+}

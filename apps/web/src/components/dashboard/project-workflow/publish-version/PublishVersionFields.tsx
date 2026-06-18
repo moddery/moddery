@@ -22,6 +22,7 @@ export function PublishVersionFields({
   onFileNameChange,
   onFileSizeChange,
   onFileUrlChange,
+  onLocalFileChange,
   onGameVersionsChange,
   onLoadersChange,
   onNameChange,
@@ -56,6 +57,7 @@ export function PublishVersionFields({
         onFileNameChange={onFileNameChange}
         onFileSizeChange={onFileSizeChange}
         onFileUrlChange={onFileUrlChange}
+        onLocalFileChange={onLocalFileChange}
         onSha1Change={onSha1Change}
         onSha256Change={onSha256Change}
       />

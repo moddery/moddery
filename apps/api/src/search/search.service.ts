@@ -46,6 +46,10 @@ export class SearchService implements OnModuleInit {
     });
   }
 
+  async ping(): Promise<void> {
+    await this.client.ping();
+  }
+
   async indexProjects(
     projects: readonly SearchProjectDocument[],
   ): Promise<void> {

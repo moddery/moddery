@@ -2,10 +2,14 @@ import { S3Client } from '@aws-sdk/client-s3';
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import { PrismaModule } from '../prisma/prisma.module.js';
+import { StorageResolver } from './graphql/storage.resolver.js';
+import { StorageService } from './storage.service.js';
 import { S3_CLIENT } from './storage.constants.js';
 
 @Module({
-  exports: [S3_CLIENT],
+  exports: [S3_CLIENT, StorageService],
+  imports: [PrismaModule],
   providers: [
     {
       provide: S3_CLIENT,
@@ -21,6 +25,8 @@ import { S3_CLIENT } from './storage.constants.js';
           region: config.getOrThrow<string>('s3.region'),
         }),
     },
+    StorageResolver,
+    StorageService,
   ],
 })
 export class StorageModule {}

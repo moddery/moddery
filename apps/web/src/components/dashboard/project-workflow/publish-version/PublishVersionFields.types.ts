@@ -22,6 +22,7 @@ export interface PublishVersionFieldsProps {
   onFileNameChange: (value: string) => void;
   onFileSizeChange: (value: string) => void;
   onFileUrlChange: (value: string) => void;
+  onLocalFileChange: (value: File | null) => void;
   onGameVersionsChange: (value: string) => void;
   onLoadersChange: (value: string) => void;
   onNameChange: (value: string) => void;

@@ -15,6 +15,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { RedisService } from '../../redis/redis.service.js';
 import { SearchService } from '../../search/search.service.js';
 import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { type AddProjectTeamMemberInput } from '../dto/add-project-team-member.input.js';
@@ -165,11 +166,14 @@ export interface ProjectSearchResultContract {
   totalHits: number;
 }
 
+const PROJECT_BY_SLUG_CACHE_TTL_SECONDS = 60;
+
 @Injectable()
 export class CatalogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
+    private readonly redis: RedisService,
     @Optional()
     private readonly notificationsService?: NotificationsService,
   ) {}
@@ -224,13 +228,23 @@ export class CatalogService {
   async findProjectBySlug(
     slug: string,
   ): Promise<ProjectSummaryContract | undefined> {
+    const cacheKey = projectBySlugCacheKey(slug);
+    const cached = await this.redis.getJson<ProjectSummaryContract>(cacheKey);
+
+    if (cached !== undefined) return cached;
+
     const project = await this.prisma.project.findUnique({
       select: projectSelect(),
       where: { slug },
     });
 
     if (project !== null) {
-      return projectRowToContract(project);
+      const contract = projectRowToContract(project);
+      await this.redis.setJson(cacheKey, contract, {
+        ttlSeconds: PROJECT_BY_SLUG_CACHE_TTL_SECONDS,
+      });
+
+      return contract;
     }
 
     return undefined;
@@ -351,6 +365,7 @@ export class CatalogService {
 
     const contract = projectRowToContract(project);
     await this.searchService.indexProjects([projectContractToSearch(contract)]);
+    await this.invalidateProjectBySlugCache(contract.slug);
 
     return contract;
   }
@@ -480,6 +495,7 @@ export class CatalogService {
         projectContractToSearch(contract),
       ]);
     }
+    await this.invalidateProjectBySlugCache(contract.slug);
 
     return contract;
   }
@@ -517,8 +533,10 @@ export class CatalogService {
       select: projectSelect(),
       where: { id: project.id },
     });
+    const contract = projectRowToContract(updated);
+    await this.invalidateProjectBySlugCache(contract.slug);
 
-    return projectRowToContract(updated);
+    return contract;
   }
 
   async releaseProjectModerationLock(
@@ -554,8 +572,10 @@ export class CatalogService {
       select: projectSelect(),
       where: { id: project.id },
     });
+    const contract = projectRowToContract(updated);
+    await this.invalidateProjectBySlugCache(contract.slug);
 
-    return projectRowToContract(updated);
+    return contract;
   }
 
   async addProjectGalleryImage(
@@ -580,8 +600,10 @@ export class CatalogService {
       select: projectSelect(),
       where: { id: project.id },
     });
+    const contract = projectRowToContract(updated);
+    await this.invalidateProjectBySlugCache(contract.slug);
 
-    return projectRowToContract(updated);
+    return contract;
   }
 
   async updateProject(
@@ -622,6 +644,7 @@ export class CatalogService {
 
     const contract = projectRowToContract(project);
     await this.searchService.indexProjects([projectContractToSearch(contract)]);
+    await this.invalidateProjectBySlugCache(contract.slug);
 
     return contract;
   }
@@ -865,7 +888,7 @@ export class CatalogService {
     userId: string,
     following: boolean,
   ): Promise<ProjectFollowStateContract> {
-    return this.prisma.$transaction(async (tx) => {
+    const state = await this.prisma.$transaction(async (tx) => {
       const project = await tx.project.findUniqueOrThrow({
         select: { id: true, slug: true },
         where: { slug: projectSlug },
@@ -909,7 +932,18 @@ export class CatalogService {
         projectSlug: project.slug,
       };
     });
+    await this.invalidateProjectBySlugCache(state.projectSlug);
+
+    return state;
   }
+
+  private invalidateProjectBySlugCache(slug: string): Promise<void> {
+    return this.redis.delete(projectBySlugCacheKey(slug));
+  }
+}
+
+function projectBySlugCacheKey(slug: string): string {
+  return `catalog:project-by-slug:${slug}`;
 }
 
 function projectSelect() {

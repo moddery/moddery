@@ -3,6 +3,7 @@ import { type FormEvent, useState } from 'react';
 import {
   addProjectGalleryImage,
   type DashboardProject,
+  uploadProjectFile,
 } from '../../../lib/dashboard.ts';
 import { GalleryImageFields } from './gallery-image/GalleryImageFields.tsx';
 import { GalleryPreview } from './gallery-image/GalleryPreview.tsx';
@@ -21,6 +22,7 @@ export function AddGalleryImageForm({
   const [description, setDescription] = useState('');
   const [rawUrl, setRawUrl] = useState('');
   const [displayUrl, setDisplayUrl] = useState('');
+  const [localFile, setLocalFile] = useState<File | null>(null);
   const [featured, setFeatured] = useState(false);
   const [sortOrder, setSortOrder] = useState('0');
   const [submitting, setSubmitting] = useState(false);
@@ -34,12 +36,23 @@ export function AddGalleryImageForm({
     setCreated(null);
 
     try {
+      let nextRawUrl = rawUrl;
+      let nextDisplayUrl = displayUrl;
+      if (localFile !== null) {
+        const target = await uploadProjectFile({
+          file: localFile,
+          projectSlug,
+          uploadKind: 'gallery-image',
+        });
+        nextRawUrl = target.objectUrl;
+        nextDisplayUrl = target.objectUrl;
+      }
       const project = await addProjectGalleryImage({
         description: nullableText(description),
-        displayUrl,
+        displayUrl: nextDisplayUrl,
         featured,
         projectSlug,
-        rawUrl,
+        rawUrl: nextRawUrl,
         sortOrder: sortOrder.trim() === '' ? null : Number(sortOrder),
         title: nullableText(title),
       });
@@ -48,6 +61,7 @@ export function AddGalleryImageForm({
       setDescription('');
       setRawUrl('');
       setDisplayUrl('');
+      setLocalFile(null);
       setFeatured(false);
       setSortOrder('0');
       await onAdded();
@@ -87,6 +101,12 @@ export function AddGalleryImageForm({
           onDescriptionChange={setDescription}
           onDisplayUrlChange={setDisplayUrl}
           onFeaturedChange={setFeatured}
+          onLocalFileChange={(file) => {
+            setLocalFile(file);
+            if (file !== null && title.trim().length === 0) {
+              setTitle(file.name);
+            }
+          }}
           onProjectSlugChange={(slug) => {
             setProjectSlug(slug);
             setCreated(null);

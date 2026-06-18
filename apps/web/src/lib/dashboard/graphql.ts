@@ -4,5 +4,6 @@ export * from './graphql/admin.js';
 export * from './graphql/fragments.js';
 export * from './graphql/platform.js';
 export * from './graphql/projects.js';
+export * from './graphql/storage.js';
 export * from './graphql/content.js';
 export * from './graphql/versions.js';

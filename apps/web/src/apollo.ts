@@ -1,7 +1,7 @@
 import { ApolloClient, createHttpLink, InMemoryCache } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 
-const graphqlUri =
+export const graphqlUri =
   import.meta.env.VITE_GRAPHQL_URL ?? 'http://localhost:3000/graphql';
 
 export const authTokenStorageKey = 'moddery.accessToken';

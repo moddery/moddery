@@ -410,6 +410,23 @@ export interface AddProjectTeamMemberInput {
   username: string;
 }
 
+export interface PrepareProjectUploadInput {
+  contentType: string | null;
+  fileName: string;
+  projectSlug: string;
+  sizeBytes: number;
+  uploadKind: 'gallery-image' | 'project-icon' | 'version-file';
+}
+
+export interface ProjectUploadTarget {
+  bucket: string;
+  expiresAt: string;
+  key: string;
+  method: 'PUT';
+  objectUrl: string;
+  uploadUrl: string;
+}
+
 export interface RemoveProjectTeamMemberInput {
   projectSlug: string;
   username: string;

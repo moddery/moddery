@@ -38,6 +38,14 @@ export class AnalyticsService implements OnModuleInit {
     });
   }
 
+  async ping(): Promise<void> {
+    const result = await this.client.query({
+      format: 'JSONEachRow',
+      query: 'SELECT 1 AS ok',
+    });
+    await result.json();
+  }
+
   async projectAnalytics(projectSlug: string) {
     const project = await this.prisma.project.findUnique({
       select: {

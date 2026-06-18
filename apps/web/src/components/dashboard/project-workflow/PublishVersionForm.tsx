@@ -1,6 +1,10 @@
 import { type FormEvent, useState } from 'react';
 
-import { createVersion, type DashboardData } from '../../../lib/dashboard.ts';
+import {
+  createVersion,
+  type DashboardData,
+  uploadProjectFile,
+} from '../../../lib/dashboard.ts';
 import { PublishVersionFields } from './publish-version/PublishVersionFields.tsx';
 import { usePublishVersionFormState } from './publish-version/usePublishVersionFormState.ts';
 
@@ -10,6 +14,7 @@ export function PublishVersionForm({
   projects: DashboardData['projects'];
 }) {
   const form = usePublishVersionFormState(projects);
+  const [localFile, setLocalFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
@@ -21,8 +26,25 @@ export function PublishVersionForm({
     setCreated(null);
 
     try {
-      const version = await createVersion(form.buildInput());
+      const input = form.buildInput();
+      if (localFile !== null) {
+        const versionFile = input.files[0];
+        const target = await uploadProjectFile({
+          file: localFile,
+          projectSlug: input.projectSlug,
+          uploadKind: 'version-file',
+        });
+        input.files[0] = {
+          fileName: localFile.name,
+          hashes: versionFile?.hashes ?? [],
+          primary: versionFile?.primary ?? true,
+          sizeBytes: localFile.size,
+          url: target.objectUrl,
+        };
+      }
+      const version = await createVersion(input);
       setCreated(`${version.name} ${version.versionNumber}`);
+      setLocalFile(null);
       form.reset();
     } catch (caught) {
       setError(
@@ -49,7 +71,13 @@ export function PublishVersionForm({
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
       >
-        <PublishVersionFields {...form.fields} />
+        <PublishVersionFields
+          {...form.fields}
+          onLocalFileChange={(file) => {
+            setLocalFile(file);
+            form.fields.onLocalFileChange(file);
+          }}
+        />
 
         {error && (
           <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">

@@ -13,6 +13,7 @@ export function GalleryImageFields({
   onDescriptionChange,
   onDisplayUrlChange,
   onFeaturedChange,
+  onLocalFileChange,
   onProjectSlugChange,
   onRawUrlChange,
   onSortOrderChange,
@@ -29,6 +30,7 @@ export function GalleryImageFields({
   onDescriptionChange: (value: string) => void;
   onDisplayUrlChange: (value: string) => void;
   onFeaturedChange: (value: boolean) => void;
+  onLocalFileChange: (value: File | null) => void;
   onProjectSlugChange: (value: string) => void;
   onRawUrlChange: (value: string) => void;
   onSortOrderChange: (value: string) => void;
@@ -59,6 +61,19 @@ export function GalleryImageFields({
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <DashboardField label="Title" value={title} onChange={onTitleChange} />
+        <label className="grid gap-1 text-sm font-bold text-ink">
+          Local image
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(event) =>
+              onLocalFileChange(event.target.files?.[0] ?? null)
+            }
+            className="h-10 rounded-lg border border-line bg-control px-3 py-2 text-sm font-bold text-ink outline-none transition-colors file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1 file:text-xs file:font-bold file:text-white hover:border-line-strong focus-visible:border-accent"
+          />
+        </label>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
         <label className="flex items-end gap-2 text-sm font-bold text-ink">
           <input
             type="checkbox"

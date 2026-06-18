@@ -44,6 +44,11 @@ export function usePublishVersionFormState(
     onFileNameChange: setFileName,
     onFileSizeChange: setFileSize,
     onFileUrlChange: setFileUrl,
+    onLocalFileChange: (file: File | null) => {
+      if (file === null) return;
+      setFileName(file.name);
+      setFileSize(String(file.size));
+    },
     onGameVersionsChange: setGameVersions,
     onLoadersChange: setLoaders,
     onNameChange: setName,

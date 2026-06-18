@@ -47,6 +47,7 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  S3_PUBLIC_BASE_URL: z.string().url(),
   S3_REGION: z.string().min(1).default('us-east-1'),
   S3_SECRET_ACCESS_KEY: z.string().min(1),
   SMTP_HOST: z.string().min(1),
@@ -90,6 +91,7 @@ export function validateEnvironment(): {
     bucket: Environment['S3_BUCKET'];
     endpoint: Environment['S3_ENDPOINT'];
     forcePathStyle: Environment['S3_FORCE_PATH_STYLE'];
+    publicBaseUrl: Environment['S3_PUBLIC_BASE_URL'];
     region: Environment['S3_REGION'];
     secretAccessKey: Environment['S3_SECRET_ACCESS_KEY'];
   };
@@ -131,6 +133,7 @@ export function validateEnvironment(): {
       bucket: env.S3_BUCKET,
       endpoint: env.S3_ENDPOINT,
       forcePathStyle: env.S3_FORCE_PATH_STYLE,
+      publicBaseUrl: env.S3_PUBLIC_BASE_URL,
       region: env.S3_REGION,
       secretAccessKey: env.S3_SECRET_ACCESS_KEY,
     },
