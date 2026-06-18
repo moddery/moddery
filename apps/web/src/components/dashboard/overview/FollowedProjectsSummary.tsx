@@ -15,11 +15,14 @@ const pageSize = 20;
 export function FollowedProjectsSummary({
   dashboard,
   onOpenProject,
+  onUpdated,
 }: {
   dashboard: DashboardData;
   onOpenProject: (mod: Mod) => void;
+  onUpdated: () => Promise<void>;
 }) {
   const [page, setPage] = useState(1);
+  const [unfollowingSlug, setUnfollowingSlug] = useState<string | null>(null);
   const followedQuery = useQuery({
     queryFn: ({ signal }) =>
       fetchViewerFollowedProjects(page, pageSize, signal),
@@ -32,10 +35,17 @@ export function FollowedProjectsSummary({
   const totalPages = Math.max(1, Math.ceil(followedCount / pageSize));
 
   async function unfollow(project: Mod) {
-    await setProjectFollowing(project.slug, false);
-    await followedQuery.refetch();
-    if (followedProjects.length === 1 && page > 1) {
-      setPage((current) => current - 1);
+    setUnfollowingSlug(project.slug);
+
+    try {
+      await setProjectFollowing(project.slug, false);
+      await followedQuery.refetch();
+      await onUpdated();
+      if (followedProjects.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      }
+    } finally {
+      setUnfollowingSlug(null);
     }
   }
 
@@ -83,10 +93,11 @@ export function FollowedProjectsSummary({
               <ModCard mod={project} layout="list" onOpen={onOpenProject} />
               <button
                 type="button"
+                disabled={unfollowingSlug === project.slug}
                 onClick={() => void unfollow(project)}
-                className="absolute bottom-3 right-3 inline-flex h-8 items-center rounded-lg bg-control px-3 text-xs font-bold text-muted transition-colors hover:bg-control-hover hover:text-ink"
+                className="absolute bottom-3 right-3 inline-flex h-8 items-center rounded-lg bg-control px-3 text-xs font-bold text-muted transition-colors hover:bg-control-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Unfollow
+                {unfollowingSlug === project.slug ? 'Unfollowing' : 'Unfollow'}
               </button>
             </div>
           ))}

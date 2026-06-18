@@ -174,6 +174,7 @@ export function DashboardPage({
           dashboard={dashboard}
           onOpenCollection={onOpenCollection}
           onOpenProject={onOpenProject}
+          onUpdated={refreshDashboard}
         />
       </section>
     </main>

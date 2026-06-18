@@ -9,6 +9,7 @@ export function DashboardSummarySections({
   dashboard,
   onOpenCollection,
   onOpenProject,
+  onUpdated,
 }: {
   dashboard: DashboardData;
   onOpenCollection?: (collection: {
@@ -16,6 +17,7 @@ export function DashboardSummarySections({
     slug: string;
   }) => void;
   onOpenProject: (mod: Mod) => void;
+  onUpdated: () => Promise<void>;
 }) {
   return (
     <>
@@ -24,6 +26,7 @@ export function DashboardSummarySections({
       <FollowedProjectsSummary
         dashboard={dashboard}
         onOpenProject={onOpenProject}
+        onUpdated={onUpdated}
       />
       <CollectionsSummary
         dashboard={dashboard}
