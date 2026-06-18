@@ -1,15 +1,18 @@
 import { type DependencyKind } from '@moddery/shared';
 
-import { DashboardField } from '../shared.tsx';
+import { type DashboardData } from '../../../../lib/dashboard.ts';
 import { type DependencyDraft } from './useVersionDependencyFormState.ts';
+import { DependencyTargetFields } from './DependencyTargetFields.tsx';
 
 export function DependencyFields({
   dependencies,
+  projects,
   onAddDependency,
   onRemoveDependency,
   onUpdateDependency,
 }: {
   dependencies: DependencyDraft[];
+  projects: DashboardData['projects'];
   onAddDependency: () => void;
   onRemoveDependency: (key: string) => void;
   onUpdateDependency: (
@@ -53,35 +56,11 @@ export function DependencyFields({
               <option value="EMBEDDED">Embedded</option>
             </select>
           </label>
-          <div className="grid gap-3 md:grid-cols-3">
-            <DashboardField
-              label="Target project slug"
-              value={dependency.targetProjectSlug}
-              onChange={(value) =>
-                onUpdateDependency(dependency.key, {
-                  targetProjectSlug: value,
-                })
-              }
-            />
-            <DashboardField
-              label="Target version ID"
-              value={dependency.targetVersionId}
-              onChange={(value) =>
-                onUpdateDependency(dependency.key, {
-                  targetVersionId: value,
-                })
-              }
-            />
-            <DashboardField
-              label="External file"
-              value={dependency.externalFileName}
-              onChange={(value) =>
-                onUpdateDependency(dependency.key, {
-                  externalFileName: value,
-                })
-              }
-            />
-          </div>
+          <DependencyTargetFields
+            dependency={dependency}
+            projects={projects}
+            onUpdateDependency={onUpdateDependency}
+          />
         </div>
       ))}
       <button

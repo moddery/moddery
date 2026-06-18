@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 import { apolloClient } from '../apollo.js';
-import { fetchProjectDetails, fetchProjectVersionSearch } from './catalog.js';
+import {
+  fetchProjectDetails,
+  fetchProjectVersions,
+  fetchProjectVersionSearch,
+} from './catalog.js';
 
 describe(fetchProjectDetails.name, () => {
   afterEach(() => {
@@ -122,5 +126,95 @@ describe(fetchProjectVersionSearch.name, () => {
     expect(result.totalHits).toBe(7);
     expect(result.versions[0]?.files[0]?.filename).toBe('example.jar');
     expect(result.versions[0]?.loaders).toEqual(['fabric']);
+  });
+});
+
+describe(fetchProjectVersions.name, () => {
+  afterEach(() => {
+    spyOn(apolloClient, 'query').mockRestore();
+  });
+
+  test('maps version dependency targets from GraphQL', async () => {
+    const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
+      data: {
+        versionsForProject: [
+          {
+            author: null,
+            changelog: null,
+            channel: 'BETA',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            datePublished: null,
+            dependencies: [
+              {
+                dependencyKind: 'REQUIRED',
+                externalFileName: null,
+                id: 'dependency-a',
+                targetProject: {
+                  id: 'project-b',
+                  kind: 'MOD',
+                  slug: 'target-project',
+                  title: 'Target Project',
+                },
+                targetVersion: {
+                  id: 'version-b',
+                  versionNumber: '2.0.0',
+                },
+              },
+              {
+                dependencyKind: 'OPTIONAL',
+                externalFileName: 'optional-addon.jar',
+                id: 'dependency-b',
+                targetProject: null,
+                targetVersion: null,
+              },
+            ],
+            downloads: 0,
+            featured: false,
+            files: [],
+            gameVersions: ['1.21.6'],
+            id: 'version-a',
+            loaders: ['FABRIC'],
+            name: 'Example Beta',
+            requestedStatus: null,
+            sortOrder: 1,
+            status: 'APPROVED',
+            updatedAt: '2026-01-02T00:00:00.000Z',
+            versionNumber: '1.1.0-beta',
+          },
+        ],
+      },
+    } as never);
+
+    const versions = await fetchProjectVersions('example');
+    const queryOptions = querySpy.mock.calls[0]?.[0] as
+      | { variables: unknown }
+      | undefined;
+
+    expect(queryOptions?.variables).toEqual({ projectSlug: 'example' });
+    expect(versions[0]?.version_type).toBe('beta');
+    expect(versions[0]?.dependencies).toEqual([
+      {
+        dependencyKind: 'REQUIRED',
+        externalFileName: null,
+        id: 'dependency-a',
+        targetProject: {
+          id: 'project-b',
+          kind: 'MOD',
+          slug: 'target-project',
+          title: 'Target Project',
+        },
+        targetVersion: {
+          id: 'version-b',
+          versionNumber: '2.0.0',
+        },
+      },
+      {
+        dependencyKind: 'OPTIONAL',
+        externalFileName: 'optional-addon.jar',
+        id: 'dependency-b',
+        targetProject: null,
+        targetVersion: null,
+      },
+    ]);
   });
 });

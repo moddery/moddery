@@ -85,7 +85,7 @@ export function EditVersionDependencyForm({
             Publish a version before editing dependencies.
           </p>
         ) : (
-          <DependencyFields {...form.fields} />
+          <DependencyFields projects={projects} {...form.fields} />
         )}
 
         {error && (
