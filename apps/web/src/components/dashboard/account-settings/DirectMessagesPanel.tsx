@@ -60,7 +60,10 @@ export function DirectMessagesPanel() {
   const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
 
   return (
-    <section className="mt-8 border-t border-line pt-6">
+    <section
+      id="dashboard-messages"
+      className="mt-8 scroll-mt-32 border-t border-line pt-6"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-xl font-extrabold text-ink">

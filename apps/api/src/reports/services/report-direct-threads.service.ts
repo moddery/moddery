@@ -240,7 +240,7 @@ export class ReportDirectThreadsService {
     await Promise.all(
       recipients.map((recipient) =>
         notificationsService.sendUserNotification({
-          actionUrl: '/dashboard#dashboard-account',
+          actionUrl: '/dashboard#dashboard-messages',
           body,
           title: `New message from ${authorName}`,
           type: 'message',

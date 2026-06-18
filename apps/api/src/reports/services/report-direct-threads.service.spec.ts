@@ -159,7 +159,7 @@ describe(ReportDirectThreadsService.name, () => {
     expect(thread.messages[0]?.body).toBe('Hey there.');
     expect(notifications[0]).toEqual(
       expect.objectContaining({
-        actionUrl: '/dashboard#dashboard-account',
+        actionUrl: '/dashboard#dashboard-messages',
         body: 'Hey there.',
         title: 'New message from Sender',
         type: 'message',
@@ -198,7 +198,7 @@ function notificationServiceMock(
     sendUserNotification: (notification: unknown) => {
       notifications.push(notification);
       return Promise.resolve({
-        actionUrl: '/dashboard#dashboard-account',
+        actionUrl: '/dashboard#dashboard-messages',
         body: 'Hey there.',
         createdAt: new Date('2026-01-01T00:01:00.000Z'),
         id: 'notification-a',
