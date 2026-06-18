@@ -6,7 +6,10 @@ export function TeamInvitationsPanel() {
   const state = useTeamInvitationsPanelState();
 
   return (
-    <section className="mt-8 border-t border-line pt-6">
+    <section
+      id="dashboard-team-invitations"
+      className="mt-8 scroll-mt-32 border-t border-line pt-6"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-xl font-extrabold text-ink">

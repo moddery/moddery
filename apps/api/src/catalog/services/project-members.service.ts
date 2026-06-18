@@ -251,7 +251,7 @@ export class ProjectMembersService {
     userId: string;
   }) {
     await this.notificationsService.sendUserNotification({
-      actionUrl: `/dashboard`,
+      actionUrl: '/dashboard#dashboard-team-invitations',
       body: `You were invited to collaborate on ${input.targetName}.`,
       title: `Team invitation for ${input.targetName}`,
       type: 'team',

@@ -265,7 +265,7 @@ export class OrganizationManagementService {
     userId: string;
   }) {
     await this.notificationsService.sendUserNotification({
-      actionUrl: `/dashboard`,
+      actionUrl: '/dashboard#dashboard-team-invitations',
       body: `You were invited to collaborate with ${input.organizationName}.`,
       title: `Team invitation for ${input.organizationName}`,
       type: 'team',

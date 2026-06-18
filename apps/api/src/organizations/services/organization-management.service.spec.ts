@@ -177,7 +177,7 @@ describe(OrganizationManagementService.name, () => {
       }),
     );
     expect(notifications[0]).toEqual({
-      actionUrl: '/dashboard',
+      actionUrl: '/dashboard#dashboard-team-invitations',
       body: 'You were invited to collaborate with Iris Labs.',
       title: 'Team invitation for Iris Labs',
       type: 'team',

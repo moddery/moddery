@@ -210,7 +210,7 @@ describe(ProjectMembersService.name, () => {
       }),
     );
     expect(notifications[0]).toEqual({
-      actionUrl: '/dashboard',
+      actionUrl: '/dashboard#dashboard-team-invitations',
       body: 'You were invited to collaborate on Iris.',
       title: 'Team invitation for Iris',
       type: 'team',
