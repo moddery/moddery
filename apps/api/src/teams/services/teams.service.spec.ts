@@ -44,6 +44,7 @@ describe(TeamsService.name, () => {
       },
     ]);
     expect(result.invitations[0]?.target.name).toBe('Example Project');
+    expect(result.invitations[0]?.target.projectKind).toBe('MOD');
   });
 
   test('loads pending viewer team invitations with pagination', async () => {
@@ -161,6 +162,7 @@ function teamInvitationRow({ id = 'member-a' }: { id?: string } = {}) {
       organization: null,
       project: {
         id: 'project-a',
+        kind: 'MOD',
         slug: 'example',
         title: 'Example Project',
       },

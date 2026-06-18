@@ -1,3 +1,5 @@
+import { type ProjectKind } from '@moddery/shared';
+
 export interface ApiTokenSummary {
   createdAt: string;
   expiresAt: string | null;
@@ -65,6 +67,7 @@ export interface CreatedOAuthClient {
 export interface TeamInvitationTarget {
   id: string;
   name: string;
+  projectKind: ProjectKind | null;
   slug: string;
   type: 'ORGANIZATION' | 'PROJECT';
 }

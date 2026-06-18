@@ -138,6 +138,7 @@ function teamInvitationSelect() {
         project: {
           select: {
             id: true,
+            kind: true,
             slug: true,
             title: true,
           },
@@ -155,7 +156,7 @@ function teamInvitationRowToContract(row: {
   role: string;
   team: {
     organization: { id: string; name: string; slug: string } | null;
-    project: { id: string; slug: string; title: string } | null;
+    project: { id: string; kind: string; slug: string; title: string } | null;
     targetKind: string;
   };
 }) {
@@ -164,12 +165,14 @@ function teamInvitationRowToContract(row: {
       ? {
           id: row.team.organization.id,
           name: row.team.organization.name,
+          projectKind: null,
           slug: row.team.organization.slug,
           type: 'ORGANIZATION',
         }
       : {
           id: row.team.project?.id ?? row.id,
           name: row.team.project?.title ?? 'Project',
+          projectKind: row.team.project?.kind ?? null,
           slug: row.team.project?.slug ?? '',
           type: 'PROJECT',
         };

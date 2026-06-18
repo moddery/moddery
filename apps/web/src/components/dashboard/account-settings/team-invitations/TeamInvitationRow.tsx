@@ -1,6 +1,8 @@
 import { type TeamInvitationSummary } from '../../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 import { permissionLabel } from '../../../../lib/permissions.ts';
+import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
+import { projectPath } from '../../../mod-card/ModCardParts.tsx';
 
 export function TeamInvitationRow({
   busy,
@@ -13,11 +15,22 @@ export function TeamInvitationRow({
   onAccept: (invitationId: string) => void;
   onDecline: (invitationId: string) => void;
 }) {
+  const targetHref = teamInvitationTargetHref(invitation.target);
+
   return (
     <article className="rounded-lg border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="font-bold text-ink">{invitation.target.name}</h3>
+          {targetHref ? (
+            <a
+              href={targetHref}
+              className="font-bold text-ink transition-colors hover:text-accent"
+            >
+              {invitation.target.name}
+            </a>
+          ) : (
+            <h3 className="font-bold text-ink">{invitation.target.name}</h3>
+          )}
           <p className="mt-1 text-sm font-semibold text-muted">
             {invitation.target.type.toLowerCase().replace('_', ' ')} ·{' '}
             {invitation.role} · invited {timeAgo(invitation.createdAt)}
@@ -56,4 +69,18 @@ export function TeamInvitationRow({
       )}
     </article>
   );
+}
+
+export function teamInvitationTargetHref(
+  target: TeamInvitationSummary['target'],
+) {
+  if (target.type === 'ORGANIZATION') {
+    return `/organizations/${encodeURIComponent(target.slug)}`;
+  }
+
+  if (target.projectKind === null || target.slug.trim() === '') {
+    return null;
+  }
+
+  return projectPath(projectTypeFromKind(target.projectKind), target.slug);
 }

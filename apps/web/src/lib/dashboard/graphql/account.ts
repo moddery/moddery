@@ -207,6 +207,7 @@ const TEAM_INVITATION_FIELDS = gql`
     target {
       id
       name
+      projectKind
       slug
       type
     }
