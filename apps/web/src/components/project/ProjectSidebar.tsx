@@ -13,6 +13,7 @@ import {
   formatDate,
   timeAgo,
 } from '../../lib/format.ts';
+import { CopyLinkButton } from '../CopyLinkButton.tsx';
 import { FollowProjectButton } from './sidebar/FollowProjectButton.tsx';
 import { MetaRow } from './sidebar/MetaRow.tsx';
 import { ProjectAnalyticsSection } from './sidebar/ProjectAnalyticsSection.tsx';
@@ -52,6 +53,7 @@ export function ProjectSidebar({
           Download latest
         </button>
       )}
+      <CopyLinkButton className="mt-2 w-full" />
       <FollowProjectButton project={project} initialState={followState} />
       <ProjectCollectionSave project={project} />
 
