@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { recordDownload, type ProjectVersion } from '../../../lib/catalog.ts';
 import { cn } from '../../../lib/cn.ts';
 import { VersionActions } from './version-row/VersionActions.tsx';
+import { VersionChangelog } from './version-row/VersionChangelog.tsx';
 import { VersionDependencies } from './version-row/VersionDependencies.tsx';
 import { VersionFiles } from './version-row/VersionFiles.tsx';
 import { VersionReportForm } from './version-row/VersionReportForm.tsx';
@@ -22,7 +23,9 @@ export function VersionRow({
   const [reportOpen, setReportOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(selected);
   const hasDetails =
-    version.files.length > 0 || version.dependencies.length > 0;
+    version.files.length > 0 ||
+    version.dependencies.length > 0 ||
+    Boolean(version.changelog?.trim());
 
   async function downloadFile(file: ProjectVersion['files'][number]) {
     await recordDownload(file.id);
@@ -74,6 +77,7 @@ export function VersionRow({
 
       {detailsOpen && (
         <div className="grid gap-3 sm:col-span-2">
+          <VersionChangelog changelog={version.changelog} />
           <VersionDependencies dependencies={version.dependencies} />
           <VersionFiles files={version.files} onDownload={downloadFile} />
         </div>
