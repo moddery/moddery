@@ -50,7 +50,7 @@ export function ProjectMembersSection({
           </p>
         )}
         {visibleMembers.map((member) => {
-          const name = member.user.display_name ?? member.user.username;
+          const name = member.user.displayName ?? member.user.username;
 
           return (
             <a
@@ -58,9 +58,9 @@ export function ProjectMembersSection({
               href={`/users/${member.user.username}`}
               className="flex min-w-0 items-start gap-2 rounded-md px-2 py-1.5"
             >
-              {member.user.avatar_url ? (
+              {member.user.avatarUrl ? (
                 <img
-                  src={member.user.avatar_url}
+                  src={member.user.avatarUrl}
                   alt=""
                   className="size-8 rounded-md bg-surface-2 object-cover"
                 />

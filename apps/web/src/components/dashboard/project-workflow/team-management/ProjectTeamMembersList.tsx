@@ -27,7 +27,7 @@ export function ProjectTeamMembersList({
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {members.map((member) => {
-        const name = member.user.display_name ?? member.user.username;
+        const name = member.user.displayName ?? member.user.username;
 
         return (
           <div

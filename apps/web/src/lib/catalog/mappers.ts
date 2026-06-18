@@ -159,8 +159,8 @@ export function memberFromSummary(member: ProjectMemberSummary): ProjectMember {
     role: member.role,
     sortOrder: member.sortOrder,
     user: {
-      avatar_url: member.user.avatarUrl,
-      display_name: member.user.displayName,
+      avatarUrl: member.user.avatarUrl,
+      displayName: member.user.displayName,
       id: member.user.id,
       username: member.user.username,
     },
