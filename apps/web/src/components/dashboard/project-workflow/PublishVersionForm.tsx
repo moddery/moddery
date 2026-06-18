@@ -70,8 +70,8 @@ export function PublishVersionForm({
           Publish a version
         </h2>
         <p className="text-sm leading-6 text-muted">
-          Add release metadata and an externally hosted file URL for a managed
-          project.
+          Add release metadata, upload a local file, or attach an existing file
+          URL for a managed project.
         </p>
       </div>
 
