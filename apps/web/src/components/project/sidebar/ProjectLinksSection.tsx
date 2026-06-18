@@ -1,4 +1,5 @@
 import { type ProjectDetails } from '../../../lib/catalog.ts';
+import { enumLabel } from '../../../lib/labels.ts';
 import { ExternalLink } from './ExternalLink.tsx';
 
 export function ProjectLinksSection({ project }: { project: ProjectDetails }) {
@@ -15,7 +16,11 @@ export function ProjectLinksSection({ project }: { project: ProjectDetails }) {
     Boolean(link.href),
   );
 
-  if (standardLinks.length === 0 && project.donationUrls.length === 0) {
+  if (
+    standardLinks.length === 0 &&
+    project.donationUrls.length === 0 &&
+    project.externalLinks.length === 0
+  ) {
     return null;
   }
 
@@ -31,6 +36,11 @@ export function ProjectLinksSection({ project }: { project: ProjectDetails }) {
         {project.donationUrls.map((link) => (
           <ExternalLink key={link.id} href={link.url}>
             {link.platform}
+          </ExternalLink>
+        ))}
+        {project.externalLinks.map((link) => (
+          <ExternalLink key={link.id} href={link.url}>
+            {enumLabel(link.label)}
           </ExternalLink>
         ))}
       </div>

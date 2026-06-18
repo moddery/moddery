@@ -54,6 +54,16 @@ describe(fetchProjectDetails.name, () => {
               label: 'Sponsor',
               url: 'https://sponsor.example.test/project',
             },
+            {
+              kind: 'WEBSITE',
+              label: 'Homepage',
+              url: 'https://project.example.test',
+            },
+            {
+              kind: 'OTHER',
+              label: null,
+              url: 'https://docs.example.test/project',
+            },
           ],
           loaders: ['fabric'],
           owner: {
@@ -94,6 +104,18 @@ describe(fetchProjectDetails.name, () => {
         id: 'Sponsor',
         platform: 'Sponsor',
         url: 'https://sponsor.example.test/project',
+      },
+    ]);
+    expect(project.externalLinks).toEqual([
+      {
+        id: 'WEBSITE:https://project.example.test',
+        label: 'Homepage',
+        url: 'https://project.example.test',
+      },
+      {
+        id: 'OTHER:https://docs.example.test/project',
+        label: 'OTHER',
+        url: 'https://docs.example.test/project',
       },
     ]);
     expect(project.gallery[0]).toEqual({

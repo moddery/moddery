@@ -78,6 +78,13 @@ export function projectDetailsFromSummary(
         platform: link.label ?? 'Donation',
         url: link.url,
       })),
+    externalLinks: project.links
+      .filter((link) => !directProjectLinkKinds.has(link.kind))
+      .map((link) => ({
+        id: `${link.kind}:${link.url}`,
+        label: link.label ?? link.kind,
+        url: link.url,
+      })),
     downloads: project.downloads,
     followers: project.followers,
     gallery: project.gallery.map((image) => ({
@@ -185,6 +192,14 @@ export function projectSearchTags({
     ...versions.map((version) => `game-version:${version}`),
   ];
 }
+
+const directProjectLinkKinds = new Set([
+  'SOURCE',
+  'ISSUES',
+  'WIKI',
+  'DISCORD',
+  'DONATION',
+]);
 
 function projectLinkUrl(
   links: ProjectSummary['links'],

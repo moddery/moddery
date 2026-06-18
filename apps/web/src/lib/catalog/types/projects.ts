@@ -43,6 +43,7 @@ export interface ProjectDetails {
   wikiUrl: string | null;
   discordUrl: string | null;
   donationUrls: { id: string; platform: string; url: string }[];
+  externalLinks: { id: string; label: string; url: string }[];
   gallery: ProjectGalleryImage[];
 }
 
