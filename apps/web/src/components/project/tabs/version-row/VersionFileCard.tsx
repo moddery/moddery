@@ -1,12 +1,13 @@
 import {
   CheckCircle2,
   Clock3,
+  Copy,
   Download,
   FileCode2,
   ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 import { cn } from '../../../../lib/cn.ts';
@@ -71,16 +72,38 @@ function FileHashes({ hashes }: { hashes: VersionFile['hashes'] }) {
         {hashes.map((hash) => (
           <div
             key={hash.algorithm}
-            className="grid min-w-0 gap-1 text-xs sm:grid-cols-[5rem_minmax(0,1fr)]"
+            className="grid min-w-0 gap-1 text-xs sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center"
           >
             <span className="font-bold text-muted">{hash.algorithm}</span>
             <code className="truncate rounded bg-control px-1.5 py-0.5 font-mono text-[11px] text-ink">
               {hash.value}
             </code>
+            <CopyHashButton value={hash.value} />
           </div>
         ))}
       </div>
     </FileMetadataBlock>
+  );
+}
+
+function CopyHashButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyHash() {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copyHash()}
+      className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-line px-2 text-[11px] font-bold text-muted transition-colors hover:bg-control-hover hover:text-accent"
+    >
+      <Copy className="size-3.5" />
+      {copied ? 'Copied' : 'Copy'}
+    </button>
   );
 }
 
