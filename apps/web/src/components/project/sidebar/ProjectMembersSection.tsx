@@ -1,5 +1,6 @@
-import { UserRound } from 'lucide-react';
+import { ShieldCheck, UserRound } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { type ReactNode } from 'react';
 import { useState } from 'react';
 
 import {
@@ -54,7 +55,7 @@ export function ProjectMembersSection({
             <a
               key={member.user.id}
               href={`/users/${member.user.username}`}
-              className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5"
+              className="flex min-w-0 items-start gap-2 rounded-md px-2 py-1.5"
             >
               {member.user.avatar_url ? (
                 <img
@@ -71,10 +72,24 @@ export function ProjectMembersSection({
                 <span className="block truncate text-sm font-bold text-ink">
                   {name}
                 </span>
-                <span className="block truncate text-xs font-semibold text-muted">
-                  {member.owner ? 'Owner' : member.role}
+                <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted">
+                  <span>{member.owner ? 'Owner' : member.role}</span>
+                  {!member.accepted && <MemberBadge>Invited</MemberBadge>}
+                  {member.permissions.slice(0, 2).map((permission) => (
+                    <MemberBadge key={permission}>
+                      {permissionLabel(permission)}
+                    </MemberBadge>
+                  ))}
+                  {member.permissions.length > 2 && (
+                    <MemberBadge>
+                      +{(member.permissions.length - 2).toLocaleString('en-US')}
+                    </MemberBadge>
+                  )}
                 </span>
               </span>
+              {member.owner && (
+                <ShieldCheck className="mt-1 size-4 shrink-0 text-accent-icon" />
+              )}
             </a>
           );
         })}
@@ -86,4 +101,20 @@ export function ProjectMembersSection({
       )}
     </section>
   );
+}
+
+function MemberBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-bold text-muted">
+      {children}
+    </span>
+  );
+}
+
+function permissionLabel(permission: string): string {
+  return permission
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
