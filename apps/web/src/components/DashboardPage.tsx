@@ -44,6 +44,7 @@ import {
 
 export function DashboardPage({
   onOpenCollection,
+  onOpenOrganization,
   onOpenProject,
   onTagSearch,
 }: {
@@ -51,6 +52,7 @@ export function DashboardPage({
     ownerUsername: string;
     slug: string;
   }) => void;
+  onOpenOrganization?: (slug: string) => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
@@ -176,6 +178,7 @@ export function DashboardPage({
         <DashboardSummarySections
           dashboard={dashboard}
           onOpenCollection={onOpenCollection}
+          onOpenOrganization={onOpenOrganization}
           onOpenProject={onOpenProject}
           onTagSearch={onTagSearch}
           onUpdated={refreshDashboard}

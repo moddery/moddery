@@ -3,8 +3,10 @@ import { OrganizationRow } from '../../ContentManagementPanels.tsx';
 
 export function OrganizationsSummary({
   dashboard,
+  onOpenOrganization,
 }: {
   dashboard: DashboardData;
+  onOpenOrganization?: (slug: string) => void;
 }) {
   return (
     <section className="mt-8">
@@ -26,6 +28,7 @@ export function OrganizationsSummary({
           {dashboard.organizations.map((organization) => (
             <OrganizationRow
               key={organization.id}
+              onOpenOrganization={onOpenOrganization}
               organization={organization}
             />
           ))}

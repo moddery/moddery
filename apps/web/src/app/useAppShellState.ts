@@ -20,6 +20,7 @@ import {
   writeDashboardToUrl,
   writeHomeToUrl,
   writeNotificationsToUrl,
+  writeOrganizationToUrl,
   writeOrganizationsToUrl,
   writePlatformToUrl,
   writeProfileToUrl,
@@ -198,6 +199,13 @@ export function useAppShellState() {
     scrollToTop();
   }
 
+  function openOrganization(slug: string) {
+    resetSelection('organization');
+    setSelectedOrganization(slug);
+    writeOrganizationToUrl(slug);
+    scrollToTop();
+  }
+
   function changeProjectType(nextType: ProjectType) {
     if (nextType === projectType) return;
     setProjectType(nextType);
@@ -326,6 +334,7 @@ export function useAppShellState() {
     openDiscover,
     openHome,
     openNotifications,
+    openOrganization,
     openOrganizations,
     openPlatform,
     openProject,

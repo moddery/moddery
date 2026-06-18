@@ -6,6 +6,7 @@ import {
   profileFromUrl,
   projectFromUrl,
   viewFromUrl,
+  writeOrganizationToUrl,
   writePlatformToUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
@@ -111,6 +112,17 @@ describe('routing helpers', () => {
     writePlatformToUrl();
 
     expect(fakeWindow.location.pathname).toBe('/platform');
+    expect(fakeWindow.location.search).toBe('');
+  });
+
+  test('writes organization detail URLs without stale detail parameters', () => {
+    const fakeWindow = setWindowUrl(
+      'https://moddery.test/mods?project=old&type=mod&tab=versions',
+    );
+
+    writeOrganizationToUrl('build team');
+
+    expect(fakeWindow.location.pathname).toBe('/organizations/build%20team');
     expect(fakeWindow.location.search).toBe('');
   });
 });

@@ -7,8 +7,10 @@ import { projectTypeFromKind } from '../../../lib/projectTypes.ts';
 import { projectPath } from '../../mod-card/ModCardParts.tsx';
 
 export function OrganizationRow({
+  onOpenOrganization,
   organization,
 }: {
+  onOpenOrganization?: (slug: string) => void;
   organization: DashboardOrganization;
 }) {
   return (
@@ -21,6 +23,11 @@ export function OrganizationRow({
         />
         <a
           href={`/organizations/${organization.slug}`}
+          onClick={(event) => {
+            if (!onOpenOrganization) return;
+            event.preventDefault();
+            onOpenOrganization(organization.slug);
+          }}
           className="font-display text-lg font-extrabold text-ink transition-colors hover:text-accent"
         >
           {organization.name}

@@ -108,6 +108,14 @@ export function writeOrganizationsToUrl() {
   writeStaticViewToUrl('/organizations');
 }
 
+export function writeOrganizationToUrl(slug: string) {
+  const url = new URL(window.location.href);
+  url.pathname = `/organizations/${encodeURIComponent(slug)}`;
+  clearProjectSearchParams(url);
+
+  window.history.pushState(null, '', url);
+}
+
 export function writeProjectListToUrl(projectType: ProjectType) {
   const url = new URL(window.location.href);
   url.pathname = `/${projectTypeMeta(projectType).path}`;

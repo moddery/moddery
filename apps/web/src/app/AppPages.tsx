@@ -116,6 +116,7 @@ export function AppPages({ app }: AppPagesProps) {
       ) : app.appView === 'dashboard' ? (
         <DashboardPage
           onOpenCollection={app.openCollection}
+          onOpenOrganization={app.openOrganization}
           onOpenProject={app.openProject}
           onTagSearch={app.searchByTag}
         />

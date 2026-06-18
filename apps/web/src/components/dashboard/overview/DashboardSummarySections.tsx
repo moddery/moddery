@@ -9,6 +9,7 @@ import { ProjectsSummary } from './summary-sections/ProjectsSummary.tsx';
 export function DashboardSummarySections({
   dashboard,
   onOpenCollection,
+  onOpenOrganization,
   onOpenProject,
   onTagSearch,
   onUpdated,
@@ -18,13 +19,17 @@ export function DashboardSummarySections({
     ownerUsername: string;
     slug: string;
   }) => void;
+  onOpenOrganization?: (slug: string) => void;
   onOpenProject: (mod: Mod) => void;
   onTagSearch?: (tag: SearchTag) => void;
   onUpdated: () => Promise<void>;
 }) {
   return (
     <>
-      <OrganizationsSummary dashboard={dashboard} />
+      <OrganizationsSummary
+        dashboard={dashboard}
+        onOpenOrganization={onOpenOrganization}
+      />
       <ProjectsSummary
         dashboard={dashboard}
         onOpenProject={onOpenProject}
