@@ -77,6 +77,8 @@ function NotificationActionLink({ url }: { url: string }) {
     'inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-bold text-ink transition-colors hover:bg-control-hover';
 
   if (url.startsWith('/')) {
+    const target = new URL(url, window.location.href);
+
     return (
       <a
         href={url}
@@ -84,7 +86,9 @@ function NotificationActionLink({ url }: { url: string }) {
           event.preventDefault();
           window.history.pushState(null, '', url);
           window.dispatchEvent(new PopStateEvent('popstate'));
-          window.scrollTo({ top: 0 });
+          if (target.hash === '') {
+            window.scrollTo({ top: 0 });
+          }
         }}
         className={className}
       >

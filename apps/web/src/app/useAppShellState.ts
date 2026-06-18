@@ -79,6 +79,7 @@ export function useAppShellState() {
       setProjectType(
         nextProject?.projectType ?? projectTypeFromPath() ?? 'mod',
       );
+      scrollToHashTarget(new URL(window.location.href));
     }
 
     window.addEventListener('popstate', handlePopState);
@@ -296,7 +297,9 @@ export function useAppShellState() {
     }
 
     if (url.pathname === '/dashboard') {
-      openDashboard();
+      resetSelection('dashboard');
+      window.history.pushState(null, '', url);
+      scrollToUrlTarget(url);
       return true;
     }
 
@@ -369,4 +372,25 @@ function resolveView(
 
 function scrollToTop() {
   window.scrollTo({ top: 0 });
+}
+
+function scrollToUrlTarget(url: URL) {
+  if (url.hash === '') {
+    scrollToTop();
+    return;
+  }
+
+  scrollToHashTarget(url);
+}
+
+function scrollToHashTarget(url: URL) {
+  const id = decodeURIComponent(url.hash.slice(1));
+  if (id.length === 0) return;
+
+  window.setTimeout(() => {
+    document.getElementById(id)?.scrollIntoView({
+      block: 'start',
+      behavior: 'smooth',
+    });
+  }, 0);
 }

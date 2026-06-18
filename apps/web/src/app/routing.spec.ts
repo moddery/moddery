@@ -7,6 +7,7 @@ import {
   projectFromUrl,
   viewFromUrl,
   writeOrganizationToUrl,
+  writeDashboardToUrl,
   writePlatformToUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
@@ -113,6 +114,18 @@ describe('routing helpers', () => {
 
     expect(fakeWindow.location.pathname).toBe('/platform');
     expect(fakeWindow.location.search).toBe('');
+  });
+
+  test('writes dashboard route without stale hashes', () => {
+    const fakeWindow = setWindowUrl(
+      'https://moddery.test/notifications#dashboard-account',
+    );
+
+    writeDashboardToUrl();
+
+    expect(fakeWindow.location.pathname).toBe('/dashboard');
+    expect(fakeWindow.location.search).toBe('');
+    expect(fakeWindow.location.hash).toBe('');
   });
 
   test('writes organization detail URLs without stale detail parameters', () => {

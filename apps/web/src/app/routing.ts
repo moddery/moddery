@@ -216,6 +216,7 @@ function projectTypeFromPathname(pathname: string): ProjectType | null {
 function writeStaticViewToUrl(pathname: string) {
   const url = new URL(window.location.href);
   url.pathname = pathname;
+  url.hash = '';
   clearProjectSearchParams(url);
 
   window.history.pushState(null, '', url);

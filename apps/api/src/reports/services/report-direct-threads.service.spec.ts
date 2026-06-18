@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test';
+import { NotificationState } from '@prisma/client';
 
+import { type NotificationsService } from '../../notifications/services/notifications.service.js';
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { ReportDirectThreadsService } from './report-direct-threads.service.js';
 
@@ -100,34 +102,38 @@ describe(ReportDirectThreadsService.name, () => {
 
   test('creates direct threads with both members and first message', async () => {
     const creates: unknown[] = [];
-    const service = new ReportDirectThreadsService({
-      thread: {
-        create: (query: unknown) => {
-          creates.push(query);
-          return Promise.resolve({ id: 'thread-a' });
-        },
-        findFirst: (query: unknown) => {
-          if (
-            typeof query === 'object' &&
-            query !== null &&
-            'where' in query &&
-            (query as { where?: { id?: string } }).where?.id === 'thread-a'
-          ) {
-            return Promise.resolve(directThreadRow());
-          }
+    const notifications: unknown[] = [];
+    const service = new ReportDirectThreadsService(
+      {
+        thread: {
+          create: (query: unknown) => {
+            creates.push(query);
+            return Promise.resolve({ id: 'thread-a' });
+          },
+          findFirst: (query: unknown) => {
+            if (
+              typeof query === 'object' &&
+              query !== null &&
+              'where' in query &&
+              (query as { where?: { id?: string } }).where?.id === 'thread-a'
+            ) {
+              return Promise.resolve(directThreadRow());
+            }
 
-          return Promise.resolve(null);
+            return Promise.resolve(null);
+          },
         },
-      },
-      user: {
-        findFirst: () =>
-          Promise.resolve({
-            displayName: 'Target',
-            id: 'user-b',
-            username: 'target',
-          }),
-      },
-    } as unknown as PrismaService);
+        user: {
+          findFirst: () =>
+            Promise.resolve({
+              displayName: 'Target',
+              id: 'user-b',
+              username: 'target',
+            }),
+        },
+      } as unknown as PrismaService,
+      notificationServiceMock(notifications),
+    );
 
     const thread = await service.createDirectThread({
       authorId: 'user-a',
@@ -151,6 +157,15 @@ describe(ReportDirectThreadsService.name, () => {
       select: { id: true },
     });
     expect(thread.messages[0]?.body).toBe('Hey there.');
+    expect(notifications[0]).toEqual(
+      expect.objectContaining({
+        actionUrl: '/dashboard#dashboard-account',
+        body: 'Hey there.',
+        title: 'New message from Sender',
+        type: 'message',
+        userId: 'user-b',
+      }),
+    );
   });
 
   test('requires direct thread membership before creating messages', async () => {
@@ -175,6 +190,27 @@ describe(ReportDirectThreadsService.name, () => {
     expect((thrown as Error).message).toBe('Thread access required');
   });
 });
+
+function notificationServiceMock(
+  notifications: unknown[],
+): NotificationsService {
+  return {
+    sendUserNotification: (notification: unknown) => {
+      notifications.push(notification);
+      return Promise.resolve({
+        actionUrl: '/dashboard#dashboard-account',
+        body: 'Hey there.',
+        createdAt: new Date('2026-01-01T00:01:00.000Z'),
+        id: 'notification-a',
+        readAt: null,
+        state: NotificationState.PENDING,
+        title: 'New message from Sender',
+        type: 'message',
+        userId: 'user-b',
+      });
+    },
+  } as unknown as NotificationsService;
+}
 
 function directThreadRow() {
   return {
