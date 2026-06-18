@@ -10,6 +10,7 @@ export function PublishVersionFields({
   fileSize,
   fileUrl,
   gameVersions,
+  hasLocalFile,
   loaders,
   name,
   projectSlug,
@@ -52,6 +53,7 @@ export function PublishVersionFields({
         fileName={fileName}
         fileSize={fileSize}
         fileUrl={fileUrl}
+        hasLocalFile={hasLocalFile}
         sha1={sha1}
         sha256={sha256}
         onFileNameChange={onFileNameChange}

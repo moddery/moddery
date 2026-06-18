@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 
 import {
+  computeVersionFileHashes,
   createVersion,
   type DashboardData,
   uploadProjectFile,
@@ -29,6 +30,7 @@ export function PublishVersionForm({
       const input = form.buildInput();
       if (localFile !== null) {
         const versionFile = input.files[0];
+        const hashes = await computeVersionFileHashes(localFile);
         const target = await uploadProjectFile({
           file: localFile,
           projectSlug: input.projectSlug,
@@ -36,7 +38,7 @@ export function PublishVersionForm({
         });
         input.files[0] = {
           fileName: localFile.name,
-          hashes: versionFile?.hashes ?? [],
+          hashes,
           primary: versionFile?.primary ?? true,
           sizeBytes: localFile.size,
           url: target.objectUrl,
@@ -73,6 +75,7 @@ export function PublishVersionForm({
       >
         <PublishVersionFields
           {...form.fields}
+          hasLocalFile={localFile !== null}
           onLocalFileChange={(file) => {
             setLocalFile(file);
             form.fields.onLocalFileChange(file);

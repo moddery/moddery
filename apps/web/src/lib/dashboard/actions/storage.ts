@@ -56,3 +56,24 @@ export async function uploadProjectFile({
 
   return target;
 }
+
+export async function computeVersionFileHashes(
+  file: File,
+): Promise<{ algorithm: string; value: string }[]> {
+  const bytes = await file.arrayBuffer();
+  const [sha1, sha256] = await Promise.all([
+    crypto.subtle.digest('SHA-1', bytes),
+    crypto.subtle.digest('SHA-256', bytes),
+  ]);
+
+  return [
+    { algorithm: 'SHA1', value: digestToHex(sha1) },
+    { algorithm: 'SHA256', value: digestToHex(sha256) },
+  ];
+}
+
+function digestToHex(digest: ArrayBuffer): string {
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}

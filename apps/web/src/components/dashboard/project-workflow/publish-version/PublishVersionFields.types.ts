@@ -10,6 +10,7 @@ export interface PublishVersionFieldsProps {
   fileSize: string;
   fileUrl: string;
   gameVersions: string;
+  hasLocalFile: boolean;
   loaders: string;
   name: string;
   projectSlug: string;

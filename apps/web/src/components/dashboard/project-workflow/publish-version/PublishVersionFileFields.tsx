@@ -6,6 +6,7 @@ type FileFieldsProps = Pick<
   | 'fileName'
   | 'fileSize'
   | 'fileUrl'
+  | 'hasLocalFile'
   | 'sha1'
   | 'sha256'
   | 'onFileNameChange'
@@ -20,6 +21,7 @@ export function PublishVersionFileFields({
   fileName,
   fileSize,
   fileUrl,
+  hasLocalFile,
   sha1,
   sha256,
   onFileNameChange,
@@ -54,7 +56,7 @@ export function PublishVersionFileFields({
           label="File URL"
           value={fileUrl}
           onChange={onFileUrlChange}
-          required
+          required={!hasLocalFile}
         />
         <DashboardField
           label="Size bytes"
