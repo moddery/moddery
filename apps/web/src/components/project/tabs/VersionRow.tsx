@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import { recordDownload, type ProjectVersion } from '../../../lib/catalog.ts';
+import {
+  recordDownload,
+  type DownloadRecord,
+  type ProjectVersion,
+} from '../../../lib/catalog.ts';
 import { cn } from '../../../lib/cn.ts';
 import { VersionActions } from './version-row/VersionActions.tsx';
 import { VersionChangelog } from './version-row/VersionChangelog.tsx';
@@ -10,10 +14,12 @@ import { VersionReportForm } from './version-row/VersionReportForm.tsx';
 import { VersionSummary } from './version-row/VersionSummary.tsx';
 
 export function VersionRow({
+  onDownloadRecorded,
   selected,
   version,
   onSelectVersion,
 }: {
+  onDownloadRecorded: (record: DownloadRecord) => void;
   selected: boolean;
   version: ProjectVersion;
   onSelectVersion: (versionNumber: string | null) => void;
@@ -28,7 +34,7 @@ export function VersionRow({
     Boolean(version.changelog?.trim());
 
   async function downloadFile(file: ProjectVersion['files'][number]) {
-    await recordDownload(file.id);
+    onDownloadRecorded(await recordDownload(file.id));
     window.location.assign(file.url);
   }
 

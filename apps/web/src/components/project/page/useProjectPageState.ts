@@ -9,11 +9,13 @@ import {
   fetchViewerProjectFollowState,
   recordDownload,
   recordProjectView,
+  type DownloadRecord,
   type ProjectAnalytics,
   type ProjectDetails,
   type ProjectFollowState,
   type ProjectMember,
   type ProjectVersion,
+  type ProjectVersionSearchResult,
 } from '../../../lib/catalog.ts';
 import { compareVersions } from '../../../lib/format.ts';
 import { type ProjectType } from '../../../types.ts';
@@ -125,6 +127,43 @@ export function useProjectPageState({
     );
   }
 
+  function updateDownloadRecord(record: DownloadRecord) {
+    queryClient.setQueryData<ProjectPageQueryData>(
+      projectQueryKey,
+      (current) => {
+        if (current === undefined) return current;
+
+        return {
+          ...current,
+          analytics:
+            current.analytics === null
+              ? null
+              : {
+                  ...current.analytics,
+                  totalDownloads: record.projectDownloads,
+                },
+          project: {
+            ...current.project,
+            downloads: record.projectDownloads,
+          },
+          versions: updateVersionDownloads(current.versions, record),
+        };
+      },
+    );
+
+    queryClient.setQueriesData<ProjectVersionSearchResult>(
+      { queryKey: ['catalog', 'project-version-search', slug] },
+      (current) => {
+        if (current === undefined) return current;
+
+        return {
+          ...current,
+          versions: updateVersionDownloads(current.versions, record),
+        };
+      },
+    );
+  }
+
   const project = projectQuery.data?.project;
   const versions = projectQuery.data?.versions ?? [];
   const members = projectQuery.data?.members ?? [];
@@ -156,7 +195,7 @@ export function useProjectPageState({
       return;
     }
 
-    await recordDownload(latestFile.id);
+    updateDownloadRecord(await recordDownload(latestFile.id));
     window.location.assign(latestFile.url);
   }
 
@@ -179,7 +218,19 @@ export function useProjectPageState({
     selectedVersion,
     selectVersion,
     supportedVersions,
+    updateDownloadRecord,
     updateFollowState,
     versions,
   };
+}
+
+function updateVersionDownloads(
+  versions: ProjectVersion[],
+  record: DownloadRecord,
+): ProjectVersion[] {
+  return versions.map((version) =>
+    version.id === record.versionId
+      ? { ...version, downloads: record.versionDownloads }
+      : version,
+  );
 }

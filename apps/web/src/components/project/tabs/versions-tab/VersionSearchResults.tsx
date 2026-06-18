@@ -1,4 +1,7 @@
-import { type ProjectVersion } from '../../../../lib/catalog.ts';
+import {
+  type DownloadRecord,
+  type ProjectVersion,
+} from '../../../../lib/catalog.ts';
 import { Pagination } from '../../../Pagination.tsx';
 import { EmptyTab } from '../EmptyTab.tsx';
 import { VersionRow } from '../VersionRow.tsx';
@@ -6,6 +9,7 @@ import { VersionRow } from '../VersionRow.tsx';
 export function VersionSearchResults({
   isError,
   isLoading,
+  onDownloadRecorded,
   onPage,
   onSelectVersion,
   page,
@@ -15,6 +19,7 @@ export function VersionSearchResults({
 }: {
   isError: boolean;
   isLoading: boolean;
+  onDownloadRecorded: (record: DownloadRecord) => void;
   onPage: (page: number) => void;
   onSelectVersion: (versionNumber: string | null) => void;
   page: number;
@@ -60,6 +65,7 @@ export function VersionSearchResults({
           key={version.id}
           selected={version.versionNumber === selectedVersion}
           version={version}
+          onDownloadRecorded={onDownloadRecorded}
           onSelectVersion={onSelectVersion}
         />
       ))}

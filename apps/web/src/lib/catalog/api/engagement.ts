@@ -13,6 +13,7 @@ import {
   type ProjectFollowStateMutationData,
   type ProjectFollowStateQueryData,
   type ProjectMembersQueryVariables,
+  type DownloadRecord,
   type RecordDownloadMutationData,
   type RecordDownloadMutationVariables,
   type RecordProjectViewMutationData,
@@ -92,7 +93,7 @@ export async function setProjectFollowing(
   return state;
 }
 
-export async function recordDownload(fileId: string): Promise<void> {
+export async function recordDownload(fileId: string): Promise<DownloadRecord> {
   const { data } = await apolloClient.mutate<
     RecordDownloadMutationData,
     RecordDownloadMutationVariables
@@ -104,6 +105,8 @@ export async function recordDownload(fileId: string): Promise<void> {
   if (!data?.recordDownload) {
     throw new Error('Download record did not return from the API');
   }
+
+  return data.recordDownload;
 }
 
 export async function recordProjectView(projectSlug: string): Promise<void> {

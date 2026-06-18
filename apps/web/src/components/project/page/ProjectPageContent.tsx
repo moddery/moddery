@@ -2,6 +2,7 @@ import { cn } from '../../../lib/cn.ts';
 import {
   type ProjectAnalytics,
   type ProjectDetails,
+  type DownloadRecord,
   type ProjectFollowState,
   type ProjectGalleryImage,
   type ProjectMember,
@@ -28,6 +29,7 @@ export function ProjectPageContent({
   latestVersion,
   members,
   onDownloadLatest,
+  onDownloadRecorded,
   onFollowChanged,
   onSelectTab,
   onSelectVersion,
@@ -45,6 +47,7 @@ export function ProjectPageContent({
   latestVersion: ProjectVersion | undefined;
   members: ProjectMember[];
   onDownloadLatest: () => void;
+  onDownloadRecorded: (record: DownloadRecord) => void;
   onFollowChanged: (state: ProjectFollowState) => void;
   onSelectTab: (tab: ProjectTab) => void;
   onSelectVersion: (versionNumber: string | null) => void;
@@ -86,6 +89,7 @@ export function ProjectPageContent({
 
           {activeTab === 'versions' && (
             <VersionsTab
+              onDownloadRecorded={onDownloadRecorded}
               projectSlug={project.slug}
               selectedVersion={selectedVersion}
               versions={versions}

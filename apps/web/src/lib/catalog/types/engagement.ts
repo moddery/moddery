@@ -38,13 +38,15 @@ export type RemoveProjectFromCollectionMutationVariables =
   AddProjectToCollectionMutationVariables;
 
 export interface RecordDownloadMutationData {
-  recordDownload: {
-    fileId: string;
-    projectDownloads: number;
-    projectId: string;
-    versionDownloads: number;
-    versionId: string;
-  };
+  recordDownload: DownloadRecord;
+}
+
+export interface DownloadRecord {
+  fileId: string;
+  projectDownloads: number;
+  projectId: string;
+  versionDownloads: number;
+  versionId: string;
 }
 
 export interface RecordProjectViewMutationData {

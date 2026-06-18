@@ -1,15 +1,20 @@
-import { type ProjectVersion } from '../../../lib/catalog.ts';
+import {
+  type DownloadRecord,
+  type ProjectVersion,
+} from '../../../lib/catalog.ts';
 import { EmptyTab } from './EmptyTab.tsx';
 import { useVersionSearchState } from './versions-tab/useVersionSearchState.ts';
 import { VersionSearchResults } from './versions-tab/VersionSearchResults.tsx';
 import { VersionsToolbar } from './VersionsToolbar.tsx';
 
 export function VersionsTab({
+  onDownloadRecorded,
   selectedVersion,
   onSelectVersion,
   projectSlug,
   versions,
 }: {
+  onDownloadRecorded: (record: DownloadRecord) => void;
   selectedVersion: string | null;
   onSelectVersion: (versionNumber: string | null) => void;
   projectSlug: string;
@@ -52,6 +57,7 @@ export function VersionsTab({
         selectedVersion={selectedVersion}
         totalPages={search.totalPages}
         versions={search.visibleVersions}
+        onDownloadRecorded={onDownloadRecorded}
         onPage={search.setPage}
         onSelectVersion={onSelectVersion}
       />
