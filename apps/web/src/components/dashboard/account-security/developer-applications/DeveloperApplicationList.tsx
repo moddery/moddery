@@ -156,17 +156,32 @@ function RedirectUriList({
 }: {
   redirectUris: OAuthClientSummary['redirectUris'];
 }) {
+  if (redirectUris.length === 0) {
+    return (
+      <p className="text-xs font-semibold text-muted">
+        No redirect URIs registered.
+      </p>
+    );
+  }
+
   return (
-    <div className="flex flex-wrap gap-2 text-xs font-semibold text-muted">
+    <div className="grid gap-1.5 text-xs font-semibold text-muted">
       {redirectUris.map((redirectUri) => (
-        <span
+        <div
           key={redirectUri.id}
-          className="max-w-full truncate rounded-md border border-line px-2 py-1"
+          className="flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-line px-2 py-1"
           title={redirectUri.uri}
         >
-          {redirectUri.uri}
-        </span>
+          <span className="min-w-0 truncate text-ink">{redirectUri.uri}</span>
+          <span className="text-faint">{redirectUriLabel(redirectUri)}</span>
+        </div>
       ))}
     </div>
   );
+}
+
+export function redirectUriLabel({
+  createdAt,
+}: Pick<OAuthClientSummary['redirectUris'][number], 'createdAt'>) {
+  return `Added ${timeAgo(createdAt)}`;
 }
