@@ -12,7 +12,7 @@ import {
   projectKindFromType,
   projectTypeMeta,
 } from '../lib/projectTypes.ts';
-import { CategoryTag, loaderLabel, LoaderTag } from './Chips.tsx';
+import { CategoryTag, loaderLabel, LoaderTag, VersionTag } from './Chips.tsx';
 
 export function PlatformPage() {
   const metadataQuery = useQuery({
@@ -176,9 +176,10 @@ function CompatibilitySection({
               <a
                 key={version}
                 href={discoverHref({ version })}
-                className="inline-flex items-center rounded-md bg-surface-2 px-2 py-1 text-xs font-semibold text-muted transition-colors hover:bg-control-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                aria-label={`Search projects for game version ${version}`}
               >
-                {version}
+                <VersionTag version={version} />
               </a>
             ))}
           </div>
