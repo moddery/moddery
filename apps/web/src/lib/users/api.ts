@@ -4,6 +4,7 @@ import { apolloClient } from '../../apollo.js';
 import {
   ACCEPT_FRIEND_REQUEST_MUTATION,
   BLOCK_USER_MUTATION,
+  CREATE_USER_DIRECT_THREAD_MUTATION,
   CREATE_USER_REPORT_MUTATION,
   PUBLIC_USER_COLLECTIONS_QUERY,
   PUBLIC_USER_PROJECTS_QUERY,
@@ -71,6 +72,19 @@ interface CreateUserReportMutationVariables {
   input: {
     body: string;
     reason: ReportReason;
+    username: string;
+  };
+}
+
+interface CreateUserDirectThreadMutationData {
+  createDirectThread: {
+    id: string;
+  };
+}
+
+interface CreateUserDirectThreadMutationVariables {
+  input: {
+    body: string;
     username: string;
   };
 }
@@ -227,6 +241,25 @@ export async function createUserReport(input: {
   }
 
   return data.createUserReport;
+}
+
+export async function createUserDirectThread(input: {
+  body: string;
+  username: string;
+}): Promise<string> {
+  const { data } = await apolloClient.mutate<
+    CreateUserDirectThreadMutationData,
+    CreateUserDirectThreadMutationVariables
+  >({
+    mutation: CREATE_USER_DIRECT_THREAD_MUTATION,
+    variables: { input },
+  });
+
+  if (data?.createDirectThread === undefined) {
+    throw new Error('Direct thread did not return from the API');
+  }
+
+  return data.createDirectThread.id;
 }
 
 export async function fetchViewerFriendship(username: string): Promise<{

@@ -269,3 +269,11 @@ export const CREATE_USER_REPORT_MUTATION = gql`
     }
   }
 `;
+
+export const CREATE_USER_DIRECT_THREAD_MUTATION = gql`
+  mutation CreateUserDirectThread($input: CreateDirectThreadInput!) {
+    createDirectThread(input: $input) {
+      id
+    }
+  }
+`;
