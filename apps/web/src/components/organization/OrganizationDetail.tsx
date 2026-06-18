@@ -8,6 +8,7 @@ import {
 } from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
 import { EmptyState } from '../EmptyState.tsx';
+import { type SearchTag } from '../ModCard.tsx';
 import { OrganizationHeader } from './OrganizationHeader.tsx';
 import { OrganizationMembers } from './OrganizationMembers.tsx';
 import { OrganizationProjectList } from './OrganizationProjectList.tsx';
@@ -19,9 +20,11 @@ const projectPageSize = 12;
 export function OrganizationDetail({
   slug,
   onOpenProject,
+  onTagSearch,
 }: {
   slug: string;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
 }) {
   const [memberPage, setMemberPage] = useState(1);
   const [projectPage, setProjectPage] = useState(1);
@@ -78,6 +81,7 @@ export function OrganizationDetail({
         onPage={setProjectPage}
         organization={organization}
         onOpenProject={onOpenProject}
+        onTagSearch={onTagSearch}
         page={projectPage}
         projects={projectsQuery.data?.projects ?? organization.projects}
         totalPages={Math.max(1, Math.ceil(projectTotal / projectPageSize))}

@@ -1,5 +1,6 @@
 import { type Mod } from '../types.ts';
 import { EmptyState } from './EmptyState.tsx';
+import { type SearchTag } from './ModCard.tsx';
 import { AccountSecurityPanels } from './dashboard/AccountSecurityPanels.tsx';
 import {
   AccountProfileForm,
@@ -44,12 +45,14 @@ import {
 export function DashboardPage({
   onOpenCollection,
   onOpenProject,
+  onTagSearch,
 }: {
   onOpenCollection?: (collection: {
     ownerUsername: string;
     slug: string;
   }) => void;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
 }) {
   const { canAdmin, canModerate, dashboard, dashboardQuery, refreshDashboard } =
     useDashboardPageState();
@@ -174,6 +177,7 @@ export function DashboardPage({
           dashboard={dashboard}
           onOpenCollection={onOpenCollection}
           onOpenProject={onOpenProject}
+          onTagSearch={onTagSearch}
           onUpdated={refreshDashboard}
         />
       </section>

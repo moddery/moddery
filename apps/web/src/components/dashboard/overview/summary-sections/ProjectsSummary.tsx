@@ -6,14 +6,16 @@ import {
 import { timeAgo } from '../../../../lib/format.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
 import { type Mod } from '../../../../types.ts';
-import { ModCard } from '../../../ModCard.tsx';
+import { ModCard, type SearchTag } from '../../../ModCard.tsx';
 
 export function ProjectsSummary({
   dashboard,
   onOpenProject,
+  onTagSearch,
 }: {
   dashboard: DashboardData;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
 }) {
   return (
     <section className="mt-8">
@@ -36,7 +38,12 @@ export function ProjectsSummary({
             const mod = dashboardProjectToMod(project);
             return (
               <div key={project.slug} className="space-y-2">
-                <ModCard mod={mod} layout="list" onOpen={onOpenProject} />
+                <ModCard
+                  mod={mod}
+                  layout="list"
+                  onOpen={onOpenProject}
+                  onTagSearch={onTagSearch}
+                />
                 <ProjectLifecycleSummary project={project} />
               </div>
             );

@@ -5,6 +5,7 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import { fetchPublicOrganizations } from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
 import { EmptyState } from '../EmptyState.tsx';
+import { type SearchTag } from '../ModCard.tsx';
 import { Pagination } from '../Pagination.tsx';
 import { OrganizationProjectGrid } from './OrganizationProjectList.tsx';
 import { OrganizationDirectorySkeleton } from './OrganizationSkeletons.tsx';
@@ -13,8 +14,10 @@ const pageSize = 20;
 
 export function OrganizationDirectory({
   onOpenProject,
+  onTagSearch,
 }: {
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
 }) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -127,6 +130,7 @@ export function OrganizationDirectory({
                 organization={organization}
                 projects={organization.projects}
                 onOpenProject={onOpenProject}
+                onTagSearch={onTagSearch}
               />
             </section>
           ))}

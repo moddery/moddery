@@ -117,6 +117,7 @@ export function AppPages({ app }: AppPagesProps) {
         <DashboardPage
           onOpenCollection={app.openCollection}
           onOpenProject={app.openProject}
+          onTagSearch={app.searchByTag}
         />
       ) : app.appView === 'notifications' ? (
         <NotificationsPage />
@@ -125,11 +126,15 @@ export function AppPages({ app }: AppPagesProps) {
       ) : app.appView === 'status' ? (
         <StatusPage />
       ) : app.appView === 'users' ? (
-        <UsersPage onOpenProject={app.openProject} />
+        <UsersPage
+          onOpenProject={app.openProject}
+          onTagSearch={app.searchByTag}
+        />
       ) : app.appView === 'organization' ? (
         <OrganizationPage
           slug={app.selectedOrganization}
           onOpenProject={app.openProject}
+          onTagSearch={app.searchByTag}
         />
       ) : app.appView === 'profile' && app.selectedUsername ? (
         <UserProfilePage

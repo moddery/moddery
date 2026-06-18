@@ -1,14 +1,16 @@
 import { userProjectToMod, type PublicUserListItem } from '../../lib/users.ts';
 import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
-import { ModCard } from '../ModCard.tsx';
+import { ModCard, type SearchTag } from '../ModCard.tsx';
 import { ProfileAvatar } from '../user-profile/profile-header/ProfileAvatar.tsx';
 
 export function UserDirectoryRow({
   onOpenProject,
+  onTagSearch,
   user,
 }: {
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   user: PublicUserListItem;
 }) {
   const name = user.displayName ?? user.username;
@@ -55,6 +57,7 @@ export function UserDirectoryRow({
                 mod={mod}
                 layout="list"
                 onOpen={onOpenProject}
+                onTagSearch={onTagSearch}
               />
             );
           })}

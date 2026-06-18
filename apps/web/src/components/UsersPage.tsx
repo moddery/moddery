@@ -5,6 +5,7 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import { fetchPublicUsers } from '../lib/users.ts';
 import { type Mod } from '../types.ts';
 import { EmptyState } from './EmptyState.tsx';
+import { type SearchTag } from './ModCard.tsx';
 import { Pagination } from './Pagination.tsx';
 import { UserDirectoryRow } from './users/UserDirectoryRow.tsx';
 import { UsersDirectorySkeleton } from './users/UsersDirectorySkeleton.tsx';
@@ -13,8 +14,10 @@ const pageSize = 20;
 
 export function UsersPage({
   onOpenProject,
+  onTagSearch,
 }: {
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
 }) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -94,6 +97,7 @@ export function UsersPage({
               key={user.id}
               user={user}
               onOpenProject={onOpenProject}
+              onTagSearch={onTagSearch}
             />
           ))}
           {totalPages > 1 && (

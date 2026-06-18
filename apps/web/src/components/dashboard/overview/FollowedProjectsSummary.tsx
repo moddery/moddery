@@ -7,7 +7,7 @@ import {
 } from '../../../lib/catalog.ts';
 import { type DashboardData } from '../../../lib/dashboard.ts';
 import { type Mod } from '../../../types.ts';
-import { ModCard } from '../../ModCard.tsx';
+import { ModCard, type SearchTag } from '../../ModCard.tsx';
 import { Pagination } from '../../Pagination.tsx';
 
 const pageSize = 20;
@@ -15,10 +15,12 @@ const pageSize = 20;
 export function FollowedProjectsSummary({
   dashboard,
   onOpenProject,
+  onTagSearch,
   onUpdated,
 }: {
   dashboard: DashboardData;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   onUpdated: () => Promise<void>;
 }) {
   const [page, setPage] = useState(1);
@@ -90,7 +92,12 @@ export function FollowedProjectsSummary({
           )}
           {followedProjects.map((project) => (
             <div key={project.slug} className="relative">
-              <ModCard mod={project} layout="list" onOpen={onOpenProject} />
+              <ModCard
+                mod={project}
+                layout="list"
+                onOpen={onOpenProject}
+                onTagSearch={onTagSearch}
+              />
               <button
                 type="button"
                 disabled={unfollowingSlug === project.slug}

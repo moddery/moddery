@@ -4,7 +4,7 @@ import {
   type OrganizationProjectPreview,
 } from '../../lib/organizations.ts';
 import { type Mod } from '../../types.ts';
-import { ModCard } from '../ModCard.tsx';
+import { ModCard, type SearchTag } from '../ModCard.tsx';
 import { Pagination } from '../Pagination.tsx';
 
 export function OrganizationProjectList({
@@ -12,6 +12,7 @@ export function OrganizationProjectList({
   onPage,
   organization,
   onOpenProject,
+  onTagSearch,
   page,
   projects,
   totalPages,
@@ -20,6 +21,7 @@ export function OrganizationProjectList({
   onPage: (page: number) => void;
   organization: OrganizationProfile;
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   page: number;
   projects: OrganizationProjectPreview[];
   totalPages: number;
@@ -47,6 +49,7 @@ export function OrganizationProjectList({
           organization={organization}
           projects={projects}
           onOpenProject={onOpenProject}
+          onTagSearch={onTagSearch}
         />
       )}
       {totalPages > 1 && (
@@ -60,10 +63,12 @@ export function OrganizationProjectList({
 
 export function OrganizationProjectGrid({
   onOpenProject,
+  onTagSearch,
   organization,
   projects,
 }: {
   onOpenProject: (mod: Mod) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   organization: Pick<
     OrganizationProfile,
     'color' | 'iconUrl' | 'id' | 'name' | 'slug'
@@ -80,6 +85,7 @@ export function OrganizationProjectGrid({
             mod={mod}
             layout="list"
             onOpen={onOpenProject}
+            onTagSearch={onTagSearch}
           />
         );
       })}
