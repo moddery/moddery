@@ -1,0 +1,440 @@
+import { describe, expect, test } from 'bun:test';
+
+import { type PrismaService } from '../../prisma/prisma.service.js';
+import { ProjectModerationService } from './project-moderation.service.js';
+
+function createProjectModerationService(
+  prisma: PrismaService,
+  searchService: unknown,
+) {
+  return new ProjectModerationService(
+    prisma,
+    searchService as never,
+    fakeRedis(),
+  );
+}
+
+function fakeRedis() {
+  return {
+    delete: () => Promise.resolve(),
+  } as never;
+}
+
+describe(ProjectModerationService.name, () => {
+  test('loads projects awaiting moderation', async () => {
+    const queries: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        project: {
+          count: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve(6);
+          },
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([
+              projectRow({ status: 'PENDING_REVIEW', title: 'Queued' }),
+            ]);
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
+    );
+
+    const result = await service.findProjectsForModeration({
+      limit: 10,
+      offset: 20,
+    });
+
+    expect(queries[0]).toEqual({
+      where: {
+        status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+      },
+    });
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        skip: 20,
+        take: 10,
+        where: {
+          status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+        },
+      }),
+    );
+    expect(result.totalHits).toBe(6);
+    expect(result.projects[0]?.status).toBe('PENDING_REVIEW');
+  });
+
+  test('loads the legacy project moderation list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        project: {
+          count: () => Promise.resolve(1),
+          findMany: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve([
+              projectRow({ status: 'PENDING_REVIEW', title: 'Queued' }),
+            ]);
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
+    );
+
+    const projects = await service.findProjectModerationList();
+
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        skip: 0,
+        take: 50,
+        where: {
+          status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+        },
+      }),
+    );
+    expect(projects[0]?.status).toBe('PENDING_REVIEW');
+  });
+
+  test('approves projects and records moderation actions', async () => {
+    const transactionSteps: unknown[] = [];
+    const indexed: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            moderationAction: {
+              create: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+            project: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  projectRow({ status: 'APPROVED', title: 'Ok' }),
+                ),
+              update: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+          }),
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: (projects: unknown[]) => {
+          indexed.push(projects);
+          return Promise.resolve();
+        },
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    const project = await service.moderateProject(
+      {
+        action: 'approve',
+        projectSlug: 'example',
+        reason: 'Looks good',
+      },
+      'moderator-a',
+    );
+
+    expect(transactionSteps[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          requestedStatus: null,
+          status: 'APPROVED',
+        }),
+        where: { id: 'project-a' },
+      }),
+    );
+    expect(transactionSteps[1]).toEqual({
+      data: {
+        kind: 'APPROVE',
+        moderatorId: 'moderator-a',
+        projectId: 'project-a',
+        reason: 'Looks good',
+      },
+    });
+    expect(indexed).toHaveLength(1);
+    expect(project.status).toBe('APPROVED');
+  });
+
+  test('locks projects for moderator review', async () => {
+    const upserts: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        moderationLock: {
+          upsert: (query: unknown) => {
+            upserts.push(query);
+            return Promise.resolve({});
+          },
+        },
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+          findUniqueOrThrow: () =>
+            Promise.resolve(
+              projectRow({
+                moderationLock: moderationLockRow(),
+                status: 'PENDING_REVIEW',
+                title: 'Queued',
+              }),
+            ),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
+    );
+
+    const project = await service.lockProjectForModeration(
+      'example',
+      'moderator-a',
+    );
+
+    expect(upserts[0]).toEqual(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          moderatorId: 'moderator-a',
+          projectId: 'project-a',
+        }),
+        update: expect.objectContaining({
+          moderatorId: 'moderator-a',
+        }),
+        where: { projectId: 'project-a' },
+      }),
+    );
+    expect(project.moderationLock?.moderator.username).toBe('moderator');
+  });
+
+  test('releases project moderation locks owned by the moderator', async () => {
+    const deletes: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        moderationLock: {
+          deleteMany: (query: unknown) => {
+            deletes.push(query);
+            return Promise.resolve({ count: 1 });
+          },
+        },
+        project: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'project-a',
+              moderationLock: { moderatorId: 'moderator-a' },
+            }),
+          findUniqueOrThrow: () =>
+            Promise.resolve(
+              projectRow({ status: 'PENDING_REVIEW', title: 'Queued' }),
+            ),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
+    );
+
+    const project = await service.releaseProjectModerationLock(
+      'example',
+      'moderator-a',
+    );
+
+    expect(deletes[0]).toEqual({ where: { projectId: 'project-a' } });
+    expect(project.moderationLock).toBeNull();
+  });
+
+  test('loads project moderation actions newest first with pagination', async () => {
+    const queries: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        moderationAction: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(8);
+          },
+          findMany: (query: unknown) => {
+            queries.push({ findMany: query });
+            return Promise.resolve([moderationActionRow()]);
+          },
+        },
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
+    );
+
+    const result = await service.findProjectModerationActions('example', {
+      limit: 10,
+      offset: 20,
+    });
+
+    expect(queries[0]).toEqual({
+      count: { where: { projectId: 'project-a' } },
+    });
+    expect(queries[1]).toEqual({
+      findMany: {
+        orderBy: { createdAt: 'desc' },
+        select: {
+          createdAt: true,
+          id: true,
+          kind: true,
+          moderator: {
+            select: {
+              displayName: true,
+              id: true,
+              username: true,
+            },
+          },
+          projectId: true,
+          reason: true,
+        },
+        skip: 20,
+        take: 10,
+        where: { projectId: 'project-a' },
+      },
+    });
+    expect(result.totalHits).toBe(8);
+    expect(result.actions.at(0)?.id).toBe('action-a');
+    expect(result.actions.at(0)?.kind).toBe('APPROVE');
+    expect(result.actions.at(0)?.reason).toBe('Clean release');
+  });
+
+  test('loads the legacy project moderation action list from search results', async () => {
+    const queries: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        moderationAction: {
+          count: (query: unknown) => {
+            queries.push({ count: query });
+            return Promise.resolve(1);
+          },
+          findMany: (query: unknown) => {
+            queries.push({ findMany: query });
+            return Promise.resolve([moderationActionRow()]);
+          },
+        },
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) },
+    );
+
+    const actions = await service.findProjectModerationActionList('example');
+
+    expect(queries[1]).toEqual(
+      expect.objectContaining({
+        findMany: expect.objectContaining({
+          skip: 0,
+          take: 25,
+          where: { projectId: 'project-a' },
+        }),
+      }),
+    );
+    expect(actions.at(0)?.id).toBe('action-a');
+  });
+});
+
+function moderationActionRow() {
+  return {
+    createdAt: new Date('2026-01-03T00:00:00.000Z'),
+    id: 'action-a',
+    kind: 'APPROVE',
+    moderator: {
+      displayName: 'Admin',
+      id: 'user-a',
+      username: 'admin',
+    },
+    projectId: 'project-a',
+    reason: 'Clean release',
+  };
+}
+
+function projectRow({
+  gallery = [],
+  license = { key: 'mit', name: 'MIT', url: null },
+  links = [],
+  moderationLock = null,
+  status = 'APPROVED',
+  title,
+}: {
+  gallery?: {
+    createdAt: Date;
+    description: string | null;
+    displayUrl: string;
+    featured: boolean;
+    rawUrl: string;
+    sortOrder: number;
+    title: string | null;
+  }[];
+  license?: { key: string; name: string; url: string | null };
+  links?: { kind: string; label: string | null; url: string }[];
+  moderationLock?: ReturnType<typeof moderationLockRow> | null;
+  status?: 'APPROVED' | 'PENDING_REVIEW' | 'REJECTED' | 'ARCHIVED';
+  title: string;
+}) {
+  return {
+    approvedAt:
+      status === 'APPROVED' ? new Date('2026-01-01T00:00:00.000Z') : null,
+    archivedAt:
+      status === 'ARCHIVED' ? new Date('2026-01-01T00:00:00.000Z') : null,
+    categories: [{ category: { slug: 'utility' } }],
+    color: '#f97316',
+    description: 'Updated body',
+    discordUrl: null,
+    downloads: 10,
+    followers: 2,
+    gallery,
+    gameVersions: [{ gameVersion: { version: '1.21.6' } }],
+    iconUrl: 'https://example.test/icon.png',
+    id: 'project-a',
+    issuesUrl: null,
+    kind: 'MOD',
+    license,
+    links,
+    loaders: [{ loader: 'FABRIC' }],
+    moderationLock,
+    organization: {
+      color: '#1d9bf0',
+      iconUrl: 'https://example.test/org.png',
+      id: 'organization-a',
+      name: 'Example Org',
+      slug: 'example-org',
+    },
+    publishedAt: new Date('2025-12-15T00:00:00.000Z'),
+    queuedAt:
+      status === 'PENDING_REVIEW' ? new Date('2026-01-01T00:00:00.000Z') : null,
+    requestedStatus: null,
+    slug: 'example',
+    sourceUrl: 'https://example.test/source',
+    status,
+    summary: 'Updated summary',
+    team: {
+      members: [
+        {
+          user: {
+            avatarUrl: null,
+            displayName: 'Project Creator',
+            id: 'user-owner',
+            username: 'creator',
+          },
+        },
+      ],
+    },
+    title,
+    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    wikiUrl: null,
+  };
+}
+
+function moderationLockRow() {
+  return {
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: new Date('2026-01-01T00:30:00.000Z'),
+    id: 'lock-a',
+    moderator: {
+      displayName: 'Moderator',
+      id: 'moderator-a',
+      username: 'moderator',
+    },
+  };
+}

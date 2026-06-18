@@ -14,6 +14,9 @@ import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { UpdateUserAccountInput } from '../dto/update-user-account.input.js';
 import { UpdateViewerProfileInput } from '../dto/update-viewer-profile.input.js';
+import { UserAdminService } from '../services/user-admin.service.js';
+import { UserDirectoryService } from '../services/user-directory.service.js';
+import { UserFriendshipsService } from '../services/user-friendships.service.js';
 import { UsersService } from '../services/users.service.js';
 import {
   FriendshipSearchResult,
@@ -28,7 +31,12 @@ import {
 
 @Resolver(() => UserProfile)
 export class UsersResolver {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly userAdminService: UserAdminService,
+    private readonly userDirectoryService: UserDirectoryService,
+    private readonly userFriendshipsService: UserFriendshipsService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @ResolveField(() => Boolean)
   isAdmin(@Parent() user: UserProfile): boolean {
@@ -49,7 +57,7 @@ export class UsersResolver {
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
   ): Promise<UserProfile[]> {
-    return this.usersService.findPublicUserList({ search });
+    return this.userDirectoryService.findPublicUserList({ search });
   }
 
   @Public()
@@ -62,7 +70,7 @@ export class UsersResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<UserSearchResult> {
-    return this.usersService.findPublicUsers({
+    return this.userDirectoryService.findPublicUsers({
       limit: limit ?? undefined,
       offset: offset ?? undefined,
       search,
@@ -78,7 +86,7 @@ export class UsersResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<UserProjectSearchResult> {
-    return this.usersService.findPublicUserProjects(username, {
+    return this.userDirectoryService.findPublicUserProjects(username, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -93,7 +101,7 @@ export class UsersResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<UserCollectionSearchResult> {
-    return this.usersService.findPublicUserCollections(username, {
+    return this.userDirectoryService.findPublicUserCollections(username, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -107,7 +115,7 @@ export class UsersResolver {
   @Query(() => [UserProfile])
   adminUsers(@CurrentUser() user: AuthenticatedUser): Promise<UserProfile[]> {
     assertAdmin(user);
-    return this.usersService.findAdminUserList();
+    return this.userAdminService.findAdminUserList();
   }
 
   @Query(() => UserSearchResult)
@@ -121,7 +129,7 @@ export class UsersResolver {
     offset?: number | null,
   ): Promise<UserSearchResult> {
     assertAdmin(user);
-    return this.usersService.findAdminUsers({
+    return this.userAdminService.findAdminUsers({
       limit: limit ?? undefined,
       offset: offset ?? undefined,
       search,
@@ -141,14 +149,14 @@ export class UsersResolver {
     @Args('username', { type: () => String }) username: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary | null> {
-    return this.usersService.findViewerFriendship(user.id, username);
+    return this.userFriendshipsService.findViewerFriendship(user.id, username);
   }
 
   @Query(() => [FriendshipSummary])
   viewerFriends(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary[]> {
-    return this.usersService.findViewerFriendList(user.id);
+    return this.userFriendshipsService.findViewerFriendList(user.id);
   }
 
   @Query(() => FriendshipSearchResult)
@@ -159,7 +167,7 @@ export class UsersResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<FriendshipSearchResult> {
-    return this.usersService.findViewerFriends(user.id, {
+    return this.userFriendshipsService.findViewerFriends(user.id, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -169,7 +177,7 @@ export class UsersResolver {
   viewerFriendRequests(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary[]> {
-    return this.usersService.findViewerFriendRequestList(user.id);
+    return this.userFriendshipsService.findViewerFriendRequestList(user.id);
   }
 
   @Query(() => FriendshipSearchResult)
@@ -180,7 +188,7 @@ export class UsersResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<FriendshipSearchResult> {
-    return this.usersService.findViewerFriendRequests(user.id, {
+    return this.userFriendshipsService.findViewerFriendRequests(user.id, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -190,7 +198,7 @@ export class UsersResolver {
   viewerBlockedUsers(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary[]> {
-    return this.usersService.findViewerBlockedUserList(user.id);
+    return this.userFriendshipsService.findViewerBlockedUserList(user.id);
   }
 
   @Query(() => FriendshipSearchResult)
@@ -201,7 +209,7 @@ export class UsersResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<FriendshipSearchResult> {
-    return this.usersService.findViewerBlockedUsers(user.id, {
+    return this.userFriendshipsService.findViewerBlockedUsers(user.id, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -212,7 +220,7 @@ export class UsersResolver {
     @Args('username', { type: () => String }) username: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary> {
-    return this.usersService.sendFriendRequest(user.id, username);
+    return this.userFriendshipsService.sendFriendRequest(user.id, username);
   }
 
   @Mutation(() => FriendshipSummary)
@@ -220,7 +228,7 @@ export class UsersResolver {
     @Args('username', { type: () => String }) username: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary> {
-    return this.usersService.acceptFriendRequest(user.id, username);
+    return this.userFriendshipsService.acceptFriendRequest(user.id, username);
   }
 
   @Mutation(() => Boolean)
@@ -228,7 +236,7 @@ export class UsersResolver {
     @Args('username', { type: () => String }) username: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<boolean> {
-    return this.usersService.removeFriend(user.id, username);
+    return this.userFriendshipsService.removeFriend(user.id, username);
   }
 
   @Mutation(() => FriendshipSummary)
@@ -236,7 +244,7 @@ export class UsersResolver {
     @Args('username', { type: () => String }) username: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<FriendshipSummary> {
-    return this.usersService.blockUser(user.id, username);
+    return this.userFriendshipsService.blockUser(user.id, username);
   }
 
   @Mutation(() => UserProfile)
@@ -245,7 +253,7 @@ export class UsersResolver {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<UserProfile> {
     assertAdmin(user);
-    return this.usersService.updateUserAccount(input, user.id);
+    return this.userAdminService.updateUserAccount(input, user.id);
   }
 }
 

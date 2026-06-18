@@ -8,6 +8,7 @@ import { CreateCollectionInput } from '../dto/create-collection.input.js';
 import { RemoveProjectFromCollectionInput } from '../dto/remove-project-from-collection.input.js';
 import { UpdateCollectionInput } from '../dto/update-collection.input.js';
 import { CollectionsService } from '../services/collections.service.js';
+import { PublicCollectionsService } from '../services/public-collections.service.js';
 import {
   CollectionProjectItemSearchResult,
   CollectionSearchResult,
@@ -16,7 +17,10 @@ import {
 
 @Resolver(() => CollectionSummary)
 export class CollectionsResolver {
-  constructor(private readonly collectionsService: CollectionsService) {}
+  constructor(
+    private readonly collectionsService: CollectionsService,
+    private readonly publicCollectionsService: PublicCollectionsService,
+  ) {}
 
   @Public()
   @Query(() => [CollectionSummary])
@@ -24,7 +28,7 @@ export class CollectionsResolver {
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
   ) {
-    return this.collectionsService.findPublicCollectionList({ search });
+    return this.publicCollectionsService.findPublicCollectionList({ search });
   }
 
   @Public()
@@ -37,7 +41,7 @@ export class CollectionsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ) {
-    return this.collectionsService.findPublicCollections({
+    return this.publicCollectionsService.findPublicCollections({
       limit: limit ?? undefined,
       offset: offset ?? undefined,
       search,
@@ -50,7 +54,7 @@ export class CollectionsResolver {
     @Args('ownerUsername') ownerUsername: string,
     @Args('slug') slug: string,
   ) {
-    return this.collectionsService.findPublicCollectionBySlug(
+    return this.publicCollectionsService.findPublicCollectionBySlug(
       ownerUsername,
       slug,
     );
@@ -66,7 +70,7 @@ export class CollectionsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ) {
-    return this.collectionsService.findPublicCollectionItems(
+    return this.publicCollectionsService.findPublicCollectionItems(
       ownerUsername,
       slug,
       {

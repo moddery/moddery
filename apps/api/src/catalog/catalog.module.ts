@@ -6,10 +6,30 @@ import { RedisModule } from '../redis/redis.module.js';
 import { SearchModule } from '../search/search.module.js';
 import { CatalogResolver } from './graphql/catalog.resolver.js';
 import { CatalogService } from './services/catalog.service.js';
+import { ProjectFollowsService } from './services/project-follows.service.js';
+import { ProjectGalleryService } from './services/project-gallery.service.js';
+import { ProjectManagementService } from './services/project-management.service.js';
+import { ProjectMembersService } from './services/project-members.service.js';
+import { ProjectModerationService } from './services/project-moderation.service.js';
 
 @Module({
-  exports: [CatalogService],
+  exports: [
+    CatalogService,
+    ProjectFollowsService,
+    ProjectGalleryService,
+    ProjectManagementService,
+    ProjectMembersService,
+    ProjectModerationService,
+  ],
   imports: [NotificationsModule, PrismaModule, RedisModule, SearchModule],
-  providers: [CatalogResolver, CatalogService],
+  providers: [
+    CatalogResolver,
+    CatalogService,
+    ProjectFollowsService,
+    ProjectGalleryService,
+    ProjectManagementService,
+    ProjectMembersService,
+    ProjectModerationService,
+  ],
 })
 export class CatalogModule {}

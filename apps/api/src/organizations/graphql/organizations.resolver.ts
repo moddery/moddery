@@ -9,6 +9,8 @@ import { CreateOrganizationInput } from '../dto/create-organization.input.js';
 import { RemoveOrganizationTeamMemberInput } from '../dto/remove-organization-team-member.input.js';
 import { RemoveProjectFromOrganizationInput } from '../dto/remove-project-from-organization.input.js';
 import { UpdateOrganizationInput } from '../dto/update-organization.input.js';
+import { OrganizationDirectoryService } from '../services/organization-directory.service.js';
+import { OrganizationManagementService } from '../services/organization-management.service.js';
 import { OrganizationsService } from '../services/organizations.service.js';
 import {
   OrganizationMemberSearchResult,
@@ -19,7 +21,11 @@ import {
 
 @Resolver(() => OrganizationSummary)
 export class OrganizationsResolver {
-  constructor(private readonly organizationsService: OrganizationsService) {}
+  constructor(
+    private readonly organizationDirectoryService: OrganizationDirectoryService,
+    private readonly organizationManagementService: OrganizationManagementService,
+    private readonly organizationsService: OrganizationsService,
+  ) {}
 
   @Public()
   @Query(() => [OrganizationSummary])
@@ -27,7 +33,9 @@ export class OrganizationsResolver {
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
   ): Promise<OrganizationSummary[]> {
-    return this.organizationsService.findPublicOrganizationList({ search });
+    return this.organizationDirectoryService.findPublicOrganizationList({
+      search,
+    });
   }
 
   @Public()
@@ -40,7 +48,7 @@ export class OrganizationsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<OrganizationSearchResult> {
-    return this.organizationsService.findPublicOrganizations({
+    return this.organizationDirectoryService.findPublicOrganizations({
       limit: limit ?? undefined,
       offset: offset ?? undefined,
       search,
@@ -52,7 +60,7 @@ export class OrganizationsResolver {
   organizationBySlug(
     @Args('slug', { type: () => String }) slug: string,
   ): Promise<OrganizationSummary | null> {
-    return this.organizationsService.findBySlug(slug);
+    return this.organizationDirectoryService.findBySlug(slug);
   }
 
   @Public()
@@ -64,7 +72,7 @@ export class OrganizationsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<OrganizationMemberSearchResult> {
-    return this.organizationsService.findOrganizationMembers(slug, {
+    return this.organizationDirectoryService.findOrganizationMembers(slug, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -79,7 +87,7 @@ export class OrganizationsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ): Promise<OrganizationProjectSearchResult> {
-    return this.organizationsService.findOrganizationProjects(slug, {
+    return this.organizationDirectoryService.findOrganizationProjects(slug, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -98,7 +106,10 @@ export class OrganizationsResolver {
     @Args('input') input: AddOrganizationTeamMemberInput,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OrganizationSummary> {
-    return this.organizationsService.addOrganizationTeamMember(input, user.id);
+    return this.organizationManagementService.addOrganizationTeamMember(
+      input,
+      user.id,
+    );
   }
 
   @Mutation(() => OrganizationSummary)
@@ -106,7 +117,10 @@ export class OrganizationsResolver {
     @Args('input') input: AddProjectToOrganizationInput,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OrganizationSummary> {
-    return this.organizationsService.addProjectToOrganization(input, user.id);
+    return this.organizationManagementService.addProjectToOrganization(
+      input,
+      user.id,
+    );
   }
 
   @Mutation(() => OrganizationSummary)
@@ -114,7 +128,7 @@ export class OrganizationsResolver {
     @Args('input') input: RemoveOrganizationTeamMemberInput,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OrganizationSummary> {
-    return this.organizationsService.removeOrganizationTeamMember(
+    return this.organizationManagementService.removeOrganizationTeamMember(
       input,
       user.id,
     );
@@ -125,7 +139,7 @@ export class OrganizationsResolver {
     @Args('input') input: RemoveProjectFromOrganizationInput,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OrganizationSummary> {
-    return this.organizationsService.removeProjectFromOrganization(
+    return this.organizationManagementService.removeProjectFromOrganization(
       input,
       user.id,
     );
@@ -143,6 +157,9 @@ export class OrganizationsResolver {
     @Args('input') input: UpdateOrganizationInput,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OrganizationSummary> {
-    return this.organizationsService.updateOrganization(input, user.id);
+    return this.organizationManagementService.updateOrganization(
+      input,
+      user.id,
+    );
   }
 }

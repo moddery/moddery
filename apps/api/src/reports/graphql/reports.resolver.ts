@@ -3,6 +3,8 @@ import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
+import { ReportDirectThreadsService } from '../services/report-direct-threads.service.js';
+import { ReportModerationNotesService } from '../services/report-moderation-notes.service.js';
 import { ReportsService } from '../services/reports.service.js';
 import {
   CreateProjectModerationNoteInput,
@@ -28,7 +30,11 @@ import { UpdateReportStateInput } from './update-report-state.input.js';
 
 @Resolver(() => ReportSummary)
 export class ReportsResolver {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(
+    private readonly reportDirectThreadsService: ReportDirectThreadsService,
+    private readonly reportModerationNotesService: ReportModerationNotesService,
+    private readonly reportsService: ReportsService,
+  ) {}
 
   @Query(() => [ReportSummary])
   moderationReports(@CurrentUser() user: AuthenticatedUser) {
@@ -62,7 +68,7 @@ export class ReportsResolver {
 
   @Query(() => [ThreadSummary])
   viewerDirectThreads(@CurrentUser() user: AuthenticatedUser) {
-    return this.reportsService.findViewerDirectThreadList(user.id);
+    return this.reportDirectThreadsService.findViewerDirectThreadList(user.id);
   }
 
   @Query(() => ThreadSearchResult)
@@ -73,7 +79,7 @@ export class ReportsResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ) {
-    return this.reportsService.findViewerDirectThreads(user.id, {
+    return this.reportDirectThreadsService.findViewerDirectThreads(user.id, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -85,7 +91,9 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findProjectModerationNoteList(projectSlug);
+    return this.reportModerationNotesService.findProjectModerationNoteList(
+      projectSlug,
+    );
   }
 
   @Query(() => ModerationNoteSearchResult)
@@ -98,10 +106,13 @@ export class ReportsResolver {
     offset?: number | null,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findProjectModerationNotes(projectSlug, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.reportModerationNotesService.findProjectModerationNotes(
+      projectSlug,
+      {
+        limit: limit ?? undefined,
+        offset: offset ?? undefined,
+      },
+    );
   }
 
   @Query(() => [ModerationNoteSummary])
@@ -110,7 +121,9 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findUserModerationNoteList(username);
+    return this.reportModerationNotesService.findUserModerationNoteList(
+      username,
+    );
   }
 
   @Query(() => ModerationNoteSearchResult)
@@ -123,7 +136,7 @@ export class ReportsResolver {
     offset?: number | null,
   ) {
     assertCanModerate(user);
-    return this.reportsService.findUserModerationNotes(username, {
+    return this.reportModerationNotesService.findUserModerationNotes(username, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -198,7 +211,7 @@ export class ReportsResolver {
     @Args('input') input: CreateDirectThreadInput,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.reportsService.createDirectThread({
+    return this.reportDirectThreadsService.createDirectThread({
       authorId: user.id,
       body: input.body,
       username: input.username,
@@ -210,7 +223,7 @@ export class ReportsResolver {
     @Args('input') input: CreateDirectThreadMessageInput,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.reportsService.createDirectThreadMessage({
+    return this.reportDirectThreadsService.createDirectThreadMessage({
       authorId: user.id,
       body: input.body,
       threadId: input.threadId,
@@ -223,7 +236,7 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.createProjectModerationNote({
+    return this.reportModerationNotesService.createProjectModerationNote({
       authorId: user.id,
       body: input.body,
       projectSlug: input.projectSlug,
@@ -236,7 +249,7 @@ export class ReportsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.reportsService.createUserModerationNote({
+    return this.reportModerationNotesService.createUserModerationNote({
       authorId: user.id,
       body: input.body,
       username: input.username,

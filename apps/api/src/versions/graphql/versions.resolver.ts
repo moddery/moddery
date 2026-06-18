@@ -7,6 +7,8 @@ import { CreateVersionInput } from '../dto/create-version.input.js';
 import { RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import { UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
 import { UpdateVersionInput } from '../dto/update-version.input.js';
+import { VersionDirectoryService } from '../services/version-directory.service.js';
+import { VersionFileScansService } from '../services/version-file-scans.service.js';
 import { VersionsService } from '../services/versions.service.js';
 import {
   VersionSearchResult,
@@ -15,14 +17,18 @@ import {
 
 @Resolver(() => VersionSummary)
 export class VersionsResolver {
-  constructor(private readonly versionsService: VersionsService) {}
+  constructor(
+    private readonly versionDirectoryService: VersionDirectoryService,
+    private readonly versionFileScansService: VersionFileScansService,
+    private readonly versionsService: VersionsService,
+  ) {}
 
   @Public()
   @Query(() => [VersionSummary])
   async versionsForProject(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
   ): Promise<VersionSummary[]> {
-    return this.versionsService.findByProjectSlug(projectSlug);
+    return this.versionDirectoryService.findByProjectSlug(projectSlug);
   }
 
   @Public()
@@ -40,7 +46,7 @@ export class VersionsResolver {
     @Args('search', { nullable: true, type: () => String })
     search?: string | null,
   ): Promise<VersionSearchResult> {
-    return this.versionsService.searchByProjectSlug(projectSlug, {
+    return this.versionDirectoryService.searchByProjectSlug(projectSlug, {
       gameVersion,
       limit: limit ?? undefined,
       loader,
@@ -78,6 +84,6 @@ export class VersionsResolver {
     @Args('input') input: RecordFileScanInput,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<VersionSummary> {
-    return this.versionsService.recordFileScan(input, user);
+    return this.versionFileScansService.recordFileScan(input, user);
   }
 }

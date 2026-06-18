@@ -12,6 +12,11 @@ import { ModerateProjectInput } from '../dto/moderate-project.input.js';
 import { RemoveProjectTeamMemberInput } from '../dto/remove-project-team-member.input.js';
 import { UpdateProjectInput } from '../dto/update-project.input.js';
 import { CatalogService } from '../services/catalog.service.js';
+import { ProjectFollowsService } from '../services/project-follows.service.js';
+import { ProjectGalleryService } from '../services/project-gallery.service.js';
+import { ProjectManagementService } from '../services/project-management.service.js';
+import { ProjectMembersService } from '../services/project-members.service.js';
+import { ProjectModerationService } from '../services/project-moderation.service.js';
 import {
   ModerationActionSearchResult,
   ModerationActionSummary,
@@ -26,7 +31,14 @@ import {
 
 @Resolver(() => ProjectSummary)
 export class CatalogResolver {
-  constructor(private readonly catalogService: CatalogService) {}
+  constructor(
+    private readonly catalogService: CatalogService,
+    private readonly projectFollowsService: ProjectFollowsService,
+    private readonly projectGalleryService: ProjectGalleryService,
+    private readonly projectManagementService: ProjectManagementService,
+    private readonly projectMembersService: ProjectMembersService,
+    private readonly projectModerationService: ProjectModerationService,
+  ) {}
 
   @Public()
   @Query(() => ProjectSummary, { nullable: true })
@@ -63,9 +75,8 @@ export class CatalogResolver {
 
   @Query(() => [ProjectSummary])
   async viewerFollowedProjects(@CurrentUser() user: AuthenticatedUser) {
-    const projects = await this.catalogService.findViewerFollowedProjectList(
-      user.id,
-    );
+    const projects =
+      await this.projectFollowsService.findViewerFollowedProjectList(user.id);
 
     return projects.map(projectToGraphql);
   }
@@ -78,7 +89,7 @@ export class CatalogResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ) {
-    const result = await this.catalogService.findViewerFollowedProjects(
+    const result = await this.projectFollowsService.findViewerFollowedProjects(
       user.id,
       {
         limit: limit ?? undefined,
@@ -95,7 +106,8 @@ export class CatalogResolver {
   @Query(() => [ProjectSummary])
   async moderationProjects(@CurrentUser() user: AuthenticatedUser) {
     assertCanModerate(user);
-    const projects = await this.catalogService.findProjectModerationList();
+    const projects =
+      await this.projectModerationService.findProjectModerationList();
 
     return projects.map(projectToGraphql);
   }
@@ -109,10 +121,11 @@ export class CatalogResolver {
     offset?: number | null,
   ) {
     assertCanModerate(user);
-    const result = await this.catalogService.findProjectsForModeration({
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    const result =
+      await this.projectModerationService.findProjectsForModeration({
+        limit: limit ?? undefined,
+        offset: offset ?? undefined,
+      });
 
     return {
       projects: result.projects.map(projectToGraphql),
@@ -126,7 +139,9 @@ export class CatalogResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     assertCanModerate(user);
-    return this.catalogService.findProjectModerationActionList(projectSlug);
+    return this.projectModerationService.findProjectModerationActionList(
+      projectSlug,
+    );
   }
 
   @Query(() => ModerationActionSearchResult)
@@ -139,10 +154,13 @@ export class CatalogResolver {
     offset?: number | null,
   ) {
     assertCanModerate(user);
-    return this.catalogService.findProjectModerationActions(projectSlug, {
-      limit: limit ?? undefined,
-      offset: offset ?? undefined,
-    });
+    return this.projectModerationService.findProjectModerationActions(
+      projectSlug,
+      {
+        limit: limit ?? undefined,
+        offset: offset ?? undefined,
+      },
+    );
   }
 
   @Public()
@@ -150,7 +168,7 @@ export class CatalogResolver {
   projectMembers(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
   ) {
-    return this.catalogService.findProjectMembers(projectSlug);
+    return this.projectMembersService.findProjectMembers(projectSlug);
   }
 
   @Public()
@@ -162,7 +180,7 @@ export class CatalogResolver {
     @Args('offset', { nullable: true, type: () => Int })
     offset?: number | null,
   ) {
-    return this.catalogService.findProjectMemberSearch(projectSlug, {
+    return this.projectMembersService.findProjectMemberSearch(projectSlug, {
       limit: limit ?? undefined,
       offset: offset ?? undefined,
     });
@@ -173,7 +191,7 @@ export class CatalogResolver {
     @Args('input') input: AddProjectTeamMemberInput,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.catalogService.addProjectTeamMember(input, user.id);
+    return this.projectMembersService.addProjectTeamMember(input, user.id);
   }
 
   @Mutation(() => ProjectSummary)
@@ -182,7 +200,7 @@ export class CatalogResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return projectToGraphql(
-      await this.catalogService.addProjectGalleryImage(input, user.id),
+      await this.projectGalleryService.addProjectGalleryImage(input, user.id),
     );
   }
 
@@ -192,7 +210,7 @@ export class CatalogResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return projectToGraphql(
-      await this.catalogService.createProject(input, user.id),
+      await this.projectManagementService.createProject(input, user.id),
     );
   }
 
@@ -202,7 +220,7 @@ export class CatalogResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return projectToGraphql(
-      await this.catalogService.updateProject(input, user.id),
+      await this.projectManagementService.updateProject(input, user.id),
     );
   }
 
@@ -214,7 +232,7 @@ export class CatalogResolver {
     assertCanModerate(user);
 
     return projectToGraphql(
-      await this.catalogService.moderateProject(input, user.id),
+      await this.projectModerationService.moderateProject(input, user.id),
     );
   }
 
@@ -226,7 +244,10 @@ export class CatalogResolver {
     assertCanModerate(user);
 
     return projectToGraphql(
-      await this.catalogService.lockProjectForModeration(projectSlug, user.id),
+      await this.projectModerationService.lockProjectForModeration(
+        projectSlug,
+        user.id,
+      ),
     );
   }
 
@@ -238,7 +259,7 @@ export class CatalogResolver {
     assertCanModerate(user);
 
     return projectToGraphql(
-      await this.catalogService.releaseProjectModerationLock(
+      await this.projectModerationService.releaseProjectModerationLock(
         projectSlug,
         user.id,
       ),
@@ -250,7 +271,7 @@ export class CatalogResolver {
     @Args('input') input: RemoveProjectTeamMemberInput,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.catalogService.removeProjectTeamMember(input, user.id);
+    return this.projectMembersService.removeProjectTeamMember(input, user.id);
   }
 
   @Query(() => ProjectFollowState, { nullable: true })
@@ -258,7 +279,7 @@ export class CatalogResolver {
     @Args('projectSlug', { type: () => String }) projectSlug: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.catalogService.findViewerProjectFollowState(
+    return this.projectFollowsService.findViewerProjectFollowState(
       projectSlug,
       user.id,
     );
@@ -269,7 +290,7 @@ export class CatalogResolver {
     @Args('projectSlug', { type: () => String }) projectSlug: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.catalogService.followProject(projectSlug, user.id);
+    return this.projectFollowsService.followProject(projectSlug, user.id);
   }
 
   @Mutation(() => ProjectFollowState)
@@ -277,7 +298,7 @@ export class CatalogResolver {
     @Args('projectSlug', { type: () => String }) projectSlug: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.catalogService.unfollowProject(projectSlug, user.id);
+    return this.projectFollowsService.unfollowProject(projectSlug, user.id);
   }
 }
 

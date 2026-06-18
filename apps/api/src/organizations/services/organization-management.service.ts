@@ -1,0 +1,308 @@
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
+import { TeamPermission } from '@prisma/client';
+
+import { NotificationsService } from '../../notifications/services/notifications.service.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { type AddOrganizationTeamMemberInput } from '../dto/add-organization-team-member.input.js';
+import { type AddProjectToOrganizationInput } from '../dto/add-project-to-organization.input.js';
+import { type RemoveOrganizationTeamMemberInput } from '../dto/remove-organization-team-member.input.js';
+import { type RemoveProjectFromOrganizationInput } from '../dto/remove-project-from-organization.input.js';
+import { type UpdateOrganizationInput } from '../dto/update-organization.input.js';
+import {
+  nullableTrim,
+  organizationRowToContract,
+  organizationSelect,
+} from './organization-read-model.js';
+
+@Injectable()
+export class OrganizationManagementService {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly notificationsService?: NotificationsService,
+  ) {}
+
+  async addProjectToOrganization(
+    input: AddProjectToOrganizationInput,
+    userId: string,
+  ) {
+    const organization = await this.prisma.organization.findFirst({
+      select: { id: true },
+      where: {
+        id: input.organizationId,
+        ownerId: userId,
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const project = await this.prisma.project.findFirst({
+      select: { id: true },
+      where: {
+        slug: input.projectSlug,
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              userId,
+            },
+          },
+        },
+      },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.prisma.project.update({
+      data: { organizationId: organization.id },
+      where: { id: project.id },
+    });
+
+    return this.findViewerOrganization(organization.id, userId);
+  }
+
+  async addOrganizationTeamMember(
+    input: AddOrganizationTeamMemberInput,
+    userId: string,
+  ) {
+    const organization = await this.findOrganizationForMemberManagement(
+      input.organizationId,
+      userId,
+    );
+    const user = await this.prisma.user.findFirst({
+      select: { id: true },
+      where: { username: { equals: input.username, mode: 'insensitive' } },
+    });
+
+    if (user === null) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.prisma.teamMember.upsert({
+      create: {
+        acceptedAt: null,
+        permissions: organizationMemberPermissions(input.permissions),
+        role: input.role.trim() || 'Member',
+        teamId: organization.teamId,
+        userId: user.id,
+      },
+      update: {
+        permissions: organizationMemberPermissions(input.permissions),
+        role: input.role.trim() || 'Member',
+      },
+      where: {
+        teamId_userId: {
+          teamId: organization.teamId,
+          userId: user.id,
+        },
+      },
+    });
+
+    await this.sendTeamInviteNotification({
+      organizationName: organization.name,
+      userId: user.id,
+    });
+
+    return this.findViewerOrganization(organization.id, userId);
+  }
+
+  async removeProjectFromOrganization(
+    input: RemoveProjectFromOrganizationInput,
+    ownerId: string,
+  ) {
+    const organization = await this.prisma.organization.findFirst({
+      select: { id: true },
+      where: {
+        id: input.organizationId,
+        ownerId,
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const project = await this.prisma.project.findFirst({
+      select: { id: true },
+      where: {
+        organizationId: organization.id,
+        slug: input.projectSlug,
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              userId: ownerId,
+            },
+          },
+        },
+      },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.prisma.project.update({
+      data: { organizationId: null },
+      where: { id: project.id },
+    });
+
+    return this.findViewerOrganization(organization.id, ownerId);
+  }
+
+  async removeOrganizationTeamMember(
+    input: RemoveOrganizationTeamMemberInput,
+    userId: string,
+  ) {
+    const organization = await this.findOrganizationForMemberManagement(
+      input.organizationId,
+      userId,
+    );
+    const member = await this.prisma.teamMember.findFirst({
+      select: {
+        id: true,
+        isOwner: true,
+      },
+      where: {
+        teamId: organization.teamId,
+        user: { username: { equals: input.username, mode: 'insensitive' } },
+      },
+    });
+
+    if (member === null) {
+      throw new NotFoundException('Team member not found');
+    }
+
+    if (member.isOwner) {
+      throw new ForbiddenException('Organization owner cannot be removed');
+    }
+
+    await this.prisma.teamMember.delete({ where: { id: member.id } });
+
+    return this.findViewerOrganization(organization.id, userId);
+  }
+
+  async updateOrganization(input: UpdateOrganizationInput, ownerId: string) {
+    const organization = await this.prisma.organization.findFirst({
+      select: { id: true },
+      where: {
+        id: input.organizationId,
+        ownerId,
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    await this.prisma.organization.update({
+      data: {
+        color:
+          input.color === undefined ? undefined : nullableTrim(input.color),
+        description:
+          input.description === undefined
+            ? undefined
+            : nullableTrim(input.description),
+        iconUrl:
+          input.iconUrl === undefined ? undefined : nullableTrim(input.iconUrl),
+        name: input.name == null ? undefined : input.name.trim(),
+        slug: input.slug == null ? undefined : input.slug.trim(),
+      },
+      where: { id: organization.id },
+    });
+
+    return this.findViewerOrganization(organization.id, ownerId);
+  }
+
+  private async sendTeamInviteNotification(input: {
+    organizationName: string;
+    userId: string;
+  }) {
+    await this.notificationsService?.sendUserNotification({
+      actionUrl: `/dashboard`,
+      body: `You were invited to collaborate with ${input.organizationName}.`,
+      title: `Team invitation for ${input.organizationName}`,
+      type: 'team',
+      userId: input.userId,
+    });
+  }
+
+  private async findViewerOrganization(
+    organizationId: string,
+    ownerId: string,
+  ) {
+    const organization = await this.prisma.organization.findFirst({
+      select: organizationSelect(8, { includeDraftProjects: true }),
+      where: {
+        id: organizationId,
+        ownerId,
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return organizationRowToContract(organization);
+  }
+
+  private async findOrganizationForMemberManagement(
+    organizationId: string,
+    userId: string,
+  ) {
+    const organization = await this.prisma.organization.findFirst({
+      select: {
+        id: true,
+        name: true,
+        teamId: true,
+      },
+      where: {
+        id: organizationId,
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: 'MANAGE_MEMBERS' } },
+              ],
+              userId,
+            },
+          },
+        },
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return organization;
+  }
+}
+
+function organizationMemberPermissions(
+  permissions: readonly string[] | null | undefined,
+): TeamPermission[] {
+  const allowed = new Set<TeamPermission>([
+    TeamPermission.MANAGE_DETAILS,
+    TeamPermission.MANAGE_MEMBERS,
+    TeamPermission.MANAGE_SETTINGS,
+    TeamPermission.VIEW_ANALYTICS,
+  ]);
+
+  return [...new Set(permissions ?? [])].flatMap((permission) =>
+    allowed.has(permission as TeamPermission)
+      ? [permission as TeamPermission]
+      : [],
+  );
+}

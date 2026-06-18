@@ -4,141 +4,21 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { isGameVersionTag, type DependencyKind } from '@moddery/shared';
+import { isGameVersionTag } from '@moddery/shared';
 import { HashAlgorithm, Loader, type Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
-import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { type CreateVersionInput } from '../dto/create-version.input.js';
-import { type RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import {
   type UpdateVersionDependenciesInput,
   type VersionDependencyInput,
 } from '../dto/update-version-dependencies.input.js';
 import { type UpdateVersionInput } from '../dto/update-version.input.js';
-
-interface VersionRow {
-  author: {
-    avatarUrl: string | null;
-    displayName: string | null;
-    id: string;
-    username: string;
-  } | null;
-  changelog: string | null;
-  channel: string;
-  dependencies: {
-    dependencyKind: DependencyKind;
-    externalFileName: string | null;
-    id: string;
-    targetProject: {
-      id: string;
-      kind: string;
-      slug: string;
-      title: string;
-    } | null;
-    targetVersion: {
-      id: string;
-      versionNumber: string;
-    } | null;
-  }[];
-  downloads: number;
-  featured: boolean;
-  createdAt: Date;
-  files: {
-    fileName: string;
-    hashes: {
-      algorithm: string;
-      value: string;
-    }[];
-    id: string;
-    isPrimary: boolean;
-    kind: string;
-    scans: {
-      createdAt: Date;
-      details: Prisma.JsonValue | null;
-      id: string;
-      status: string;
-      verdict: string | null;
-    }[];
-    sizeBytes: bigint;
-    url: string;
-  }[];
-  gameVersions: { gameVersion: { version: string } }[];
-  id: string;
-  loaders: { loader: string }[];
-  name: string;
-  project: { slug: string };
-  publishedAt: Date | null;
-  requestedStatus: string | null;
-  sortOrder: number;
-  status: string;
-  updatedAt: Date;
-  versionNumber: string;
-}
-
-export interface VersionSummaryContract {
-  author: {
-    avatarUrl: string | null;
-    displayName: string | null;
-    id: string;
-    username: string;
-  } | null;
-  changelog: string | null;
-  channel: string;
-  datePublished: Date | null;
-  dependencies: {
-    dependencyKind: DependencyKind;
-    externalFileName: string | null;
-    id: string;
-    targetProject: {
-      id: string;
-      kind: string;
-      slug: string;
-      title: string;
-    } | null;
-    targetVersion: {
-      id: string;
-      versionNumber: string;
-    } | null;
-  }[];
-  downloads: number;
-  featured: boolean;
-  createdAt: Date;
-  files: {
-    fileName: string;
-    hashes: {
-      algorithm: string;
-      value: string;
-    }[];
-    id: string;
-    kind: string;
-    primary: boolean;
-    scans: {
-      createdAt: Date;
-      details: string | null;
-      id: string;
-      status: string;
-      verdict: string | null;
-    }[];
-    sizeBytes: string;
-    url: string;
-  }[];
-  gameVersions: string[];
-  id: string;
-  loaders: string[];
-  name: string;
-  projectSlug: string;
-  requestedStatus: string | null;
-  sortOrder: number;
-  status: string;
-  updatedAt: Date;
-  versionNumber: string;
-}
-
-export interface VersionSearchResultContract {
-  totalHits: number;
-  versions: VersionSummaryContract[];
-}
+import {
+  type VersionSummaryContract,
+  versionRowToContract,
+  versionSelect,
+} from './version-read-model.js';
 
 @Injectable()
 export class VersionsService {
@@ -208,58 +88,6 @@ export class VersionsService {
     return versionRowToContract(version);
   }
 
-  async findByProjectSlug(
-    projectSlug: string,
-  ): Promise<VersionSummaryContract[]> {
-    const result = await this.searchByProjectSlug(projectSlug, {
-      limit: 100,
-      offset: 0,
-    });
-
-    return result.versions;
-  }
-
-  async searchByProjectSlug(
-    projectSlug: string,
-    {
-      gameVersion = null,
-      limit = 20,
-      loader = null,
-      offset = 0,
-      search = null,
-    }: {
-      gameVersion?: string | null;
-      limit?: number;
-      loader?: string | null;
-      offset?: number;
-      search?: string | null;
-    } = {},
-  ): Promise<VersionSearchResultContract> {
-    const skip = clampInteger(offset, 0, 10_000);
-    const take = clampInteger(limit, 1, 100);
-    const where = versionSearchWhere(projectSlug, {
-      gameVersion,
-      loader,
-      search,
-    });
-
-    const [totalHits, versions] = await Promise.all([
-      this.prisma.version.count({ where }),
-      this.prisma.version.findMany({
-        orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-        select: versionSelect(),
-        skip,
-        take,
-        where,
-      }),
-    ]);
-
-    return {
-      totalHits,
-      versions: versions.map(versionRowToContract),
-    };
-  }
-
   async updateVersion(
     input: UpdateVersionInput,
     userId: string,
@@ -308,44 +136,6 @@ export class VersionsService {
         select: versionSelect(),
         where: { id: version.id },
       });
-    });
-
-    return versionRowToContract(updated);
-  }
-
-  async recordFileScan(
-    input: RecordFileScanInput,
-    user: AuthenticatedUser,
-  ): Promise<VersionSummaryContract> {
-    if (user.role !== 'ADMIN' && user.role !== 'MODERATOR') {
-      throw new ForbiddenException('Moderator access required');
-    }
-
-    const file = await this.prisma.versionFile.findUnique({
-      select: {
-        id: true,
-        versionId: true,
-      },
-      where: { id: input.fileId },
-    });
-
-    if (file === null) {
-      throw new NotFoundException('File not found');
-    }
-
-    const details = parseScanDetails(input.details);
-    await this.prisma.fileScan.create({
-      data: {
-        details,
-        fileId: file.id,
-        status: requiredTrim(input.status, 'Scan status is required'),
-        verdict: nullableTrim(input.verdict),
-      },
-    });
-
-    const updated = await this.prisma.version.findUniqueOrThrow({
-      select: versionSelect(),
-      where: { id: file.versionId },
     });
 
     return versionRowToContract(updated);
@@ -436,165 +226,6 @@ async function createVersionDependency(
       versionId,
     },
   });
-}
-
-function versionSearchWhere(
-  projectSlug: string,
-  {
-    gameVersion,
-    loader,
-    search,
-  }: {
-    gameVersion?: string | null;
-    loader?: string | null;
-    search?: string | null;
-  },
-): Prisma.VersionWhereInput {
-  const normalizedGameVersion = nullableTrim(gameVersion);
-  const normalizedLoader = nullableTrim(loader)?.toLowerCase() ?? null;
-  const normalizedSearch = nullableTrim(search);
-
-  if (
-    normalizedGameVersion !== null &&
-    !isGameVersionTag(normalizedGameVersion)
-  ) {
-    throw new BadRequestException('Unsupported game version');
-  }
-
-  const loaderFilter =
-    normalizedLoader === null ? null : loaderToEnum(normalizedLoader);
-  if (normalizedLoader !== null && loaderFilter === null) {
-    throw new BadRequestException('Unsupported loader');
-  }
-
-  return {
-    ...(normalizedGameVersion === null
-      ? {}
-      : {
-          gameVersions: {
-            some: {
-              gameVersion: { version: normalizedGameVersion },
-            },
-          },
-        }),
-    ...(loaderFilter === null
-      ? {}
-      : {
-          loaders: {
-            some: { loader: loaderFilter },
-          },
-        }),
-    project: { slug: projectSlug },
-    ...(normalizedSearch === null
-      ? {}
-      : {
-          OR: [
-            {
-              name: {
-                contains: normalizedSearch,
-                mode: 'insensitive',
-              },
-            },
-            {
-              versionNumber: {
-                contains: normalizedSearch,
-                mode: 'insensitive',
-              },
-            },
-          ],
-        }),
-    status: 'APPROVED',
-  };
-}
-
-function versionSelect() {
-  return {
-    author: {
-      select: {
-        avatarUrl: true,
-        displayName: true,
-        id: true,
-        username: true,
-      },
-    },
-    changelog: true,
-    channel: true,
-    createdAt: true,
-    dependencies: {
-      orderBy: [{ dependencyKind: 'asc' as const }, { id: 'asc' as const }],
-      select: {
-        dependencyKind: true,
-        externalFileName: true,
-        id: true,
-        targetProject: {
-          select: {
-            id: true,
-            kind: true,
-            slug: true,
-            title: true,
-          },
-        },
-        targetVersion: {
-          select: {
-            id: true,
-            versionNumber: true,
-          },
-        },
-      },
-    },
-    downloads: true,
-    featured: true,
-    files: {
-      orderBy: [{ isPrimary: 'desc' as const }, { fileName: 'asc' as const }],
-      select: {
-        fileName: true,
-        hashes: {
-          orderBy: { algorithm: 'asc' as const },
-          select: {
-            algorithm: true,
-            value: true,
-          },
-        },
-        id: true,
-        isPrimary: true,
-        kind: true,
-        scans: {
-          orderBy: { createdAt: 'desc' as const },
-          select: {
-            createdAt: true,
-            details: true,
-            id: true,
-            status: true,
-            verdict: true,
-          },
-          take: 3,
-        },
-        sizeBytes: true,
-        url: true,
-      },
-    },
-    gameVersions: {
-      select: {
-        gameVersion: {
-          select: { version: true },
-        },
-      },
-    },
-    id: true,
-    loaders: {
-      select: { loader: true },
-    },
-    name: true,
-    project: {
-      select: { slug: true },
-    },
-    publishedAt: true,
-    requestedStatus: true,
-    sortOrder: true,
-    status: true,
-    updatedAt: true,
-    versionNumber: true,
-  };
 }
 
 async function replaceVersionGameVersions(
@@ -718,78 +349,7 @@ function uniqueNormalized(values: readonly string[]): string[] {
   ];
 }
 
-function clampInteger(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.min(max, Math.max(min, Math.trunc(value)));
-}
-
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed.length === 0 ? null : trimmed;
-}
-
-function requiredTrim(value: string, message: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    throw new BadRequestException(message);
-  }
-
-  return trimmed;
-}
-
-function parseScanDetails(
-  value: string | null | undefined,
-): Prisma.InputJsonValue | undefined {
-  const trimmed = value?.trim() ?? '';
-  if (trimmed.length === 0) {
-    return undefined;
-  }
-
-  try {
-    return JSON.parse(trimmed) as Prisma.InputJsonValue;
-  } catch {
-    throw new BadRequestException('Scan details must be valid JSON');
-  }
-}
-
-function versionRowToContract(version: VersionRow): VersionSummaryContract {
-  return {
-    author: version.author,
-    changelog: version.changelog,
-    channel: version.channel,
-    createdAt: version.createdAt,
-    datePublished: version.publishedAt,
-    dependencies: version.dependencies,
-    downloads: version.downloads,
-    featured: version.featured,
-    files: version.files.map((file) => ({
-      fileName: file.fileName,
-      hashes: file.hashes,
-      id: file.id,
-      kind: file.kind,
-      primary: file.isPrimary,
-      scans: file.scans.map((scan) => ({
-        createdAt: scan.createdAt,
-        details:
-          scan.details === null ? null : JSON.stringify(scan.details, null, 2),
-        id: scan.id,
-        status: scan.status,
-        verdict: scan.verdict,
-      })),
-      sizeBytes: file.sizeBytes.toString(),
-      url: file.url,
-    })),
-    gameVersions: version.gameVersions.map(
-      ({ gameVersion }) => gameVersion.version,
-    ),
-    id: version.id,
-    loaders: version.loaders.map(({ loader }) => loader.toLowerCase()),
-    name: version.name,
-    projectSlug: version.project.slug,
-    requestedStatus: version.requestedStatus,
-    sortOrder: version.sortOrder,
-    status: version.status,
-    updatedAt: version.updatedAt,
-    versionNumber: version.versionNumber,
-  };
 }
