@@ -63,6 +63,29 @@ export const ACCOUNT_STATUSES = [
   'DELETED',
 ] as const satisfies readonly AccountStatus[];
 
+export const REPORT_REASONS = [
+  'BROKEN_OR_MISLEADING',
+  'MALWARE',
+  'COPYRIGHT',
+  'SPAM',
+  'IMPERSONATION',
+  'HATEFUL_OR_ABUSIVE',
+  'OTHER',
+] as const satisfies readonly ReportReason[];
+
+export const REPORT_REASON_OPTIONS = [
+  { label: 'Broken or misleading', value: 'BROKEN_OR_MISLEADING' },
+  { label: 'Malware', value: 'MALWARE' },
+  { label: 'Copyright', value: 'COPYRIGHT' },
+  { label: 'Spam', value: 'SPAM' },
+  { label: 'Impersonation', value: 'IMPERSONATION' },
+  { label: 'Hateful or abusive', value: 'HATEFUL_OR_ABUSIVE' },
+  { label: 'Other', value: 'OTHER' },
+] as const satisfies readonly {
+  readonly label: string;
+  readonly value: ReportReason;
+}[];
+
 export const PROJECT_KINDS = [
   'MOD',
   'MODPACK',

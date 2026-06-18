@@ -1,16 +1,6 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { type ReportReason } from '@moddery/shared';
+import { REPORT_REASONS, type ReportReason } from '@moddery/shared';
 import { IsIn, IsString, MinLength } from 'class-validator';
-
-const reportReasons = [
-  'SPAM',
-  'MALWARE',
-  'COPYRIGHT',
-  'IMPERSONATION',
-  'HATEFUL_OR_ABUSIVE',
-  'BROKEN_OR_MISLEADING',
-  'OTHER',
-] as const satisfies readonly ReportReason[];
 
 @InputType()
 export class CreateProjectReportInput {
@@ -24,7 +14,7 @@ export class CreateProjectReportInput {
   projectSlug!: string;
 
   @Field(() => String)
-  @IsIn(reportReasons)
+  @IsIn(REPORT_REASONS)
   reason!: ReportReason;
 }
 
@@ -36,7 +26,7 @@ export class CreateVersionReportInput {
   body!: string;
 
   @Field(() => String)
-  @IsIn(reportReasons)
+  @IsIn(REPORT_REASONS)
   reason!: ReportReason;
 
   @Field(() => String)
@@ -52,7 +42,7 @@ export class CreateUserReportInput {
   body!: string;
 
   @Field(() => String)
-  @IsIn(reportReasons)
+  @IsIn(REPORT_REASONS)
   reason!: ReportReason;
 
   @Field(() => String)
