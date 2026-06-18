@@ -1,4 +1,5 @@
 import { type ProjectMember } from '../../../../lib/catalog.ts';
+import { permissionLabel } from '../../../../lib/permissions.ts';
 
 export function ProjectTeamMembersList({
   isLoading,
@@ -47,7 +48,7 @@ export function ProjectTeamMembersList({
                     key={permission}
                     className="rounded-md bg-control px-2 py-1 text-[11px] font-bold text-muted"
                   >
-                    {permission}
+                    {permissionLabel(permission)}
                   </span>
                 ))}
               </div>

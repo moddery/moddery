@@ -1,5 +1,6 @@
 import { type TeamInvitationSummary } from '../../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../../lib/format.ts';
+import { permissionLabel } from '../../../../lib/permissions.ts';
 
 export function TeamInvitationRow({
   busy,
@@ -48,7 +49,7 @@ export function TeamInvitationRow({
               key={permission}
               className="rounded-md bg-control px-2 py-1 text-xs font-bold text-muted"
             >
-              {permission}
+              {permissionLabel(permission)}
             </span>
           ))}
         </div>
