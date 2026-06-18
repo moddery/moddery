@@ -14,6 +14,7 @@ import {
   type ProjectFollowStateQueryData,
   type ProjectMembersQueryVariables,
   type DownloadRecord,
+  type ProjectViewRecord,
   type RecordDownloadMutationData,
   type RecordDownloadMutationVariables,
   type RecordProjectViewMutationData,
@@ -109,7 +110,9 @@ export async function recordDownload(fileId: string): Promise<DownloadRecord> {
   return data.recordDownload;
 }
 
-export async function recordProjectView(projectSlug: string): Promise<void> {
+export async function recordProjectView(
+  projectSlug: string,
+): Promise<ProjectViewRecord> {
   const { data } = await apolloClient.mutate<
     RecordProjectViewMutationData,
     RecordProjectViewMutationVariables
@@ -121,4 +124,6 @@ export async function recordProjectView(projectSlug: string): Promise<void> {
   if (!data?.recordProjectView) {
     throw new Error('Project view record did not return from the API');
   }
+
+  return data.recordProjectView;
 }

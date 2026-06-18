@@ -50,10 +50,12 @@ export interface DownloadRecord {
 }
 
 export interface RecordProjectViewMutationData {
-  recordProjectView: {
-    projectId: string;
-    projectSlug: string;
-  };
+  recordProjectView: ProjectViewRecord;
+}
+
+export interface ProjectViewRecord {
+  projectId: string;
+  projectSlug: string;
 }
 
 export interface RecordDownloadMutationVariables {

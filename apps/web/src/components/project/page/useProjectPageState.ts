@@ -16,6 +16,7 @@ import {
   type ProjectMember,
   type ProjectVersion,
   type ProjectVersionSearchResult,
+  type ProjectViewRecord,
 } from '../../../lib/catalog.ts';
 import { compareVersions } from '../../../lib/format.ts';
 import { type ProjectType } from '../../../types.ts';
@@ -34,6 +35,8 @@ interface ProjectPageQueryData {
   project: ProjectDetails;
   versions: ProjectVersion[];
 }
+
+const viewedProjectSlugs = new Set<string>();
 
 export function useProjectPageState({
   projectTypeHint,
@@ -83,15 +86,22 @@ export function useProjectPageState({
     };
   }, [slug]);
 
-  useEffect(() => {
-    if (projectQuery.data?.project === undefined) return;
+  const projectSlugForView = projectQuery.data?.project.slug;
 
-    void recordProjectView(slug).catch((error: unknown) => {
-      if (import.meta.env.DEV) {
-        console.error(error);
-      }
-    });
-  }, [projectQuery.data?.project, slug]);
+  useEffect(() => {
+    if (projectSlugForView === undefined) return;
+    if (viewedProjectSlugs.has(projectSlugForView)) return;
+
+    viewedProjectSlugs.add(projectSlugForView);
+    void recordProjectView(projectSlugForView)
+      .then(updateProjectViewRecord)
+      .catch((error: unknown) => {
+        viewedProjectSlugs.delete(projectSlugForView);
+        if (import.meta.env.DEV) {
+          console.error(error);
+        }
+      });
+  }, [projectSlugForView]);
 
   function selectTab(tab: ProjectTab) {
     setActiveTab(tab);
@@ -159,6 +169,28 @@ export function useProjectPageState({
         return {
           ...current,
           versions: updateVersionDownloads(current.versions, record),
+        };
+      },
+    );
+  }
+
+  function updateProjectViewRecord(record: ProjectViewRecord) {
+    queryClient.setQueryData<ProjectPageQueryData>(
+      projectQueryKey,
+      (current) => {
+        if (current === undefined) return current;
+        if (current.project.slug !== record.projectSlug) return current;
+
+        return {
+          ...current,
+          analytics:
+            current.analytics === null
+              ? null
+              : {
+                  ...current.analytics,
+                  totalViews: current.analytics.totalViews + 1,
+                  viewsLast30Days: current.analytics.viewsLast30Days + 1,
+                },
         };
       },
     );
