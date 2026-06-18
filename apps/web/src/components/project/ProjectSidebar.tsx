@@ -74,7 +74,7 @@ export function ProjectSidebar({
           value={timeAgo(project.updated)}
         />
         <MetaRow label="Published" value={formatDate(project.published)} />
-        <MetaRow label="License" value={project.license.id} />
+        <MetaRow label="License" value={project.license.name} />
         {latestFile && (
           <MetaRow label="Latest file" value={formatBytes(latestFile.size)} />
         )}
