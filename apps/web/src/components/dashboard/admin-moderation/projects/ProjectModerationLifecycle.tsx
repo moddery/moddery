@@ -1,3 +1,4 @@
+import { userPath } from '../../../../app/routing.ts';
 import { type DashboardProject } from '../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
@@ -17,7 +18,14 @@ export function ProjectModerationLock({
 
   return (
     <p className="mt-3 rounded-md border border-line bg-control px-2 py-1.5 text-xs font-semibold text-muted">
-      Locked by {moderator} until{' '}
+      Locked by{' '}
+      <a
+        href={userPath(project.moderationLock.moderator.username)}
+        className="text-ink transition-colors hover:text-accent"
+      >
+        {moderator}
+      </a>{' '}
+      until{' '}
       {new Date(project.moderationLock.expiresAt).toLocaleTimeString([], {
         hour: 'numeric',
         minute: '2-digit',
