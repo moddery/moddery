@@ -1,11 +1,7 @@
+import { type ProjectType } from '@moddery/shared';
+
 export type Side = 'required' | 'optional' | 'unsupported';
-export type ProjectType =
-  | 'mod'
-  | 'resourcepack'
-  | 'datapack'
-  | 'shader'
-  | 'modpack'
-  | 'plugin';
+export { type ProjectType };
 
 export interface Mod {
   projectType?: ProjectType;

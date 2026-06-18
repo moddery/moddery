@@ -14,6 +14,13 @@ export type ProjectKind =
   | 'SHADER'
   | 'PLUGIN'
   | 'DATAPACK';
+export type ProjectType =
+  | 'mod'
+  | 'resourcepack'
+  | 'datapack'
+  | 'shader'
+  | 'modpack'
+  | 'plugin';
 export type ProjectStatus =
   | 'DRAFT'
   | 'PENDING_REVIEW'
@@ -52,6 +59,15 @@ export const PROJECT_KINDS = [
   'PLUGIN',
   'DATAPACK',
 ] as const satisfies readonly ProjectKind[];
+
+export const PROJECT_TYPES = [
+  'mod',
+  'resourcepack',
+  'datapack',
+  'shader',
+  'modpack',
+  'plugin',
+] as const satisfies readonly ProjectType[];
 
 const PLATFORM_CATEGORY_TAGS = new Set([
   'babric',

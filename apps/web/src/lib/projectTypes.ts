@@ -1,6 +1,4 @@
-import { type ProjectKind } from '@moddery/shared';
-
-import { type ProjectType } from '../types.ts';
+import { type ProjectKind, type ProjectType } from '@moddery/shared';
 
 export interface ProjectTypeMeta {
   type: ProjectType;

@@ -1,3 +1,5 @@
+import { PROJECT_TYPES } from '@moddery/shared';
+
 import { CONTENT_TYPES, projectTypeMeta } from '../lib/projectTypes.ts';
 import { type ProjectType } from '../types.ts';
 
@@ -207,12 +209,5 @@ function clearProjectSearchParams(url: URL) {
 }
 
 function isProjectType(value: string | null): value is ProjectType {
-  return (
-    value === 'mod' ||
-    value === 'resourcepack' ||
-    value === 'datapack' ||
-    value === 'shader' ||
-    value === 'modpack' ||
-    value === 'plugin'
-  );
+  return value !== null && PROJECT_TYPES.includes(value as ProjectType);
 }
