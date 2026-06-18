@@ -10,6 +10,7 @@ import { VersionActions } from './version-row/VersionActions.tsx';
 import { VersionChangelog } from './version-row/VersionChangelog.tsx';
 import { VersionDependencies } from './version-row/VersionDependencies.tsx';
 import { VersionFiles } from './version-row/VersionFiles.tsx';
+import { VersionMetadata } from './version-row/VersionMetadata.tsx';
 import { VersionReportForm } from './version-row/VersionReportForm.tsx';
 import { VersionSummary } from './version-row/VersionSummary.tsx';
 
@@ -28,10 +29,7 @@ export function VersionRow({
     version.files.find((file) => file.primary) ?? version.files[0];
   const [reportOpen, setReportOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(selected);
-  const hasDetails =
-    version.files.length > 0 ||
-    version.dependencies.length > 0 ||
-    Boolean(version.changelog?.trim());
+  const hasDetails = true;
 
   async function downloadFile(file: ProjectVersion['files'][number]) {
     onDownloadRecorded(await recordDownload(file.id));
@@ -83,6 +81,7 @@ export function VersionRow({
 
       {detailsOpen && (
         <div className="grid gap-3 sm:col-span-2">
+          <VersionMetadata version={version} />
           <VersionChangelog changelog={version.changelog} />
           <VersionDependencies dependencies={version.dependencies} />
           <VersionFiles files={version.files} onDownload={downloadFile} />
