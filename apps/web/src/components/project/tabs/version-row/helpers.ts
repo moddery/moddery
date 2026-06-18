@@ -22,10 +22,16 @@ export function dependencyProjectHref(
 ): string | null {
   if (dependency.targetProject === null) return null;
 
-  return projectPath(
+  const href = projectPath(
     projectTypeFromKind(dependency.targetProject.kind),
     dependency.targetProject.slug,
   );
+
+  if (dependency.targetVersion === null) return href;
+
+  return `${href}&tab=versions&version=${encodeURIComponent(
+    dependency.targetVersion.versionNumber,
+  )}`;
 }
 
 export function versionHref(versionNumber: string) {
