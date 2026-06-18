@@ -32,11 +32,17 @@ export interface DashboardData {
 
 export interface AdminUserAccount {
   avatarUrl: string | null;
+  collectionCount: number;
   createdAt: string;
   displayName: string | null;
+  email: string | null;
+  emailVerifiedAt: string | null;
   id: string;
+  newsletterOptIn: boolean;
+  projectCount: number;
   role: AccountRole;
   status: AccountStatus;
+  twoFactorEnabled: boolean;
   username: string;
 }
 

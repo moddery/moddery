@@ -4,11 +4,17 @@ export const ADMIN_USERS_QUERY = gql`
   query AdminUsers {
     adminUsers {
       avatarUrl
+      collectionCount
       createdAt
       displayName
+      email
+      emailVerifiedAt
       id
+      newsletterOptIn
+      projectCount
       role
       status
+      twoFactorEnabled
       username
     }
   }
@@ -20,11 +26,17 @@ export const ADMIN_USER_SEARCH_QUERY = gql`
       totalHits
       users {
         avatarUrl
+        collectionCount
         createdAt
         displayName
+        email
+        emailVerifiedAt
         id
+        newsletterOptIn
+        projectCount
         role
         status
+        twoFactorEnabled
         username
       }
     }
@@ -35,11 +47,17 @@ export const UPDATE_USER_ACCOUNT_MUTATION = gql`
   mutation UpdateUserAccount($input: UpdateUserAccountInput!) {
     updateUserAccount(input: $input) {
       avatarUrl
+      collectionCount
       createdAt
       displayName
+      email
+      emailVerifiedAt
       id
+      newsletterOptIn
+      projectCount
       role
       status
+      twoFactorEnabled
       username
     }
   }
