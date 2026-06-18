@@ -15,6 +15,7 @@ import {
 } from '../../lib/format.ts';
 import { CopyLinkButton } from '../CopyLinkButton.tsx';
 import { FollowProjectButton } from './sidebar/FollowProjectButton.tsx';
+import { LatestVersionSection } from './sidebar/LatestVersionSection.tsx';
 import { MetaRow } from './sidebar/MetaRow.tsx';
 import { ProjectAnalyticsSection } from './sidebar/ProjectAnalyticsSection.tsx';
 import { ProjectCollectionSave } from './sidebar/ProjectCollectionSave.tsx';
@@ -28,16 +29,20 @@ export function ProjectSidebar({
   analytics,
   followState,
   latestFile,
+  latestVersion,
   members,
   onDownloadLatest,
+  onSelectVersion,
   project,
   supportedVersions,
 }: {
   analytics: ProjectAnalytics | null;
   followState: ProjectFollowState | null;
   latestFile: ProjectVersion['files'][number] | undefined;
+  latestVersion: ProjectVersion | undefined;
   members: ProjectMember[];
   onDownloadLatest: () => void;
+  onSelectVersion: (versionNumber: string | null) => void;
   project: ProjectDetails;
   supportedVersions: string[];
 }) {
@@ -81,6 +86,11 @@ export function ProjectSidebar({
       </div>
 
       {analytics && <ProjectAnalyticsSection analytics={analytics} />}
+
+      <LatestVersionSection
+        version={latestVersion}
+        onSelectVersion={onSelectVersion}
+      />
 
       <ProjectLinksSection project={project} />
 

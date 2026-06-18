@@ -25,6 +25,7 @@ export function ProjectPageContent({
   followState,
   gallery,
   latestFile,
+  latestVersion,
   members,
   onDownloadLatest,
   onSelectTab,
@@ -40,6 +41,7 @@ export function ProjectPageContent({
   followState: ProjectFollowState | null;
   gallery: ProjectGalleryImage[];
   latestFile: ProjectFile | undefined;
+  latestVersion: ProjectVersion | undefined;
   members: ProjectMember[];
   onDownloadLatest: () => void;
   onSelectTab: (tab: ProjectTab) => void;
@@ -96,8 +98,10 @@ export function ProjectPageContent({
           analytics={analytics}
           followState={followState}
           latestFile={latestFile}
+          latestVersion={latestVersion}
           members={members}
           onDownloadLatest={onDownloadLatest}
+          onSelectVersion={onSelectVersion}
           project={project}
           supportedVersions={supportedVersions}
         />

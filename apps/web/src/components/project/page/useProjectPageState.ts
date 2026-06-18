@@ -136,6 +136,7 @@ export function useProjectPageState({
     followState,
     gallery,
     latestFile,
+    latestVersion,
     members,
     downloadLatestFile,
     project,
