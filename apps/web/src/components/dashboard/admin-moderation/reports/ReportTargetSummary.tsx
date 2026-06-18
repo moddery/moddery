@@ -54,7 +54,7 @@ export function ReportTargetSummary({ report }: { report: ModerationReport }) {
   );
 }
 
-function resolveReportTarget(report: ModerationReport) {
+export function resolveReportTarget(report: ModerationReport) {
   if (report.version) {
     const projectHref = projectPath(
       projectTypeFromKind(report.version.project.kind),
@@ -71,7 +71,7 @@ function resolveReportTarget(report: ModerationReport) {
       kind: 'Version',
       name: report.version.name,
       version: {
-        projectHref: versionHref,
+        projectHref,
         projectTitle: report.version.project.title,
         versionNumber: report.version.versionNumber,
       },

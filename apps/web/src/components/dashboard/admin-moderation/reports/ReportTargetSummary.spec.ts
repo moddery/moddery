@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { reportVersionHref } from './ReportTargetSummary.tsx';
+import { type ModerationReport } from '../../../../lib/dashboard.ts';
+import {
+  reportVersionHref,
+  resolveReportTarget,
+} from './ReportTargetSummary.tsx';
 
 describe(reportVersionHref.name, () => {
   test('links moderation version reports to the selected project version', () => {
@@ -11,3 +15,48 @@ describe(reportVersionHref.name, () => {
     );
   });
 });
+
+describe(resolveReportTarget.name, () => {
+  test('keeps version target links separate from project context links', () => {
+    const target = resolveReportTarget(reportFixture());
+
+    expect(target.href).toBe(
+      '/mods?project=required-lib&type=mod&tab=versions&version=1.0.0%2Bfabric',
+    );
+    expect(target.version?.projectHref).toBe(
+      '/mods?project=required-lib&type=mod',
+    );
+  });
+});
+
+function reportFixture(): ModerationReport {
+  return {
+    body: 'Wrong file uploaded',
+    closedAt: null,
+    createdAt: '2026-06-18T00:00:00.000Z',
+    id: 'report-a',
+    project: null,
+    projectId: null,
+    reason: 'MALWARE',
+    reporter: {
+      displayName: null,
+      id: 'user-a',
+      username: 'reporter',
+    },
+    state: 'OPEN',
+    userTarget: null,
+    userTargetId: null,
+    version: {
+      id: 'version-a',
+      name: 'Required Lib 1.0.0',
+      project: {
+        id: 'project-a',
+        kind: 'MOD',
+        slug: 'required-lib',
+        title: 'Required Lib',
+      },
+      versionNumber: '1.0.0+fabric',
+    },
+    versionId: 'version-a',
+  };
+}
