@@ -44,6 +44,7 @@ export function OrganizationProjectList({
         <p className="py-8 text-sm text-muted">No public projects yet.</p>
       ) : (
         <OrganizationProjectGrid
+          organization={organization}
           projects={projects}
           onOpenProject={onOpenProject}
         />
@@ -59,15 +60,20 @@ export function OrganizationProjectList({
 
 export function OrganizationProjectGrid({
   onOpenProject,
+  organization,
   projects,
 }: {
   onOpenProject: (mod: Mod) => void;
+  organization: Pick<
+    OrganizationProfile,
+    'color' | 'iconUrl' | 'id' | 'name' | 'slug'
+  >;
   projects: OrganizationProjectPreview[];
 }) {
   return (
     <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
       {projects.map((project) => {
-        const mod = organizationProjectToMod(project);
+        const mod = organizationProjectToMod(project, organization);
         return (
           <ModCard
             key={project.slug}

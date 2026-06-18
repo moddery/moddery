@@ -316,11 +316,18 @@ export async function fetchOrganizationProfile(
 
 export function organizationProjectToMod(
   project: OrganizationProjectPreview,
+  organization?: Pick<
+    OrganizationProfile,
+    'color' | 'iconUrl' | 'id' | 'name' | 'slug'
+  >,
 ): Mod {
+  const organizationName = organization?.name.trim() ?? '';
+
   return {
     author:
-      project.owner?.displayName ?? project.owner?.username ?? 'Unknown user',
-    authorUsername: project.owner?.username ?? null,
+      organizationName ||
+      (project.owner?.displayName ?? project.owner?.username ?? 'Unknown user'),
+    authorUsername: organization ? null : (project.owner?.username ?? null),
     categories: project.categories,
     client: 'optional',
     color: project.color,
@@ -330,6 +337,15 @@ export function organizationProjectToMod(
     gameVersions: project.gameVersions,
     icon: project.iconUrl,
     loaders: project.loaders.map((loader) => loader.toLowerCase()),
+    organization: organization
+      ? {
+          color: organization.color,
+          iconUrl: organization.iconUrl,
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+        }
+      : null,
     projectType: projectTypeFromKind(project.kind),
     server: 'optional',
     slug: project.slug,

@@ -124,6 +124,7 @@ export function OrganizationDirectory({
               </div>
 
               <OrganizationProjectGrid
+                organization={organization}
                 projects={organization.projects}
                 onOpenProject={onOpenProject}
               />
