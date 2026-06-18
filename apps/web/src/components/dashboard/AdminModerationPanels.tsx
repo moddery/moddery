@@ -1,3 +1,4 @@
+export { AuditLogPanel } from './admin-moderation/AuditLogPanel.tsx';
 export { AdminUsersPanel } from './admin-moderation/AdminUsersPanel.tsx';
 export { FileScanForm } from './admin-moderation/FileScanForm.tsx';
 export { InfrastructureStatusPanel } from './admin-moderation/InfrastructureStatusPanel.tsx';

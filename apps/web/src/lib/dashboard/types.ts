@@ -51,6 +51,34 @@ export interface AdminUserSearchResult {
   users: AdminUserAccount[];
 }
 
+export interface AdminAuditUser {
+  displayName: string | null;
+  id: string;
+  username: string;
+}
+
+export interface UserAccountAuditSnapshot {
+  role: AccountRole;
+  status: AccountStatus;
+}
+
+export interface AdminAuditLog {
+  action: string;
+  actor: AdminAuditUser | null;
+  actorId: string | null;
+  after: UserAccountAuditSnapshot | null;
+  before: UserAccountAuditSnapshot | null;
+  createdAt: string;
+  id: string;
+  targetUser: AdminAuditUser | null;
+  targetUserId: string | null;
+}
+
+export interface AdminAuditLogSearchResult {
+  auditLogs: AdminAuditLog[];
+  totalHits: number;
+}
+
 export interface DashboardCollection {
   color: string | null;
   description: string | null;

@@ -5,6 +5,7 @@ import { GraphQLModule } from '@nestjs/graphql';
 
 import { AuthModule } from './auth/auth.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { AuditModule } from './audit/audit.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { CollectionsModule } from './collections/collections.module.js';
 import { validateEnvironment } from './config/env.validation.js';
@@ -39,6 +40,7 @@ import { VersionsModule } from './versions/versions.module.js';
     }),
     AuthModule,
     AnalyticsModule,
+    AuditModule,
     CatalogModule,
     CollectionsModule,
     DeveloperModule,

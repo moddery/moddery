@@ -7,6 +7,7 @@ import {
   type AddProjectGalleryImageInput,
   type AddOrganizationTeamMemberInput,
   type AddProjectTeamMemberInput,
+  type AdminAuditLogSearchResult,
   type AdminUserAccount,
   type AdminUserSearchResult,
   type CategoryTaxonomy,
@@ -344,6 +345,15 @@ export interface AdminUserSearchQueryVariables {
   limit: number;
   offset: number;
   search?: string | null;
+}
+
+export interface AdminAuditLogSearchQueryData {
+  adminAuditLogSearch: AdminAuditLogSearchResult;
+}
+
+export interface AdminAuditLogSearchQueryVariables {
+  limit: number;
+  offset: number;
 }
 
 export interface UpdateUserAccountMutationData {

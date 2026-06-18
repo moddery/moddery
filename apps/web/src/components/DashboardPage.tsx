@@ -12,6 +12,7 @@ import {
   TeamInvitationsPanel,
 } from './dashboard/AccountSettingsPanels.tsx';
 import {
+  AuditLogPanel,
   AdminUsersPanel,
   FileScanForm,
   InfrastructureStatusPanel,
@@ -167,6 +168,7 @@ export function DashboardPage({
           {canAdmin && (
             <>
               <InfrastructureStatusPanel />
+              <AuditLogPanel />
               <AdminUsersPanel viewerId={dashboard.id} />
               <TaxonomyPanel />
             </>

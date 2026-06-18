@@ -2,6 +2,7 @@ import { type AccountRole, type AccountStatus } from '@moddery/shared';
 
 import { apolloClient } from '../../../apollo.js';
 import {
+  ADMIN_AUDIT_LOG_SEARCH_QUERY,
   ADMIN_USER_SEARCH_QUERY,
   ADMIN_USERS_QUERY,
   UPDATE_USER_ACCOUNT_MUTATION,
@@ -26,6 +27,8 @@ import {
   type CreateReportThreadMessageMutationVariables,
   type ModerationProjectSearchQueryData,
   type ModerationProjectSearchQueryVariables,
+  type AdminAuditLogSearchQueryData,
+  type AdminAuditLogSearchQueryVariables,
   type ModerationProjectsQueryData,
   type AdminUserSearchQueryData,
   type AdminUserSearchQueryVariables,
@@ -40,6 +43,7 @@ import {
 } from '../internal-types.js';
 import {
   type AdminUserAccount,
+  type AdminAuditLogSearchResult,
   type AdminUserSearchResult,
   type DashboardProjectSearchResult,
   type DashboardProject,
@@ -48,6 +52,27 @@ import {
   type ModerationReportState,
   type ReportThread,
 } from '../types.js';
+
+export async function fetchAdminAuditLogSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<AdminAuditLogSearchResult> {
+  const { data } = await apolloClient.query<
+    AdminAuditLogSearchQueryData,
+    AdminAuditLogSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: ADMIN_AUDIT_LOG_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  return data.adminAuditLogSearch;
+}
 
 export async function fetchModerationReports(
   page = 1,

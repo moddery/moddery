@@ -63,6 +63,39 @@ export const UPDATE_USER_ACCOUNT_MUTATION = gql`
   }
 `;
 
+export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
+  query AdminAuditLogSearch($limit: Int!, $offset: Int!) {
+    adminAuditLogSearch(limit: $limit, offset: $offset) {
+      auditLogs {
+        action
+        actor {
+          displayName
+          id
+          username
+        }
+        actorId
+        after {
+          role
+          status
+        }
+        before {
+          role
+          status
+        }
+        createdAt
+        id
+        targetUser {
+          displayName
+          id
+          username
+        }
+        targetUserId
+      }
+      totalHits
+    }
+  }
+`;
+
 export const MODERATION_PROJECTS_QUERY = gql`
   query ModerationProjects {
     moderationProjects {
