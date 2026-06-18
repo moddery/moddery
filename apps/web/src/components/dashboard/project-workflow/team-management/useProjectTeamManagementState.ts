@@ -5,7 +5,6 @@ import {
   removeProjectTeamMember,
   type DashboardProject,
 } from '../../../../lib/dashboard.ts';
-import { splitList } from '../shared.tsx';
 
 interface PreventableSubmitEvent {
   preventDefault: () => void;
@@ -15,7 +14,7 @@ export function useProjectTeamManagementState(projects: DashboardProject[]) {
   const [projectSlug, setProjectSlug] = useState(projects[0]?.slug ?? '');
   const [username, setUsername] = useState('');
   const [role, setRole] = useState('Member');
-  const [permissions, setPermissions] = useState('MANAGE_VERSIONS');
+  const [permissions, setPermissions] = useState<string[]>(['MANAGE_VERSIONS']);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -26,7 +25,7 @@ export function useProjectTeamManagementState(projects: DashboardProject[]) {
 
     try {
       const members = await addProjectTeamMember({
-        permissions: splitList(permissions),
+        permissions,
         projectSlug,
         role,
         username,

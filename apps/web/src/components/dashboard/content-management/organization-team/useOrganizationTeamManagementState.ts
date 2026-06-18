@@ -5,7 +5,6 @@ import {
   removeOrganizationTeamMember,
   type DashboardOrganization,
 } from '../../../../lib/dashboard.ts';
-import { splitList } from '../shared.tsx';
 
 interface PreventableSubmitEvent {
   preventDefault: () => void;
@@ -19,7 +18,7 @@ export function useOrganizationTeamManagementState(
   );
   const [username, setUsername] = useState('');
   const [role, setRole] = useState('Member');
-  const [permissions, setPermissions] = useState('MANAGE_DETAILS');
+  const [permissions, setPermissions] = useState<string[]>(['MANAGE_DETAILS']);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -31,7 +30,7 @@ export function useOrganizationTeamManagementState(
     try {
       const nextOrganization = await addOrganizationTeamMember({
         organizationId,
-        permissions: splitList(permissions),
+        permissions,
         role,
         username,
       });

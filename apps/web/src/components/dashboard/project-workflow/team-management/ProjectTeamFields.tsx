@@ -1,12 +1,14 @@
 import { type DashboardProject } from '../../../../lib/dashboard.ts';
+import { projectTeamPermissions } from '../../../../lib/permissions.ts';
+import { TeamPermissionsField } from '../../TeamPermissionsField.tsx';
 import { DashboardField } from '../shared.tsx';
 
 interface ProjectTeamFieldsProps {
-  permissions: string;
+  permissions: string[];
   projectSlug: string;
   projects: DashboardProject[];
   role: string;
-  setPermissions: (value: string) => void;
+  setPermissions: (value: string[]) => void;
   setProjectSlug: (value: string) => void;
   setRole: (value: string) => void;
   setUsername: (value: string) => void;
@@ -49,11 +51,10 @@ export function ProjectTeamFields({
         />
         <DashboardField label="Role" value={role} onChange={setRole} />
       </div>
-      <DashboardField
-        label="Permissions"
-        value={permissions}
-        onChange={setPermissions}
-        placeholder="MANAGE_VERSIONS, VIEW_ANALYTICS"
+      <TeamPermissionsField
+        options={projectTeamPermissions}
+        permissions={permissions}
+        setPermissions={setPermissions}
       />
     </>
   );

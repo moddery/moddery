@@ -1,13 +1,15 @@
 import { type DashboardOrganization } from '../../../../lib/dashboard.ts';
+import { organizationTeamPermissions } from '../../../../lib/permissions.ts';
+import { TeamPermissionsField } from '../../TeamPermissionsField.tsx';
 import { DashboardField } from '../shared.tsx';
 
 interface OrganizationTeamFieldsProps {
   organizationId: string;
   organizations: DashboardOrganization[];
-  permissions: string;
+  permissions: string[];
   role: string;
   setOrganizationId: (value: string) => void;
-  setPermissions: (value: string) => void;
+  setPermissions: (value: string[]) => void;
   setRole: (value: string) => void;
   setUsername: (value: string) => void;
   username: string;
@@ -49,11 +51,10 @@ export function OrganizationTeamFields({
         />
         <DashboardField label="Role" value={role} onChange={setRole} />
       </div>
-      <DashboardField
-        label="Permissions"
-        value={permissions}
-        onChange={setPermissions}
-        placeholder="MANAGE_DETAILS, VIEW_ANALYTICS"
+      <TeamPermissionsField
+        options={organizationTeamPermissions}
+        permissions={permissions}
+        setPermissions={setPermissions}
       />
     </>
   );

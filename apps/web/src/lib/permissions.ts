@@ -1,3 +1,18 @@
+export const projectTeamPermissions = [
+  'MANAGE_DETAILS',
+  'MANAGE_MEMBERS',
+  'MANAGE_SETTINGS',
+  'MANAGE_VERSIONS',
+  'VIEW_ANALYTICS',
+] as const;
+
+export const organizationTeamPermissions = [
+  'MANAGE_DETAILS',
+  'MANAGE_MEMBERS',
+  'MANAGE_SETTINGS',
+  'VIEW_ANALYTICS',
+] as const;
+
 export function permissionLabel(permission: string): string {
   return permission
     .trim()
