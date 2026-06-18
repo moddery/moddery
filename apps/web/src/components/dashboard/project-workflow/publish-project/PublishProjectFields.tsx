@@ -19,6 +19,8 @@ export function PublishProjectFields(props: PublishProjectFieldsProps) {
       />
       <PublishProjectTaxonomyFields
         categories={props.categories}
+        categoryOptions={props.categoryOptions}
+        gameVersionOptions={props.gameVersionOptions}
         gameVersions={props.gameVersions}
         kind={props.kind}
         loaders={props.loaders}

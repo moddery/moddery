@@ -1,10 +1,13 @@
+import { SUPPORTED_LOADERS } from '@moddery/shared';
 import { type CreateProjectInput } from '../../../../lib/dashboard.ts';
-import { DashboardField } from '../shared.tsx';
+import { enumLabel } from '../../../../lib/labels.ts';
 import { type PublishProjectFieldsProps } from './PublishProjectFields.types.ts';
 
 type TaxonomyFieldsProps = Pick<
   PublishProjectFieldsProps,
   | 'categories'
+  | 'categoryOptions'
+  | 'gameVersionOptions'
   | 'gameVersions'
   | 'kind'
   | 'loaders'
@@ -16,6 +19,8 @@ type TaxonomyFieldsProps = Pick<
 
 export function PublishProjectTaxonomyFields({
   categories,
+  categoryOptions,
+  gameVersionOptions,
   gameVersions,
   kind,
   loaders,
@@ -24,8 +29,16 @@ export function PublishProjectTaxonomyFields({
   onKindChange,
   onLoadersChange,
 }: TaxonomyFieldsProps) {
+  const filteredCategories = categoryOptions.filter(
+    (category) =>
+      category.projectKind === null || category.projectKind === kind,
+  );
+  const activeGameVersions = gameVersionOptions.filter(
+    (version) => version.isActive,
+  );
+
   return (
-    <div className="grid gap-3 md:grid-cols-4">
+    <div className="grid gap-3">
       <label className="grid gap-1 text-sm font-bold text-ink">
         Type
         <select
@@ -43,21 +56,73 @@ export function PublishProjectTaxonomyFields({
           <option value="DATAPACK">Data Pack</option>
         </select>
       </label>
-      <DashboardField
+      <TaxonomyCheckboxGroup
         label="Loaders"
-        value={loaders}
+        options={SUPPORTED_LOADERS.map((loader) => ({
+          label: enumLabel(loader),
+          value: loader,
+        }))}
+        selected={loaders}
         onChange={onLoadersChange}
       />
-      <DashboardField
+      <TaxonomyCheckboxGroup
         label="Game versions"
-        value={gameVersions}
+        options={activeGameVersions.map((version) => ({
+          label: version.version,
+          value: version.version,
+        }))}
+        selected={gameVersions}
         onChange={onGameVersionsChange}
       />
-      <DashboardField
+      <TaxonomyCheckboxGroup
         label="Categories"
-        value={categories}
+        options={filteredCategories.map((category) => ({
+          label: category.name,
+          value: category.slug,
+        }))}
+        selected={categories}
         onChange={onCategoriesChange}
       />
     </div>
+  );
+}
+
+function TaxonomyCheckboxGroup({
+  label,
+  onChange,
+  options,
+  selected,
+}: {
+  label: string;
+  onChange: (value: string[]) => void;
+  options: { label: string; value: string }[];
+  selected: string[];
+}) {
+  return (
+    <fieldset className="grid gap-2 text-sm font-bold text-ink">
+      <legend>{label}</legend>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {options.map((option) => (
+          <label
+            key={option.value}
+            className="flex items-center gap-2 rounded-lg border border-line bg-control px-3 py-2 text-sm font-semibold text-muted transition-colors hover:border-line-strong hover:bg-control-hover"
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(option.value)}
+              onChange={(event) => {
+                onChange(
+                  event.target.checked
+                    ? [...selected, option.value]
+                    : selected.filter((value) => value !== option.value),
+                );
+              }}
+              className="size-4 accent-[var(--color-accent)]"
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { type CreateProjectInput } from '../../../../lib/dashboard.ts';
-import { splitList } from '../shared.tsx';
 
 export function usePublishProjectFormState() {
   const [title, setTitle] = useState('');
@@ -10,9 +9,14 @@ export function usePublishProjectFormState() {
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('#1d9bf0');
   const [kind, setKind] = useState<CreateProjectInput['kind']>('MOD');
-  const [loaders, setLoaders] = useState('fabric');
-  const [gameVersions, setGameVersions] = useState('1.21.6');
-  const [categories, setCategories] = useState('utility');
+  const [loaders, setLoaders] = useState<string[]>(['fabric']);
+  const [gameVersions, setGameVersions] = useState<string[]>(['1.21.6']);
+  const [categories, setCategories] = useState<string[]>(['utility']);
+
+  function changeKind(value: CreateProjectInput['kind']) {
+    setKind(value);
+    setCategories([]);
+  }
 
   const fields = {
     categories,
@@ -28,7 +32,7 @@ export function usePublishProjectFormState() {
     onColorChange: setColor,
     onDescriptionChange: setDescription,
     onGameVersionsChange: setGameVersions,
-    onKindChange: setKind,
+    onKindChange: changeKind,
     onLoadersChange: setLoaders,
     onSlugChange: setSlug,
     onSummaryChange: setSummary,
@@ -37,12 +41,12 @@ export function usePublishProjectFormState() {
 
   function buildInput(): CreateProjectInput {
     return {
-      categories: splitList(categories),
+      categories,
       color: color.trim() || null,
       description,
-      gameVersions: splitList(gameVersions),
+      gameVersions,
       kind,
-      loaders: splitList(loaders),
+      loaders,
       slug,
       summary,
       title,

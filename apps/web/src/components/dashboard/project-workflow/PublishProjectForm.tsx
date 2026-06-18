@@ -1,6 +1,11 @@
 import { type FormEvent, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-import { createProject } from '../../../lib/dashboard.ts';
+import {
+  createProject,
+  fetchCategoryTaxonomy,
+  fetchGameVersionTaxonomy,
+} from '../../../lib/dashboard.ts';
 import { PublishProjectFields } from './publish-project/PublishProjectFields.tsx';
 import { usePublishProjectFormState } from './publish-project/usePublishProjectFormState.ts';
 
@@ -10,6 +15,14 @@ export function PublishProjectForm({
   onCreated: () => Promise<void>;
 }) {
   const form = usePublishProjectFormState();
+  const categoriesQuery = useQuery({
+    queryFn: ({ signal }) => fetchCategoryTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-categories'],
+  });
+  const gameVersionsQuery = useQuery({
+    queryFn: ({ signal }) => fetchGameVersionTaxonomy(signal),
+    queryKey: ['dashboard', 'taxonomy-game-versions'],
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +60,11 @@ export function PublishProjectForm({
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
       >
-        <PublishProjectFields {...form.fields} />
+        <PublishProjectFields
+          {...form.fields}
+          categoryOptions={categoriesQuery.data ?? []}
+          gameVersionOptions={gameVersionsQuery.data ?? []}
+        />
 
         {error && (
           <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
