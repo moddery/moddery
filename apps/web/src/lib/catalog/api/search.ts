@@ -5,6 +5,7 @@ import { projectFromSummary, projectSearchTags } from '../mappers.js';
 import { PLATFORM_METADATA_QUERY, PROJECTS_QUERY } from '../queries.js';
 import {
   type FilterTags,
+  type PlatformMetadata,
   type PlatformMetadataQueryData,
   type ProjectsQueryData,
   type ProjectsQueryVariables,
@@ -80,6 +81,22 @@ export async function fetchFilterTags(
     loaders: data.platformMetadata.loaders,
     versions: data.platformMetadata.gameVersions,
   };
+}
+
+export async function fetchPlatformMetadata(
+  signal?: AbortSignal,
+): Promise<PlatformMetadata> {
+  throwIfAborted(signal);
+
+  const { data } = await apolloClient.query<PlatformMetadataQueryData>({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'cache-first',
+    query: PLATFORM_METADATA_QUERY,
+  });
+
+  throwIfAborted(signal);
+
+  return data.platformMetadata;
 }
 
 function sortToApiSort(sort: SortKey): string {

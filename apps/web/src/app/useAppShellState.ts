@@ -21,6 +21,7 @@ import {
   writeHomeToUrl,
   writeNotificationsToUrl,
   writeOrganizationsToUrl,
+  writePlatformToUrl,
   writeProfileToUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
@@ -180,6 +181,12 @@ export function useAppShellState() {
     scrollToTop();
   }
 
+  function openPlatform() {
+    resetSelection('platform');
+    writePlatformToUrl();
+    scrollToTop();
+  }
+
   function openOrganizations() {
     resetSelection('organization');
     writeOrganizationsToUrl();
@@ -287,6 +294,11 @@ export function useAppShellState() {
       return true;
     }
 
+    if (url.pathname === '/platform') {
+      openPlatform();
+      return true;
+    }
+
     return false;
   }
 
@@ -310,6 +322,7 @@ export function useAppShellState() {
     openHome,
     openNotifications,
     openOrganizations,
+    openPlatform,
     openProject,
     openProfile,
     openStatus,

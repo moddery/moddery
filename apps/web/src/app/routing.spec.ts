@@ -6,6 +6,7 @@ import {
   profileFromUrl,
   projectFromUrl,
   viewFromUrl,
+  writePlatformToUrl,
   writeProjectListToUrl,
   writeProjectToUrl,
   writeStatusToUrl,
@@ -97,6 +98,19 @@ describe('routing helpers', () => {
     writeStatusToUrl();
 
     expect(fakeWindow.location.pathname).toBe('/status');
+    expect(fakeWindow.location.search).toBe('');
+  });
+
+  test('reads and writes the platform route', () => {
+    const fakeWindow = setWindowUrl(
+      'https://moddery.test/platform?project=old&type=plugin&tab=versions',
+    );
+
+    expect(viewFromUrl()).toBe('platform');
+
+    writePlatformToUrl();
+
+    expect(fakeWindow.location.pathname).toBe('/platform');
     expect(fakeWindow.location.search).toBe('');
   });
 });

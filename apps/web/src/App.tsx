@@ -42,6 +42,7 @@ export function App() {
         onCollections={app.openCollections}
         onUsers={app.openUsers}
         onOrganizations={app.openOrganizations}
+        onPlatform={app.openPlatform}
         onStatus={app.openStatus}
         onDashboard={app.openDashboard}
         isDiscoverActive={
@@ -50,6 +51,7 @@ export function App() {
         isCollectionsActive={app.appView === 'collections'}
         isUsersActive={app.appView === 'users' || app.appView === 'profile'}
         isOrganizationsActive={app.appView === 'organization'}
+        isPlatformActive={app.appView === 'platform'}
         isStatusActive={app.appView === 'status'}
         showContentTabs={
           !homePage &&

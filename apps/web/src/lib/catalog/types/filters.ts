@@ -40,14 +40,18 @@ export interface SearchProjectsResult {
 }
 
 export interface PlatformMetadataQueryData {
-  platformMetadata: {
-    categories: CategoryFilterTag[];
-    gameVersions: string[];
-    loaders: string[];
-    licenses: {
-      key: string;
-      name: string;
-      url: string | null;
-    }[];
-  };
+  platformMetadata: PlatformMetadata;
+}
+
+export interface PlatformMetadata {
+  categories: CategoryFilterTag[];
+  gameVersions: string[];
+  loaders: string[];
+  licenses: PlatformLicense[];
+}
+
+export interface PlatformLicense {
+  key: string;
+  name: string;
+  url: string | null;
 }

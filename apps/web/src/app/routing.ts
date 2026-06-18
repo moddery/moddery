@@ -10,6 +10,7 @@ export type AppView =
   | 'users'
   | 'dashboard'
   | 'notifications'
+  | 'platform'
   | 'status'
   | 'organization'
   | 'profile';
@@ -43,6 +44,7 @@ export function collectionFromUrl(): SelectedCollection | null {
 export function viewFromUrl(): AppView {
   if (window.location.pathname === '/dashboard') return 'dashboard';
   if (window.location.pathname === '/notifications') return 'notifications';
+  if (window.location.pathname === '/platform') return 'platform';
   if (window.location.pathname === '/status') return 'status';
   if (window.location.pathname === '/collections') return 'collections';
   if (window.location.pathname === '/users') return 'users';
@@ -96,6 +98,10 @@ export function writeNotificationsToUrl() {
 
 export function writeStatusToUrl() {
   writeStaticViewToUrl('/status');
+}
+
+export function writePlatformToUrl() {
+  writeStaticViewToUrl('/platform');
 }
 
 export function writeOrganizationsToUrl() {

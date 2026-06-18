@@ -13,12 +13,14 @@ export function NavBar({
   onCollections,
   onUsers,
   onOrganizations,
+  onPlatform,
   onStatus,
   onDashboard,
   isDiscoverActive,
   isCollectionsActive,
   isUsersActive,
   isOrganizationsActive,
+  isPlatformActive,
   isStatusActive,
   showContentTabs,
   showDashboardButton = true,
@@ -33,12 +35,14 @@ export function NavBar({
   onCollections: () => void;
   onUsers: () => void;
   onOrganizations: () => void;
+  onPlatform: () => void;
   onStatus: () => void;
   onDashboard: () => void;
   isDiscoverActive: boolean;
   isCollectionsActive: boolean;
   isUsersActive: boolean;
   isOrganizationsActive: boolean;
+  isPlatformActive: boolean;
   isStatusActive: boolean;
   showContentTabs: boolean;
   showDashboardButton?: boolean;
@@ -50,11 +54,13 @@ export function NavBar({
     isCollectionsActive,
     isDiscoverActive,
     isOrganizationsActive,
+    isPlatformActive,
     isStatusActive,
     isUsersActive,
     onCollections,
     onDiscover,
     onOrganizations,
+    onPlatform,
     onStatus,
     onUsers,
   });
@@ -88,22 +94,26 @@ function buildPrimaryItems({
   isCollectionsActive,
   isDiscoverActive,
   isOrganizationsActive,
+  isPlatformActive,
   isStatusActive,
   isUsersActive,
   onCollections,
   onDiscover,
   onOrganizations,
+  onPlatform,
   onStatus,
   onUsers,
 }: {
   isCollectionsActive: boolean;
   isDiscoverActive: boolean;
   isOrganizationsActive: boolean;
+  isPlatformActive: boolean;
   isStatusActive: boolean;
   isUsersActive: boolean;
   onCollections: () => void;
   onDiscover: () => void;
   onOrganizations: () => void;
+  onPlatform: () => void;
   onStatus: () => void;
   onUsers: () => void;
 }) {
@@ -131,6 +141,12 @@ function buildPrimaryItems({
       href: '/organizations',
       label: 'Organizations',
       onClick: onOrganizations,
+    },
+    {
+      active: isPlatformActive,
+      href: '/platform',
+      label: 'Platform',
+      onClick: onPlatform,
     },
     {
       active: isStatusActive,
