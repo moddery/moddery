@@ -118,6 +118,7 @@ export function AppPages({ app }: AppPagesProps) {
           onOpenCollection={app.openCollection}
           onOpenOrganization={app.openOrganization}
           onOpenProject={app.openProject}
+          onOpenProjectReference={app.openProjectReference}
           onTagSearch={app.searchByTag}
         />
       ) : app.appView === 'notifications' ? (

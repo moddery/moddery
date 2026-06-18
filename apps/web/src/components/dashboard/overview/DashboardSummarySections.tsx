@@ -1,5 +1,6 @@
 import { type DashboardData } from '../../../lib/dashboard.ts';
 import { type Mod } from '../../../types.ts';
+import { type SelectedProject } from '../../../app/routing.ts';
 import { type SearchTag } from '../../ModCard.tsx';
 import { FollowedProjectsSummary } from './FollowedProjectsSummary.tsx';
 import { CollectionsSummary } from './summary-sections/CollectionsSummary.tsx';
@@ -11,6 +12,7 @@ export function DashboardSummarySections({
   onOpenCollection,
   onOpenOrganization,
   onOpenProject,
+  onOpenProjectReference,
   onTagSearch,
   onUpdated,
 }: {
@@ -21,6 +23,7 @@ export function DashboardSummarySections({
   }) => void;
   onOpenOrganization?: (slug: string) => void;
   onOpenProject: (mod: Mod) => void;
+  onOpenProjectReference?: (project: SelectedProject) => void;
   onTagSearch?: (tag: SearchTag) => void;
   onUpdated: () => Promise<void>;
 }) {
@@ -44,6 +47,7 @@ export function DashboardSummarySections({
       <CollectionsSummary
         dashboard={dashboard}
         onOpenCollection={onOpenCollection}
+        onOpenProjectReference={onOpenProjectReference}
       />
     </>
   );

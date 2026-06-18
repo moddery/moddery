@@ -1,4 +1,5 @@
 import { type Mod } from '../types.ts';
+import { type SelectedProject } from '../app/routing.ts';
 import { EmptyState } from './EmptyState.tsx';
 import { type SearchTag } from './ModCard.tsx';
 import { AccountSecurityPanels } from './dashboard/AccountSecurityPanels.tsx';
@@ -46,6 +47,7 @@ export function DashboardPage({
   onOpenCollection,
   onOpenOrganization,
   onOpenProject,
+  onOpenProjectReference,
   onTagSearch,
 }: {
   onOpenCollection?: (collection: {
@@ -54,6 +56,7 @@ export function DashboardPage({
   }) => void;
   onOpenOrganization?: (slug: string) => void;
   onOpenProject: (mod: Mod) => void;
+  onOpenProjectReference?: (project: SelectedProject) => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
   const { canAdmin, canModerate, dashboard, dashboardQuery, refreshDashboard } =
@@ -180,6 +183,7 @@ export function DashboardPage({
           onOpenCollection={onOpenCollection}
           onOpenOrganization={onOpenOrganization}
           onOpenProject={onOpenProject}
+          onOpenProjectReference={onOpenProjectReference}
           onTagSearch={onTagSearch}
           onUpdated={refreshDashboard}
         />

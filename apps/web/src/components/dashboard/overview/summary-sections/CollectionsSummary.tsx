@@ -1,15 +1,18 @@
+import { type SelectedProject } from '../../../../app/routing.ts';
 import { type DashboardData } from '../../../../lib/dashboard.ts';
 import { CollectionRow } from '../../ContentManagementPanels.tsx';
 
 export function CollectionsSummary({
   dashboard,
   onOpenCollection,
+  onOpenProjectReference,
 }: {
   dashboard: DashboardData;
   onOpenCollection?: (collection: {
     ownerUsername: string;
     slug: string;
   }) => void;
+  onOpenProjectReference?: (project: SelectedProject) => void;
 }) {
   return (
     <section className="mt-10">
@@ -34,6 +37,7 @@ export function CollectionsSummary({
               collection={collection}
               ownerUsername={dashboard.username}
               onOpenCollection={onOpenCollection}
+              onOpenProjectReference={onOpenProjectReference}
             />
           ))}
         </div>

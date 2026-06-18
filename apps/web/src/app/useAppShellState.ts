@@ -30,6 +30,7 @@ import {
   writeUsersToUrl,
   type AppView,
   type SelectedCollection,
+  type SelectedProject,
 } from './routing.ts';
 
 export function useAppShellState() {
@@ -108,19 +109,21 @@ export function useAppShellState() {
   }
 
   function openProject(mod: Mod) {
-    const nextProject = {
+    openProjectReference({
       slug: mod.slug,
       projectType: mod.projectType ?? projectType,
-    };
+    });
+  }
 
-    setSelectedProject(nextProject);
+  function openProjectReference(project: SelectedProject) {
+    setSelectedProject(project);
     setSelectedUsername(null);
     setSelectedOrganization(null);
     setSelectedCollection(null);
     setAppView('discover');
-    setProjectType(nextProject.projectType);
+    setProjectType(project.projectType);
     discover.setMobileFiltersOpen(false);
-    writeProjectToUrl(nextProject);
+    writeProjectToUrl(project);
     scrollToTop();
   }
 
@@ -338,6 +341,7 @@ export function useAppShellState() {
     openOrganizations,
     openPlatform,
     openProject,
+    openProjectReference,
     openProfile,
     openStatus,
     openUsers,
