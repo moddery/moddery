@@ -1,5 +1,6 @@
 import { cn } from '../../lib/cn.ts';
 import { FilterSidebar } from '../FilterSidebar.tsx';
+import { DiscoverActiveFilters } from './DiscoverActiveFilters.tsx';
 import { DiscoverResults } from './DiscoverResults.tsx';
 import { DiscoverToolbar } from './DiscoverToolbar.tsx';
 import { type DiscoverPageProps } from './types.ts';
@@ -81,6 +82,21 @@ export function DiscoverPage({
             sort={sort}
             total={total}
             view={view}
+          />
+          <DiscoverActiveFilters
+            categoryOptions={categoryOptions}
+            clearAll={clearAll}
+            hasActiveFilters={hasActiveFilters}
+            loaderOptions={loaderOptions}
+            query={query}
+            selectedCategories={selectedCategories}
+            selectedLoaders={selectedLoaders}
+            selectedVersions={selectedVersions}
+            setQuery={setQuery}
+            toggleCategory={toggleCategory}
+            toggleLoader={toggleLoader}
+            toggleVersion={toggleVersion}
+            versionOptions={versionOptions}
           />
           <DiscoverResults
             clearAll={clearAll}

@@ -23,13 +23,13 @@ export interface DiscoverPageProps {
   onTagSearch: (tag: SearchTag) => void;
   page: number;
   query: string;
+  setQuery: (query: string) => void;
   selectedCategories: Set<string>;
   selectedLoaders: Set<string>;
   selectedTags: Set<string>;
   selectedVersions: Set<string>;
   setLayout: (layout: Layout) => void;
   setMobileFiltersOpen: Dispatch<SetStateAction<boolean>>;
-  setQuery: (query: string) => void;
   setSort: (sort: SortKey) => void;
   setView: (view: string) => void;
   sort: SortKey;
