@@ -1,3 +1,4 @@
+import { userPath } from '../../../../app/routing.ts';
 import { type ProjectMember } from '../../../../lib/catalog.ts';
 import { permissionLabel } from '../../../../lib/permissions.ts';
 
@@ -34,9 +35,12 @@ export function ProjectTeamMembersList({
             key={member.user.id}
             className="min-w-0 rounded-lg border border-line bg-surface px-3 py-2"
           >
-            <div className="truncate text-sm font-extrabold text-ink">
+            <a
+              href={userPath(member.user.username)}
+              className="block truncate text-sm font-extrabold text-ink transition-colors hover:text-accent"
+            >
               {name}
-            </div>
+            </a>
             <div className="truncate text-xs font-semibold text-muted">
               {member.role}
               {member.owner ? ' · Owner' : ''}
