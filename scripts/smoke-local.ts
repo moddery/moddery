@@ -81,6 +81,13 @@ interface PublicCollectionBySlugResponse {
   errors?: GraphqlError[];
 }
 
+interface CreateProjectReportResponse {
+  data?: {
+    createProjectReport?: ReportSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface VersionsForProjectResponse {
   data?: {
     versionsForProject?: VersionSummary[];
@@ -125,6 +132,22 @@ interface CollectionSummary {
   projects: ProjectSummary[];
   slug: string;
   visibility: string;
+}
+
+interface ReportSummary {
+  body: string;
+  project: ReportProjectTarget | null;
+  reason: string;
+  reporter: {
+    username: string;
+  } | null;
+  state: string;
+}
+
+interface ReportProjectTarget {
+  kind: string;
+  slug: string;
+  title: string;
 }
 
 interface ProjectSearchResponse {
@@ -414,6 +437,12 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
     username,
   });
+  await checkProjectReportFlow({
+    projectSlug: slug,
+    projectTitle: title,
+    token: auth.accessToken,
+    username,
+  });
 }
 
 async function checkCollectionFlow(options: {
@@ -588,6 +617,63 @@ async function prepareVersionUpload(
   return required(payload.data?.prepareProjectUpload, 'project upload target');
 }
 
+async function checkProjectReportFlow(options: {
+  projectSlug: string;
+  projectTitle: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const body = `Smoke report for ${options.projectSlug}`;
+  const payload = await readGraphql<CreateProjectReportResponse>(
+    {
+      query: `
+        mutation SmokeCreateProjectReport($input: CreateProjectReportInput!) {
+          createProjectReport(input: $input) {
+            body
+            project {
+              kind
+              slug
+              title
+            }
+            reason
+            reporter {
+              username
+            }
+            state
+          }
+        }
+      `,
+      variables: {
+        input: {
+          body,
+          projectSlug: options.projectSlug,
+          reason: 'BROKEN_OR_MISLEADING',
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL create project report');
+
+  const report = required(payload.data?.createProjectReport, 'project report');
+  if (
+    report.body !== body ||
+    report.reason !== 'BROKEN_OR_MISLEADING' ||
+    report.reporter?.username !== options.username ||
+    report.state !== 'OPEN'
+  ) {
+    throw new Error(
+      `Report mismatch for ${options.projectSlug}: received ${report.reason} ${report.state}`,
+    );
+  }
+
+  assertReportProjectTarget(required(report.project, 'reported project'), {
+    kind: 'MOD',
+    slug: options.projectSlug,
+    title: options.projectTitle,
+  });
+}
+
 async function projectSearch(query: {
   search?: string;
   tags?: string[];
@@ -645,7 +731,9 @@ async function readGraphql<T>(body: unknown, token?: string): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`GraphQL returned ${response.status.toString()}`);
+    throw new Error(
+      `GraphQL returned ${response.status.toString()}: ${await response.text()}`,
+    );
   }
 
   return (await response.json()) as T;
@@ -675,6 +763,21 @@ function assertProject(
   ) {
     throw new Error(
       `Project mismatch: expected ${expected.kind} ${expected.slug} ${expected.title}, received ${project.kind} ${project.slug} ${project.title}`,
+    );
+  }
+}
+
+function assertReportProjectTarget(
+  project: ReportProjectTarget,
+  expected: { kind: string; slug: string; title: string },
+): void {
+  if (
+    project.kind !== expected.kind ||
+    project.slug !== expected.slug ||
+    project.title !== expected.title
+  ) {
+    throw new Error(
+      `Report project mismatch: expected ${expected.kind} ${expected.slug} ${expected.title}, received ${project.kind} ${project.slug} ${project.title}`,
     );
   }
 }
