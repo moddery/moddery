@@ -147,7 +147,10 @@ describe(AnalyticsService.name, () => {
       } as never,
     );
 
-    const record = await service.recordDownload('file-a');
+    const record = await service.recordDownload('file-a', {
+      countryCode: 'US',
+      userAgent: 'ModderyBrowser/1.0',
+    });
 
     expect(transactionCalls[0]).toEqual([
       {
@@ -162,7 +165,9 @@ describe(AnalyticsService.name, () => {
       },
       {
         data: {
+          countryCode: 'US',
           projectId: 'project-a',
+          userAgent: 'ModderyBrowser/1.0',
           versionId: 'version-a',
         },
       },
@@ -181,11 +186,13 @@ describe(AnalyticsService.name, () => {
       table: 'project_events',
       values: [
         {
+          country_code: 'US',
           event_type: 'download',
           occurred_at: expect.stringMatching(
             /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/u,
           ),
           project_id: 'project-a',
+          user_agent: 'ModderyBrowser/1.0',
           version_id: 'version-a',
         },
       ],
@@ -315,11 +322,18 @@ describe(AnalyticsService.name, () => {
       { updateProjectDownloads: () => Promise.resolve() } as never,
     );
 
-    const record = await service.recordProjectView('iris');
+    const record = await service.recordProjectView('iris', {
+      countryCode: 'CA',
+      referrer: 'https://moddery.test/discover',
+      userAgent: 'ModderyBrowser/2.0',
+    });
 
     expect(creates[0]).toEqual({
       data: {
+        countryCode: 'CA',
         projectId: 'project-a',
+        referrer: 'https://moddery.test/discover',
+        userAgent: 'ModderyBrowser/2.0',
       },
     });
     expect(record).toEqual({
@@ -331,11 +345,13 @@ describe(AnalyticsService.name, () => {
       table: 'project_events',
       values: [
         {
+          country_code: 'CA',
           event_type: 'view',
           occurred_at: expect.stringMatching(
             /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/u,
           ),
           project_id: 'project-a',
+          user_agent: 'ModderyBrowser/2.0',
           version_id: null,
         },
       ],

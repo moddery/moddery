@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 import { SearchService } from '../search/search.service.js';
 import { CLICKHOUSE_CLIENT } from './analytics.constants.js';
+import { type AnalyticsRequestMetadata } from './request-metadata.js';
 
 @Injectable()
 export class AnalyticsService implements OnModuleInit {
@@ -108,7 +109,10 @@ export class AnalyticsService implements OnModuleInit {
     };
   }
 
-  async recordProjectView(projectSlug: string) {
+  async recordProjectView(
+    projectSlug: string,
+    metadata: AnalyticsRequestMetadata = {},
+  ) {
     const project = await this.prisma.project.findUnique({
       select: {
         id: true,
@@ -123,12 +127,17 @@ export class AnalyticsService implements OnModuleInit {
 
     await this.prisma.projectViewEvent.create({
       data: {
+        countryCode: metadata.countryCode ?? null,
         projectId: project.id,
+        referrer: metadata.referrer ?? null,
+        userAgent: metadata.userAgent ?? null,
       },
     });
     await this.recordAnalyticsEvent({
+      countryCode: metadata.countryCode ?? null,
       eventType: 'view',
       projectId: project.id,
+      userAgent: metadata.userAgent ?? null,
       versionId: null,
     });
 
@@ -138,13 +147,19 @@ export class AnalyticsService implements OnModuleInit {
     };
   }
 
-  async recordDownload(fileId: string) {
-    const result = await this.prepareFileDownload(fileId);
+  async recordDownload(
+    fileId: string,
+    metadata: AnalyticsRequestMetadata = {},
+  ) {
+    const result = await this.prepareFileDownload(fileId, metadata);
 
     return result.record;
   }
 
-  async prepareFileDownload(fileId: string) {
+  async prepareFileDownload(
+    fileId: string,
+    metadata: AnalyticsRequestMetadata = {},
+  ) {
     const file = await this.prisma.versionFile.findUnique({
       select: {
         id: true,
@@ -185,14 +200,18 @@ export class AnalyticsService implements OnModuleInit {
       }),
       this.prisma.downloadEvent.create({
         data: {
+          countryCode: metadata.countryCode ?? null,
           projectId: file.version.project.id,
+          userAgent: metadata.userAgent ?? null,
           versionId: file.version.id,
         },
       }),
     ]);
     await this.recordAnalyticsEvent({
+      countryCode: metadata.countryCode ?? null,
       eventType: 'download',
       projectId: file.version.project.id,
+      userAgent: metadata.userAgent ?? null,
       versionId: file.version.id,
     });
     await Promise.all([
@@ -226,12 +245,16 @@ export class AnalyticsService implements OnModuleInit {
   }
 
   private async recordAnalyticsEvent({
+    countryCode,
     eventType,
     projectId,
+    userAgent,
     versionId,
   }: {
+    countryCode: string | null;
     eventType: AnalyticsEventType;
     projectId: string;
+    userAgent: string | null;
     versionId: string | null;
   }): Promise<void> {
     await this.client.insert({
@@ -239,11 +262,11 @@ export class AnalyticsService implements OnModuleInit {
       table: 'project_events',
       values: [
         {
-          country_code: null,
+          country_code: countryCode,
           event_type: eventType,
           occurred_at: clickHouseDateTime(new Date()),
           project_id: projectId,
-          user_agent: null,
+          user_agent: userAgent,
           version_id: versionId,
         },
       ],
