@@ -87,6 +87,8 @@ export interface UserProfileRow {
 }
 
 interface UserProjectMembershipRow {
+  isOwner: boolean;
+  permissions: string[];
   team: {
     project: UserProjectRow | null;
   };
@@ -212,6 +214,8 @@ export function userProfileSelect({
 
 export function userProjectMembershipSelect() {
   return {
+    isOwner: true,
+    permissions: true,
     team: {
       select: {
         project: {
@@ -410,8 +414,15 @@ export function userProfileRowToContract(
     newsletterOptIn: includePrivateAccountFields ? user.newsletterOptIn : false,
     organizationCount: user._count.ownedOrganizations,
     projectCount: user._count.teamMemberships,
-    projects: user.teamMemberships.flatMap(({ team }) =>
-      team.project === null ? [] : [projectRowToContract(team.project)],
+    projects: user.teamMemberships.flatMap((membership) =>
+      membership.team.project === null
+        ? []
+        : [
+            projectRowToContract(membership.team.project, {
+              isOwner: membership.isOwner,
+              permissions: membership.permissions,
+            }),
+          ],
     ),
     role: user.role,
     status: user.status,
@@ -459,7 +470,13 @@ function friendshipUserSelect() {
   };
 }
 
-export function projectRowToContract(project: UserProjectRow) {
+export function projectRowToContract(
+  project: UserProjectRow,
+  viewerMembership?: {
+    isOwner: boolean;
+    permissions: readonly string[];
+  },
+) {
   return {
     approvedAt: project.approvedAt,
     archivedAt: project.archivedAt,
@@ -498,6 +515,27 @@ export function projectRowToContract(project: UserProjectRow) {
     summary: project.summary,
     title: project.title,
     updatedAt: project.updatedAt,
+    viewerCapabilities:
+      viewerMembership === undefined
+        ? null
+        : projectViewerCapabilities(viewerMembership),
     wikiUrl: project.wikiUrl,
+  };
+}
+
+export function projectViewerCapabilities({
+  isOwner,
+  permissions,
+}: {
+  isOwner: boolean;
+  permissions: readonly string[];
+}) {
+  const permissionSet = new Set(permissions);
+
+  return {
+    manageDetails: isOwner || permissionSet.has('MANAGE_DETAILS'),
+    manageMembers: isOwner || permissionSet.has('MANAGE_MEMBERS'),
+    manageVersions: isOwner || permissionSet.has('MANAGE_VERSIONS'),
+    viewAnalytics: isOwner || permissionSet.has('VIEW_ANALYTICS'),
   };
 }

@@ -101,6 +101,21 @@ export class ProjectModerationLock {
 }
 
 @ObjectType()
+export class ProjectViewerCapabilities {
+  @Field(() => Boolean)
+  manageDetails!: boolean;
+
+  @Field(() => Boolean)
+  manageMembers!: boolean;
+
+  @Field(() => Boolean)
+  manageVersions!: boolean;
+
+  @Field(() => Boolean)
+  viewAnalytics!: boolean;
+}
+
+@ObjectType()
 export class ProjectSummary {
   @Field(() => String)
   body!: string;
@@ -188,6 +203,9 @@ export class ProjectSummary {
 
   @Field(() => Date)
   updatedAt!: Date;
+
+  @Field(() => ProjectViewerCapabilities, { nullable: true })
+  viewerCapabilities?: ProjectViewerCapabilities | null;
 
   @Field(() => String, { nullable: true })
   wikiUrl!: string | null;

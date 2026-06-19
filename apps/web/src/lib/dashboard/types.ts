@@ -212,7 +212,15 @@ export interface DashboardProject {
   summary: string;
   title: string;
   updatedAt: string;
+  viewerCapabilities?: DashboardProjectCapabilities | null;
   wikiUrl: string | null;
+}
+
+export interface DashboardProjectCapabilities {
+  manageDetails: boolean;
+  manageMembers: boolean;
+  manageVersions: boolean;
+  viewAnalytics: boolean;
 }
 
 export interface DashboardProjectSearchResult {

@@ -204,7 +204,15 @@ export interface ProjectSummaryContract {
   readonly gallery: readonly ProjectGalleryImageContract[];
   readonly sourceUrl?: string | null;
   readonly updatedAt: string;
+  readonly viewerCapabilities?: ProjectViewerCapabilitiesContract | null;
   readonly wikiUrl?: string | null;
+}
+
+export interface ProjectViewerCapabilitiesContract {
+  readonly manageDetails: boolean;
+  readonly manageMembers: boolean;
+  readonly manageVersions: boolean;
+  readonly viewAnalytics: boolean;
 }
 
 export interface ProjectModerationLockContract {

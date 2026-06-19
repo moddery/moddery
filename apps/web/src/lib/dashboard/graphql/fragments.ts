@@ -57,6 +57,12 @@ export const DASHBOARD_PROJECT_FIELDS = gql`
     summary
     title
     updatedAt
+    viewerCapabilities {
+      manageDetails
+      manageMembers
+      manageVersions
+      viewAnalytics
+    }
     wikiUrl
   }
 `;
