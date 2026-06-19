@@ -14,6 +14,7 @@ export function ProjectModerationQueue({
   onOpenProject: (mod: Mod) => void;
 }) {
   const queue = useProjectModerationQueueState();
+  const busy = projectModerationQueueBusy(queue.busySlug);
 
   return (
     <section className="mt-8">
@@ -29,9 +30,10 @@ export function ProjectModerationQueue({
       <label className="mt-4 grid gap-1 text-sm font-bold text-ink">
         Reason
         <input
+          disabled={busy}
           value={queue.reason}
           onChange={(event) => queue.setReason(event.target.value)}
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
           placeholder="Optional moderation note"
         />
       </label>
@@ -62,7 +64,7 @@ export function ProjectModerationQueue({
           <div className="grid gap-3 lg:grid-cols-2">
             {queue.projects.map((project) => (
               <ProjectModerationRow
-                busy={queue.busySlug === project.slug}
+                busy={busy}
                 key={project.slug}
                 onAction={queue.act}
                 onLock={(projectSlug) => queue.updateLock(projectSlug, 'lock')}
@@ -93,4 +95,8 @@ export function ProjectModerationQueue({
       )}
     </section>
   );
+}
+
+export function projectModerationQueueBusy(busySlug: string | null) {
+  return busySlug !== null;
 }
