@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -46,6 +47,7 @@ export class ProjectManagementService {
     const slug = normalizeSlug(input.slug);
     validateProjectIdentity(input, slug);
     validateProjectMetadataLimits(input);
+    await this.requireVerifiedCreatorEmail(ownerId);
 
     const existingProject = await this.prisma.project.findUnique({
       select: { id: true },
@@ -198,6 +200,17 @@ export class ProjectManagementService {
     }
 
     return project;
+  }
+
+  private async requireVerifiedCreatorEmail(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      select: { emailVerifiedAt: true },
+      where: { id: userId },
+    });
+
+    if (user?.emailVerifiedAt === undefined || user.emailVerifiedAt === null) {
+      throw new ForbiddenException('Verified email required');
+    }
   }
 
   private invalidateProjectBySlugCache(slug: string): Promise<void> {

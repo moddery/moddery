@@ -7,8 +7,19 @@ function createProjectManagementService(
   prisma: PrismaService,
   searchService: unknown,
 ) {
+  const source = prisma as unknown as {
+    user?: Record<string, unknown>;
+  };
+
   return new ProjectManagementService(
-    prisma,
+    {
+      ...(prisma as object),
+      user: {
+        findUnique: () =>
+          Promise.resolve({ emailVerifiedAt: new Date('2026-01-01') }),
+        ...(source.user ?? {}),
+      },
+    } as unknown as PrismaService,
     searchService as never,
     {
       delete: () => Promise.resolve(),
@@ -108,6 +119,37 @@ describe(ProjectManagementService.name, () => {
     );
     expect(operations[1]).toContain('"summary":"Created summary"');
     expect(indexed).toEqual([]);
+  });
+
+  test('requires verified email before creating projects', async () => {
+    const service = createProjectManagementService(
+      {
+        $transaction: () => {
+          throw new Error('Project transaction should not run');
+        },
+        project: {
+          findUnique: () => {
+            throw new Error('Project slug lookup should not run');
+          },
+        },
+        user: {
+          findUnique: () => Promise.resolve({ emailVerifiedAt: null }),
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.createProject(validCreateProjectInput(), 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Verified email required');
   });
 
   test('rejects duplicate project slugs before creating teams', async () => {

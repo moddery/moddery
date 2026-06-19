@@ -50,6 +50,7 @@ function createVersionsService(
 function withDefaultProjectReload(prisma: PrismaService): PrismaService {
   const source = prisma as unknown as {
     project?: Record<string, unknown>;
+    user?: Record<string, unknown>;
   };
 
   return {
@@ -57,6 +58,11 @@ function withDefaultProjectReload(prisma: PrismaService): PrismaService {
     project: {
       findUniqueOrThrow: () => Promise.resolve(projectRow()),
       ...(source.project ?? {}),
+    },
+    user: {
+      findUnique: () =>
+        Promise.resolve({ emailVerifiedAt: new Date('2026-01-01') }),
+      ...(source.user ?? {}),
     },
   } as unknown as PrismaService;
 }
@@ -629,6 +635,31 @@ describe(VersionsService.name, () => {
       'message',
       'Project version permission required',
     );
+  });
+
+  test('requires verified email before creating versions', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () => {
+          throw new Error('Project lookup should not run');
+        },
+      },
+      user: {
+        findUnique: () => Promise.resolve({ emailVerifiedAt: null }),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createVersion(validCreateVersionInput(), 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Verified email required');
   });
 
   test('loads versions awaiting moderation', async () => {

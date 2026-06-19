@@ -55,6 +55,8 @@ export class VersionsService {
     input: CreateVersionInput,
     authorId: string,
   ): Promise<VersionSummaryContract> {
+    await this.requireVerifiedCreatorEmail(authorId);
+
     const project = await this.prisma.project.findUnique({
       select: {
         id: true,
@@ -149,6 +151,17 @@ export class VersionsService {
     });
 
     return versionRowToContract(version);
+  }
+
+  private async requireVerifiedCreatorEmail(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      select: { emailVerifiedAt: true },
+      where: { id: userId },
+    });
+
+    if (user?.emailVerifiedAt === undefined || user.emailVerifiedAt === null) {
+      throw new ForbiddenException('Verified email required');
+    }
   }
 
   async findVersionsForModeration({
