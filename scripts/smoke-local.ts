@@ -183,6 +183,13 @@ interface AddProjectGalleryImageResponse {
   errors?: GraphqlError[];
 }
 
+interface AddProjectTeamMemberResponse {
+  data?: {
+    addProjectTeamMember?: ProjectMemberSummary[];
+  };
+  errors?: GraphqlError[];
+}
+
 interface ModerateProjectResponse {
   data?: {
     moderateProject?: ProjectSummary;
@@ -214,6 +221,27 @@ interface ProjectBySlugResponse {
 interface ViewerDashboardResponse {
   data?: {
     viewer?: ViewerDashboardSummary | null;
+  };
+  errors?: GraphqlError[];
+}
+
+interface ProjectMemberSearchResponse {
+  data?: {
+    projectMemberSearch?: ProjectMemberSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
+interface TeamInvitationSearchResponse {
+  data?: {
+    viewerTeamInvitationSearch?: TeamInvitationSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
+interface AcceptTeamInvitationResponse {
+  data?: {
+    acceptTeamInvitation?: TeamInvitationSummary;
   };
   errors?: GraphqlError[];
 }
@@ -402,6 +430,38 @@ interface ViewerDashboardSummary {
   projectCount: number;
   projects: ViewerDashboardProject[];
   username: string;
+}
+
+interface ProjectMemberSummary {
+  accepted: boolean;
+  owner: boolean;
+  permissions: string[];
+  role: string;
+  user: {
+    username: string;
+  };
+}
+
+interface ProjectMemberSearchResult {
+  members: ProjectMemberSummary[];
+  totalHits: number;
+}
+
+interface TeamInvitationSummary {
+  id: string;
+  permissions: string[];
+  role: string;
+  target: {
+    name: string;
+    projectKind: string | null;
+    slug: string;
+    type: string;
+  };
+}
+
+interface TeamInvitationSearchResult {
+  invitations: TeamInvitationSummary[];
+  totalHits: number;
 }
 
 interface ProjectUploadTarget {
@@ -1206,6 +1266,13 @@ async function checkCreatorFlow(): Promise<void> {
     projectSlug: slug,
     token: auth.accessToken,
     username,
+  });
+  await checkProjectTeamInvitationFlow({
+    peerToken: peerAuth.accessToken,
+    peerUsername,
+    projectSlug: slug,
+    projectTitle: title,
+    token: auth.accessToken,
   });
 
   const approvedPublicPayload = await readGraphql<ProjectBySlugResponse>({
@@ -2258,6 +2325,267 @@ async function checkViewerDashboardProject(options: {
   ) {
     throw new Error(
       `Project ${options.projectSlug} did not expose owner dashboard capabilities`,
+    );
+  }
+}
+
+async function checkProjectTeamInvitationFlow(options: {
+  peerToken: string;
+  peerUsername: string;
+  projectSlug: string;
+  projectTitle: string;
+  token: string;
+}): Promise<void> {
+  const permissions = ['MANAGE_VERSIONS', 'VIEW_ANALYTICS'];
+  const addPayload = await readGraphql<AddProjectTeamMemberResponse>(
+    {
+      query: `
+        mutation SmokeInviteProjectMember($input: AddProjectTeamMemberInput!) {
+          addProjectTeamMember(input: $input) {
+            accepted
+            owner
+            permissions
+            role
+            user {
+              username
+            }
+          }
+        }
+      `,
+      variables: {
+        input: {
+          permissions,
+          projectSlug: options.projectSlug,
+          role: 'Release collaborator',
+          username: options.peerUsername,
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(addPayload, 'GraphQL invite project member');
+
+  const pendingMember = required(
+    addPayload.data?.addProjectTeamMember?.find(
+      (member) => member.user.username === options.peerUsername,
+    ),
+    'pending project team member',
+  );
+  assertProjectMember(pendingMember, {
+    accepted: false,
+    owner: false,
+    permissions,
+    role: 'Release collaborator',
+    username: options.peerUsername,
+  });
+
+  const invitationPayload = await readGraphql<TeamInvitationSearchResponse>(
+    {
+      query: `
+        query SmokeViewerProjectTeamInvitationSearch {
+          viewerTeamInvitationSearch(limit: 10, offset: 0) {
+            invitations {
+              id
+              permissions
+              role
+              target {
+                name
+                projectKind
+                slug
+                type
+              }
+            }
+            totalHits
+          }
+        }
+      `,
+    },
+    options.peerToken,
+  );
+  assertNoGraphqlErrors(
+    invitationPayload,
+    'GraphQL project team invitation search',
+  );
+
+  const invitationSearch = required(
+    invitationPayload.data?.viewerTeamInvitationSearch,
+    'project team invitation search',
+  );
+  const invitation = required(
+    invitationSearch.invitations.find(
+      (candidate) => candidate.target.slug === options.projectSlug,
+    ),
+    'project team invitation',
+  );
+  assertTeamInvitation(invitation, {
+    permissions,
+    projectKind: 'MOD',
+    projectSlug: options.projectSlug,
+    projectTitle: options.projectTitle,
+    role: 'Release collaborator',
+  });
+
+  const acceptPayload = await readGraphql<AcceptTeamInvitationResponse>(
+    {
+      query: `
+        mutation SmokeAcceptProjectTeamInvitation($invitationId: String!) {
+          acceptTeamInvitation(invitationId: $invitationId) {
+            id
+            permissions
+            role
+            target {
+              name
+              projectKind
+              slug
+              type
+            }
+          }
+        }
+      `,
+      variables: { invitationId: invitation.id },
+    },
+    options.peerToken,
+  );
+  assertNoGraphqlErrors(
+    acceptPayload,
+    'GraphQL accept project team invitation',
+  );
+  const acceptedInvitation = required(
+    acceptPayload.data?.acceptTeamInvitation,
+    'accepted project team invitation',
+  );
+  if (acceptedInvitation.id !== invitation.id) {
+    throw new Error('Accepted project team invitation id changed');
+  }
+  assertTeamInvitation(acceptedInvitation, {
+    permissions,
+    projectKind: 'MOD',
+    projectSlug: options.projectSlug,
+    projectTitle: options.projectTitle,
+    role: 'Release collaborator',
+  });
+
+  const membersPayload = await readGraphql<ProjectMemberSearchResponse>({
+    query: `
+      query SmokeProjectMemberSearch($projectSlug: String!) {
+        projectMemberSearch(projectSlug: $projectSlug, limit: 10, offset: 0) {
+          members {
+            accepted
+            owner
+            permissions
+            role
+            user {
+              username
+            }
+          }
+          totalHits
+        }
+      }
+    `,
+    variables: { projectSlug: options.projectSlug },
+  });
+  assertNoGraphqlErrors(membersPayload, 'GraphQL project member search');
+  const memberSearch = required(
+    membersPayload.data?.projectMemberSearch,
+    'project member search',
+  );
+  if (memberSearch.totalHits < 2) {
+    throw new Error('Project member search did not include owner and peer');
+  }
+  const acceptedMember = required(
+    memberSearch.members.find(
+      (member) => member.user.username === options.peerUsername,
+    ),
+    'accepted project team member',
+  );
+  assertProjectMember(acceptedMember, {
+    accepted: true,
+    owner: false,
+    permissions,
+    role: 'Release collaborator',
+    username: options.peerUsername,
+  });
+
+  await checkViewerDashboardProjectCapabilities({
+    expectedCapabilities: {
+      manageDetails: false,
+      manageMembers: false,
+      manageVersions: true,
+      viewAnalytics: true,
+    },
+    expectedStatus: 'APPROVED',
+    projectSlug: options.projectSlug,
+    token: options.peerToken,
+    username: options.peerUsername,
+  });
+}
+
+async function checkViewerDashboardProjectCapabilities(options: {
+  expectedCapabilities: {
+    manageDetails: boolean;
+    manageMembers: boolean;
+    manageVersions: boolean;
+    viewAnalytics: boolean;
+  };
+  expectedStatus: string;
+  projectSlug: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const payload = await readGraphql<ViewerDashboardResponse>(
+    {
+      query: `
+        query SmokeViewerDashboardProjectCapabilities {
+          viewer {
+            projects {
+              slug
+              status
+              viewerCapabilities {
+                manageDetails
+                manageMembers
+                manageVersions
+                viewAnalytics
+              }
+            }
+            username
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL viewer dashboard capabilities');
+
+  const viewer = required(payload.data?.viewer, 'viewer dashboard');
+  if (viewer.username !== options.username) {
+    throw new Error(
+      `Expected dashboard for ${options.username}, received ${viewer.username}`,
+    );
+  }
+
+  const project = required(
+    viewer.projects.find((item) => item.slug === options.projectSlug),
+    `viewer dashboard project ${options.projectSlug}`,
+  );
+  if (project.status !== options.expectedStatus) {
+    throw new Error(
+      `Expected dashboard project ${options.projectSlug} status ${options.expectedStatus}, received ${project.status}`,
+    );
+  }
+
+  const capabilities = required(
+    project.viewerCapabilities,
+    'viewer project capabilities',
+  );
+  const expected = options.expectedCapabilities;
+  if (
+    capabilities.manageDetails !== expected.manageDetails ||
+    capabilities.manageMembers !== expected.manageMembers ||
+    capabilities.manageVersions !== expected.manageVersions ||
+    capabilities.viewAnalytics !== expected.viewAnalytics
+  ) {
+    throw new Error(
+      `Project ${options.projectSlug} dashboard capabilities did not match team permissions`,
     );
   }
 }
@@ -3595,6 +3923,63 @@ function assertProject(
       `Project mismatch: expected ${expected.kind} ${expected.slug} ${expected.title}, received ${project.kind} ${project.slug} ${project.title}`,
     );
   }
+}
+
+function assertProjectMember(
+  member: ProjectMemberSummary,
+  expected: {
+    accepted: boolean;
+    owner: boolean;
+    permissions: string[];
+    role: string;
+    username: string;
+  },
+): void {
+  if (
+    member.accepted !== expected.accepted ||
+    member.owner !== expected.owner ||
+    member.role !== expected.role ||
+    member.user.username !== expected.username ||
+    !stringSetsEqual(member.permissions, expected.permissions)
+  ) {
+    throw new Error(
+      `Project member mismatch: expected ${expected.username} ${expected.role}, received ${member.user.username} ${member.role}`,
+    );
+  }
+}
+
+function assertTeamInvitation(
+  invitation: TeamInvitationSummary,
+  expected: {
+    permissions: string[];
+    projectKind: string;
+    projectSlug: string;
+    projectTitle: string;
+    role: string;
+  },
+): void {
+  if (
+    invitation.role !== expected.role ||
+    invitation.target.name !== expected.projectTitle ||
+    invitation.target.projectKind !== expected.projectKind ||
+    invitation.target.slug !== expected.projectSlug ||
+    invitation.target.type !== 'PROJECT' ||
+    !stringSetsEqual(invitation.permissions, expected.permissions)
+  ) {
+    throw new Error(
+      `Team invitation mismatch: expected ${expected.projectSlug} ${expected.role}, received ${invitation.target.slug} ${invitation.role}`,
+    );
+  }
+}
+
+function stringSetsEqual(
+  actual: readonly string[],
+  expected: readonly string[],
+): boolean {
+  if (actual.length !== expected.length) return false;
+
+  const actualSet = new Set(actual);
+  return expected.every((value) => actualSet.has(value));
 }
 
 function assertProjectGalleryImage(
