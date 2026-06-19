@@ -80,6 +80,20 @@ interface RequestEmailVerificationResponse {
   errors?: GraphqlError[];
 }
 
+interface ConfirmPasswordResetResponse {
+  data?: {
+    confirmPasswordReset?: boolean;
+  };
+  errors?: GraphqlError[];
+}
+
+interface RequestPasswordResetResponse {
+  data?: {
+    requestPasswordReset?: boolean;
+  };
+  errors?: GraphqlError[];
+}
+
 interface MailpitMessageList {
   messages?: MailpitMessageSummary[];
 }
@@ -817,7 +831,11 @@ async function confirmSmokeUserEmail(options: {
     throw new Error('Email verification request failed');
   }
 
-  const verificationToken = await readEmailVerificationToken(options.email);
+  const verificationToken = await readMailpitTokenForRecipient({
+    email: options.email,
+    label: 'verification',
+    tokenPattern: /Verification token:\s*([^\s]+)/u,
+  });
   const confirmPayload = await readGraphql<ConfirmEmailVerificationResponse>({
     query: `
       mutation SmokeConfirmEmailVerification($input: ConfirmEmailVerificationInput!) {
@@ -838,19 +856,11 @@ async function confirmSmokeUserEmail(options: {
   await assertSmokeUserEmailVerified(options.username);
 }
 
-async function readEmailVerificationToken(email: string): Promise<string> {
-  const message = await readMailpitMessageForRecipient(email);
-  const token = message.Text?.match(/Verification token:\s*([^\s]+)/u)?.[1];
-  if (token === undefined || token.length === 0) {
-    throw new Error(`Mailpit verification email for ${email} had no token`);
-  }
-
-  return token;
-}
-
-async function readMailpitMessageForRecipient(
-  email: string,
-): Promise<MailpitMessage> {
+async function readMailpitTokenForRecipient(options: {
+  email: string;
+  label: string;
+  tokenPattern: RegExp;
+}): Promise<string> {
   const deadline = Date.now() + 15_000;
 
   while (Date.now() < deadline) {
@@ -858,21 +868,30 @@ async function readMailpitMessageForRecipient(
       `${mailpitUrl}/api/v1/messages`,
       'Mailpit message list',
     );
-    const summary = messageList.messages?.find((message) =>
-      message.To?.some((recipient) => recipient.Address === email),
-    );
+    const summaries =
+      messageList.messages?.filter((message) =>
+        message.To?.some((recipient) => recipient.Address === options.email),
+      ) ?? [];
 
-    if (summary?.ID !== undefined && summary.ID.length > 0) {
-      return readJson<MailpitMessage>(
+    for (const summary of summaries) {
+      if (summary.ID === undefined || summary.ID.length === 0) continue;
+
+      const message = await readJson<MailpitMessage>(
         `${mailpitUrl}/api/v1/message/${encodeURIComponent(summary.ID)}`,
         'Mailpit message',
       );
+      const token = message.Text?.match(options.tokenPattern)?.[1];
+      if (token !== undefined && token.length > 0) {
+        return token;
+      }
     }
 
     await sleep(250);
   }
 
-  throw new Error(`Mailpit did not receive verification email for ${email}`);
+  throw new Error(
+    `Mailpit did not receive ${options.label} token for ${options.email}`,
+  );
 }
 
 async function sleep(milliseconds: number): Promise<void> {
@@ -901,6 +920,83 @@ async function assertSmokeUserEmailVerified(username: string): Promise<void> {
   } finally {
     await prisma.$disconnect();
   }
+}
+
+async function checkPasswordResetFlow(options: {
+  email: string;
+  oldPassword: string;
+  username: string;
+}): Promise<AuthPayload> {
+  const newPassword = `${options.oldPassword}-reset`;
+  const requestPayload = await readGraphql<RequestPasswordResetResponse>({
+    query: `
+      mutation SmokeRequestPasswordReset($input: RequestPasswordResetInput!) {
+        requestPasswordReset(input: $input)
+      }
+    `,
+    variables: {
+      input: {
+        identifier: options.email,
+      },
+    },
+  });
+  assertNoGraphqlErrors(requestPayload, 'GraphQL request password reset');
+  if (requestPayload.data?.requestPasswordReset !== true) {
+    throw new Error('Password reset request failed');
+  }
+
+  const resetToken = await readMailpitTokenForRecipient({
+    email: options.email,
+    label: 'password reset',
+    tokenPattern: /Reset token:\s*([^\s]+)/u,
+  });
+  const confirmPayload = await readGraphql<ConfirmPasswordResetResponse>({
+    query: `
+      mutation SmokeConfirmPasswordReset($input: ConfirmPasswordResetInput!) {
+        confirmPasswordReset(input: $input)
+      }
+    `,
+    variables: {
+      input: {
+        newPassword,
+        token: resetToken,
+      },
+    },
+  });
+  assertNoGraphqlErrors(confirmPayload, 'GraphQL confirm password reset');
+  if (confirmPayload.data?.confirmPasswordReset !== true) {
+    throw new Error('Password reset confirmation failed');
+  }
+
+  const oldLoginPayload = await readGraphql<LoginResponse>({
+    query: `
+      mutation SmokeRejectedOldPassword($input: LoginInput!) {
+        login(input: $input) {
+          accessToken
+          user {
+            username
+          }
+        }
+      }
+    `,
+    variables: {
+      input: {
+        identifier: options.username,
+        password: options.oldPassword,
+      },
+    },
+  });
+  assertGraphqlError(
+    oldLoginPayload,
+    'Invalid credentials',
+    'GraphQL old password login',
+  );
+
+  return loginSmokeUser({
+    identifier: options.username,
+    password: newPassword,
+    username: options.username,
+  });
 }
 
 async function promoteSmokeUserToAdmin(username: string): Promise<void> {
@@ -942,7 +1038,7 @@ async function checkCreatorFlow(): Promise<void> {
     password: peerPassword,
     username: peerUsername,
   });
-  const auth = await loginSmokeUser({
+  let auth = await loginSmokeUser({
     identifier: username,
     password,
     username,
@@ -951,6 +1047,11 @@ async function checkCreatorFlow(): Promise<void> {
     identifier: peerUsername,
     password: peerPassword,
     username: peerUsername,
+  });
+  auth = await checkPasswordResetFlow({
+    email,
+    oldPassword: password,
+    username,
   });
 
   await checkSocialFlow({
