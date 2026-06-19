@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 
 import { AuditService } from '../../audit/audit.service.js';
+import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { SearchService } from '../../search/search.service.js';
@@ -59,6 +60,7 @@ export interface ModerationActionSearchResultContract {
 export class ProjectModerationService {
   constructor(
     private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService,
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
     private readonly redis: RedisService,
@@ -214,12 +216,43 @@ export class ProjectModerationService {
       await this.searchService.deleteProject(contract.id);
     }
     await this.invalidateProjectBySlugCache(contract.slug);
+    await this.notifyProjectReviewDecision({
+      action,
+      project,
+      reason: nullableTrim(input.reason),
+    });
 
     return contract;
   }
 
   private invalidateProjectBySlugCache(slug: string): Promise<void> {
     return this.redis.delete(projectBySlugCacheKey(slug));
+  }
+
+  private async notifyProjectReviewDecision({
+    action,
+    project,
+    reason,
+  }: {
+    action: ModerationActionKind;
+    project: ProjectModerationAuditRow;
+    reason: string | null;
+  }): Promise<void> {
+    const recipients = [
+      ...new Set(project.team.members.map((member) => member.userId)),
+    ];
+
+    await Promise.all(
+      recipients.map((userId) =>
+        this.notificationsService.sendUserNotification({
+          actionUrl: '/dashboard#dashboard-projects',
+          body: projectReviewNotificationBody(project.title, action, reason),
+          title: projectReviewNotificationTitle(action),
+          type: 'moderation',
+          userId,
+        }),
+      ),
+    );
   }
 }
 
@@ -230,9 +263,21 @@ function moderationProjectAuditSelect() {
     requestedStatus: true,
     slug: true,
     status: true,
+    team: {
+      select: {
+        members: {
+          select: { userId: true },
+          where: { acceptedAt: { not: null } },
+        },
+      },
+    },
     title: true,
   };
 }
+
+type ProjectModerationAuditRow = Prisma.ProjectGetPayload<{
+  select: ReturnType<typeof moderationProjectAuditSelect>;
+}>;
 
 function moderationAction(action: string): ModerationActionKind {
   const normalized = action.trim().toUpperCase();
@@ -285,6 +330,38 @@ function moderationProjectData(
     requestedStatus: null,
     status: 'APPROVED',
   };
+}
+
+function projectReviewNotificationTitle(action: ModerationActionKind): string {
+  if (action === ModerationActionKind.APPROVE) {
+    return 'Project approved';
+  }
+  if (action === ModerationActionKind.REJECT) {
+    return 'Project rejected';
+  }
+  if (action === ModerationActionKind.ARCHIVE) {
+    return 'Project archived';
+  }
+
+  return 'Project restored';
+}
+
+function projectReviewNotificationBody(
+  projectTitle: string,
+  action: ModerationActionKind,
+  reason: string | null,
+): string {
+  const decision =
+    action === ModerationActionKind.APPROVE
+      ? 'approved'
+      : action === ModerationActionKind.REJECT
+        ? 'rejected'
+        : action === ModerationActionKind.ARCHIVE
+          ? 'archived'
+          : 'restored';
+  const suffix = reason === null ? '' : ` Reason: ${reason}`;
+
+  return `${projectTitle} was ${decision}.${suffix}`;
 }
 
 function moderationActionSelect() {

@@ -7,12 +7,19 @@ function createProjectModerationService(
   prisma: PrismaService,
   searchService: unknown,
   auditEvents: unknown[] = [],
+  notifications: unknown[] = [],
 ) {
   return new ProjectModerationService(
     {
       recordProjectModeration: (event: unknown) => {
         auditEvents.push(event);
         return Promise.resolve();
+      },
+    } as never,
+    {
+      sendUserNotification: (notification: unknown) => {
+        notifications.push(notification);
+        return Promise.resolve({});
       },
     } as never,
     prisma,
@@ -106,6 +113,7 @@ describe(ProjectModerationService.name, () => {
     const auditEvents: unknown[] = [];
     const transactionSteps: unknown[] = [];
     const indexed: unknown[] = [];
+    const notifications: unknown[] = [];
     const service = createProjectModerationService(
       {
         $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
@@ -129,14 +137,13 @@ describe(ProjectModerationService.name, () => {
           }),
         project: {
           findUnique: () =>
-            Promise.resolve({
-              id: 'project-a',
-              kind: 'MOD',
-              requestedStatus: 'APPROVED',
-              slug: 'example',
-              status: 'PENDING_REVIEW',
-              title: 'Queued',
-            }),
+            Promise.resolve(
+              moderationProjectAuditRow({
+                requestedStatus: 'APPROVED',
+                status: 'PENDING_REVIEW',
+                title: 'Queued',
+              }),
+            ),
         },
       } as unknown as PrismaService,
       {
@@ -147,6 +154,7 @@ describe(ProjectModerationService.name, () => {
         searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
       },
       auditEvents,
+      notifications,
     );
 
     const project = await service.moderateProject(
@@ -197,6 +205,15 @@ describe(ProjectModerationService.name, () => {
       },
       reason: 'Looks good',
     });
+    expect(notifications).toEqual([
+      {
+        actionUrl: '/dashboard#dashboard-projects',
+        body: 'Queued was approved. Reason: Looks good',
+        title: 'Project approved',
+        type: 'moderation',
+        userId: 'user-owner',
+      },
+    ]);
     expect(project.status).toBe('APPROVED');
   });
 
@@ -219,14 +236,13 @@ describe(ProjectModerationService.name, () => {
           }),
         project: {
           findUnique: () =>
-            Promise.resolve({
-              id: 'project-a',
-              kind: 'MOD',
-              requestedStatus: null,
-              slug: 'example',
-              status: 'APPROVED',
-              title: 'Public Project',
-            }),
+            Promise.resolve(
+              moderationProjectAuditRow({
+                requestedStatus: null,
+                status: 'APPROVED',
+                title: 'Public Project',
+              }),
+            ),
         },
       } as unknown as PrismaService,
       {
@@ -346,6 +362,28 @@ describe(ProjectModerationService.name, () => {
     expect(actions.at(0)?.id).toBe('action-a');
   });
 });
+
+function moderationProjectAuditRow({
+  requestedStatus,
+  status,
+  title,
+}: {
+  requestedStatus: string | null;
+  status: string;
+  title: string;
+}) {
+  return {
+    id: 'project-a',
+    kind: 'MOD',
+    requestedStatus,
+    slug: 'example',
+    status,
+    team: {
+      members: [{ userId: 'user-owner' }, { userId: 'user-owner' }],
+    },
+    title,
+  };
+}
 
 function moderationActionRow() {
   return {

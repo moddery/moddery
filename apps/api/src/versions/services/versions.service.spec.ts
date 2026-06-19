@@ -7,12 +7,19 @@ import { VersionsService } from './versions.service.js';
 function createVersionsService(
   prisma: PrismaService,
   auditEvents: unknown[] = [],
+  notifications: unknown[] = [],
 ) {
   return new VersionsService(
     {
       recordVersionModeration: (event: unknown) => {
         auditEvents.push(event);
         return Promise.resolve();
+      },
+    } as never,
+    {
+      sendUserNotification: (notification: unknown) => {
+        notifications.push(notification);
+        return Promise.resolve({});
       },
     } as never,
     prisma,
@@ -436,6 +443,7 @@ describe(VersionsService.name, () => {
 
   test('approves queued versions for publication', async () => {
     const auditEvents: unknown[] = [];
+    const notifications: unknown[] = [];
     const operations: string[] = [];
     const service = createVersionsService(
       {
@@ -465,6 +473,7 @@ describe(VersionsService.name, () => {
         version: {
           findUnique: () =>
             Promise.resolve({
+              authorId: 'user-author',
               id: 'version-a',
               name: 'Example',
               project: { id: 'project-a', slug: 'example' },
@@ -475,6 +484,7 @@ describe(VersionsService.name, () => {
         },
       } as unknown as PrismaService,
       auditEvents,
+      notifications,
     );
 
     const version = await service.moderateVersion(
@@ -511,6 +521,15 @@ describe(VersionsService.name, () => {
       },
       reason: 'Looks good',
     });
+    expect(notifications).toEqual([
+      {
+        actionUrl: '/dashboard#dashboard-projects',
+        body: 'Example 1.0.0 was approved. Reason: Looks good',
+        title: 'Release approved',
+        type: 'moderation',
+        userId: 'user-author',
+      },
+    ]);
     expect(version.status).toBe('APPROVED');
   });
 

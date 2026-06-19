@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 
 import { AuditService } from '../../audit/audit.service.js';
+import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { SearchService } from '../../search/search.service.js';
@@ -37,6 +38,7 @@ const MAX_FILE_HASHES = 8;
 export class VersionsService {
   constructor(
     private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService,
     private readonly prisma: PrismaService,
     private readonly versionDependenciesService: VersionDependenciesService,
     private readonly redis: RedisService,
@@ -186,6 +188,7 @@ export class VersionsService {
     const action = moderationAction(input.action);
     const version = await this.prisma.version.findUnique({
       select: {
+        authorId: true,
         id: true,
         name: true,
         project: {
@@ -233,8 +236,35 @@ export class VersionsService {
       before: versionAuditSnapshot(version),
       reason: nullableTrim(input.reason),
     });
+    await this.notifyVersionReviewDecision({
+      action,
+      reason: nullableTrim(input.reason),
+      version,
+    });
 
     return versionRowToContract(updated);
+  }
+
+  private async notifyVersionReviewDecision({
+    action,
+    reason,
+    version,
+  }: {
+    action: VersionModerationAction;
+    reason: string | null;
+    version: VersionModerationAuditRow;
+  }): Promise<void> {
+    if (version.authorId === null) {
+      return;
+    }
+
+    await this.notificationsService.sendUserNotification({
+      actionUrl: '/dashboard#dashboard-projects',
+      body: versionReviewNotificationBody(version, action, reason),
+      title: versionReviewNotificationTitle(action),
+      type: 'moderation',
+      userId: version.authorId,
+    });
   }
 
   async findManagedProjectVersionSearch(
@@ -515,6 +545,10 @@ function moderationVersionData(
 
 type VersionModerationAction = 'APPROVE' | 'ARCHIVE' | 'REJECT' | 'RESTORE';
 
+interface VersionModerationAuditRow extends VersionAuditRow {
+  authorId: string | null;
+}
+
 function versionAuditSnapshot(version: VersionAuditRow) {
   return {
     id: version.id,
@@ -535,6 +569,40 @@ interface VersionAuditRow {
   requestedStatus: string | null;
   status: string;
   versionNumber: string;
+}
+
+function versionReviewNotificationTitle(
+  action: VersionModerationAction,
+): string {
+  if (action === 'APPROVE') {
+    return 'Release approved';
+  }
+  if (action === 'REJECT') {
+    return 'Release rejected';
+  }
+  if (action === 'ARCHIVE') {
+    return 'Release archived';
+  }
+
+  return 'Release restored';
+}
+
+function versionReviewNotificationBody(
+  version: VersionAuditRow,
+  action: VersionModerationAction,
+  reason: string | null,
+): string {
+  const decision =
+    action === 'APPROVE'
+      ? 'approved'
+      : action === 'REJECT'
+        ? 'rejected'
+        : action === 'ARCHIVE'
+          ? 'archived'
+          : 'restored';
+  const suffix = reason === null ? '' : ` Reason: ${reason}`;
+
+  return `${version.name} ${version.versionNumber} was ${decision}.${suffix}`;
 }
 
 async function createVersionFiles(
