@@ -150,6 +150,7 @@ export function AppPages({ app, onRequestAuth }: AppPagesProps) {
           onBack={app.openUsers}
           onOpenCollection={app.openCollection}
           onOpenProject={app.openProject}
+          onRequestAuth={onRequestAuth}
           onTagSearch={app.searchByTag}
         />
       ) : (

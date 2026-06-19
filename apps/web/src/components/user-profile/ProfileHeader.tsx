@@ -10,7 +10,13 @@ import { ProfileMessageForm } from './profile-header/ProfileMessageForm.tsx';
 import { ProfileReportForm } from './profile-header/ProfileReportForm.tsx';
 import { ProfileStats } from './profile-header/ProfileStats.tsx';
 
-export function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
+export function ProfileHeader({
+  profile,
+  onRequestAuth,
+}: {
+  profile: PublicUserProfile;
+  onRequestAuth?: () => void;
+}) {
   const name = profile.displayName ?? profile.username;
   const [reportOpen, setReportOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -30,7 +36,7 @@ export function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
                 Admin
               </span>
             )}
-            <FriendshipAction profile={profile} />
+            <FriendshipAction profile={profile} onRequestAuth={onRequestAuth} />
             <button
               type="button"
               onClick={() => setReportOpen((current) => !current)}
@@ -41,7 +47,7 @@ export function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
             </button>
             <CopyLinkButton />
           </div>
-          <ProfileMessageForm profile={profile} />
+          <ProfileMessageForm profile={profile} onRequestAuth={onRequestAuth} />
           <p className="mt-1 text-sm font-semibold text-muted">
             @{profile.username} · joined {timeAgo(profile.createdAt)}
           </p>
@@ -53,6 +59,7 @@ export function ProfileHeader({ profile }: { profile: PublicUserProfile }) {
           {reportOpen && (
             <ProfileReportForm
               profile={profile}
+              onRequestAuth={onRequestAuth}
               onMessage={setMessage}
               onSubmitted={() => setReportOpen(false)}
             />

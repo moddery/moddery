@@ -11,6 +11,7 @@ import { VersionsToolbar } from './VersionsToolbar.tsx';
 
 export function VersionsTab({
   onDownloadRecorded,
+  onRequestAuth,
   onSelectVersion,
   onTagSearch,
   projectSlug,
@@ -19,6 +20,7 @@ export function VersionsTab({
   versions,
 }: {
   onDownloadRecorded: (record: DownloadRecord) => void;
+  onRequestAuth?: () => void;
   onSelectVersion: (versionNumber: string | null) => void;
   onTagSearch?: (tag: SearchTag) => void;
   projectSlug: string;
@@ -65,6 +67,7 @@ export function VersionsTab({
         versions={search.visibleVersions}
         onDownloadRecorded={onDownloadRecorded}
         onPage={search.setPage}
+        onRequestAuth={onRequestAuth}
         onSelectVersion={onSelectVersion}
         onTagSearch={onTagSearch}
         projectType={projectType}

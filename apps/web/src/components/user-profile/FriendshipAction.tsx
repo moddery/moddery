@@ -9,11 +9,36 @@ import { type ReactNode } from 'react';
 import { type PublicUserProfile } from '../../lib/users.ts';
 import { useFriendshipActionState } from './useFriendshipActionState.ts';
 
-export function FriendshipAction({ profile }: { profile: PublicUserProfile }) {
+export function FriendshipAction({
+  profile,
+  onRequestAuth,
+}: {
+  profile: PublicUserProfile;
+  onRequestAuth?: () => void;
+}) {
   const state = useFriendshipActionState(profile.username);
 
-  if (!state.signedIn || state.isSelf) {
+  if (state.isSelf) {
     return null;
+  }
+
+  if (!state.signedIn) {
+    return (
+      <FriendshipActions>
+        <FriendshipButton
+          busy={false}
+          icon={<UserPlus className="size-3.5 text-accent-icon" />}
+          label="Add friend"
+          onClick={() => onRequestAuth?.()}
+        />
+        <FriendshipButton
+          busy={false}
+          icon={<ShieldOff className="size-3.5 text-accent-icon" />}
+          label="Block"
+          onClick={() => onRequestAuth?.()}
+        />
+      </FriendshipActions>
+    );
   }
 
   const { relationship } = state;

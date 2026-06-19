@@ -23,6 +23,7 @@ export function UserProfilePage({
   onOpenCollection,
   username,
   onOpenProject,
+  onRequestAuth,
   onTagSearch,
 }: {
   onBack: () => void;
@@ -32,6 +33,7 @@ export function UserProfilePage({
   }) => void;
   username: string;
   onOpenProject: (mod: Mod) => void;
+  onRequestAuth?: () => void;
   onTagSearch?: (tag: SearchTag) => void;
 }) {
   const [projectPage, setProjectPage] = useState(1);
@@ -97,7 +99,7 @@ export function UserProfilePage({
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
-      <ProfileHeader profile={profile} />
+      <ProfileHeader profile={profile} onRequestAuth={onRequestAuth} />
       <UserModerationNotes username={profile.username} />
 
       <UserProjectsSection

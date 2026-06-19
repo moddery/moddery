@@ -10,10 +10,12 @@ import { reportReasons } from '../reportReasons.ts';
 
 export function ProfileReportForm({
   profile,
+  onRequestAuth,
   onSubmitted,
   onMessage,
 }: {
   profile: PublicUserProfile;
+  onRequestAuth?: () => void;
   onSubmitted: () => void;
   onMessage: (message: string | null) => void;
 }) {
@@ -25,6 +27,7 @@ export function ProfileReportForm({
     event.preventDefault();
 
     if (!hasAuthToken()) {
+      onRequestAuth?.();
       onMessage('Sign in to report a user.');
       return;
     }

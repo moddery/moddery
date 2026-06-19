@@ -13,6 +13,7 @@ export function VersionSearchResults({
   isLoading,
   onDownloadRecorded,
   onPage,
+  onRequestAuth,
   onSelectVersion,
   onTagSearch,
   page,
@@ -25,6 +26,7 @@ export function VersionSearchResults({
   isLoading: boolean;
   onDownloadRecorded: (record: DownloadRecord) => void;
   onPage: (page: number) => void;
+  onRequestAuth?: () => void;
   onSelectVersion: (versionNumber: string | null) => void;
   onTagSearch?: (tag: SearchTag) => void;
   page: number;
@@ -72,6 +74,7 @@ export function VersionSearchResults({
           selected={version.versionNumber === selectedVersion}
           version={version}
           onDownloadRecorded={onDownloadRecorded}
+          onRequestAuth={onRequestAuth}
           onSelectVersion={onSelectVersion}
           onTagSearch={onTagSearch}
           projectType={projectType}

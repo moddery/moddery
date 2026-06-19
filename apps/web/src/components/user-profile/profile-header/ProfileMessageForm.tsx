@@ -9,8 +9,10 @@ import {
 } from '../../../lib/users.ts';
 
 export function ProfileMessageForm({
+  onRequestAuth,
   profile,
 }: {
+  onRequestAuth?: () => void;
   profile: PublicUserProfile;
 }) {
   const [body, setBody] = useState('');
@@ -23,6 +25,7 @@ export function ProfileMessageForm({
     event.preventDefault();
 
     if (!hasAuthToken()) {
+      onRequestAuth?.();
       setMessage('Sign in to send messages.');
       return;
     }

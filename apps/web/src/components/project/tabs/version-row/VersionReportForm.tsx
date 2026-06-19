@@ -10,9 +10,11 @@ import { reportReasons } from '../constants.ts';
 
 export function VersionReportForm({
   version,
+  onRequestAuth,
   onSubmitted,
 }: {
   version: ProjectVersion;
+  onRequestAuth?: () => void;
   onSubmitted: () => void;
 }) {
   const [reason, setReason] = useState<ReportReason>('BROKEN_OR_MISLEADING');
@@ -24,6 +26,7 @@ export function VersionReportForm({
     event.preventDefault();
 
     if (!hasAuthToken()) {
+      onRequestAuth?.();
       setMessage('Sign in to report a version.');
       return;
     }

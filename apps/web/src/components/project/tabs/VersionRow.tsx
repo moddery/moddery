@@ -18,6 +18,7 @@ import { VersionSummary } from './version-row/VersionSummary.tsx';
 
 export function VersionRow({
   onDownloadRecorded,
+  onRequestAuth,
   onSelectVersion,
   onTagSearch,
   projectType,
@@ -25,6 +26,7 @@ export function VersionRow({
   version,
 }: {
   onDownloadRecorded: (record: DownloadRecord) => void;
+  onRequestAuth?: () => void;
   onSelectVersion: (versionNumber: string | null) => void;
   onTagSearch?: (tag: SearchTag) => void;
   projectType: ProjectType;
@@ -81,6 +83,7 @@ export function VersionRow({
         <div className="sm:col-span-2">
           <VersionReportForm
             version={version}
+            onRequestAuth={onRequestAuth}
             onSubmitted={() => setReportOpen(false)}
           />
         </div>

@@ -95,6 +95,7 @@ export function ProjectPageContent({
           {activeTab === 'versions' && (
             <VersionsTab
               onDownloadRecorded={onDownloadRecorded}
+              onRequestAuth={onRequestAuth}
               projectSlug={project.slug}
               projectType={project.projectType}
               selectedVersion={selectedVersion}
