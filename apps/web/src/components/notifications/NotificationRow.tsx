@@ -7,6 +7,7 @@ import {
   type NotificationDelivery,
   type NotificationItem,
 } from '../../lib/notifications.ts';
+import { notificationActionLinkAttributes } from './notification-action-link.ts';
 
 export function NotificationRow({
   item,
@@ -75,31 +76,15 @@ export function NotificationRow({
 function NotificationActionLink({ url }: { url: string }) {
   const className =
     'inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-bold text-ink transition-colors hover:bg-control-hover';
-
-  if (url.startsWith('/')) {
-    const target = new URL(url, window.location.href);
-
-    return (
-      <a
-        href={url}
-        onClick={(event) => {
-          event.preventDefault();
-          window.history.pushState(null, '', url);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-          if (target.hash === '') {
-            window.scrollTo({ top: 0 });
-          }
-        }}
-        className={className}
-      >
-        Open
-        <ExternalLink className="size-4" />
-      </a>
-    );
-  }
+  const linkAttributes = notificationActionLinkAttributes(url);
 
   return (
-    <a href={url} className={className}>
+    <a
+      href={url}
+      className={className}
+      target={linkAttributes.target}
+      rel={linkAttributes.rel}
+    >
       Open
       <ExternalLink className="size-4" />
     </a>
