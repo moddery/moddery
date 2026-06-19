@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   fetchOrganizationMembers,
@@ -30,6 +30,12 @@ export function OrganizationDetail({
 }) {
   const [memberPage, setMemberPage] = useState(1);
   const [projectPage, setProjectPage] = useState(1);
+
+  useEffect(() => {
+    setMemberPage(1);
+    setProjectPage(1);
+  }, [slug]);
+
   const organizationQuery = useQuery({
     queryFn: ({ signal }) => fetchOrganizationProfile(slug, signal),
     queryKey: ['organizations', slug],
