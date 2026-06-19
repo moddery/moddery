@@ -118,6 +118,15 @@ interface ProjectBySlugResponse {
   errors?: GraphqlError[];
 }
 
+interface ProjectFollowResponse {
+  data?: {
+    followProject?: ProjectFollowState;
+    unfollowProject?: ProjectFollowState;
+    viewerProjectFollowState?: ProjectFollowState | null;
+  };
+  errors?: GraphqlError[];
+}
+
 interface PrepareUploadResponse {
   data?: {
     prepareProjectUpload?: ProjectUploadTarget;
@@ -309,6 +318,12 @@ interface ProjectAnalyticsSummary {
   totalDownloads: number;
   totalViews: number;
   viewsLast30Days: number;
+}
+
+interface ProjectFollowState {
+  followers: number;
+  following: boolean;
+  projectSlug: string;
 }
 
 interface OrganizationSummary {
@@ -675,6 +690,10 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
   });
   await checkQueuedProjectCollectionGuard({
+    projectSlug: slug,
+    token: auth.accessToken,
+  });
+  await checkQueuedProjectFollowGuard({
     projectSlug: slug,
     token: auth.accessToken,
   });
@@ -1117,6 +1136,70 @@ async function checkQueuedProjectCollectionGuard({
     addPayload,
     'Project not found',
     'queued project collection save',
+  );
+}
+
+async function checkQueuedProjectFollowGuard({
+  projectSlug,
+  token,
+}: {
+  projectSlug: string;
+  token: string;
+}): Promise<void> {
+  const statePayload = await readGraphql<ProjectFollowResponse>(
+    {
+      query: `
+        query SmokeQueuedProjectFollowState($projectSlug: String!) {
+          viewerProjectFollowState(projectSlug: $projectSlug) {
+            projectSlug
+          }
+        }
+      `,
+      variables: { projectSlug },
+    },
+    token,
+  );
+  assertNoGraphqlErrors(statePayload, 'GraphQL queued project follow state');
+  if (statePayload.data?.viewerProjectFollowState !== null) {
+    throw new Error('Queued project returned viewer follow state');
+  }
+
+  const followPayload = await readGraphql<ProjectFollowResponse>(
+    {
+      query: `
+        mutation SmokeFollowQueuedProject($projectSlug: String!) {
+          followProject(projectSlug: $projectSlug) {
+            projectSlug
+          }
+        }
+      `,
+      variables: { projectSlug },
+    },
+    token,
+  );
+  assertGraphqlError(
+    followPayload,
+    'Project not found',
+    'queued project follow',
+  );
+
+  const unfollowPayload = await readGraphql<ProjectFollowResponse>(
+    {
+      query: `
+        mutation SmokeUnfollowQueuedProject($projectSlug: String!) {
+          unfollowProject(projectSlug: $projectSlug) {
+            projectSlug
+          }
+        }
+      `,
+      variables: { projectSlug },
+    },
+    token,
+  );
+  assertGraphqlError(
+    unfollowPayload,
+    'Project not found',
+    'queued project unfollow',
   );
 }
 

@@ -21,16 +21,19 @@ function fakeRedis() {
 }
 
 describe(ProjectFollowsService.name, () => {
-  test('loads viewer project follow state', async () => {
+  test('loads viewer project follow state for approved projects', async () => {
+    const queries: unknown[] = [];
     const service = new ProjectFollowsService(
       {
         project: {
-          findUnique: () =>
-            Promise.resolve({
+          findFirst: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve({
               followers: 7,
               follows: [{ userId: 'user-a' }],
               slug: 'iris',
-            }),
+            });
+          },
         },
       } as unknown as PrismaService,
       fakeRedis().redis as never,
@@ -38,6 +41,18 @@ describe(ProjectFollowsService.name, () => {
 
     const state = await service.findViewerProjectFollowState('iris', 'user-a');
 
+    expect(queries[0]).toEqual({
+      select: {
+        followers: true,
+        follows: {
+          select: { userId: true },
+          take: 1,
+          where: { userId: 'user-a' },
+        },
+        slug: true,
+      },
+      where: { slug: 'iris', status: 'APPROVED' },
+    });
     expect(state).toEqual({
       followers: 7,
       following: true,
@@ -45,13 +60,31 @@ describe(ProjectFollowsService.name, () => {
     });
   });
 
-  test('follows a project, reconciles follower count, and invalidates cache', async () => {
+  test('does not load follow state for non-public projects', async () => {
+    const service = new ProjectFollowsService(
+      {
+        project: {
+          findFirst: () => Promise.resolve(null),
+        },
+      } as unknown as PrismaService,
+      fakeRedis().redis as never,
+    );
+
+    const state = await service.findViewerProjectFollowState(
+      'queued-project',
+      'user-a',
+    );
+
+    expect(state).toBeUndefined();
+  });
+
+  test('follows approved projects, reconciles follower count, and invalidates cache', async () => {
     const operations: string[] = [];
     const redis = fakeRedis();
     const tx = {
       project: {
-        findUniqueOrThrow: () => {
-          operations.push('find-project');
+        findFirst: (query: unknown) => {
+          operations.push(`find-project:${JSON.stringify(query)}`);
           return Promise.resolve({ id: 'project-a', slug: 'iris' });
         },
         update: (query: unknown) => {
@@ -87,13 +120,114 @@ describe(ProjectFollowsService.name, () => {
       projectSlug: 'iris',
     });
     expect(operations).toEqual([
-      'find-project',
+      'find-project:{"select":{"id":true,"slug":true},"where":{"slug":"iris","status":"APPROVED"}}',
       'upsert:{"create":{"projectId":"project-a","userId":"user-a"},"update":{},"where":{"userId_projectId":{"projectId":"project-a","userId":"user-a"}}}',
       'count-follows',
       'update:{"data":{"followers":8},"where":{"id":"project-a"}}',
     ]);
     expect(redis.deletedKeys).toEqual(['catalog:project-by-slug:iris']);
     expect(redis.cache.has('catalog:project-by-slug:iris')).toBe(false);
+  });
+
+  test('rejects following non-public projects', async () => {
+    const service = new ProjectFollowsService(
+      {
+        $transaction: (callback: (transaction: unknown) => unknown) =>
+          callback({
+            project: {
+              findFirst: () => Promise.resolve(null),
+            },
+            projectFollow: {
+              upsert: () => {
+                throw new Error('Follow should not be created');
+              },
+            },
+          }),
+      } as unknown as PrismaService,
+      fakeRedis().redis as never,
+    );
+
+    let caught: unknown;
+    try {
+      await service.followProject('queued-project', 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project not found');
+  });
+
+  test('unfollows approved projects, reconciles follower count, and invalidates cache', async () => {
+    const operations: string[] = [];
+    const redis = fakeRedis();
+    const tx = {
+      project: {
+        findFirst: () => Promise.resolve({ id: 'project-a', slug: 'iris' }),
+        update: (query: unknown) => {
+          operations.push(`update:${JSON.stringify(query)}`);
+          return Promise.resolve();
+        },
+      },
+      projectFollow: {
+        count: () => {
+          operations.push('count-follows');
+          return Promise.resolve(6);
+        },
+        deleteMany: (query: unknown) => {
+          operations.push(`delete:${JSON.stringify(query)}`);
+          return Promise.resolve();
+        },
+      },
+    };
+    const service = new ProjectFollowsService(
+      {
+        $transaction: (callback: (transaction: typeof tx) => unknown) =>
+          callback(tx),
+      } as unknown as PrismaService,
+      redis.redis as never,
+    );
+
+    const state = await service.unfollowProject('iris', 'user-a');
+
+    expect(state).toEqual({
+      followers: 6,
+      following: false,
+      projectSlug: 'iris',
+    });
+    expect(operations).toEqual([
+      'delete:{"where":{"projectId":"project-a","userId":"user-a"}}',
+      'count-follows',
+      'update:{"data":{"followers":6},"where":{"id":"project-a"}}',
+    ]);
+    expect(redis.deletedKeys).toEqual(['catalog:project-by-slug:iris']);
+  });
+
+  test('rejects unfollowing non-public projects', async () => {
+    const service = new ProjectFollowsService(
+      {
+        $transaction: (callback: (transaction: unknown) => unknown) =>
+          callback({
+            project: {
+              findFirst: () => Promise.resolve(null),
+            },
+            projectFollow: {
+              deleteMany: () => {
+                throw new Error('Follow should not be deleted');
+              },
+            },
+          }),
+      } as unknown as PrismaService,
+      fakeRedis().redis as never,
+    );
+
+    let caught: unknown;
+    try {
+      await service.unfollowProject('queued-project', 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project not found');
   });
 
   test('loads viewer followed projects newest first', async () => {

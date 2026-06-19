@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { type ProjectSummaryContract } from '@moddery/shared';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -27,7 +27,7 @@ export class ProjectFollowsService {
     projectSlug: string,
     userId: string,
   ): Promise<ProjectFollowStateContract | undefined> {
-    const project = await this.prisma.project.findUnique({
+    const project = await this.prisma.project.findFirst({
       select: {
         followers: true,
         follows: {
@@ -37,7 +37,7 @@ export class ProjectFollowsService {
         },
         slug: true,
       },
-      where: { slug: projectSlug },
+      where: { slug: projectSlug, status: 'APPROVED' },
     });
 
     if (project === null) return undefined;
@@ -114,10 +114,14 @@ export class ProjectFollowsService {
     following: boolean,
   ): Promise<ProjectFollowStateContract> {
     const state = await this.prisma.$transaction(async (tx) => {
-      const project = await tx.project.findUniqueOrThrow({
+      const project = await tx.project.findFirst({
         select: { id: true, slug: true },
-        where: { slug: projectSlug },
+        where: { slug: projectSlug, status: 'APPROVED' },
       });
+
+      if (project === null) {
+        throw new NotFoundException('Project not found');
+      }
 
       if (following) {
         await tx.projectFollow.upsert({
