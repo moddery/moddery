@@ -5,6 +5,7 @@ import {
   createProject,
   fetchCategoryTaxonomy,
   fetchGameVersionTaxonomy,
+  type DashboardProject,
   updateProject,
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
@@ -28,31 +29,34 @@ export function PublishProjectForm({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<DashboardProject | null>(null);
   const [localIconFile, setLocalIconFile] = useState<File | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+    setCreated(null);
 
     try {
       const input = form.buildInput();
       assertCreateProjectInput(input);
 
-      const createdProject = await createProject(input);
+      let createdProject = await createProject(input);
       if (localIconFile !== null) {
         const target = await uploadProjectFile({
           file: localIconFile,
           projectSlug: createdProject.slug,
           uploadKind: 'project-icon',
         });
-        await updateProject({
+        createdProject = await updateProject({
           iconUrl: target.objectUrl,
           projectSlug: createdProject.slug,
         });
       }
       form.reset();
       setLocalIconFile(null);
+      setCreated(createdProject);
       await onCreated();
     } catch (caught) {
       setError(
@@ -91,6 +95,11 @@ export function PublishProjectForm({
             {error}
           </p>
         )}
+        {created && (
+          <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold leading-6 text-ink">
+            Created {created.title}. {projectCreationReviewMessage(created)}
+          </p>
+        )}
 
         <div>
           <button
@@ -104,4 +113,12 @@ export function PublishProjectForm({
       </form>
     </section>
   );
+}
+
+export function projectCreationReviewMessage(
+  project: Pick<DashboardProject, 'status'>,
+) {
+  return project.status === 'APPROVED'
+    ? 'It is approved and ready for releases.'
+    : 'It is queued for review before releases can be published.';
 }
