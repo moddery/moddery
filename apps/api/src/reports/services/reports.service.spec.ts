@@ -228,6 +228,30 @@ describe(ReportsService.name, () => {
     expect(report.reporter.username).toBe('reporter');
   });
 
+  test('rejects invalid project report inputs before lookups', async () => {
+    const service = new ReportsService({
+      project: {
+        findUnique: () => {
+          throw new Error('Project lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createProjectReport({
+        body: '        ',
+        projectSlug: 'iris',
+        reason: 'BROKEN_OR_MISLEADING',
+        reporterId: 'user-a',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Report body is required');
+  });
+
   test('creates version reports against existing versions', async () => {
     const creates: unknown[] = [];
     const service = new ReportsService({
@@ -290,8 +314,33 @@ describe(ReportsService.name, () => {
     expect(report.reporter.username).toBe('reporter');
   });
 
+  test('rejects invalid version report targets before lookups', async () => {
+    const service = new ReportsService({
+      version: {
+        findUnique: () => {
+          throw new Error('Version lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createVersionReport({
+        body: 'Version crashes on launch',
+        reason: 'BROKEN_OR_MISLEADING',
+        reporterId: 'user-a',
+        versionId: ' ',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Version is required');
+  });
+
   test('creates user reports against existing users', async () => {
     const creates: unknown[] = [];
+    const userLookups: unknown[] = [];
     const service = new ReportsService({
       report: {
         create: (query: unknown) => {
@@ -321,7 +370,10 @@ describe(ReportsService.name, () => {
         },
       },
       user: {
-        findUnique: () => Promise.resolve({ id: 'user-b' }),
+        findFirst: (query: unknown) => {
+          userLookups.push(query);
+          return Promise.resolve({ id: 'user-b' });
+        },
       },
     } as unknown as PrismaService);
 
@@ -329,9 +381,13 @@ describe(ReportsService.name, () => {
       body: '  Impersonating staff  ',
       reason: 'IMPERSONATION',
       reporterId: 'user-a',
-      username: 'target',
+      username: ' Target ',
     });
 
+    expect(userLookups[0]).toEqual({
+      select: { id: true },
+      where: { username: { equals: 'Target', mode: 'insensitive' } },
+    });
     expect(creates[0]).toEqual({
       data: {
         body: 'Impersonating staff',
@@ -342,5 +398,27 @@ describe(ReportsService.name, () => {
       select: expect.any(Object),
     });
     expect(report.userTarget?.username).toBe('target');
+  });
+
+  test('rejects self-reports', async () => {
+    const service = new ReportsService({
+      user: {
+        findFirst: () => Promise.resolve({ id: 'user-a' }),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createUserReport({
+        body: 'Impersonating staff',
+        reason: 'IMPERSONATION',
+        reporterId: 'user-a',
+        username: 'reporter',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Cannot report yourself');
   });
 });

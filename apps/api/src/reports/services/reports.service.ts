@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { type ReportReason, type ReportState } from '@moddery/shared';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -66,9 +70,11 @@ export class ReportsService {
     reason: ReportReason;
     reporterId: string;
   }) {
+    const text = requiredReportBody(body);
+    const slug = requiredText(projectSlug, 'Project is required');
     const project = await this.prisma.project.findUnique({
       select: { id: true },
-      where: { slug: projectSlug },
+      where: { slug },
     });
 
     if (project === null) {
@@ -77,7 +83,7 @@ export class ReportsService {
 
     return this.prisma.report.create({
       data: {
-        body: body.trim(),
+        body: text,
         projectId: project.id,
         reason,
         reporterId,
@@ -97,9 +103,11 @@ export class ReportsService {
     reporterId: string;
     versionId: string;
   }) {
+    const text = requiredReportBody(body);
+    const id = requiredText(versionId, 'Version is required');
     const version = await this.prisma.version.findUnique({
       select: { id: true },
-      where: { id: versionId },
+      where: { id },
     });
 
     if (version === null) {
@@ -108,7 +116,7 @@ export class ReportsService {
 
     return this.prisma.report.create({
       data: {
-        body: body.trim(),
+        body: text,
         reason,
         reporterId,
         versionId: version.id,
@@ -128,18 +136,24 @@ export class ReportsService {
     reporterId: string;
     username: string;
   }) {
-    const userTarget = await this.prisma.user.findUnique({
+    const text = requiredReportBody(body);
+    const targetUsername = requiredText(username, 'User is required');
+    const userTarget = await this.prisma.user.findFirst({
       select: { id: true },
-      where: { username },
+      where: { username: { equals: targetUsername, mode: 'insensitive' } },
     });
 
     if (userTarget === null) {
       throw new NotFoundException('User not found');
     }
 
+    if (userTarget.id === reporterId) {
+      throw new BadRequestException('Cannot report yourself');
+    }
+
     return this.prisma.report.create({
       data: {
-        body: body.trim(),
+        body: text,
         reason,
         reporterId,
         userTargetId: userTarget.id,
@@ -208,4 +222,22 @@ function clampInteger(value: number, min: number, max: number): number {
   if (!Number.isInteger(value)) return min;
 
   return Math.min(max, Math.max(min, value));
+}
+
+function requiredReportBody(value: string): string {
+  const text = requiredText(value, 'Report body is required');
+  if (text.length < 8) {
+    throw new BadRequestException('Report body must be at least 8 characters');
+  }
+
+  return text;
+}
+
+function requiredText(value: string, message: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new BadRequestException(message);
+  }
+
+  return trimmed;
 }
