@@ -117,6 +117,13 @@ interface CreateVersionResponse {
   errors?: GraphqlError[];
 }
 
+interface RecordFileScanResponse {
+  data?: {
+    recordFileScan?: VersionSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface CreateCollectionResponse {
   data?: {
     createCollection?: CollectionSummary;
@@ -221,12 +228,19 @@ interface VersionSummary {
     fileName: string;
     id: string;
     primary: boolean;
+    scans?: VersionFileScan[];
     url: string;
   }[];
   id: string;
   projectSlug: string;
   status: string;
   versionNumber: string;
+}
+
+interface VersionFileScan {
+  details: string | null;
+  status: string;
+  verdict: string | null;
 }
 
 interface CollectionSummary {
@@ -697,6 +711,12 @@ async function checkCreatorFlow(): Promise<void> {
   );
   assertVersion(publicVersion, {
     projectSlug: slug,
+    versionNumber,
+  });
+  await checkFileScanFlow({
+    fileId: required(publicVersion.files[0], 'public version file').id,
+    projectSlug: slug,
+    token: auth.accessToken,
     versionNumber,
   });
   await checkAnalyticsFlow({
@@ -1503,6 +1523,105 @@ async function checkAnalyticsFlow(options: {
   ) {
     throw new Error(
       `Analytics mismatch for ${options.projectSlug}: views=${analytics.totalViews.toString()} downloads=${analytics.totalDownloads.toString()}`,
+    );
+  }
+}
+
+async function checkFileScanFlow(options: {
+  fileId: string;
+  projectSlug: string;
+  token: string;
+  versionNumber: string;
+}): Promise<void> {
+  const scanPayload = await readGraphql<RecordFileScanResponse>(
+    {
+      query: `
+        mutation SmokeRecordFileScan($input: RecordFileScanInput!) {
+          recordFileScan(input: $input) {
+            files {
+              id
+              primary
+              scans {
+                details
+                status
+                verdict
+              }
+            }
+            id
+            projectSlug
+            status
+            versionNumber
+          }
+        }
+      `,
+      variables: {
+        input: {
+          details: '{ "engine": "smoke" }',
+          fileId: options.fileId,
+          status: 'COMPLETE',
+          verdict: 'CLEAN',
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(scanPayload, 'GraphQL record file scan');
+
+  const scannedVersion = required(
+    scanPayload.data?.recordFileScan,
+    'scanned version',
+  );
+  assertVersion(scannedVersion, {
+    projectSlug: options.projectSlug,
+    versionNumber: options.versionNumber,
+  });
+  assertVersionFileScan(scannedVersion, options.fileId);
+
+  const versionsPayload = await readGraphql<VersionsForProjectResponse>({
+    query: `
+      query SmokeScannedVersionsForProject($projectSlug: String!) {
+        versionsForProject(projectSlug: $projectSlug) {
+          files {
+            id
+            scans {
+              details
+              status
+              verdict
+            }
+          }
+          id
+          projectSlug
+          status
+          versionNumber
+        }
+      }
+    `,
+    variables: { projectSlug: options.projectSlug },
+  });
+  assertNoGraphqlErrors(versionsPayload, 'GraphQL scanned versions');
+
+  const publicVersion = required(
+    versionsPayload.data?.versionsForProject?.find(
+      (version) => version.versionNumber === options.versionNumber,
+    ),
+    'public scanned version',
+  );
+  assertVersionFileScan(publicVersion, options.fileId);
+}
+
+function assertVersionFileScan(version: VersionSummary, fileId: string): void {
+  const file = required(
+    version.files.find((item) => item.id === fileId),
+    'scanned version file',
+  );
+  const scan = required(file.scans?.[0], 'version file scan');
+  if (
+    scan.status !== 'COMPLETE' ||
+    scan.verdict !== 'CLEAN' ||
+    scan.details !== '{\n  "engine": "smoke"\n}'
+  ) {
+    throw new Error(
+      `File scan mismatch for ${fileId}: received ${scan.status} ${scan.verdict ?? 'none'}`,
     );
   }
 }
