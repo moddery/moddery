@@ -2,9 +2,12 @@ import { UserRound } from 'lucide-react';
 
 import { userPath } from '../../app/routing.ts';
 import { type PublicCollectionItem } from '../../lib/catalog.ts';
-import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
 import { ModCard, type SearchTag } from '../ModCard.tsx';
+import {
+  collectionItemAddedLabel,
+  collectionItemPosition,
+} from './collection-item-attribution.ts';
 
 export function CollectionProjectItem({
   item,
@@ -32,7 +35,8 @@ function CollectionItemAttribution({ item }: { item: PublicCollectionItem }) {
   if (item.addedBy === null) {
     return (
       <p className="mt-1 px-1 text-xs font-semibold text-muted">
-        Added {timeAgo(item.createdAt)}
+        {collectionItemPosition(item.sortOrder)} ·{' '}
+        {collectionItemAddedLabel(item.createdAt)}
       </p>
     );
   }
@@ -60,7 +64,9 @@ function CollectionItemAttribution({ item }: { item: PublicCollectionItem }) {
         <span className="truncate">{addedBy}</span>
       </a>
       <span aria-hidden="true">·</span>
-      <span>{timeAgo(item.createdAt)}</span>
+      <span>{collectionItemPosition(item.sortOrder)}</span>
+      <span aria-hidden="true">·</span>
+      <span>{collectionItemAddedLabel(item.createdAt)}</span>
     </p>
   );
 }
