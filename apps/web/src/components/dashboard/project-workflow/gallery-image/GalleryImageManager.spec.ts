@@ -4,6 +4,7 @@ import {
   galleryImageActionMessage,
   galleryImageRemoveButtonLabel,
   galleryImageSaveButtonLabel,
+  parseGalleryImageSortOrder,
 } from './GalleryImageManager.tsx';
 
 describe(galleryImageActionMessage.name, () => {
@@ -25,5 +26,25 @@ describe(galleryImageRemoveButtonLabel.name, () => {
     expect(galleryImageRemoveButtonLabel(null)).toBe('Remove');
     expect(galleryImageRemoveButtonLabel('remove')).toBe('Removing...');
     expect(galleryImageRemoveButtonLabel('save')).toBe('Remove');
+  });
+});
+
+describe(parseGalleryImageSortOrder.name, () => {
+  test('parses integer order values', () => {
+    expect(parseGalleryImageSortOrder('3')).toBe(3);
+    expect(parseGalleryImageSortOrder(' 12 ')).toBe(12);
+    expect(parseGalleryImageSortOrder('-1')).toBe(-1);
+  });
+
+  test('rejects invalid order values', () => {
+    expect(() => parseGalleryImageSortOrder('12.8')).toThrow(
+      'Gallery image order must be an integer',
+    );
+    expect(() => parseGalleryImageSortOrder('nope')).toThrow(
+      'Gallery image order must be an integer',
+    );
+    expect(() => parseGalleryImageSortOrder('')).toThrow(
+      'Gallery image order must be an integer',
+    );
   });
 });

@@ -68,7 +68,7 @@ function GalleryImageManagerRow({
         featured,
         imageId: image.id,
         rawUrl,
-        sortOrder: parseSortOrder(sortOrder),
+        sortOrder: parseGalleryImageSortOrder(sortOrder),
         title: nullableText(title),
       });
       setMessage(galleryImageActionMessage());
@@ -202,9 +202,13 @@ function GalleryImageManagerRow({
   );
 }
 
-function parseSortOrder(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : 0;
+export function parseGalleryImageSortOrder(value: string): number {
+  const trimmed = value.trim();
+  if (!/^-?\d+$/.test(trimmed)) {
+    throw new Error('Gallery image order must be an integer');
+  }
+
+  return Number.parseInt(trimmed, 10);
 }
 
 export function galleryImageActionMessage() {
