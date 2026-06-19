@@ -1,5 +1,5 @@
 import { HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { describe, expect, test } from 'bun:test';
 
 import { type PrismaService } from '../prisma/prisma.service.js';
@@ -41,6 +41,7 @@ describe(StorageService.name, () => {
     const target = await serviceWithProject({
       id: 'project-a',
       slug: 'cool-project',
+      status: 'APPROVED',
       team: { members: [{ userId: 'user-a' }] },
     }).prepareProjectUpload(
       {
@@ -98,6 +99,7 @@ describe(StorageService.name, () => {
       await serviceWithProject({
         id: 'project-a',
         slug: 'cool-project',
+        status: 'APPROVED',
         team: { members: [] },
       }).prepareProjectUpload(
         {
@@ -115,6 +117,57 @@ describe(StorageService.name, () => {
     expect(caught).toBeInstanceOf(ForbiddenException);
   });
 
+  test('requires approved projects before preparing release file uploads', async () => {
+    let caught: unknown;
+
+    try {
+      await serviceWithProject({
+        id: 'project-a',
+        slug: 'cool-project',
+        status: 'PENDING_REVIEW',
+        team: { members: [{ userId: 'user-a' }] },
+      }).prepareProjectUpload(
+        {
+          fileName: 'release.zip',
+          projectSlug: 'cool-project',
+          sizeBytes: 1024,
+          uploadKind: 'version-file',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(BadRequestException);
+    expect(caught).toHaveProperty(
+      'message',
+      'Project must be approved before release files can be uploaded',
+    );
+  });
+
+  test('allows setup image uploads before project approval', async () => {
+    const target = await serviceWithProject({
+      id: 'project-a',
+      slug: 'cool-project',
+      status: 'PENDING_REVIEW',
+      team: { members: [{ userId: 'user-a' }] },
+    }).prepareProjectUpload(
+      {
+        contentType: 'image/png',
+        fileName: 'icon.png',
+        projectSlug: 'cool-project',
+        sizeBytes: 1024,
+        uploadKind: 'project-icon',
+      },
+      'user-a',
+    );
+
+    expect(target.key).toMatch(
+      /^projects\/cool-project\/project-icon\/[a-f0-9-]+\.png$/,
+    );
+  });
+
   test('rejects unsupported upload kinds', async () => {
     let caught: unknown;
 
@@ -122,6 +175,7 @@ describe(StorageService.name, () => {
       await serviceWithProject({
         id: 'project-a',
         slug: 'cool-project',
+        status: 'APPROVED',
         team: { members: [{ userId: 'user-a' }] },
       }).prepareProjectUpload(
         {

@@ -53,10 +53,12 @@ export class StorageService {
     input: PrepareProjectUploadInput,
     userId: string,
   ): Promise<ProjectUploadTargetContract> {
+    const uploadKind = normalizedUploadKind(input.uploadKind);
     const project = await this.prisma.project.findUnique({
       select: {
         id: true,
         slug: true,
+        status: true,
         team: {
           select: {
             members: {
@@ -81,7 +83,12 @@ export class StorageService {
       throw new ForbiddenException('Project membership required');
     }
 
-    const uploadKind = normalizedUploadKind(input.uploadKind);
+    if (uploadKind === 'version-file' && project.status !== 'APPROVED') {
+      throw new BadRequestException(
+        'Project must be approved before release files can be uploaded',
+      );
+    }
+
     const fileName = normalizedFileName(input.fileName);
     const sizeBytes = normalizedSize(input.sizeBytes);
     const contentType = nullableTrim(input.contentType);
