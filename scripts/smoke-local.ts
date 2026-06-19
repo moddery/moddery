@@ -6,6 +6,9 @@ const apiUrl = trimTrailingSlash(
 const webUrl = trimTrailingSlash(
   process.env.SMOKE_WEB_URL ?? 'http://localhost:15174',
 );
+const mailpitUrl = trimTrailingSlash(
+  process.env.SMOKE_MAILPIT_URL ?? 'http://localhost:8026',
+);
 const databaseUrl =
   process.env.SMOKE_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -61,6 +64,37 @@ interface MeResponse {
     };
   };
   errors?: GraphqlError[];
+}
+
+interface ConfirmEmailVerificationResponse {
+  data?: {
+    confirmEmailVerification?: boolean;
+  };
+  errors?: GraphqlError[];
+}
+
+interface RequestEmailVerificationResponse {
+  data?: {
+    requestEmailVerification?: boolean;
+  };
+  errors?: GraphqlError[];
+}
+
+interface MailpitMessageList {
+  messages?: MailpitMessageSummary[];
+}
+
+interface MailpitMessageSummary {
+  ID?: string;
+  To?: MailpitAddress[];
+}
+
+interface MailpitAddress {
+  Address?: string;
+}
+
+interface MailpitMessage {
+  Text?: string;
 }
 
 interface FriendshipResponse {
@@ -503,12 +537,17 @@ async function seedSmokeFixturesIfRequested(): Promise<void> {
     .toString(36)
     .slice(2, 8)}`;
   const username = `smoke_seed_${suffix}`;
+  const email = `${username}@example.test`;
   const auth = await registerSmokeUser({
-    email: `${username}@example.test`,
+    email,
     password: `password-${suffix}`,
     username,
   });
-  await verifySmokeUserEmail(username);
+  await confirmSmokeUserEmail({
+    email,
+    token: auth.accessToken,
+    username,
+  });
   await promoteSmokeUserToAdmin(username);
 
   for (const kind of ['MOD', 'PLUGIN', 'MODPACK']) {
@@ -758,6 +797,112 @@ async function checkMe(options: {
   }
 }
 
+async function confirmSmokeUserEmail(options: {
+  email: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const requestPayload = await readGraphql<RequestEmailVerificationResponse>(
+    {
+      query: `
+        mutation SmokeRequestEmailVerification {
+          requestEmailVerification
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(requestPayload, 'GraphQL request email verification');
+  if (requestPayload.data?.requestEmailVerification !== true) {
+    throw new Error('Email verification request failed');
+  }
+
+  const verificationToken = await readEmailVerificationToken(options.email);
+  const confirmPayload = await readGraphql<ConfirmEmailVerificationResponse>({
+    query: `
+      mutation SmokeConfirmEmailVerification($input: ConfirmEmailVerificationInput!) {
+        confirmEmailVerification(input: $input)
+      }
+    `,
+    variables: {
+      input: {
+        token: verificationToken,
+      },
+    },
+  });
+  assertNoGraphqlErrors(confirmPayload, 'GraphQL confirm email verification');
+  if (confirmPayload.data?.confirmEmailVerification !== true) {
+    throw new Error('Email verification confirmation failed');
+  }
+
+  await assertSmokeUserEmailVerified(options.username);
+}
+
+async function readEmailVerificationToken(email: string): Promise<string> {
+  const message = await readMailpitMessageForRecipient(email);
+  const token = message.Text?.match(/Verification token:\s*([^\s]+)/u)?.[1];
+  if (token === undefined || token.length === 0) {
+    throw new Error(`Mailpit verification email for ${email} had no token`);
+  }
+
+  return token;
+}
+
+async function readMailpitMessageForRecipient(
+  email: string,
+): Promise<MailpitMessage> {
+  const deadline = Date.now() + 15_000;
+
+  while (Date.now() < deadline) {
+    const messageList = await readJson<MailpitMessageList>(
+      `${mailpitUrl}/api/v1/messages`,
+      'Mailpit message list',
+    );
+    const summary = messageList.messages?.find((message) =>
+      message.To?.some((recipient) => recipient.Address === email),
+    );
+
+    if (summary?.ID !== undefined && summary.ID.length > 0) {
+      return readJson<MailpitMessage>(
+        `${mailpitUrl}/api/v1/message/${encodeURIComponent(summary.ID)}`,
+        'Mailpit message',
+      );
+    }
+
+    await sleep(250);
+  }
+
+  throw new Error(`Mailpit did not receive verification email for ${email}`);
+}
+
+async function sleep(milliseconds: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+async function assertSmokeUserEmailVerified(username: string): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: { url: databaseUrl },
+    },
+  });
+
+  try {
+    const user = await prisma.user.findUnique({
+      select: { emailVerifiedAt: true },
+      where: { username },
+    });
+    const emailVerifiedAt = user?.emailVerifiedAt;
+
+    if (emailVerifiedAt === undefined || emailVerifiedAt === null) {
+      throw new Error(`Expected ${username} to have a verified email`);
+    }
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function promoteSmokeUserToAdmin(username: string): Promise<void> {
   const prisma = new PrismaClient({
     datasources: {
@@ -775,36 +920,20 @@ async function promoteSmokeUserToAdmin(username: string): Promise<void> {
   }
 }
 
-async function verifySmokeUserEmail(username: string): Promise<void> {
-  const prisma = new PrismaClient({
-    datasources: {
-      db: { url: databaseUrl },
-    },
-  });
-
-  try {
-    await prisma.user.update({
-      data: { emailVerifiedAt: new Date() },
-      where: { username },
-    });
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
 async function checkCreatorFlow(): Promise<void> {
   const suffix = `${Date.now().toString(36)}${Math.random()
     .toString(36)
     .slice(2, 8)}`;
   const username = `smoke_${suffix}`;
   const peerUsername = `smoke_peer_${suffix}`;
+  const email = `${username}@example.test`;
   const slug = `smoke-${suffix}`;
   const title = `Smoke Project ${suffix}`;
   const password = `password-${suffix}`;
   const peerPassword = `password-${suffix}-peer`;
 
   await registerSmokeUser({
-    email: `${username}@example.test`,
+    email,
     password,
     username,
   });
@@ -830,7 +959,11 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
     username,
   });
-  await verifySmokeUserEmail(username);
+  await confirmSmokeUserEmail({
+    email,
+    token: auth.accessToken,
+    username,
+  });
 
   const createPayload = await readGraphql<CreateProjectResponse>(
     {
