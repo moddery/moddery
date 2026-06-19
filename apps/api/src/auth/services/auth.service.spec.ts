@@ -616,6 +616,7 @@ describe(AuthService.name, () => {
             sent.push({ tokenCreate: query });
             return Promise.resolve({});
           },
+          findFirst: () => Promise.resolve(null),
         },
         user: {
           findUnique: () =>
@@ -649,6 +650,50 @@ describe(AuthService.name, () => {
         to: 'seed@example.test',
       }),
     );
+  });
+
+  test('does not resend email verification while an unused token is active', async () => {
+    const sent: unknown[] = [];
+    const service = new AuthService(
+      {} as AuthTokenService,
+      fakeMailService(sent),
+      {
+        emailVerificationToken: {
+          create: () => {
+            throw new Error('Token should not be created');
+          },
+          findFirst: (query: unknown) => {
+            sent.push({ tokenFind: query });
+            return Promise.resolve({ id: 'verify-existing' });
+          },
+        },
+        user: {
+          findUnique: () =>
+            Promise.resolve({
+              email: 'seed@example.test',
+              emailVerifiedAt: null,
+              id: 'user-a',
+              username: 'seed',
+            }),
+        },
+      } as unknown as PrismaService,
+    );
+
+    const result = await service.requestEmailVerification('user-a');
+
+    expect(result).toBe(true);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({
+      tokenFind: {
+        select: { id: true },
+        where: {
+          email: 'seed@example.test',
+          expiresAt: { gt: expect.any(Date) },
+          usedAt: null,
+          userId: 'user-a',
+        },
+      },
+    });
   });
 
   test('confirms email verification for the matching current email', async () => {

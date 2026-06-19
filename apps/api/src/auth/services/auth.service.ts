@@ -292,11 +292,26 @@ export class AuthService {
       return true;
     }
 
+    const now = new Date();
+    const pendingToken = await this.prisma.emailVerificationToken.findFirst({
+      select: { id: true },
+      where: {
+        email: user.email,
+        expiresAt: { gt: now },
+        usedAt: null,
+        userId: user.id,
+      },
+    });
+
+    if (pendingToken !== null) {
+      return true;
+    }
+
     const token = randomBytes(32).toString('base64url');
     await this.prisma.emailVerificationToken.create({
       data: {
         email: user.email,
-        expiresAt: new Date(Date.now() + emailVerificationTokenTtlMs),
+        expiresAt: new Date(now.getTime() + emailVerificationTokenTtlMs),
         tokenHash: hashSecret(token),
         userId: user.id,
       },
