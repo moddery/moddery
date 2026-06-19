@@ -81,6 +81,31 @@ describe(SearchService.name, () => {
     });
   });
 
+  test('updates project timestamps with immediate refresh', async () => {
+    const updates: unknown[] = [];
+    const client = {
+      update: (query: unknown) => {
+        updates.push(query);
+        return Promise.resolve();
+      },
+    };
+    const service = new SearchService(client as never);
+
+    await service.updateProjectUpdatedAt(
+      'project-a',
+      '2026-06-18T12:00:00.000Z',
+    );
+
+    expect(updates[0]).toEqual({
+      body: {
+        doc: { updatedAt: '2026-06-18T12:00:00.000Z' },
+      },
+      id: 'project-a',
+      index: 'projects',
+      refresh: true,
+    });
+  });
+
   test('filters project search by tags', async () => {
     const searches: unknown[] = [];
     const client = {

@@ -13,6 +13,9 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { RedisService } from '../../redis/redis.service.js';
+import { SearchService } from '../../search/search.service.js';
+import { projectBySlugCacheKey } from '../../catalog/services/project-read-model.js';
 import { type CreateVersionInput } from '../dto/create-version.input.js';
 import { type UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
 import { type UpdateVersionInput } from '../dto/update-version.input.js';
@@ -30,6 +33,8 @@ export class VersionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly versionDependenciesService: VersionDependenciesService,
+    private readonly redis: RedisService,
+    private readonly search: SearchService,
   ) {}
 
   async createVersion(
@@ -64,6 +69,7 @@ export class VersionsService {
       throw new ForbiddenException('Project membership required');
     }
 
+    const touchedAt = new Date();
     const version = await this.prisma.$transaction(async (tx) => {
       const created = await tx.version.create({
         data: {
@@ -86,11 +92,20 @@ export class VersionsService {
       );
       await replaceVersionLoaders(tx, created.id, input.loaders ?? []);
       await createVersionFiles(tx, created.id, input.files);
+      await tx.project.update({
+        data: { updatedAt: touchedAt },
+        where: { id: project.id },
+      });
 
       return tx.version.findUniqueOrThrow({
         select: versionSelect(),
         where: { id: created.id },
       });
+    });
+    await this.refreshProjectAfterVersionChange({
+      projectId: project.id,
+      projectSlug: project.slug,
+      updatedAt: touchedAt,
     });
 
     return versionRowToContract(version);
@@ -168,6 +183,7 @@ export class VersionsService {
       userId,
     );
 
+    const touchedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.version.update({
         data: versionUpdateData(input),
@@ -182,10 +198,20 @@ export class VersionsService {
         await replaceVersionLoaders(tx, version.id, input.loaders);
       }
 
+      await tx.project.update({
+        data: { updatedAt: touchedAt },
+        where: { id: version.project.id },
+      });
+
       return tx.version.findUniqueOrThrow({
         select: versionSelect(),
         where: { id: version.id },
       });
+    });
+    await this.refreshProjectAfterVersionChange({
+      projectId: version.project.id,
+      projectSlug: version.project.slug,
+      updatedAt: touchedAt,
     });
 
     return versionRowToContract(updated);
@@ -195,10 +221,33 @@ export class VersionsService {
     input: UpdateVersionDependenciesInput,
     userId: string,
   ): Promise<VersionSummaryContract> {
-    return this.versionDependenciesService.updateVersionDependencies(
-      input,
-      userId,
-    );
+    const version =
+      await this.versionDependenciesService.updateVersionDependencies(
+        input,
+        userId,
+      );
+    await this.refreshProjectAfterVersionChange({
+      projectId: version.projectId,
+      projectSlug: version.projectSlug,
+      updatedAt: version.projectUpdatedAt,
+    });
+
+    return version.summary;
+  }
+
+  private async refreshProjectAfterVersionChange({
+    projectId,
+    projectSlug,
+    updatedAt,
+  }: {
+    projectId: string;
+    projectSlug: string;
+    updatedAt: Date;
+  }): Promise<void> {
+    await Promise.all([
+      this.redis.delete(projectBySlugCacheKey(projectSlug)),
+      this.search.updateProjectUpdatedAt(projectId, updatedAt.toISOString()),
+    ]);
   }
 }
 

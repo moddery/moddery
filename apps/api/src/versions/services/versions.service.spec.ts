@@ -5,7 +5,12 @@ import { VersionDependenciesService } from './version-dependencies.service.js';
 import { VersionsService } from './versions.service.js';
 
 function createVersionsService(prisma: PrismaService) {
-  return new VersionsService(prisma, new VersionDependenciesService(prisma));
+  return new VersionsService(
+    prisma,
+    new VersionDependenciesService(prisma),
+    { delete: () => Promise.resolve() } as never,
+    { updateProjectUpdatedAt: () => Promise.resolve() } as never,
+  );
 }
 
 describe(VersionsService.name, () => {
@@ -16,6 +21,10 @@ describe(VersionsService.name, () => {
         callback({
           project: {
             findUnique: () => Promise.resolve({ id: 'project-b' }),
+            update: (query: unknown) => {
+              operations.push(`project-update:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
           },
           version: {
             findUniqueOrThrow: () =>
@@ -69,6 +78,7 @@ describe(VersionsService.name, () => {
 
     expect(operations[0]).toBe('delete:{"where":{"versionId":"version-a"}}');
     expect(operations[1]).toContain('"targetProjectId":"project-b"');
+    expect(operations[2]).toContain('"where":{"id":"project-a"}');
     expect(version.dependencies[0]?.targetProject?.slug).toBe('library');
   });
 
@@ -79,6 +89,12 @@ describe(VersionsService.name, () => {
         callback({
           gameVersion: {
             upsert: () => Promise.resolve({ id: 'game-version-a' }),
+          },
+          project: {
+            update: (query: unknown) => {
+              operations.push(`project-update:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
           },
           version: {
             findUniqueOrThrow: () =>
@@ -147,6 +163,9 @@ describe(VersionsService.name, () => {
     expect(operations).toContain(
       'loaders-delete:{"where":{"versionId":"version-a"}}',
     );
+    expect(
+      operations.some((operation) => operation.includes('project-update')),
+    ).toBeTrue();
     expect(version.versionNumber).toBe('1.0.1');
   });
 
@@ -196,6 +215,9 @@ describe(VersionsService.name, () => {
     const service = createVersionsService({
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
+          project: {
+            update: () => Promise.resolve({}),
+          },
           gameVersion: {
             upsert: () => Promise.resolve({ id: 'game-version-a' }),
           },
@@ -286,6 +308,8 @@ function managedVersion() {
   return {
     id: 'version-a',
     project: {
+      id: 'project-a',
+      slug: 'example',
       team: { members: [{ userId: 'user-a' }] },
     },
   };

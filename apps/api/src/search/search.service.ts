@@ -80,6 +80,20 @@ export class SearchService implements OnModuleInit {
     });
   }
 
+  async updateProjectUpdatedAt(
+    projectId: string,
+    updatedAt: string,
+  ): Promise<void> {
+    await this.client.update({
+      body: {
+        doc: { updatedAt },
+      },
+      id: projectId,
+      index: PROJECTS_INDEX,
+      refresh: true,
+    });
+  }
+
   async searchProjects({
     limit = 100,
     offset = 0,

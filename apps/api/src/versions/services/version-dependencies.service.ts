@@ -24,13 +24,19 @@ export class VersionDependenciesService {
   async updateVersionDependencies(
     input: UpdateVersionDependenciesInput,
     userId: string,
-  ): Promise<VersionSummaryContract> {
+  ): Promise<{
+    projectId: string;
+    projectSlug: string;
+    projectUpdatedAt: Date;
+    summary: VersionSummaryContract;
+  }> {
     const version = await findManagedVersion(
       this.prisma,
       input.versionId,
       userId,
     );
 
+    const touchedAt = new Date();
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.versionDependency.deleteMany({
         where: { versionId: version.id },
@@ -40,13 +46,23 @@ export class VersionDependenciesService {
         await createVersionDependency(tx, version.id, dependency);
       }
 
+      await tx.project.update({
+        data: { updatedAt: touchedAt },
+        where: { id: version.project.id },
+      });
+
       return tx.version.findUniqueOrThrow({
         select: versionSelect(),
         where: { id: version.id },
       });
     });
 
-    return versionRowToContract(updated);
+    return {
+      projectId: version.project.id,
+      projectSlug: version.project.slug,
+      projectUpdatedAt: touchedAt,
+      summary: versionRowToContract(updated),
+    };
   }
 }
 

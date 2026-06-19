@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaModule } from '../prisma/prisma.module.js';
+import { RedisModule } from '../redis/redis.module.js';
+import { SearchModule } from '../search/search.module.js';
 import { VersionsResolver } from './graphql/versions.resolver.js';
 import { VersionDependenciesService } from './services/version-dependencies.service.js';
 import { VersionDirectoryService } from './services/version-directory.service.js';
@@ -9,7 +11,7 @@ import { VersionsService } from './services/versions.service.js';
 
 @Module({
   exports: [VersionDirectoryService, VersionFileScansService, VersionsService],
-  imports: [PrismaModule],
+  imports: [PrismaModule, RedisModule, SearchModule],
   providers: [
     VersionDependenciesService,
     VersionDirectoryService,

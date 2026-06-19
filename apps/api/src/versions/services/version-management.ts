@@ -12,6 +12,8 @@ export async function findManagedVersion(
       id: true,
       project: {
         select: {
+          id: true,
+          slug: true,
           team: {
             select: {
               members: {
