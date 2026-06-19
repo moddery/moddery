@@ -74,6 +74,11 @@ export function ReportThreadPanel({ reportId }: { reportId: string }) {
                 {reply.error}
               </p>
             )}
+            {reply.message && (
+              <p className="rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+                {reply.message}
+              </p>
+            )}
             <div>
               <button
                 type="submit"

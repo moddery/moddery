@@ -12,16 +12,19 @@ export function useReportThreadReplyState({
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+    setMessage(null);
 
     try {
       await createReportThreadMessage({ body, reportId });
       setBody('');
       await onPosted();
+      setMessage(reportThreadReplyMessage());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Reply failed');
     } finally {
@@ -32,8 +35,13 @@ export function useReportThreadReplyState({
   return {
     body,
     error,
+    message,
     setBody,
     submit,
     submitting,
   };
+}
+
+export function reportThreadReplyMessage() {
+  return 'Reply posted.';
 }
