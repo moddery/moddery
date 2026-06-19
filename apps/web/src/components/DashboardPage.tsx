@@ -61,7 +61,7 @@ export function DashboardPage({
   const sectionItems = dashboardSectionItems({
     canModerate,
     collectionCount: dashboard.collectionCount,
-    organizationCount: dashboard.organizations.length,
+    organizationCount: dashboard.organizationCount,
     projectCount: dashboard.projectCount,
   });
 

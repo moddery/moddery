@@ -18,6 +18,7 @@ describe(UserAdminService.name, () => {
             return Promise.resolve({
               _count: {
                 collections: 0,
+                ownedOrganizations: 0,
                 projectFollows: 0,
                 teamMemberships: 0,
               },
@@ -180,6 +181,7 @@ function userProfileRow() {
   return {
     _count: {
       collections: 0,
+      ownedOrganizations: 0,
       projectFollows: 0,
       teamMemberships: 0,
     },

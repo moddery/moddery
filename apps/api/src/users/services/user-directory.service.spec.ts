@@ -18,6 +18,7 @@ describe(UserDirectoryService.name, () => {
             {
               _count: {
                 collections: 2,
+                ownedOrganizations: 5,
                 projectFollows: 3,
                 teamMemberships: 4,
               },
@@ -66,6 +67,7 @@ describe(UserDirectoryService.name, () => {
       followedProjectCount: 3,
       friendCount: 2,
       newsletterOptIn: false,
+      organizationCount: 5,
       projectCount: 4,
       twoFactorEnabled: false,
       username: 'creator',
@@ -83,6 +85,7 @@ describe(UserDirectoryService.name, () => {
             {
               _count: {
                 collections: 0,
+                ownedOrganizations: 0,
                 projectFollows: 0,
                 teamMemberships: 0,
               },
@@ -143,6 +146,7 @@ describe(UserDirectoryService.name, () => {
             {
               _count: {
                 collections: 0,
+                ownedOrganizations: 0,
                 projectFollows: 0,
                 teamMemberships: 0,
               },

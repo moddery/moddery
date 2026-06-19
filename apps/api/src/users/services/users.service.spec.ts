@@ -12,6 +12,7 @@ describe(UsersService.name, () => {
           Promise.resolve({
             _count: {
               collections: 0,
+              ownedOrganizations: 0,
               projectFollows: 0,
               teamMemberships: 0,
             },

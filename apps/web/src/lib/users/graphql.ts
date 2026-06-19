@@ -71,6 +71,7 @@ export const USER_BY_USERNAME_QUERY = gql`
       friendCount
       id
       isAdmin
+      organizationCount
       projectCount
       projects {
         ...UserProjectPreviewFields
@@ -95,6 +96,7 @@ export const PUBLIC_USERS_QUERY = gql`
         friendCount
         id
         isAdmin
+        organizationCount
         projectCount
         projects {
           ...UserProjectPreviewFields

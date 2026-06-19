@@ -21,6 +21,7 @@ export interface DashboardData {
   id: string;
   isAdmin: boolean;
   newsletterOptIn: boolean;
+  organizationCount: number;
   organizations: DashboardOrganization[];
   projectCount: number;
   projects: DashboardProject[];

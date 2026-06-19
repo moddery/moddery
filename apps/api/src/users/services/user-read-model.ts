@@ -58,6 +58,7 @@ export interface UserProjectRow {
 export interface UserProfileRow {
   _count: {
     collections: number;
+    ownedOrganizations: number;
     projectFollows: number;
     teamMemberships: number;
   };
@@ -147,6 +148,7 @@ export function userProfileSelect({
         collections: collectionVisibilityFilter
           ? { where: collectionVisibilityFilter }
           : true,
+        ownedOrganizations: true,
         projectFollows: true,
         teamMemberships: {
           where: {
@@ -384,6 +386,7 @@ export function userProfileRowToContract(
       user.friendRequestsReceived.length + user.friendRequestsSent.length,
     id: user.id,
     newsletterOptIn: includePrivateAccountFields ? user.newsletterOptIn : false,
+    organizationCount: user._count.ownedOrganizations,
     projectCount: user._count.teamMemberships,
     projects: user.teamMemberships.flatMap(({ team }) =>
       team.project === null ? [] : [projectRowToContract(team.project)],

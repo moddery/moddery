@@ -51,6 +51,9 @@ export class UserProfile {
   friendCount!: number;
 
   @Field(() => Int)
+  organizationCount!: number;
+
+  @Field(() => Int)
   projectCount!: number;
 
   @Field(() => [ProjectSummary])

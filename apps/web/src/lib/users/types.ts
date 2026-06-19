@@ -11,6 +11,7 @@ export interface PublicUserProfile {
   friendCount: number;
   id: string;
   isAdmin: boolean;
+  organizationCount: number;
   projectCount: number;
   projects: UserProjectPreview[];
   role: string;
@@ -26,6 +27,7 @@ export interface PublicUserListItem {
   friendCount: number;
   id: string;
   isAdmin: boolean;
+  organizationCount: number;
   projectCount: number;
   projects: UserProjectPreview[];
   username: string;

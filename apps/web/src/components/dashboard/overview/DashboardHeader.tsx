@@ -3,9 +3,11 @@ import { type ReactNode } from 'react';
 
 import { userPath } from '../../../app/routing.ts';
 import { type DashboardData } from '../../../lib/dashboard.ts';
+import { dashboardHeaderStats } from './dashboard-header-stats.ts';
 
 export function DashboardHeader({ dashboard }: { dashboard: DashboardData }) {
   const displayName = dashboard.displayName ?? dashboard.username;
+  const stats = dashboardHeaderStats(dashboard);
 
   return (
     <header className="border-b border-line pb-6">
@@ -36,17 +38,17 @@ export function DashboardHeader({ dashboard }: { dashboard: DashboardData }) {
         <DashboardStat
           icon={<FolderKanban className="size-4" />}
           label="Projects"
-          value={dashboard.projectCount}
+          value={stats.projects}
         />
         <DashboardStat
           icon={<Building2 className="size-4" />}
           label="Organizations"
-          value={dashboard.organizations.length}
+          value={stats.organizations}
         />
         <DashboardStat
           icon={<Heart className="size-4" />}
           label="Following"
-          value={dashboard.followedProjectCount}
+          value={stats.following}
         />
       </div>
     </header>

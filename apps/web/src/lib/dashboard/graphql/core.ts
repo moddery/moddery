@@ -38,6 +38,7 @@ export const DASHBOARD_QUERY = gql`
       id
       isAdmin
       newsletterOptIn
+      organizationCount
       projectCount
       projects {
         ...DashboardProjectFields
