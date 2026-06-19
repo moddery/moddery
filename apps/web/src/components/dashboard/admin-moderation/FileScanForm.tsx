@@ -5,6 +5,7 @@ import {
   type DashboardProject,
 } from '../../../lib/dashboard.ts';
 import { FileScanResultFields } from './file-scan/FileScanResultFields.tsx';
+import { FileScanSelectedFileSummary } from './file-scan/FileScanSelectedFileSummary.tsx';
 import { FileScanSelectors } from './file-scan/FileScanSelectors.tsx';
 import { useFileScanFormState } from './file-scan/useFileScanFormState.ts';
 import { nullableText } from './shared.tsx';
@@ -65,6 +66,7 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
           onProjectChange={form.onProjectChange}
           onVersionChange={form.onVersionChange}
         />
+        <FileScanSelectedFileSummary file={form.selectedFile} />
         <FileScanResultFields
           details={form.details}
           status={form.status}
