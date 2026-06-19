@@ -455,6 +455,7 @@ async function seedSmokeFixturesIfRequested(): Promise<void> {
     password: `password-${suffix}`,
     username,
   });
+  await verifySmokeUserEmail(username);
   await promoteSmokeUserToAdmin(username);
 
   for (const kind of ['MOD', 'PLUGIN', 'MODPACK']) {
@@ -653,6 +654,23 @@ async function promoteSmokeUserToAdmin(username: string): Promise<void> {
   }
 }
 
+async function verifySmokeUserEmail(username: string): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: { url: databaseUrl },
+    },
+  });
+
+  try {
+    await prisma.user.update({
+      data: { emailVerifiedAt: new Date() },
+      where: { username },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function checkCreatorFlow(): Promise<void> {
   const suffix = `${Date.now().toString(36)}${Math.random()
     .toString(36)
@@ -679,6 +697,7 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
     username,
   });
+  await verifySmokeUserEmail(username);
 
   const createPayload = await readGraphql<CreateProjectResponse>(
     {
