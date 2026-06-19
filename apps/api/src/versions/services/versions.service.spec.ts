@@ -4,8 +4,17 @@ import { type PrismaService } from '../../prisma/prisma.service.js';
 import { VersionDependenciesService } from './version-dependencies.service.js';
 import { VersionsService } from './versions.service.js';
 
-function createVersionsService(prisma: PrismaService) {
+function createVersionsService(
+  prisma: PrismaService,
+  auditEvents: unknown[] = [],
+) {
   return new VersionsService(
+    {
+      recordVersionModeration: (event: unknown) => {
+        auditEvents.push(event);
+        return Promise.resolve();
+      },
+    } as never,
     prisma,
     new VersionDependenciesService(prisma),
     { delete: () => Promise.resolve() } as never,
@@ -285,7 +294,7 @@ describe(VersionsService.name, () => {
     ]);
   });
 
-  test('creates approved versions for accepted project members', async () => {
+  test('creates queued versions for accepted project members', async () => {
     const transactionSteps: string[] = [];
     const service = createVersionsService({
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
@@ -298,8 +307,8 @@ describe(VersionsService.name, () => {
           },
           version: {
             findUnique: () => Promise.resolve(null),
-            create: () => {
-              transactionSteps.push('version');
+            create: (query: unknown) => {
+              transactionSteps.push(`version:${JSON.stringify(query)}`);
               return Promise.resolve({ id: 'version-a' });
             },
             findUniqueOrThrow: () =>
@@ -374,10 +383,135 @@ describe(VersionsService.name, () => {
       'user-a',
     );
 
-    expect(transactionSteps).toEqual(['version', 'file', 'hash']);
+    expect(transactionSteps[0]).toContain('"requestedStatus":"APPROVED"');
+    expect(transactionSteps[0]).toContain('"status":"PENDING_REVIEW"');
+    expect(transactionSteps).toContain('file');
+    expect(transactionSteps).toContain('hash');
     expect(version.files[0]?.hashes[0]?.value).toBe('abc123');
     expect(version.files[0]?.sizeBytes).toBe('123');
     expect(version.projectSlug).toBe('example');
+  });
+
+  test('loads versions awaiting moderation', async () => {
+    const queries: unknown[] = [];
+    const service = createVersionsService({
+      version: {
+        count: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(3);
+        },
+        findMany: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve([
+            versionRow({
+              requestedStatus: 'APPROVED',
+              status: 'PENDING_REVIEW',
+              versionNumber: '1.0.0',
+            }),
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findVersionsForModeration({
+      limit: 10,
+      offset: 20,
+    });
+
+    expect(queries[0]).toEqual({
+      where: {
+        status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+      },
+    });
+    expect(queries[1]).toMatchObject({
+      skip: 20,
+      take: 10,
+      where: {
+        status: { in: ['PENDING_REVIEW', 'REJECTED', 'ARCHIVED'] },
+      },
+    });
+    expect(result.totalHits).toBe(3);
+    expect(result.versions[0]?.status).toBe('PENDING_REVIEW');
+  });
+
+  test('approves queued versions for publication', async () => {
+    const auditEvents: unknown[] = [];
+    const operations: string[] = [];
+    const service = createVersionsService(
+      {
+        $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            project: {
+              update: (query: unknown) => {
+                operations.push(`project:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
+            },
+            version: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  versionRow({
+                    requestedStatus: null,
+                    status: 'APPROVED',
+                    versionNumber: '1.0.0',
+                  }),
+                ),
+              update: (query: unknown) => {
+                operations.push(`version:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
+            },
+          }),
+        version: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'version-a',
+              name: 'Example',
+              project: { id: 'project-a', slug: 'example' },
+              requestedStatus: 'APPROVED',
+              status: 'PENDING_REVIEW',
+              versionNumber: '1.0.0',
+            }),
+        },
+      } as unknown as PrismaService,
+      auditEvents,
+    );
+
+    const version = await service.moderateVersion(
+      {
+        action: 'approve',
+        reason: ' Looks good ',
+        versionId: 'version-a',
+      },
+      'moderator-a',
+    );
+
+    expect(operations[0]).toContain('"status":"APPROVED"');
+    expect(operations[0]).toContain('"requestedStatus":null');
+    expect(operations[0]).toContain('"publishedAt"');
+    expect(operations[1]).toContain('"where":{"id":"project-a"}');
+    expect(auditEvents[0]).toEqual({
+      action: 'APPROVE',
+      actorId: 'moderator-a',
+      after: {
+        id: 'version-a',
+        name: 'Example',
+        projectSlug: 'example',
+        requestedStatus: null,
+        status: 'APPROVED',
+        versionNumber: '1.0.0',
+      },
+      before: {
+        id: 'version-a',
+        name: 'Example',
+        projectSlug: 'example',
+        requestedStatus: 'APPROVED',
+        status: 'PENDING_REVIEW',
+        versionNumber: '1.0.0',
+      },
+      reason: 'Looks good',
+    });
+    expect(version.status).toBe('APPROVED');
   });
 
   test('requires approved projects before creating versions', async () => {

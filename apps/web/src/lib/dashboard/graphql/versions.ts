@@ -4,6 +4,8 @@ const DASHBOARD_VERSION_FIELDS = gql`
   fragment DashboardVersionFields on VersionSummary {
     changelog
     channel
+    createdAt
+    datePublished
     dependencies {
       dependencyKind
       externalFileName
@@ -20,6 +22,19 @@ const DASHBOARD_VERSION_FIELDS = gql`
     }
     gameVersions
     featured
+    files {
+      fileName
+      id
+      primary
+      scans {
+        createdAt
+        id
+        status
+        verdict
+      }
+      sizeBytes
+      url
+    }
     id
     loaders
     name
@@ -29,6 +44,27 @@ const DASHBOARD_VERSION_FIELDS = gql`
     status
     versionNumber
   }
+`;
+
+export const MODERATION_VERSION_SEARCH_QUERY = gql`
+  query ModerationVersionSearch($limit: Int!, $offset: Int!) {
+    moderationVersionSearch(limit: $limit, offset: $offset) {
+      totalHits
+      versions {
+        ...DashboardVersionFields
+      }
+    }
+  }
+  ${DASHBOARD_VERSION_FIELDS}
+`;
+
+export const MODERATE_VERSION_MUTATION = gql`
+  mutation ModerateVersion($input: ModerateVersionInput!) {
+    moderateVersion(input: $input) {
+      ...DashboardVersionFields
+    }
+  }
+  ${DASHBOARD_VERSION_FIELDS}
 `;
 
 export const VIEWER_PROJECT_VERSION_SEARCH_QUERY = gql`

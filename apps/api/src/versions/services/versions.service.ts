@@ -12,11 +12,13 @@ import {
   VersionStatus,
 } from '@prisma/client';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { SearchService } from '../../search/search.service.js';
 import { projectBySlugCacheKey } from '../../catalog/services/project-read-model.js';
 import { type CreateVersionInput } from '../dto/create-version.input.js';
+import { type ModerateVersionInput } from '../dto/moderate-version.input.js';
 import { type UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
 import { type UpdateVersionInput } from '../dto/update-version.input.js';
 import { VersionDependenciesService } from './version-dependencies.service.js';
@@ -34,6 +36,7 @@ const MAX_FILE_HASHES = 8;
 @Injectable()
 export class VersionsService {
   constructor(
+    private readonly auditService: AuditService,
     private readonly prisma: PrismaService,
     private readonly versionDependenciesService: VersionDependenciesService,
     private readonly redis: RedisService,
@@ -108,8 +111,8 @@ export class VersionsService {
           channel: input.channel,
           name: input.name.trim(),
           projectId: project.id,
-          publishedAt: new Date(),
-          status: 'APPROVED',
+          requestedStatus: 'APPROVED',
+          status: 'PENDING_REVIEW',
           versionNumber,
         },
         select: { id: true },
@@ -139,6 +142,99 @@ export class VersionsService {
     });
 
     return versionRowToContract(version);
+  }
+
+  async findVersionsForModeration({
+    limit = 50,
+    offset = 0,
+  }: {
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<VersionSearchResultContract> {
+    const where = {
+      status: {
+        in: [
+          VersionStatus.PENDING_REVIEW,
+          VersionStatus.REJECTED,
+          VersionStatus.ARCHIVED,
+        ],
+      },
+    };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, versions] = await Promise.all([
+      this.prisma.version.count({ where }),
+      this.prisma.version.findMany({
+        orderBy: [{ createdAt: 'asc' }],
+        select: versionSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      totalHits,
+      versions: versions.map(versionRowToContract),
+    };
+  }
+
+  async moderateVersion(
+    input: ModerateVersionInput,
+    moderatorId: string,
+  ): Promise<VersionSummaryContract> {
+    const action = moderationAction(input.action);
+    const version = await this.prisma.version.findUnique({
+      select: {
+        id: true,
+        name: true,
+        project: {
+          select: {
+            id: true,
+            slug: true,
+          },
+        },
+        requestedStatus: true,
+        status: true,
+        versionNumber: true,
+      },
+      where: { id: input.versionId },
+    });
+
+    if (version === null) {
+      throw new NotFoundException('Version not found');
+    }
+
+    const touchedAt = new Date();
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.version.update({
+        data: moderationVersionData(action, touchedAt),
+        where: { id: version.id },
+      });
+      await tx.project.update({
+        data: { updatedAt: touchedAt },
+        where: { id: version.project.id },
+      });
+
+      return tx.version.findUniqueOrThrow({
+        select: versionSelect(),
+        where: { id: version.id },
+      });
+    });
+    await this.refreshProjectAfterVersionChange({
+      projectId: version.project.id,
+      projectSlug: version.project.slug,
+      updatedAt: touchedAt,
+    });
+    await this.auditService.recordVersionModeration({
+      action,
+      actorId: moderatorId,
+      after: versionAuditSnapshot(updated),
+      before: versionAuditSnapshot(version),
+      reason: nullableTrim(input.reason),
+    });
+
+    return versionRowToContract(updated);
   }
 
   async findManagedProjectVersionSearch(
@@ -373,6 +469,72 @@ function versionStatus(value: string): VersionStatus {
   }
 
   throw new BadRequestException('Unsupported version status');
+}
+
+function moderationAction(action: string): VersionModerationAction {
+  const normalized = action.trim().toUpperCase();
+  if (normalized === 'APPROVE') return 'APPROVE';
+  if (normalized === 'REJECT') return 'REJECT';
+  if (normalized === 'ARCHIVE') return 'ARCHIVE';
+  if (normalized === 'RESTORE') return 'RESTORE';
+
+  throw new ForbiddenException('Unsupported moderation action');
+}
+
+function moderationVersionData(
+  action: VersionModerationAction,
+  now: Date,
+): Prisma.VersionUpdateInput {
+  if (action === 'APPROVE') {
+    return {
+      publishedAt: now,
+      requestedStatus: null,
+      status: VersionStatus.APPROVED,
+    };
+  }
+
+  if (action === 'REJECT') {
+    return {
+      requestedStatus: null,
+      status: VersionStatus.REJECTED,
+    };
+  }
+
+  if (action === 'ARCHIVE') {
+    return {
+      requestedStatus: null,
+      status: VersionStatus.ARCHIVED,
+    };
+  }
+
+  return {
+    requestedStatus: VersionStatus.APPROVED,
+    status: VersionStatus.PENDING_REVIEW,
+  };
+}
+
+type VersionModerationAction = 'APPROVE' | 'ARCHIVE' | 'REJECT' | 'RESTORE';
+
+function versionAuditSnapshot(version: VersionAuditRow) {
+  return {
+    id: version.id,
+    name: version.name,
+    projectSlug: version.project.slug,
+    requestedStatus: version.requestedStatus,
+    status: version.status,
+    versionNumber: version.versionNumber,
+  };
+}
+
+interface VersionAuditRow {
+  id: string;
+  name: string;
+  project: {
+    slug: string;
+  };
+  requestedStatus: string | null;
+  status: string;
+  versionNumber: string;
 }
 
 async function createVersionFiles(

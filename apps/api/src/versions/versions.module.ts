@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AuditModule } from '../audit/audit.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { RedisModule } from '../redis/redis.module.js';
 import { SearchModule } from '../search/search.module.js';
@@ -11,7 +12,7 @@ import { VersionsService } from './services/versions.service.js';
 
 @Module({
   exports: [VersionDirectoryService, VersionFileScansService, VersionsService],
-  imports: [PrismaModule, RedisModule, SearchModule],
+  imports: [AuditModule, PrismaModule, RedisModule, SearchModule],
   providers: [
     VersionDependenciesService,
     VersionDirectoryService,

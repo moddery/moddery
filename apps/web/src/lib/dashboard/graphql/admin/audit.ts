@@ -83,6 +83,22 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
           role
           username
         }
+        versionAfter {
+          id
+          name
+          projectSlug
+          requestedStatus
+          status
+          versionNumber
+        }
+        versionBefore {
+          id
+          name
+          projectSlug
+          requestedStatus
+          status
+          versionNumber
+        }
       }
       totalHits
     }

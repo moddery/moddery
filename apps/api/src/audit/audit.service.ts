@@ -106,6 +106,34 @@ export class AuditService {
     });
   }
 
+  async recordVersionModeration({
+    action,
+    actorId,
+    after,
+    before,
+    reason,
+  }: {
+    action: string;
+    actorId: string;
+    after: VersionAuditSnapshot;
+    before: VersionAuditSnapshot;
+    reason: string | null;
+  }): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'VERSION_MODERATED',
+        actorId,
+        metadata: {
+          action,
+          after,
+          before,
+          entity: 'VERSION',
+          reason,
+        },
+      },
+    });
+  }
+
   async recordTeamMembershipChange({
     action,
     actorId,
@@ -168,6 +196,15 @@ export interface ReportAuditSnapshot extends Prisma.InputJsonObject {
   targetLabel: string;
 }
 
+export interface VersionAuditSnapshot extends Prisma.InputJsonObject {
+  id: string;
+  name: string;
+  projectSlug: string;
+  requestedStatus: string | null;
+  status: string;
+  versionNumber: string;
+}
+
 export interface TeamMemberAuditSnapshot extends Prisma.InputJsonObject {
   accepted: boolean;
   owner: boolean;
@@ -201,6 +238,8 @@ export interface AuditLogContract {
   teamMemberAction: string | null;
   teamMemberAfter: TeamMemberAuditSnapshot | null;
   teamMemberBefore: TeamMemberAuditSnapshot | null;
+  versionAfter: VersionAuditSnapshot | null;
+  versionBefore: VersionAuditSnapshot | null;
 }
 
 function auditLogSelect() {
@@ -260,6 +299,8 @@ function auditLogRowToContract(row: {
     teamMemberAction: metadata.teamMemberAction,
     teamMemberAfter: metadata.teamMemberAfter,
     teamMemberBefore: metadata.teamMemberBefore,
+    versionAfter: metadata.versionAfter,
+    versionBefore: metadata.versionBefore,
   };
 }
 
@@ -276,6 +317,8 @@ function auditMetadata(metadata: Prisma.JsonValue): {
   teamMemberAction: string | null;
   teamMemberAfter: TeamMemberAuditSnapshot | null;
   teamMemberBefore: TeamMemberAuditSnapshot | null;
+  versionAfter: VersionAuditSnapshot | null;
+  versionBefore: VersionAuditSnapshot | null;
 } {
   if (metadata === null || typeof metadata !== 'object') {
     return emptyAuditMetadata();
@@ -306,6 +349,8 @@ function auditMetadata(metadata: Prisma.JsonValue): {
         : null,
     teamMemberAfter: teamMemberSnapshot(metadata.after),
     teamMemberBefore: teamMemberSnapshot(metadata.before),
+    versionAfter: versionSnapshot(metadata.after),
+    versionBefore: versionSnapshot(metadata.before),
   };
 }
 
@@ -323,6 +368,8 @@ function emptyAuditMetadata() {
     teamMemberAction: null,
     teamMemberAfter: null,
     teamMemberBefore: null,
+    versionAfter: null,
+    versionBefore: null,
   };
 }
 
@@ -411,6 +458,39 @@ function reportSnapshot(
     targetId: value.targetId,
     targetKind,
     targetLabel: value.targetLabel,
+  };
+}
+
+function versionSnapshot(
+  value: Prisma.JsonValue | undefined,
+): VersionAuditSnapshot | null {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    return null;
+  }
+
+  if (
+    typeof value.id !== 'string' ||
+    typeof value.name !== 'string' ||
+    typeof value.projectSlug !== 'string' ||
+    typeof value.status !== 'string' ||
+    typeof value.versionNumber !== 'string' ||
+    (typeof value.requestedStatus !== 'string' &&
+      value.requestedStatus !== null)
+  ) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    name: value.name,
+    projectSlug: value.projectSlug,
+    requestedStatus: value.requestedStatus,
+    status: value.status,
+    versionNumber: value.versionNumber,
   };
 }
 

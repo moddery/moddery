@@ -82,6 +82,27 @@ export class ReportAuditSnapshot {
 }
 
 @ObjectType()
+export class VersionAuditSnapshot {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  projectSlug!: string;
+
+  @Field(() => String, { nullable: true })
+  requestedStatus!: string | null;
+
+  @Field(() => String)
+  status!: string;
+
+  @Field(() => String)
+  versionNumber!: string;
+}
+
+@ObjectType()
 export class TeamMemberAuditSnapshot {
   @Field(() => Boolean)
   accepted!: boolean;
@@ -157,6 +178,12 @@ export class AuditLogSummary {
 
   @Field(() => TeamMemberAuditSnapshot, { nullable: true })
   teamMemberBefore!: TeamMemberAuditSnapshot | null;
+
+  @Field(() => VersionAuditSnapshot, { nullable: true })
+  versionAfter!: VersionAuditSnapshot | null;
+
+  @Field(() => VersionAuditSnapshot, { nullable: true })
+  versionBefore!: VersionAuditSnapshot | null;
 }
 
 @ObjectType()

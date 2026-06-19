@@ -90,6 +90,8 @@ export interface AdminAuditLog {
   teamMemberAction: string | null;
   teamMemberAfter: TeamMemberAuditSnapshot | null;
   teamMemberBefore: TeamMemberAuditSnapshot | null;
+  versionAfter: VersionAuditSnapshot | null;
+  versionBefore: VersionAuditSnapshot | null;
 }
 
 export interface AuditResourceSnapshot {
@@ -124,6 +126,15 @@ export interface TeamMemberAuditSnapshot {
   permissions: string[];
   role: string;
   username: string;
+}
+
+export interface VersionAuditSnapshot {
+  id: string;
+  name: string;
+  projectSlug: string;
+  requestedStatus: string | null;
+  status: string;
+  versionNumber: string;
 }
 
 export interface AdminAuditLogSearchResult {
@@ -477,8 +488,11 @@ export interface CreateVersionInput {
 export interface DashboardVersion {
   changelog: string | null;
   channel: 'ALPHA' | 'BETA' | 'RELEASE';
+  createdAt: string;
+  datePublished: string | null;
   dependencies: DashboardVersionDependency[];
   featured: boolean;
+  files: DashboardVersionFile[];
   gameVersions: string[];
   id: string;
   loaders: string[];
@@ -488,6 +502,22 @@ export interface DashboardVersion {
   sortOrder: number;
   status: string;
   versionNumber: string;
+}
+
+export interface DashboardVersionFile {
+  fileName: string;
+  id: string;
+  primary: boolean;
+  scans: DashboardVersionFileScan[];
+  sizeBytes: string;
+  url: string;
+}
+
+export interface DashboardVersionFileScan {
+  createdAt: string;
+  id: string;
+  status: string;
+  verdict: string | null;
 }
 
 export interface DashboardVersionSearchResult {

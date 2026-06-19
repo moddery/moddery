@@ -18,6 +18,7 @@ import {
   InfrastructureStatusPanel,
   ModerationQueue,
   ProjectModerationQueue,
+  ReleaseModerationQueue,
   TaxonomyPanel,
 } from '../AdminModerationPanels.tsx';
 import {
@@ -230,8 +231,9 @@ function DashboardModerationSection({
           <TaxonomyPanel />
         </>
       )}
-      <FileScanForm projects={dashboard.projects} />
       <ProjectModerationQueue onOpenProject={onOpenProject} />
+      <ReleaseModerationQueue />
+      <FileScanForm projects={dashboard.projects} />
       <ModerationQueue />
     </section>
   );

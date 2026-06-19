@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
@@ -8,6 +9,7 @@ import {
   paginationOptions,
 } from '../../common/graphql/pagination.js';
 import { CreateVersionInput } from '../dto/create-version.input.js';
+import { ModerateVersionInput } from '../dto/moderate-version.input.js';
 import { RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import { UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
 import { UpdateVersionInput } from '../dto/update-version.input.js';
@@ -68,6 +70,17 @@ export class VersionsResolver {
     );
   }
 
+  @Query(() => VersionSearchResult)
+  async moderationVersionSearch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Args() pagination?: PaginationArgs,
+  ): Promise<VersionSearchResult> {
+    assertCanModerate(user);
+    return this.versionsService.findVersionsForModeration(
+      paginationOptions(pagination ?? {}),
+    );
+  }
+
   @Mutation(() => VersionSummary)
   createVersion(
     @Args('input') input: CreateVersionInput,
@@ -98,5 +111,20 @@ export class VersionsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<VersionSummary> {
     return this.versionFileScansService.recordFileScan(input, user);
+  }
+
+  @Mutation(() => VersionSummary)
+  moderateVersion(
+    @Args('input') input: ModerateVersionInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<VersionSummary> {
+    assertCanModerate(user);
+    return this.versionsService.moderateVersion(input, user.id);
+  }
+}
+
+function assertCanModerate(user: AuthenticatedUser): void {
+  if (user.role !== 'ADMIN' && user.role !== 'MODERATOR') {
+    throw new ForbiddenException('Moderator access required');
   }
 }

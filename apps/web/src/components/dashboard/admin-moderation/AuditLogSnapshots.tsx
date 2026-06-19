@@ -43,7 +43,44 @@ export function AuditSnapshotGrid({ auditLog }: { auditLog: AdminAuditLog }) {
           <ReportAuditSnapshot label="After" snapshot={auditLog.reportAfter} />
         </dl>
       )}
+      {(auditLog.versionBefore || auditLog.versionAfter) && (
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <VersionAuditSnapshot
+            label="Before"
+            snapshot={auditLog.versionBefore}
+          />
+          <VersionAuditSnapshot
+            label="After"
+            snapshot={auditLog.versionAfter}
+          />
+        </dl>
+      )}
     </>
+  );
+}
+
+function VersionAuditSnapshot({
+  label,
+  snapshot,
+}: {
+  label: string;
+  snapshot: AdminAuditLog['versionAfter'];
+}) {
+  return (
+    <div className="rounded-md border border-line bg-surface px-3 py-2">
+      <dt className="text-xs font-bold uppercase text-faint">{label}</dt>
+      <dd className="mt-1 font-semibold text-ink">
+        {snapshot
+          ? `${snapshot.name} ${snapshot.versionNumber} / ${snapshot.status}`
+          : 'Unavailable'}
+      </dd>
+      {snapshot && (
+        <dd className="mt-1 text-xs font-semibold text-muted">
+          {snapshot.projectSlug}
+          {snapshot.requestedStatus ? ` -> ${snapshot.requestedStatus}` : ''}
+        </dd>
+      )}
+    </div>
   );
 }
 

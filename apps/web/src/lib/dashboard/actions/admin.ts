@@ -15,6 +15,8 @@ import {
   CREATE_REPORT_THREAD_MESSAGE_MUTATION,
   LOCK_PROJECT_FOR_MODERATION_MUTATION,
   RELEASE_PROJECT_MODERATION_LOCK_MUTATION,
+  MODERATION_VERSION_SEARCH_QUERY,
+  MODERATE_VERSION_MUTATION,
 } from '../graphql.js';
 import {
   type ModerationReportsQueryData,
@@ -40,6 +42,10 @@ import {
   type LockProjectForModerationMutationData,
   type ReleaseProjectModerationLockMutationData,
   type ProjectModerationLockMutationVariables,
+  type ModerationVersionSearchQueryData,
+  type ModerationVersionSearchQueryVariables,
+  type ModerateVersionMutationData,
+  type ModerateVersionMutationVariables,
 } from '../internal-types.js';
 import {
   type AdminUserAccount,
@@ -47,6 +53,8 @@ import {
   type AdminUserSearchResult,
   type DashboardProjectSearchResult,
   type DashboardProject,
+  type DashboardVersion,
+  type DashboardVersionSearchResult,
   type ModerationReport,
   type ModerationReportSearchResult,
   type ModerationReportState,
@@ -126,6 +134,27 @@ export async function fetchModerationProjectSearch(
   });
 
   return data.moderationProjectSearch;
+}
+
+export async function fetchModerationVersionSearch(
+  page = 1,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<DashboardVersionSearchResult> {
+  const { data } = await apolloClient.query<
+    ModerationVersionSearchQueryData,
+    ModerationVersionSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: MODERATION_VERSION_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+    },
+  });
+
+  return data.moderationVersionSearch;
 }
 
 export async function fetchAdminUsers(
@@ -257,6 +286,26 @@ export async function releaseProjectModerationLock(
   }
 
   return data.releaseProjectModerationLock;
+}
+
+export async function moderateVersion(input: {
+  action: string;
+  reason: string | null;
+  versionId: string;
+}): Promise<DashboardVersion> {
+  const { data } = await apolloClient.mutate<
+    ModerateVersionMutationData,
+    ModerateVersionMutationVariables
+  >({
+    mutation: MODERATE_VERSION_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.moderateVersion) {
+    throw new Error('Version moderation did not return from the API');
+  }
+
+  return data.moderateVersion;
 }
 
 export async function fetchReportThread(

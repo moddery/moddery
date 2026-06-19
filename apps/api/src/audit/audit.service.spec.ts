@@ -260,4 +260,61 @@ describe(AuditService.name, () => {
       },
     });
   });
+
+  test('loads version moderation audit metadata', async () => {
+    const service = new AuditService({
+      auditLog: {
+        count: () => Promise.resolve(1),
+        findMany: () =>
+          Promise.resolve([
+            {
+              action: 'VERSION_MODERATED',
+              actor: null,
+              actorId: 'moderator-a',
+              createdAt: new Date('2026-01-05T00:00:00.000Z'),
+              id: 'audit-e',
+              metadata: {
+                action: 'APPROVE',
+                after: {
+                  id: 'version-a',
+                  name: 'Example',
+                  projectSlug: 'example',
+                  requestedStatus: null,
+                  status: 'APPROVED',
+                  versionNumber: '1.0.0',
+                },
+                before: {
+                  id: 'version-a',
+                  name: 'Example',
+                  projectSlug: 'example',
+                  requestedStatus: 'APPROVED',
+                  status: 'PENDING_REVIEW',
+                  versionNumber: '1.0.0',
+                },
+                entity: 'VERSION',
+                reason: 'Clean scan',
+              },
+              targetUser: null,
+              targetUserId: null,
+            },
+          ]),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findAdminAuditLogs();
+
+    expect(result.auditLogs[0]).toMatchObject({
+      action: 'VERSION_MODERATED',
+      moderationAction: 'APPROVE',
+      reason: 'Clean scan',
+      versionAfter: {
+        projectSlug: 'example',
+        status: 'APPROVED',
+      },
+      versionBefore: {
+        requestedStatus: 'APPROVED',
+        status: 'PENDING_REVIEW',
+      },
+    });
+  });
 });

@@ -97,6 +97,13 @@ interface ModerateProjectResponse {
   errors?: GraphqlError[];
 }
 
+interface ModerateVersionResponse {
+  data?: {
+    moderateVersion?: VersionSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface ProjectBySlugResponse {
   data?: {
     projectBySlug?: ProjectSummary | null;
@@ -756,10 +763,18 @@ async function checkCreatorFlow(): Promise<void> {
     versionPayload.data?.createVersion,
     'created version',
   );
-  assertVersion(createdVersion, {
-    projectSlug: slug,
-    versionNumber,
-  });
+  assertVersionIdentity(createdVersion, { projectSlug: slug, versionNumber });
+  if (createdVersion.status !== 'PENDING_REVIEW') {
+    throw new Error(
+      `Created version should be queued, received ${createdVersion.status}`,
+    );
+  }
+
+  const approvedVersion = await approveSmokeVersion(
+    createdVersion.id,
+    auth.accessToken,
+  );
+  assertVersion(approvedVersion, { projectSlug: slug, versionNumber });
 
   const versionsPayload = await readGraphql<VersionsForProjectResponse>({
     query: `
@@ -852,6 +867,43 @@ async function approveSmokeProject(
   assertNoGraphqlErrors(payload, 'GraphQL approve project');
 
   return required(payload.data?.moderateProject, 'approved project');
+}
+
+async function approveSmokeVersion(
+  versionId: string,
+  token: string,
+): Promise<VersionSummary> {
+  const payload = await readGraphql<ModerateVersionResponse>(
+    {
+      query: `
+        mutation SmokeApproveVersion($input: ModerateVersionInput!) {
+          moderateVersion(input: $input) {
+            files {
+              fileName
+              id
+              primary
+              url
+            }
+            id
+            projectSlug
+            status
+            versionNumber
+          }
+        }
+      `,
+      variables: {
+        input: {
+          action: 'APPROVE',
+          reason: 'Smoke test release approval',
+          versionId,
+        },
+      },
+    },
+    token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL approve version');
+
+  return required(payload.data?.moderateVersion, 'approved version');
 }
 
 async function checkQueuedProjectReleaseGuards(options: {
@@ -2109,15 +2161,28 @@ function assertVersion(
   version: VersionSummary,
   expected: { projectSlug: string; versionNumber: string },
 ): void {
+  assertVersionIdentity(version, expected);
   if (
-    version.projectSlug !== expected.projectSlug ||
-    version.versionNumber !== expected.versionNumber ||
     version.status !== 'APPROVED' ||
     version.files.length !== 1 ||
     !version.files[0]?.primary
   ) {
     throw new Error(
       `Version mismatch: expected ${expected.projectSlug} ${expected.versionNumber}, received ${version.projectSlug} ${version.versionNumber}`,
+    );
+  }
+}
+
+function assertVersionIdentity(
+  version: VersionSummary,
+  expected: { projectSlug: string; versionNumber: string },
+): void {
+  if (
+    version.projectSlug !== expected.projectSlug ||
+    version.versionNumber !== expected.versionNumber
+  ) {
+    throw new Error(
+      `Version identity mismatch: expected ${expected.projectSlug} ${expected.versionNumber}, received ${version.projectSlug} ${version.versionNumber}`,
     );
   }
 }

@@ -354,6 +354,27 @@ export interface RecordFileScanMutationVariables {
   };
 }
 
+export interface ModerationVersionSearchQueryData {
+  moderationVersionSearch: DashboardVersionSearchResult;
+}
+
+export interface ModerationVersionSearchQueryVariables {
+  limit: number;
+  offset: number;
+}
+
+export interface ModerateVersionMutationData {
+  moderateVersion: DashboardVersion;
+}
+
+export interface ModerateVersionMutationVariables {
+  input: {
+    action: string;
+    reason: string | null;
+    versionId: string;
+  };
+}
+
 export interface UpdateVersionDependenciesMutationVariables {
   input: UpdateVersionDependenciesInput;
 }

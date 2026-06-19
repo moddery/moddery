@@ -62,6 +62,25 @@ export function AuditDescription({ auditLog }: { auditLog: AdminAuditLog }) {
     );
   }
 
+  if (auditLog.action === 'VERSION_MODERATED') {
+    const versionLabel = auditLog.versionAfter
+      ? `${auditLog.versionAfter.name} ${auditLog.versionAfter.versionNumber}`
+      : 'a release';
+    const moderationAction = auditLog.moderationAction
+      ? enumLabel(auditLog.moderationAction).toLowerCase()
+      : 'moderated';
+
+    return (
+      <>
+        <AuditUserLink
+          fallback={auditLog.actorId ?? 'Unknown actor'}
+          user={auditLog.actor}
+        />{' '}
+        {moderationAction} {versionLabel}
+      </>
+    );
+  }
+
   return (
     <>
       <AuditUserLink
