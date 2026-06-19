@@ -171,6 +171,81 @@ describe(ProjectManagementService.name, () => {
     );
   });
 
+  test('rejects oversized project taxonomy before database writes', async () => {
+    const service = createProjectManagementService(
+      {
+        project: {
+          findUnique: () => {
+            throw new Error('Project lookup should not run');
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.createProject(
+        {
+          ...validCreateProjectInput(),
+          categories: Array.from(
+            { length: 13 },
+            (_, index) => `category-${index.toString()}`,
+          ),
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'A project can include at most 12 categories',
+    );
+  });
+
+  test('rejects oversized project links before update lookups', async () => {
+    const service = createProjectManagementService(
+      {
+        project: {
+          findFirst: () => {
+            throw new Error('Project lookup should not run');
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.updateProject(
+        {
+          links: Array.from({ length: 17 }, (_, index) => ({
+            kind: 'SOURCE',
+            label: `Link ${index.toString()}`,
+            url: `https://example.test/${index.toString()}`,
+          })),
+          projectSlug: 'example',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'A project can include at most 16 links',
+    );
+  });
+
   test('updates managed project metadata and reindexes search', async () => {
     const operations: string[] = [];
     const indexed: unknown[] = [];

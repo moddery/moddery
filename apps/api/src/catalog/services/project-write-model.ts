@@ -4,12 +4,17 @@ import { Loader, LinkKind, type Prisma } from '@prisma/client';
 
 import { type UpdateProjectInput } from '../dto/update-project.input.js';
 
+export const MAX_PROJECT_CATEGORIES = 12;
+export const MAX_PROJECT_GAME_VERSIONS = 12;
+export const MAX_PROJECT_LOADERS = 8;
+export const MAX_PROJECT_LINKS = 16;
+
 export async function replaceProjectCategories(
   tx: Prisma.TransactionClient,
   projectId: string,
   categories: readonly string[],
 ): Promise<void> {
-  const slugs = uniqueNormalized(categories).slice(0, 12);
+  const slugs = uniqueNormalized(categories);
   await tx.projectCategory.deleteMany({ where: { projectId } });
   if (slugs.length === 0) return;
 
@@ -37,9 +42,7 @@ export async function replaceProjectGameVersions(
   projectId: string,
   versions: readonly string[],
 ): Promise<void> {
-  const normalized = uniqueNormalized(versions)
-    .filter(isGameVersionTag)
-    .slice(0, 12);
+  const normalized = uniqueNormalized(versions).filter(isGameVersionTag);
   await tx.projectGameVersion.deleteMany({ where: { projectId } });
   if (normalized.length === 0) return;
 
@@ -66,8 +69,7 @@ export async function replaceProjectLoaders(
 ): Promise<void> {
   const normalized = uniqueNormalized(loaders)
     .map(loaderToEnum)
-    .filter((loader) => loader !== null)
-    .slice(0, 8);
+    .filter((loader) => loader !== null);
   await tx.projectLoader.deleteMany({ where: { projectId } });
 
   for (const loader of normalized) {
@@ -85,13 +87,11 @@ export async function replaceProjectLinks(
   projectId: string,
   links: readonly NonNullable<UpdateProjectInput['links']>[number][],
 ): Promise<void> {
-  const normalized = links
-    .map((link) => ({
-      kind: linkKind(link.kind),
-      label: nullableTrim(link.label),
-      url: requiredText(link.url),
-    }))
-    .slice(0, 16);
+  const normalized = links.map((link) => ({
+    kind: linkKind(link.kind),
+    label: nullableTrim(link.label),
+    url: requiredText(link.url),
+  }));
 
   await tx.projectLink.deleteMany({ where: { projectId } });
 

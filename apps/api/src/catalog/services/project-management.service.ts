@@ -17,6 +17,10 @@ import {
   projectSelect,
 } from './project-read-model.js';
 import {
+  MAX_PROJECT_CATEGORIES,
+  MAX_PROJECT_GAME_VERSIONS,
+  MAX_PROJECT_LINKS,
+  MAX_PROJECT_LOADERS,
   normalizeSlug,
   nullableTrim,
   projectUpdateData,
@@ -41,6 +45,7 @@ export class ProjectManagementService {
   ): Promise<ProjectSummaryContract> {
     const slug = normalizeSlug(input.slug);
     validateProjectIdentity(input, slug);
+    validateProjectMetadataLimits(input);
 
     const existingProject = await this.prisma.project.findUnique({
       select: { id: true },
@@ -125,6 +130,7 @@ export class ProjectManagementService {
     input: UpdateProjectInput,
     userId: string,
   ): Promise<ProjectSummaryContract> {
+    validateProjectMetadataLimits(input);
     const existing = await this.findManagedProject(input.projectSlug, userId);
 
     const project = await this.prisma.$transaction(async (tx) => {
@@ -211,4 +217,55 @@ function validateProjectIdentity(
   if (input.description.trim().length === 0) {
     throw new BadRequestException('Project description is required');
   }
+}
+
+function validateProjectMetadataLimits(
+  input: CreateProjectInput | UpdateProjectInput,
+): void {
+  if (
+    input.categories !== undefined &&
+    input.categories !== null &&
+    uniqueNormalized(input.categories).length > MAX_PROJECT_CATEGORIES
+  ) {
+    throw new BadRequestException(
+      'A project can include at most 12 categories',
+    );
+  }
+
+  if (
+    input.gameVersions !== undefined &&
+    input.gameVersions !== null &&
+    uniqueNormalized(input.gameVersions).length > MAX_PROJECT_GAME_VERSIONS
+  ) {
+    throw new BadRequestException(
+      'A project can include at most 12 game versions',
+    );
+  }
+
+  if (
+    input.loaders !== undefined &&
+    input.loaders !== null &&
+    uniqueNormalized(input.loaders).length > MAX_PROJECT_LOADERS
+  ) {
+    throw new BadRequestException('A project can include at most 8 loaders');
+  }
+
+  if (
+    'links' in input &&
+    input.links !== undefined &&
+    input.links !== null &&
+    input.links.length > MAX_PROJECT_LINKS
+  ) {
+    throw new BadRequestException('A project can include at most 16 links');
+  }
+}
+
+function uniqueNormalized(values: readonly string[]): string[] {
+  return [
+    ...new Set(
+      values
+        .map((value) => value.trim().toLowerCase())
+        .filter((value) => value.length > 0),
+    ),
+  ];
 }
