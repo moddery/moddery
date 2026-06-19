@@ -2,7 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 
-import { fetchReportThread } from '../../../../lib/dashboard.ts';
+import {
+  fetchReportThread,
+  type ReportThread,
+} from '../../../../lib/dashboard.ts';
+import { timeAgo } from '../../../../lib/format.ts';
 import { ReportThreadMembers } from './thread/ReportThreadMembers.tsx';
 import { ReportThreadMessages } from './thread/ReportThreadMessages.tsx';
 import { useReportThreadReplyState } from './thread/useReportThreadReplyState.ts';
@@ -44,6 +48,7 @@ export function ReportThreadPanel({ reportId }: { reportId: string }) {
             </p>
           ) : threadQuery.data ? (
             <>
+              <ReportThreadHeader thread={threadQuery.data} />
               <ReportThreadMembers thread={threadQuery.data} />
               <ReportThreadMessages thread={threadQuery.data} />
             </>
@@ -83,4 +88,27 @@ export function ReportThreadPanel({ reportId }: { reportId: string }) {
       )}
     </div>
   );
+}
+
+function ReportThreadHeader({ thread }: { thread: ReportThread }) {
+  return (
+    <div className="mt-3 rounded-lg border border-line bg-surface px-3 py-2">
+      <h3 className="font-display text-base font-extrabold text-ink">
+        {thread.subject}
+      </h3>
+      <p className="mt-1 text-xs font-bold uppercase text-muted">
+        {reportThreadTiming(thread)}
+      </p>
+    </div>
+  );
+}
+
+export function reportThreadTiming(
+  thread: Pick<ReportThread, 'createdAt' | 'updatedAt'>,
+  now = new Date(),
+) {
+  return `Opened ${timeAgo(thread.createdAt, now)} · updated ${timeAgo(
+    thread.updatedAt,
+    now,
+  )}`;
 }
