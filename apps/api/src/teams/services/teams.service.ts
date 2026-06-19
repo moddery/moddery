@@ -4,11 +4,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import {
+  AuditService,
+  type AuditResourceSnapshot,
+} from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 @Injectable()
 export class TeamsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async findViewerInvitations(
     userId: string,
@@ -61,14 +68,24 @@ export class TeamsService {
       userId,
     });
 
+    const acceptedAt = new Date();
+
     await this.prisma.teamMember.update({
-      data: { acceptedAt: new Date() },
+      data: { acceptedAt },
       where: { id: invitation.id },
+    });
+    await this.auditService.recordTeamMembershipChange({
+      action: 'ACCEPT',
+      actorId: userId,
+      after: teamInvitationRowToAuditSnapshot(invitation, true),
+      before: teamInvitationRowToAuditSnapshot(invitation, false),
+      resource: teamInvitationRowToAuditResource(invitation),
+      targetUserId: userId,
     });
 
     return {
       ...teamInvitationRowToContract(invitation),
-      acceptedAt: new Date(),
+      acceptedAt,
     };
   }
 
@@ -89,6 +106,14 @@ export class TeamsService {
     }
 
     await this.prisma.teamMember.delete({ where: { id: invitation.id } });
+    await this.auditService.recordTeamMembershipChange({
+      action: 'DECLINE',
+      actorId: userId,
+      after: null,
+      before: teamInvitationRowToAuditSnapshot(invitation, false),
+      resource: teamInvitationRowToAuditResource(invitation),
+      targetUserId: userId,
+    });
 
     return teamInvitationRowToContract(invitation);
   }
@@ -146,6 +171,11 @@ function teamInvitationSelect() {
         targetKind: true,
       },
     },
+    user: {
+      select: {
+        username: true,
+      },
+    },
   };
 }
 
@@ -158,6 +188,9 @@ function teamInvitationRowToContract(row: {
     organization: { id: string; name: string; slug: string } | null;
     project: { id: string; kind: string; slug: string; title: string } | null;
     targetKind: string;
+  };
+  user?: {
+    username: string;
   };
 }) {
   const target =
@@ -183,6 +216,49 @@ function teamInvitationRowToContract(row: {
     permissions: row.permissions,
     role: row.role,
     target,
+  };
+}
+
+function teamInvitationRowToAuditResource(
+  row: TeamInvitationRow,
+): AuditResourceSnapshot {
+  const target = teamInvitationRowToContract(row).target;
+
+  return {
+    id: target.id,
+    kind: target.type === 'ORGANIZATION' ? 'ORGANIZATION' : 'PROJECT',
+    name: target.name,
+    projectKind: target.projectKind,
+    slug: target.slug,
+  };
+}
+
+function teamInvitationRowToAuditSnapshot(
+  row: TeamInvitationRow,
+  accepted: boolean,
+) {
+  return {
+    accepted,
+    owner: row.isOwner,
+    permissions: row.permissions,
+    role: row.role,
+    username: row.user.username,
+  };
+}
+
+interface TeamInvitationRow {
+  createdAt: Date;
+  id: string;
+  isOwner: boolean;
+  permissions: string[];
+  role: string;
+  team: {
+    organization: { id: string; name: string; slug: string } | null;
+    project: { id: string; kind: string; slug: string; title: string } | null;
+    targetKind: string;
+  };
+  user: {
+    username: string;
   };
 }
 

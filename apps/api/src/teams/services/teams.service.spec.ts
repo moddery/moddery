@@ -3,10 +3,22 @@ import { describe, expect, test } from 'bun:test';
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { TeamsService } from './teams.service.js';
 
+function createService(prisma: PrismaService, auditEvents: unknown[] = []) {
+  return new TeamsService(
+    {
+      recordTeamMembershipChange: (event: unknown) => {
+        auditEvents.push(event);
+        return Promise.resolve();
+      },
+    } as never,
+    prisma,
+  );
+}
+
 describe(TeamsService.name, () => {
   test('loads pending viewer team invitations', async () => {
     const queries: unknown[] = [];
-    const service = new TeamsService({
+    const service = createService({
       teamMember: {
         count: (query: unknown) => {
           queries.push({ count: query });
@@ -49,7 +61,7 @@ describe(TeamsService.name, () => {
 
   test('loads pending viewer team invitations with pagination', async () => {
     const queries: unknown[] = [];
-    const service = new TeamsService({
+    const service = createService({
       teamMember: {
         count: (query: unknown) => {
           queries.push({ count: query });
@@ -85,7 +97,7 @@ describe(TeamsService.name, () => {
   });
 
   test('loads the legacy viewer team invitation list from search results', async () => {
-    const service = new TeamsService({
+    const service = createService({
       teamMember: {
         count: () => Promise.resolve(2),
         findMany: () =>
@@ -105,17 +117,21 @@ describe(TeamsService.name, () => {
   });
 
   test('accepts pending viewer invitations', async () => {
+    const auditEvents: unknown[] = [];
     const updates: unknown[] = [];
-    const service = new TeamsService({
-      teamMember: {
-        findFirst: () =>
-          Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
-        update: (query: unknown) => {
-          updates.push(query);
-          return Promise.resolve({});
+    const service = createService(
+      {
+        teamMember: {
+          findFirst: () =>
+            Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
+          update: (query: unknown) => {
+            updates.push(query);
+            return Promise.resolve({});
+          },
         },
-      },
-    } as unknown as PrismaService);
+      } as unknown as PrismaService,
+      auditEvents,
+    );
 
     const invitation = await service.acceptInvitation({
       invitationId: 'member-a',
@@ -127,20 +143,50 @@ describe(TeamsService.name, () => {
       where: { id: 'member-a' },
     });
     expect(invitation.id).toBe('member-a');
+    expect(auditEvents[0]).toEqual({
+      action: 'ACCEPT',
+      actorId: 'user-a',
+      after: {
+        accepted: true,
+        owner: false,
+        permissions: ['MANAGE_VERSIONS'],
+        role: 'Maintainer',
+        username: 'builder',
+      },
+      before: {
+        accepted: false,
+        owner: false,
+        permissions: ['MANAGE_VERSIONS'],
+        role: 'Maintainer',
+        username: 'builder',
+      },
+      resource: {
+        id: 'project-a',
+        kind: 'PROJECT',
+        name: 'Example Project',
+        projectKind: 'MOD',
+        slug: 'example',
+      },
+      targetUserId: 'user-a',
+    });
   });
 
   test('declines pending viewer invitations', async () => {
+    const auditEvents: unknown[] = [];
     const deletes: unknown[] = [];
-    const service = new TeamsService({
-      teamMember: {
-        delete: (query: unknown) => {
-          deletes.push(query);
-          return Promise.resolve({});
+    const service = createService(
+      {
+        teamMember: {
+          delete: (query: unknown) => {
+            deletes.push(query);
+            return Promise.resolve({});
+          },
+          findFirst: () =>
+            Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
         },
-        findFirst: () =>
-          Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
-      },
-    } as unknown as PrismaService);
+      } as unknown as PrismaService,
+      auditEvents,
+    );
 
     const invitation = await service.declineInvitation({
       invitationId: 'member-a',
@@ -149,6 +195,26 @@ describe(TeamsService.name, () => {
 
     expect(deletes[0]).toEqual({ where: { id: 'member-a' } });
     expect(invitation.target.type).toBe('PROJECT');
+    expect(auditEvents[0]).toEqual({
+      action: 'DECLINE',
+      actorId: 'user-a',
+      after: null,
+      before: {
+        accepted: false,
+        owner: false,
+        permissions: ['MANAGE_VERSIONS'],
+        role: 'Maintainer',
+        username: 'builder',
+      },
+      resource: {
+        id: 'project-a',
+        kind: 'PROJECT',
+        name: 'Example Project',
+        projectKind: 'MOD',
+        slug: 'example',
+      },
+      targetUserId: 'user-a',
+    });
   });
 });
 
@@ -167,6 +233,9 @@ function teamInvitationRow({ id = 'member-a' }: { id?: string } = {}) {
         title: 'Example Project',
       },
       targetKind: 'PROJECT',
+    },
+    user: {
+      username: 'builder',
     },
   };
 }
