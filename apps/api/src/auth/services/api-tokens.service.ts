@@ -23,7 +23,7 @@ export class ApiTokensService {
   constructor(
     private readonly authTokenService: AuthTokenService,
     private readonly prisma: PrismaService,
-    @Optional() auditService?: SecurityAuditRecorder,
+    @Optional() auditService?: AuditService,
   ) {
     this.auditService = auditService ?? noopAuditService;
   }

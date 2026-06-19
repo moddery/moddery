@@ -261,6 +261,13 @@ interface AcceptTeamInvitationResponse {
   errors?: GraphqlError[];
 }
 
+interface AdminAuditLogSearchResponse {
+  data?: {
+    adminAuditLogSearch?: AuditLogSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
 interface ProjectFollowResponse {
   data?: {
     followProject?: ProjectFollowState;
@@ -482,6 +489,56 @@ interface TeamInvitationSummary {
 interface TeamInvitationSearchResult {
   invitations: TeamInvitationSummary[];
   totalHits: number;
+}
+
+interface AuditLogSearchResult {
+  auditLogs: AuditLogSummary[];
+  totalHits: number;
+}
+
+interface AuditLogSummary {
+  action: string;
+  actor: {
+    username: string;
+  } | null;
+  moderationAction: string | null;
+  projectAfter: {
+    slug: string;
+    status: string;
+  } | null;
+  projectBefore: {
+    slug: string;
+    status: string;
+  } | null;
+  resource: {
+    kind: string;
+    slug: string;
+  } | null;
+  securityAction: string | null;
+  targetUser: {
+    username: string;
+  } | null;
+  teamMemberAction: string | null;
+  teamMemberAfter: {
+    accepted: boolean;
+    permissions: string[];
+    role: string;
+    username: string;
+  } | null;
+  teamMemberBefore: {
+    accepted: boolean;
+    username: string;
+  } | null;
+  versionAfter: {
+    projectSlug: string;
+    status: string;
+    versionNumber: string;
+  } | null;
+  versionBefore: {
+    projectSlug: string;
+    status: string;
+    versionNumber: string;
+  } | null;
 }
 
 interface ProjectUploadTarget {
@@ -1596,6 +1653,14 @@ async function checkCreatorFlow(): Promise<void> {
     projectTitle: title,
     token: auth.accessToken,
     username,
+  });
+  await checkAuditLogFlow({
+    peerToken: peerAuth.accessToken,
+    peerUsername,
+    projectSlug: slug,
+    token: auth.accessToken,
+    username,
+    versionNumber,
   });
 }
 
@@ -3914,6 +3979,210 @@ async function checkProjectReportFlow(options: {
     slug: options.projectSlug,
     title: options.projectTitle,
   });
+}
+
+async function checkAuditLogFlow(options: {
+  peerToken: string;
+  peerUsername: string;
+  projectSlug: string;
+  token: string;
+  username: string;
+  versionNumber: string;
+}): Promise<void> {
+  const rejectedPayload = await readGraphql<AdminAuditLogSearchResponse>(
+    {
+      query: `
+        query SmokeRejectedAdminAuditLogSearch {
+          adminAuditLogSearch(limit: 1, offset: 0) {
+            totalHits
+          }
+        }
+      `,
+    },
+    options.peerToken,
+  );
+  assertGraphqlError(
+    rejectedPayload,
+    'Admin access required',
+    'non-admin audit log search',
+  );
+
+  const auditLogs = await readAdminAuditLogs(options.token);
+
+  assertAuditLogEvent(auditLogs, 'two-factor enable audit log', (log) => {
+    return (
+      log.action === 'SECURITY_EVENT' &&
+      log.securityAction === 'TWO_FACTOR_ENABLED' &&
+      log.actor?.username === options.username &&
+      log.targetUser?.username === options.username
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'API token create audit log', (log) => {
+    return (
+      log.action === 'SECURITY_EVENT' &&
+      log.securityAction === 'API_TOKEN_CREATED' &&
+      log.actor?.username === options.username &&
+      log.targetUser?.username === options.username
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'API token revoke audit log', (log) => {
+    return (
+      log.action === 'SECURITY_EVENT' &&
+      log.securityAction === 'API_TOKEN_REVOKED' &&
+      log.actor?.username === options.username &&
+      log.targetUser?.username === options.username
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'project approval audit log', (log) => {
+    return (
+      log.action === 'PROJECT_MODERATED' &&
+      log.moderationAction === 'APPROVE' &&
+      log.actor?.username === options.username &&
+      log.projectBefore?.slug === options.projectSlug &&
+      log.projectBefore.status === 'PENDING_REVIEW' &&
+      log.projectAfter?.slug === options.projectSlug &&
+      log.projectAfter.status === 'APPROVED'
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'version approval audit log', (log) => {
+    return (
+      log.action === 'VERSION_MODERATED' &&
+      log.moderationAction === 'APPROVE' &&
+      log.actor?.username === options.username &&
+      log.versionBefore?.projectSlug === options.projectSlug &&
+      log.versionBefore.versionNumber === options.versionNumber &&
+      log.versionBefore.status === 'PENDING_REVIEW' &&
+      log.versionAfter?.projectSlug === options.projectSlug &&
+      log.versionAfter.versionNumber === options.versionNumber &&
+      log.versionAfter.status === 'APPROVED'
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'team invite add audit log', (log) => {
+    return (
+      log.action === 'TEAM_MEMBERSHIP_CHANGED' &&
+      log.teamMemberAction === 'ADD' &&
+      log.actor?.username === options.username &&
+      log.targetUser?.username === options.peerUsername &&
+      log.resource?.kind === 'PROJECT' &&
+      log.resource.slug === options.projectSlug &&
+      log.teamMemberAfter?.accepted === false &&
+      log.teamMemberAfter.username === options.peerUsername
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'team invite accept audit log', (log) => {
+    return (
+      log.action === 'TEAM_MEMBERSHIP_CHANGED' &&
+      log.teamMemberAction === 'ACCEPT' &&
+      log.actor?.username === options.peerUsername &&
+      log.targetUser?.username === options.peerUsername &&
+      log.resource?.kind === 'PROJECT' &&
+      log.resource.slug === options.projectSlug &&
+      log.teamMemberBefore?.accepted === false &&
+      log.teamMemberBefore.username === options.peerUsername &&
+      log.teamMemberAfter?.accepted === true &&
+      log.teamMemberAfter.username === options.peerUsername &&
+      stringSetsEqual(log.teamMemberAfter.permissions, [
+        'MANAGE_VERSIONS',
+        'VIEW_ANALYTICS',
+      ])
+    );
+  });
+}
+
+async function readAdminAuditLogs(token: string): Promise<AuditLogSummary[]> {
+  const limit = 100;
+  let offset = 0;
+  let totalHits: number | null = null;
+  const auditLogs: AuditLogSummary[] = [];
+
+  while (totalHits === null || offset < totalHits) {
+    const payload = await readGraphql<AdminAuditLogSearchResponse>(
+      {
+        query: `
+          query SmokeAdminAuditLogSearch($limit: Int!, $offset: Int!) {
+            adminAuditLogSearch(limit: $limit, offset: $offset) {
+              auditLogs {
+                action
+                actor {
+                  username
+                }
+                moderationAction
+                projectAfter {
+                  slug
+                  status
+                }
+                projectBefore {
+                  slug
+                  status
+                }
+                resource {
+                  kind
+                  slug
+                }
+                securityAction
+                targetUser {
+                  username
+                }
+                teamMemberAction
+                teamMemberAfter {
+                  accepted
+                  permissions
+                  role
+                  username
+                }
+                teamMemberBefore {
+                  accepted
+                  username
+                }
+                versionAfter {
+                  projectSlug
+                  status
+                  versionNumber
+                }
+                versionBefore {
+                  projectSlug
+                  status
+                  versionNumber
+                }
+              }
+              totalHits
+            }
+          }
+        `,
+        variables: { limit, offset },
+      },
+      token,
+    );
+    assertNoGraphqlErrors(payload, 'GraphQL admin audit log search');
+
+    const page = required(
+      payload.data?.adminAuditLogSearch,
+      'admin audit log search',
+    );
+    totalHits = page.totalHits;
+    auditLogs.push(...page.auditLogs);
+    offset += page.auditLogs.length;
+
+    if (page.auditLogs.length === 0 && offset < totalHits) {
+      throw new Error('Audit log search returned an empty partial page');
+    }
+  }
+
+  if (totalHits < auditLogs.length) {
+    throw new Error('Audit log total was lower than returned rows');
+  }
+
+  return auditLogs;
+}
+
+function assertAuditLogEvent(
+  logs: readonly AuditLogSummary[],
+  label: string,
+  predicate: (log: AuditLogSummary) => boolean,
+): void {
+  if (!logs.some(predicate)) {
+    throw new Error(`Missing ${label}`);
+  }
 }
 
 async function projectSearch(query: {
