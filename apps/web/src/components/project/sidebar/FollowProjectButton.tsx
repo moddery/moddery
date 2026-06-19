@@ -14,10 +14,12 @@ export function FollowProjectButton({
   project,
   initialState,
   onChanged,
+  onRequestAuth,
 }: {
   project: ProjectDetails;
   initialState: ProjectFollowState | null;
   onChanged: (state: ProjectFollowState) => void;
+  onRequestAuth?: () => void;
 }) {
   const [state, setState] = useState<ProjectFollowState | null>(initialState);
   const [busy, setBusy] = useState(false);
@@ -31,6 +33,7 @@ export function FollowProjectButton({
 
   async function toggleFollow() {
     if (!hasAuthToken()) {
+      onRequestAuth?.();
       setMessage('Sign in to follow projects.');
       return;
     }

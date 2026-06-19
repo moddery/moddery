@@ -64,13 +64,14 @@ type AppShellState = ReturnType<typeof useAppShellState>;
 
 type AppPagesProps = {
   app: AppShellState;
+  onRequestAuth: () => void;
 };
 
 export function isHomePage(app: AppShellState) {
   return app.appView === 'home' && !app.selectedProject;
 }
 
-export function AppPages({ app }: AppPagesProps) {
+export function AppPages({ app, onRequestAuth }: AppPagesProps) {
   return (
     <Suspense fallback={<PageLoading />}>
       {isHomePage(app) ? (
@@ -90,6 +91,7 @@ export function AppPages({ app }: AppPagesProps) {
           slug={app.selectedProject.slug}
           projectTypeHint={app.selectedProject.projectType}
           onBack={app.closeProject}
+          onRequestAuth={onRequestAuth}
           onTagSearch={app.searchByTag}
         />
       ) : app.appView === 'collections' ? (

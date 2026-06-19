@@ -10,6 +10,7 @@ interface ProjectPageProps {
   slug: string;
   projectTypeHint: ProjectType;
   onBack: () => void;
+  onRequestAuth?: () => void;
   onTagSearch?: (tag: SearchTag) => void;
 }
 
@@ -17,6 +18,7 @@ export function ProjectPage({
   slug,
   projectTypeHint,
   onBack,
+  onRequestAuth,
   onTagSearch,
 }: ProjectPageProps) {
   const page = useProjectPageState({ projectTypeHint, slug });
@@ -64,6 +66,7 @@ export function ProjectPage({
         onFollowChanged={page.updateFollowState}
         onSelectTab={page.selectTab}
         onSelectVersion={page.selectVersion}
+        onRequestAuth={onRequestAuth}
         onTagSearch={onTagSearch}
         project={page.project}
         selectedVersion={page.selectedVersion}

@@ -12,14 +12,25 @@ import {
 import { useProjectCollectionSaveState } from './collection-save/useProjectCollectionSaveState.ts';
 
 export function ProjectCollectionSave({
+  onRequestAuth,
   project,
 }: {
+  onRequestAuth?: () => void;
   project: ProjectDetails;
 }) {
   const collections = useProjectCollectionSaveState({ project });
 
   if (!collections.authenticated) {
-    return null;
+    return (
+      <button
+        type="button"
+        onClick={onRequestAuth}
+        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-control px-3 text-sm font-bold text-ink transition-colors hover:bg-control-hover"
+      >
+        <BookmarkPlus className="size-4 text-accent-icon" />
+        Sign in to save
+      </button>
+    );
   }
 
   return (

@@ -32,6 +32,7 @@ export function ProjectPageContent({
   onDownloadLatest,
   onDownloadRecorded,
   onFollowChanged,
+  onRequestAuth,
   onSelectTab,
   onSelectVersion,
   onTagSearch,
@@ -51,6 +52,7 @@ export function ProjectPageContent({
   onDownloadLatest: () => void;
   onDownloadRecorded: (record: DownloadRecord) => void;
   onFollowChanged: (state: ProjectFollowState) => void;
+  onRequestAuth?: () => void;
   onSelectTab: (tab: ProjectTab) => void;
   onSelectVersion: (versionNumber: string | null) => void;
   onTagSearch?: (tag: SearchTag) => void;
@@ -113,6 +115,7 @@ export function ProjectPageContent({
           members={members}
           onDownloadLatest={onDownloadLatest}
           onFollowChanged={onFollowChanged}
+          onRequestAuth={onRequestAuth}
           onSelectVersion={onSelectVersion}
           onTagSearch={onTagSearch}
           project={project}

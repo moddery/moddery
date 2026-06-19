@@ -9,7 +9,13 @@ import {
 } from '../../../lib/catalog.ts';
 import { reportReasons } from '../ProjectContentTabs.tsx';
 
-export function ProjectReportSection({ project }: { project: ProjectDetails }) {
+export function ProjectReportSection({
+  project,
+  onRequestAuth,
+}: {
+  project: ProjectDetails;
+  onRequestAuth?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason>('BROKEN_OR_MISLEADING');
   const [body, setBody] = useState('');
@@ -20,6 +26,7 @@ export function ProjectReportSection({ project }: { project: ProjectDetails }) {
     event.preventDefault();
 
     if (!hasAuthToken()) {
+      onRequestAuth?.();
       setMessage('Sign in to report a project.');
       return;
     }

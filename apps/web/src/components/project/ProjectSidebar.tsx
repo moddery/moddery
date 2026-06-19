@@ -39,6 +39,7 @@ export function ProjectSidebar({
   members,
   onDownloadLatest,
   onFollowChanged,
+  onRequestAuth,
   onSelectVersion,
   onTagSearch,
   project,
@@ -51,6 +52,7 @@ export function ProjectSidebar({
   members: ProjectMember[];
   onDownloadLatest: () => void;
   onFollowChanged: (state: ProjectFollowState) => void;
+  onRequestAuth?: () => void;
   onSelectVersion: (versionNumber: string | null) => void;
   onTagSearch?: (tag: SearchTag) => void;
   project: ProjectDetails;
@@ -73,8 +75,9 @@ export function ProjectSidebar({
         project={project}
         initialState={followState}
         onChanged={onFollowChanged}
+        onRequestAuth={onRequestAuth}
       />
-      <ProjectCollectionSave project={project} />
+      <ProjectCollectionSave project={project} onRequestAuth={onRequestAuth} />
 
       <div className="mt-4 divide-y divide-line/70">
         <MetaRow
@@ -127,7 +130,7 @@ export function ProjectSidebar({
         <ProjectMembersSection members={members} projectSlug={project.slug} />
       )}
 
-      <ProjectReportSection project={project} />
+      <ProjectReportSection project={project} onRequestAuth={onRequestAuth} />
       <ProjectModerationNotes projectSlug={project.slug} />
 
       <SupportedVersionsSection

@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@apollo/client';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 
 import { apolloClient, authTokenStorageKey } from '../apollo.js';
 import { AuthPopover } from './auth-controls/AuthPopover.tsx';
@@ -21,9 +21,11 @@ import {
 } from './auth-controls/types.ts';
 
 export function AuthControls({
+  authPromptKey,
   onOpenNotifications,
   onOpenProfile,
 }: {
+  authPromptKey?: number;
   onOpenNotifications?: () => void;
   onOpenProfile?: (username: string) => void;
 }) {
@@ -61,6 +63,14 @@ export function AuthControls({
     registerState.loading ||
     requestPasswordResetState.loading ||
     confirmPasswordResetState.loading;
+
+  useEffect(() => {
+    if (authPromptKey === undefined || token !== null) return;
+    setMode('login');
+    setError(null);
+    setNotice(null);
+    setOpen(true);
+  }, [authPromptKey, token]);
 
   async function saveToken(accessToken: string): Promise<void> {
     localStorage.setItem(authTokenStorageKey, accessToken);

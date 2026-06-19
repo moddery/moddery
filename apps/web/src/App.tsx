@@ -1,4 +1,4 @@
-import { type MouseEvent } from 'react';
+import { useState, type MouseEvent } from 'react';
 
 import { AppPages, isHomePage } from './app/AppPages.tsx';
 import { useAppShellState } from './app/useAppShellState.ts';
@@ -7,6 +7,7 @@ import { NavBar } from './components/NavBar.tsx';
 
 export function App() {
   const app = useAppShellState();
+  const [authPromptKey, setAuthPromptKey] = useState(0);
   const homePage = isHomePage(app);
   const handleInternalNavigation = (event: MouseEvent<HTMLElement>) => {
     if (
@@ -65,13 +66,17 @@ export function App() {
         }
         accountSlot={
           <AuthControls
+            authPromptKey={authPromptKey}
             onOpenNotifications={app.openNotifications}
             onOpenProfile={app.openProfile}
           />
         }
       />
 
-      <AppPages app={app} />
+      <AppPages
+        app={app}
+        onRequestAuth={() => setAuthPromptKey((current) => current + 1)}
+      />
     </div>
   );
 }
