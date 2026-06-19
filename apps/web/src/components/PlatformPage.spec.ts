@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { buildPlatformDiscoverHref } from './PlatformPage.js';
+import { buildPlatformDiscoverHref } from './platform/platformDiscoverHref.js';
 
 describe(buildPlatformDiscoverHref.name, () => {
   test('links license metadata to filtered project search', () => {
