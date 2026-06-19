@@ -86,7 +86,9 @@ describe(VersionsService.name, () => {
                 versionRow({
                   changelog: 'Updated notes',
                   channel: 'BETA',
+                  featured: false,
                   name: 'Updated',
+                  sortOrder: 3,
                   versionNumber: '1.0.1',
                 }),
               ),
@@ -119,9 +121,11 @@ describe(VersionsService.name, () => {
       {
         changelog: 'Updated notes',
         channel: 'BETA',
+        featured: false,
         gameVersions: ['1.21.6'],
         loaders: ['fabric'],
         name: 'Updated',
+        sortOrder: 3,
         versionId: 'version-a',
         versionNumber: '1.0.1',
       },
@@ -129,6 +133,8 @@ describe(VersionsService.name, () => {
     );
 
     expect(operations[0]).toContain('"name":"Updated"');
+    expect(operations[0]).toContain('"featured":false');
+    expect(operations[0]).toContain('"sortOrder":3');
     expect(operations).toContain(
       'versions-delete:{"where":{"versionId":"version-a"}}',
     );
@@ -279,6 +285,7 @@ function versionRow(
       url: string;
     }[];
     name: string;
+    sortOrder: number;
     versionNumber: string;
   }> = {},
 ) {
@@ -308,7 +315,7 @@ function versionRow(
     project: { slug: 'example' },
     publishedAt: new Date('2026-01-01T00:00:00.000Z'),
     requestedStatus: null,
-    sortOrder: 7,
+    sortOrder: overrides.sortOrder ?? 7,
     status: 'APPROVED',
     updatedAt: new Date('2026-01-03T00:00:00.000Z'),
     versionNumber: overrides.versionNumber ?? '1.0.0',

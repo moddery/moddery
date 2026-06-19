@@ -9,30 +9,38 @@ import { type VersionChannel } from './versionChannel.ts';
 export function EditVersionFields({
   channel,
   changelog,
+  featured,
   gameVersionOptions,
   gameVersions,
   loaders,
   name,
+  sortOrder,
   versionNumber,
   onChannelChange,
   onChangelogChange,
+  onFeaturedChange,
   onGameVersionsChange,
   onLoadersChange,
   onNameChange,
+  onSortOrderChange,
   onVersionNumberChange,
 }: {
   channel: VersionChannel;
   changelog: string;
+  featured: boolean;
   gameVersionOptions: GameVersionTaxonomy[];
   gameVersions: string[];
   loaders: string[];
   name: string;
+  sortOrder: string;
   versionNumber: string;
   onChannelChange: (value: VersionChannel) => void;
   onChangelogChange: (value: string) => void;
+  onFeaturedChange: (value: boolean) => void;
   onGameVersionsChange: (value: string[]) => void;
   onLoadersChange: (value: string[]) => void;
   onNameChange: (value: string) => void;
+  onSortOrderChange: (value: string) => void;
   onVersionNumberChange: (value: string) => void;
 }) {
   const activeGameVersions = gameVersionOptions.filter(
@@ -41,7 +49,7 @@ export function EditVersionFields({
 
   return (
     <>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,0.6fr)_minmax(8rem,0.4fr)]">
         <DashboardField
           label="Name"
           value={name}
@@ -70,7 +78,25 @@ export function EditVersionFields({
             ))}
           </select>
         </label>
+        <label className="grid gap-1 text-sm font-bold text-ink">
+          Order
+          <input
+            type="number"
+            value={sortOrder}
+            onChange={(event) => onSortOrderChange(event.target.value)}
+            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+          />
+        </label>
       </div>
+      <label className="flex items-center gap-2 text-sm font-bold text-ink">
+        <input
+          type="checkbox"
+          checked={featured}
+          onChange={(event) => onFeaturedChange(event.target.checked)}
+          className="h-4 w-4 accent-accent"
+        />
+        Featured version
+      </label>
       <div className="grid gap-3">
         <TaxonomyCheckboxGroup
           label="Loaders"

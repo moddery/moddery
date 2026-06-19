@@ -20,10 +20,12 @@ export const CREATE_VERSION_MUTATION = gql`
         }
       }
       gameVersions
+      featured
       id
       loaders
       name
       projectSlug
+      sortOrder
       versionNumber
     }
   }
@@ -49,10 +51,12 @@ export const UPDATE_VERSION_MUTATION = gql`
         }
       }
       gameVersions
+      featured
       id
       loaders
       name
       projectSlug
+      sortOrder
       versionNumber
     }
   }
@@ -78,10 +82,12 @@ export const UPDATE_VERSION_DEPENDENCIES_MUTATION = gql`
         }
       }
       gameVersions
+      featured
       id
       loaders
       name
       projectSlug
+      sortOrder
       versionNumber
     }
   }
@@ -107,10 +113,12 @@ export const RECORD_FILE_SCAN_MUTATION = gql`
         }
       }
       gameVersions
+      featured
       id
       loaders
       name
       projectSlug
+      sortOrder
       versionNumber
     }
   }

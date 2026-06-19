@@ -445,11 +445,13 @@ export interface DashboardVersion {
   changelog: string | null;
   channel: 'ALPHA' | 'BETA' | 'RELEASE';
   dependencies: DashboardVersionDependency[];
+  featured: boolean;
   gameVersions: string[];
   id: string;
   loaders: string[];
   name: string;
   projectSlug: string;
+  sortOrder: number;
   versionNumber: string;
 }
 
@@ -483,9 +485,11 @@ export interface UpdateVersionDependenciesInput {
 export interface UpdateVersionInput {
   changelog: string | null;
   channel: 'ALPHA' | 'BETA' | 'RELEASE';
+  featured: boolean;
   gameVersions: string[];
   loaders: string[];
   name: string;
+  sortOrder: number;
   versionId: string;
   versionNumber: string;
 }

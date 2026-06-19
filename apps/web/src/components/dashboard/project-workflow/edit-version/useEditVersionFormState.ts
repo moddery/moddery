@@ -12,6 +12,8 @@ import {
 import {
   type VersionChannel,
   versionChannelFromProjectVersion,
+  versionSortOrderFieldValue,
+  versionSortOrderFromField,
 } from './versionChannel.ts';
 
 export function useEditVersionFormState(projects: DashboardData['projects']) {
@@ -27,6 +29,8 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
   const [name, setName] = useState('');
   const [versionNumber, setVersionNumber] = useState('');
   const [channel, setChannel] = useState<VersionChannel>('RELEASE');
+  const [featured, setFeatured] = useState(false);
+  const [sortOrder, setSortOrder] = useState('0');
   const [changelog, setChangelog] = useState('');
   const [loaders, setLoaders] = useState<string[]>([]);
   const [gameVersions, setGameVersions] = useState<string[]>([]);
@@ -52,6 +56,8 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     setName(version?.name ?? '');
     setVersionNumber(version?.versionNumber ?? '');
     setChannel(versionChannelFromProjectVersion(version));
+    setFeatured(version?.featured ?? false);
+    setSortOrder(versionSortOrderFieldValue(version));
     setChangelog(version?.changelog ?? '');
     setLoaders(version?.loaders ?? []);
     setGameVersions(version?.gameVersions ?? []);
@@ -60,15 +66,19 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
   const fields = {
     channel,
     changelog,
+    featured,
     gameVersions,
     loaders,
     name,
+    sortOrder,
     versionNumber,
     onChannelChange: setChannel,
     onChangelogChange: setChangelog,
+    onFeaturedChange: setFeatured,
     onGameVersionsChange: setGameVersions,
     onLoadersChange: setLoaders,
     onNameChange: setName,
+    onSortOrderChange: setSortOrder,
     onVersionNumberChange: setVersionNumber,
   };
 
@@ -78,9 +88,11 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     return {
       changelog: changelog.trim() || null,
       channel,
+      featured,
       gameVersions,
       loaders,
       name,
+      sortOrder: versionSortOrderFromField(sortOrder),
       versionId: selectedVersion.id,
       versionNumber,
     };

@@ -177,7 +177,13 @@ function versionUpdateData(
     ...(input.channel === undefined || input.channel === null
       ? {}
       : { channel: input.channel }),
+    ...(input.featured === undefined || input.featured === null
+      ? {}
+      : { featured: input.featured }),
     ...(input.name === undefined ? {} : { name: input.name?.trim() ?? '' }),
+    ...(input.sortOrder === undefined || input.sortOrder === null
+      ? {}
+      : { sortOrder: input.sortOrder }),
     ...(input.versionNumber === undefined
       ? {}
       : { versionNumber: input.versionNumber?.trim() ?? '' }),
