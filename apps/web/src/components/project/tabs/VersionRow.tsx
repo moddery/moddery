@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 
 import {
   downloadProjectFile,
-  type DownloadRecord,
   type ProjectVersion,
 } from '../../../lib/catalog.ts';
 import { type ProjectType } from '../../../types.ts';
@@ -17,7 +16,6 @@ import { VersionReportForm } from './version-row/VersionReportForm.tsx';
 import { VersionSummary } from './version-row/VersionSummary.tsx';
 
 export function VersionRow({
-  onDownloadRecorded,
   onRequestAuth,
   onSelectVersion,
   onTagSearch,
@@ -25,7 +23,6 @@ export function VersionRow({
   selected,
   version,
 }: {
-  onDownloadRecorded: (record: DownloadRecord) => void;
   onRequestAuth?: () => void;
   onSelectVersion: (versionNumber: string | null) => void;
   onTagSearch?: (tag: SearchTag) => void;
@@ -40,7 +37,7 @@ export function VersionRow({
   const hasDetails = true;
 
   function downloadFile(file: ProjectVersion['files'][number]) {
-    downloadProjectFile({ file, onRecorded: onDownloadRecorded });
+    downloadProjectFile({ file });
   }
 
   useEffect(() => {

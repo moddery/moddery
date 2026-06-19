@@ -2046,36 +2046,24 @@ async function checkAnalyticsFlow(options: {
     );
   }
 
-  const downloadPayload = await readGraphql<RecordDownloadResponse>({
-    query: `
-      mutation SmokeRecordDownload($input: RecordDownloadInput!) {
-        recordDownload(input: $input) {
-          fileId
-          projectDownloads
-          versionDownloads
-        }
-      }
-    `,
-    variables: {
-      input: {
-        fileId: options.fileId,
-      },
-    },
-  });
-  assertNoGraphqlErrors(downloadPayload, 'GraphQL record download');
-
-  const downloadRecord = required(
-    downloadPayload.data?.recordDownload,
-    'download record',
+  const downloadResponse = await fetch(
+    `${apiUrl}/downloads/files/${encodeURIComponent(options.fileId)}`,
+    { redirect: 'manual' },
   );
-  if (
-    downloadRecord.fileId !== options.fileId ||
-    downloadRecord.projectDownloads < 1 ||
-    downloadRecord.versionDownloads < 1
-  ) {
+  if (downloadResponse.status !== 302) {
     throw new Error(
-      `Download mismatch for ${options.fileId}: received project=${downloadRecord.projectDownloads.toString()} version=${downloadRecord.versionDownloads.toString()}`,
+      `Download redirect returned ${downloadResponse.status.toString()}`,
     );
+  }
+
+  const downloadLocation = downloadResponse.headers.get('location');
+  if (downloadLocation === null || downloadLocation.length === 0) {
+    throw new Error('Download redirect did not include a storage location');
+  }
+
+  const downloadUrl = new URL(downloadLocation, apiUrl);
+  if (downloadUrl.protocol !== 'http:' && downloadUrl.protocol !== 'https:') {
+    throw new Error(`Download redirect used ${downloadUrl.protocol}`);
   }
 
   const analyticsPayload = await readGraphql<ProjectAnalyticsResponse>({

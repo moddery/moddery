@@ -139,9 +139,16 @@ export class AnalyticsService implements OnModuleInit {
   }
 
   async recordDownload(fileId: string) {
+    const result = await this.prepareFileDownload(fileId);
+
+    return result.record;
+  }
+
+  async prepareFileDownload(fileId: string) {
     const file = await this.prisma.versionFile.findUnique({
       select: {
         id: true,
+        url: true,
         version: {
           select: {
             id: true,
@@ -194,11 +201,14 @@ export class AnalyticsService implements OnModuleInit {
     ]);
 
     return {
-      fileId: file.id,
-      projectDownloads: project.downloads,
-      projectId: project.id,
-      versionDownloads: version.downloads,
-      versionId: version.id,
+      record: {
+        fileId: file.id,
+        projectDownloads: project.downloads,
+        projectId: project.id,
+        versionDownloads: version.downloads,
+        versionId: version.id,
+      },
+      url: file.url,
     };
   }
 

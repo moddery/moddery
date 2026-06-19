@@ -9,13 +9,11 @@ import {
   fetchProjectVersions,
   fetchViewerProjectFollowState,
   recordProjectView,
-  type DownloadRecord,
   type ProjectAnalytics,
   type ProjectDetails,
   type ProjectFollowState,
   type ProjectMember,
   type ProjectVersion,
-  type ProjectVersionSearchResult,
   type ProjectViewRecord,
 } from '../../../lib/catalog.ts';
 import { compareVersions } from '../../../lib/format.ts';
@@ -137,43 +135,6 @@ export function useProjectPageState({
     );
   }
 
-  function updateDownloadRecord(record: DownloadRecord) {
-    queryClient.setQueryData<ProjectPageQueryData>(
-      projectQueryKey,
-      (current) => {
-        if (current === undefined) return current;
-
-        return {
-          ...current,
-          analytics:
-            current.analytics === null
-              ? null
-              : {
-                  ...current.analytics,
-                  totalDownloads: record.projectDownloads,
-                },
-          project: {
-            ...current.project,
-            downloads: record.projectDownloads,
-          },
-          versions: updateVersionDownloads(current.versions, record),
-        };
-      },
-    );
-
-    queryClient.setQueriesData<ProjectVersionSearchResult>(
-      { queryKey: ['catalog', 'project-version-search', slug] },
-      (current) => {
-        if (current === undefined) return current;
-
-        return {
-          ...current,
-          versions: updateVersionDownloads(current.versions, record),
-        };
-      },
-    );
-  }
-
   function updateProjectViewRecord(record: ProjectViewRecord) {
     queryClient.setQueryData<ProjectPageQueryData>(
       projectQueryKey,
@@ -227,7 +188,7 @@ export function useProjectPageState({
       return;
     }
 
-    downloadProjectFile({ file: latestFile, onRecorded: updateDownloadRecord });
+    downloadProjectFile({ file: latestFile });
   }
 
   return {
@@ -249,19 +210,7 @@ export function useProjectPageState({
     selectedVersion,
     selectVersion,
     supportedVersions,
-    updateDownloadRecord,
     updateFollowState,
     versions,
   };
-}
-
-function updateVersionDownloads(
-  versions: ProjectVersion[],
-  record: DownloadRecord,
-): ProjectVersion[] {
-  return versions.map((version) =>
-    version.id === record.versionId
-      ? { ...version, downloads: record.versionDownloads }
-      : version,
-  );
 }

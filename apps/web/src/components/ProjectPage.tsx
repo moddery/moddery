@@ -62,7 +62,6 @@ export function ProjectPage({
         latestVersion={page.latestVersion}
         members={page.members}
         onDownloadLatest={() => void page.downloadLatestFile()}
-        onDownloadRecorded={page.updateDownloadRecord}
         onFollowChanged={page.updateFollowState}
         onSelectTab={page.selectTab}
         onSelectVersion={page.selectVersion}

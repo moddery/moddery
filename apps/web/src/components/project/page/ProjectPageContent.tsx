@@ -2,7 +2,6 @@ import { cn } from '../../../lib/cn.ts';
 import {
   type ProjectAnalytics,
   type ProjectDetails,
-  type DownloadRecord,
   type ProjectFollowState,
   type ProjectGalleryImage,
   type ProjectMember,
@@ -30,7 +29,6 @@ export function ProjectPageContent({
   latestVersion,
   members,
   onDownloadLatest,
-  onDownloadRecorded,
   onFollowChanged,
   onRequestAuth,
   onSelectTab,
@@ -50,7 +48,6 @@ export function ProjectPageContent({
   latestVersion: ProjectVersion | undefined;
   members: ProjectMember[];
   onDownloadLatest: () => void;
-  onDownloadRecorded: (record: DownloadRecord) => void;
   onFollowChanged: (state: ProjectFollowState) => void;
   onRequestAuth?: () => void;
   onSelectTab: (tab: ProjectTab) => void;
@@ -94,7 +91,6 @@ export function ProjectPageContent({
 
           {activeTab === 'versions' && (
             <VersionsTab
-              onDownloadRecorded={onDownloadRecorded}
               onRequestAuth={onRequestAuth}
               projectSlug={project.slug}
               projectType={project.projectType}

@@ -1,7 +1,4 @@
-import {
-  type DownloadRecord,
-  type ProjectVersion,
-} from '../../../lib/catalog.ts';
+import { type ProjectVersion } from '../../../lib/catalog.ts';
 import { type ProjectType } from '../../../types.ts';
 import { type SearchTag } from '../../ModCard.tsx';
 import { EmptyTab } from './EmptyTab.tsx';
@@ -10,7 +7,6 @@ import { VersionSearchResults } from './versions-tab/VersionSearchResults.tsx';
 import { VersionsToolbar } from './VersionsToolbar.tsx';
 
 export function VersionsTab({
-  onDownloadRecorded,
   onRequestAuth,
   onSelectVersion,
   onTagSearch,
@@ -19,7 +15,6 @@ export function VersionsTab({
   selectedVersion,
   versions,
 }: {
-  onDownloadRecorded: (record: DownloadRecord) => void;
   onRequestAuth?: () => void;
   onSelectVersion: (versionNumber: string | null) => void;
   onTagSearch?: (tag: SearchTag) => void;
@@ -65,7 +60,6 @@ export function VersionsTab({
         selectedVersion={selectedVersion}
         totalPages={search.totalPages}
         versions={search.visibleVersions}
-        onDownloadRecorded={onDownloadRecorded}
         onPage={search.setPage}
         onRequestAuth={onRequestAuth}
         onSelectVersion={onSelectVersion}

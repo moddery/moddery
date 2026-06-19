@@ -121,6 +121,7 @@ describe(AnalyticsService.name, () => {
           findUnique: () =>
             Promise.resolve({
               id: 'file-a',
+              url: 'https://files.example.test/iris.jar',
               version: {
                 id: 'version-a',
                 project: {
@@ -191,6 +192,60 @@ describe(AnalyticsService.name, () => {
     });
   });
 
+  test('prepares public file downloads with a counted storage redirect URL', async () => {
+    const service = new AnalyticsService(
+      {
+        command: () => Promise.resolve(),
+        insert: () => Promise.resolve(),
+      } as never,
+      {
+        $transaction: () =>
+          Promise.resolve([
+            { downloads: 100, id: 'project-a', slug: 'iris' },
+            { downloads: 12, id: 'version-a' },
+            { id: 'event-a' },
+          ]),
+        downloadEvent: {
+          create: (query: unknown) => query,
+        },
+        project: {
+          update: (query: unknown) => query,
+        },
+        version: {
+          update: (query: unknown) => query,
+        },
+        versionFile: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'file-a',
+              url: 'https://files.example.test/iris.jar',
+              version: {
+                id: 'version-a',
+                project: {
+                  id: 'project-a',
+                  status: 'APPROVED',
+                },
+                status: 'APPROVED',
+              },
+            }),
+        },
+      } as unknown as PrismaService,
+      { delete: () => Promise.resolve() } as never,
+      { updateProjectDownloads: () => Promise.resolve() } as never,
+    );
+
+    const download = await service.prepareFileDownload('file-a');
+
+    expect(download.url).toBe('https://files.example.test/iris.jar');
+    expect(download.record).toEqual({
+      fileId: 'file-a',
+      projectDownloads: 100,
+      projectId: 'project-a',
+      versionDownloads: 12,
+      versionId: 'version-a',
+    });
+  });
+
   test('rejects download analytics for non-public files', async () => {
     const service = new AnalyticsService(
       {
@@ -204,6 +259,7 @@ describe(AnalyticsService.name, () => {
           findUnique: () =>
             Promise.resolve({
               id: 'file-a',
+              url: 'https://files.example.test/private.jar',
               version: {
                 id: 'version-a',
                 project: {
