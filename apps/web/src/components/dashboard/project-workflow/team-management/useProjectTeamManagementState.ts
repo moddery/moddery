@@ -5,6 +5,11 @@ import {
   removeProjectTeamMember,
   type DashboardProject,
 } from '../../../../lib/dashboard.ts';
+import {
+  assertProjectTeamMemberInput,
+  normalizeProjectTeamMemberInput,
+  normalizeRemoveProjectTeamMemberInput,
+} from './project-team-input.ts';
 
 interface PreventableSubmitEvent {
   preventDefault: () => void;
@@ -24,12 +29,14 @@ export function useProjectTeamManagementState(projects: DashboardProject[]) {
     setMessage(null);
 
     try {
-      const members = await addProjectTeamMember({
+      const input = normalizeProjectTeamMemberInput({
         permissions,
         projectSlug,
         role,
         username,
       });
+      assertProjectTeamMemberInput(input);
+      const members = await addProjectTeamMember(input);
       setUsername('');
       setMessage(
         `Team now has ${members.length.toLocaleString('en-US')} members.`,
@@ -48,10 +55,12 @@ export function useProjectTeamManagementState(projects: DashboardProject[]) {
     setMessage(null);
 
     try {
-      const members = await removeProjectTeamMember({
+      const input = normalizeRemoveProjectTeamMemberInput({
         projectSlug,
         username,
       });
+      assertProjectTeamMemberInput(input);
+      const members = await removeProjectTeamMember(input);
       setUsername('');
       setMessage(
         `Team now has ${members.length.toLocaleString('en-US')} members.`,
