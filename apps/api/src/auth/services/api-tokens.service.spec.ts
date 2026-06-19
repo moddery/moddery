@@ -190,6 +190,86 @@ describe(ApiTokensService.name, () => {
     expect(created.tokenSummary.id).toBe('token-a');
   });
 
+  test('creates viewer tokens with the default scope', async () => {
+    const creates: unknown[] = [];
+    const service = new ApiTokensService(
+      {
+        hashToken: (token: string) => `hash:${token}`,
+      } as AuthTokenService,
+      {
+        apiToken: {
+          create: (query: unknown) => {
+            creates.push(query);
+            return Promise.resolve({
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              expiresAt: null,
+              id: 'token-a',
+              lastUsedAt: null,
+              name: 'Local automation',
+              revokedAt: null,
+              scopes: ['read:projects'],
+            });
+          },
+        },
+      } as unknown as PrismaService,
+    );
+
+    await service.createViewerToken({
+      name: 'Local automation',
+      scopes: [],
+      user: {
+        id: 'user-a',
+        role: 'USER',
+        username: 'seed',
+      },
+    });
+
+    expect(creates[0]).toEqual({
+      data: expect.objectContaining({
+        scopes: ['read:projects'],
+      }),
+      select: expect.any(Object),
+    });
+  });
+
+  test('rejects unsupported viewer token scopes', async () => {
+    const creates: unknown[] = [];
+    const service = new ApiTokensService(
+      {
+        hashToken: (token: string) => `hash:${token}`,
+      } as AuthTokenService,
+      {
+        apiToken: {
+          create: (query: unknown) => {
+            creates.push(query);
+            return Promise.resolve(apiTokenRow({ id: 'token-a' }));
+          },
+        },
+      } as unknown as PrismaService,
+    );
+    let thrown: unknown;
+
+    try {
+      await service.createViewerToken({
+        name: 'Local automation',
+        scopes: ['admin:everything'],
+        user: {
+          id: 'user-a',
+          role: 'USER',
+          username: 'seed',
+        },
+      });
+    } catch (caught) {
+      thrown = caught;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      'Unsupported credential scope: admin:everything',
+    );
+    expect(creates).toEqual([]);
+  });
+
   test('revokes viewer tokens by owner', async () => {
     const updates: unknown[] = [];
     const service = new ApiTokensService(

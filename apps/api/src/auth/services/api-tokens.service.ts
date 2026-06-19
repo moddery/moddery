@@ -10,6 +10,7 @@ import {
   type AuthenticatedUser,
   AuthTokenService,
 } from './auth-token.service.js';
+import { normalizeCredentialScopes } from './credential-scopes.js';
 
 const tokenPrefix = 'mdy_pat';
 
@@ -89,7 +90,7 @@ export class ApiTokensService {
       data: {
         expiresAt,
         name,
-        scopes: sanitizeScopes(input.scopes),
+        scopes: normalizeCredentialScopes(input.scopes),
         tokenHash: this.authTokenService.hashToken(token),
         userId: input.user.id,
       },
@@ -147,15 +148,6 @@ function expiresAtFromDays(days: number): Date {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + days);
   return expiresAt;
-}
-
-function sanitizeScopes(
-  scopes: readonly string[] | null | undefined,
-): string[] {
-  return [...new Set(scopes ?? [])]
-    .map((scope) => scope.trim())
-    .filter((scope) => scope.length > 0)
-    .sort();
 }
 
 function clampInteger(value: number, minimum: number, maximum: number): number {

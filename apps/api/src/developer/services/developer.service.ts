@@ -6,6 +6,7 @@ import {
 import { randomBytes } from 'node:crypto';
 
 import { AuthTokenService } from '../../auth/services/auth-token.service.js';
+import { normalizeCredentialScopes } from '../../auth/services/credential-scopes.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type CreateOAuthClientInput } from '../dto/create-oauth-client.input.js';
 
@@ -78,7 +79,7 @@ export class DeveloperService {
         redirectUris: {
           create: redirectUris.map((uri) => ({ uri })),
         },
-        scopes: sanitizeScopes(input.scopes),
+        scopes: normalizeCredentialScopes(input.scopes),
       },
       select: oauthClientSelect(),
     });
@@ -175,15 +176,6 @@ function sanitizeRedirectUris(redirectUris: readonly string[]): string[] {
   }
 
   return sanitized.sort();
-}
-
-function sanitizeScopes(
-  scopes: readonly string[] | null | undefined,
-): string[] {
-  return [...new Set(scopes ?? [])]
-    .map((scope) => scope.trim())
-    .filter((scope) => scope.length > 0)
-    .sort();
 }
 
 function clampInteger(value: number, minimum: number, maximum: number): number {

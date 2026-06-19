@@ -136,6 +136,38 @@ describe(DeveloperService.name, () => {
     );
   });
 
+  test('rejects unsupported application scopes', async () => {
+    const creates: unknown[] = [];
+    const service = new DeveloperService(authTokenService, {
+      oAuthClient: {
+        create: (query: unknown) => {
+          creates.push(query);
+          return Promise.resolve(oauthClientRow());
+        },
+      },
+    } as unknown as PrismaService);
+    let thrown: unknown;
+
+    try {
+      await service.createViewerOAuthClient({
+        input: {
+          name: 'Bad app',
+          redirectUris: ['https://example.com/callback'],
+          scopes: ['delete:projects'],
+        },
+        ownerId: 'user-a',
+      });
+    } catch (caught) {
+      thrown = caught;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe(
+      'Unsupported credential scope: delete:projects',
+    );
+    expect(creates).toEqual([]);
+  });
+
   test('revokes viewer-owned applications', async () => {
     const updates: unknown[] = [];
     const service = new DeveloperService(authTokenService, {
