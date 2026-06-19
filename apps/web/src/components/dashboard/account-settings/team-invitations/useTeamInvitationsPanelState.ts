@@ -23,16 +23,20 @@ export function useTeamInvitationsPanelState() {
   const totalHits = invitationsQuery.data?.totalHits ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalHits / teamInvitationPageSize));
 
-  async function act(
-    invitationId: string,
-    action: (invitationId: string) => Promise<TeamInvitationSummary>,
-  ) {
+  async function act(invitationId: string, action: 'accept' | 'decline') {
     setBusyId(invitationId);
     setMessage(null);
 
     try {
-      await action(invitationId);
+      const invitation =
+        action === 'accept'
+          ? await acceptTeamInvitation(invitationId)
+          : await declineTeamInvitation(invitationId);
+      setMessage(teamInvitationActionMessage(action, invitation));
       await invitationsQuery.refetch();
+      if (invitations.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      }
     } catch (caught) {
       setMessage(
         caught instanceof Error ? caught.message : 'Team invitation failed',
@@ -43,11 +47,9 @@ export function useTeamInvitationsPanelState() {
   }
 
   return {
-    acceptInvitation: (invitationId: string) =>
-      act(invitationId, acceptTeamInvitation),
+    acceptInvitation: (invitationId: string) => act(invitationId, 'accept'),
     busyId,
-    declineInvitation: (invitationId: string) =>
-      act(invitationId, declineTeamInvitation),
+    declineInvitation: (invitationId: string) => act(invitationId, 'decline'),
     invitations,
     invitationsQuery,
     message,
@@ -56,4 +58,13 @@ export function useTeamInvitationsPanelState() {
     totalHits,
     totalPages,
   };
+}
+
+export function teamInvitationActionMessage(
+  action: 'accept' | 'decline',
+  invitation: Pick<TeamInvitationSummary, 'target'>,
+) {
+  return action === 'accept'
+    ? `Accepted invitation to ${invitation.target.name}.`
+    : `Declined invitation to ${invitation.target.name}.`;
 }

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { type TeamInvitationSummary } from '../../../../lib/dashboard/types.ts';
 import { teamInvitationTargetHref } from './TeamInvitationRow.tsx';
+import { teamInvitationActionMessage } from './useTeamInvitationsPanelState.ts';
 
 describe(teamInvitationTargetHref.name, () => {
   test('links organization invitations to organization pages', () => {
@@ -38,6 +39,21 @@ describe(teamInvitationTargetHref.name, () => {
         }),
       ),
     ).toBeNull();
+  });
+});
+
+describe(teamInvitationActionMessage.name, () => {
+  test('describes accepted and declined invitations', () => {
+    const invitation = {
+      target: targetFixture({ name: 'Core Plugins' }),
+    };
+
+    expect(teamInvitationActionMessage('accept', invitation)).toBe(
+      'Accepted invitation to Core Plugins.',
+    );
+    expect(teamInvitationActionMessage('decline', invitation)).toBe(
+      'Declined invitation to Core Plugins.',
+    );
   });
 });
 
