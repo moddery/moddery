@@ -62,7 +62,7 @@ function withDefaultProjectReload(prisma: PrismaService): PrismaService {
 }
 
 describe(VersionsService.name, () => {
-  test('replaces version dependencies for accepted project members', async () => {
+  test('replaces version dependencies for project owners or version managers', async () => {
     const operations: string[] = [];
     const searchEvents: unknown[] = [];
     const service = createVersionsService(
@@ -294,7 +294,7 @@ describe(VersionsService.name, () => {
     expect(operations).toEqual(['delete:{"where":{"versionId":"version-a"}}']);
   });
 
-  test('updates versions for accepted project members', async () => {
+  test('updates versions for project owners or version managers', async () => {
     const operations: string[] = [];
     const searchEvents: unknown[] = [];
     const service = createVersionsService(
@@ -466,7 +466,8 @@ describe(VersionsService.name, () => {
     ]);
   });
 
-  test('creates queued versions for accepted project members', async () => {
+  test('creates queued versions for project owners or version managers', async () => {
+    const queries: unknown[] = [];
     const transactionSteps: string[] = [];
     const searchEvents: unknown[] = [];
     const service = createVersionsService(
@@ -525,13 +526,15 @@ describe(VersionsService.name, () => {
             },
           }),
         project: {
-          findUnique: () =>
-            Promise.resolve({
+          findUnique: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve({
               id: 'project-a',
               slug: 'example',
               status: 'APPROVED',
               team: { members: [{ userId: 'user-a' }] },
-            }),
+            });
+          },
         },
       } as unknown as PrismaService,
       [],
@@ -561,6 +564,24 @@ describe(VersionsService.name, () => {
       'user-a',
     );
 
+    expect(queries[0]).toMatchObject({
+      select: {
+        team: {
+          select: {
+            members: {
+              where: {
+                acceptedAt: { not: null },
+                OR: [
+                  { isOwner: true },
+                  { permissions: { has: 'MANAGE_VERSIONS' } },
+                ],
+                userId: 'user-a',
+              },
+            },
+          },
+        },
+      },
+    });
     expect(transactionSteps[0]).toContain('"requestedStatus":"APPROVED"');
     expect(transactionSteps[0]).toContain('"status":"PENDING_REVIEW"');
     expect(transactionSteps).toContain('file');
@@ -579,6 +600,35 @@ describe(VersionsService.name, () => {
         type: 'index',
       },
     ]);
+  });
+
+  test('requires project version permission before creating versions', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createVersion(validCreateVersionInput(), 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Project version permission required',
+    );
   });
 
   test('loads versions awaiting moderation', async () => {

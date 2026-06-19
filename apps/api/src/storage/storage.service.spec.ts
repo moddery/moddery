@@ -5,7 +5,7 @@ import { describe, expect, test } from 'bun:test';
 import { type PrismaService } from '../prisma/prisma.service.js';
 import { StorageService } from './storage.service.js';
 
-function serviceWithProject(project: unknown) {
+function serviceWithProject(project: unknown, queries: unknown[] = []) {
   return new StorageService(
     {
       getOrThrow: (key: string) => {
@@ -16,7 +16,10 @@ function serviceWithProject(project: unknown) {
     } as never,
     {
       project: {
-        findUnique: () => Promise.resolve(project),
+        findUnique: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(project);
+        },
       },
     } as unknown as PrismaService,
     s3Client('https://internal-s3.example.test'),
@@ -37,13 +40,17 @@ function s3Client(endpoint: string): S3Client {
 }
 
 describe(StorageService.name, () => {
-  test('prepares project upload targets for accepted project members', async () => {
-    const target = await serviceWithProject({
-      id: 'project-a',
-      slug: 'cool-project',
-      status: 'APPROVED',
-      team: { members: [{ userId: 'user-a' }] },
-    }).prepareProjectUpload(
+  test('prepares release file uploads for project owners or version managers', async () => {
+    const queries: unknown[] = [];
+    const target = await serviceWithProject(
+      {
+        id: 'project-a',
+        slug: 'cool-project',
+        status: 'APPROVED',
+        team: { members: [{ userId: 'user-a' }] },
+      },
+      queries,
+    ).prepareProjectUpload(
       {
         contentType: ' application/zip ',
         fileName: 'release.zip',
@@ -55,6 +62,24 @@ describe(StorageService.name, () => {
     );
 
     expect(target.bucket).toBe('project-files');
+    expect(queries[0]).toMatchObject({
+      select: {
+        team: {
+          select: {
+            members: {
+              where: {
+                acceptedAt: { not: null },
+                OR: [
+                  { isOwner: true },
+                  { permissions: { has: 'MANAGE_VERSIONS' } },
+                ],
+                userId: 'user-a',
+              },
+            },
+          },
+        },
+      },
+    });
     expect(target.key).toMatch(
       /^projects\/cool-project\/version-file\/[a-f0-9-]+\.zip$/,
     );
@@ -92,7 +117,7 @@ describe(StorageService.name, () => {
     expect(sentCommands[0]).toBeInstanceOf(HeadBucketCommand);
   });
 
-  test('requires project membership before preparing uploads', async () => {
+  test('requires project version permission before preparing uploads', async () => {
     let caught: unknown;
 
     try {
@@ -115,6 +140,10 @@ describe(StorageService.name, () => {
     }
 
     expect(caught).toBeInstanceOf(ForbiddenException);
+    expect(caught).toHaveProperty(
+      'message',
+      'Project version permission required',
+    );
   });
 
   test('requires approved projects before preparing release file uploads', async () => {
@@ -147,12 +176,16 @@ describe(StorageService.name, () => {
   });
 
   test('allows setup image uploads before project approval', async () => {
-    const target = await serviceWithProject({
-      id: 'project-a',
-      slug: 'cool-project',
-      status: 'PENDING_REVIEW',
-      team: { members: [{ userId: 'user-a' }] },
-    }).prepareProjectUpload(
+    const queries: unknown[] = [];
+    const target = await serviceWithProject(
+      {
+        id: 'project-a',
+        slug: 'cool-project',
+        status: 'PENDING_REVIEW',
+        team: { members: [{ userId: 'user-a' }] },
+      },
+      queries,
+    ).prepareProjectUpload(
       {
         contentType: 'image/png',
         fileName: 'icon.png',
@@ -166,6 +199,24 @@ describe(StorageService.name, () => {
     expect(target.key).toMatch(
       /^projects\/cool-project\/project-icon\/[a-f0-9-]+\.png$/,
     );
+    expect(queries[0]).toMatchObject({
+      select: {
+        team: {
+          select: {
+            members: {
+              where: {
+                acceptedAt: { not: null },
+                OR: [
+                  { isOwner: true },
+                  { permissions: { has: 'MANAGE_DETAILS' } },
+                ],
+                userId: 'user-a',
+              },
+            },
+          },
+        },
+      },
+    });
   });
 
   test('rejects missing project slugs before project lookups', async () => {

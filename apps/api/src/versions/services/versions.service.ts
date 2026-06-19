@@ -24,7 +24,10 @@ import { type UpdateVersionDependenciesInput } from '../dto/update-version-depen
 import { type UpdateVersionInput } from '../dto/update-version.input.js';
 import { VersionDependenciesService } from './version-dependencies.service.js';
 import { createVersionFiles, validateVersionFiles } from './version-files.js';
-import { findManagedVersion } from './version-management.js';
+import {
+  findManagedVersion,
+  versionManagementMemberWhere,
+} from './version-management.js';
 import {
   type VersionSearchResultContract,
   type VersionSummaryContract,
@@ -62,10 +65,7 @@ export class VersionsService {
             members: {
               select: { userId: true },
               take: 1,
-              where: {
-                acceptedAt: { not: null },
-                userId: authorId,
-              },
+              where: versionManagementMemberWhere(authorId),
             },
           },
         },
@@ -78,7 +78,7 @@ export class VersionsService {
     }
 
     if (project.team.members.length === 0) {
-      throw new ForbiddenException('Project membership required');
+      throw new ForbiddenException('Project version permission required');
     }
 
     if (project.status !== 'APPROVED') {
@@ -290,10 +290,7 @@ export class VersionsService {
             members: {
               select: { userId: true },
               take: 1,
-              where: {
-                acceptedAt: { not: null },
-                userId,
-              },
+              where: versionManagementMemberWhere(userId),
             },
           },
         },
@@ -306,7 +303,7 @@ export class VersionsService {
     }
 
     if (project.team.members.length === 0) {
-      throw new ForbiddenException('Project membership required');
+      throw new ForbiddenException('Project version permission required');
     }
 
     const where = { projectId: project.id };

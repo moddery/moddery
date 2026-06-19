@@ -12,10 +12,12 @@ import {
   type S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { TeamPermission } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 
 import { PrismaService } from '../prisma/prisma.service.js';
+import { versionManagementMemberWhere } from '../versions/services/version-management.js';
 import { type PrepareProjectUploadInput } from './dto/prepare-project-upload.input.js';
 import { S3_CLIENT, S3_PRESIGN_CLIENT } from './storage.constants.js';
 
@@ -76,10 +78,10 @@ export class StorageService {
             members: {
               select: { userId: true },
               take: 1,
-              where: {
-                acceptedAt: { not: null },
-                userId,
-              },
+              where:
+                uploadKind === 'version-file'
+                  ? versionManagementMemberWhere(userId)
+                  : projectDetailsMemberWhere(userId),
             },
           },
         },
@@ -92,7 +94,11 @@ export class StorageService {
     }
 
     if (project.team.members.length === 0) {
-      throw new ForbiddenException('Project membership required');
+      throw new ForbiddenException(
+        uploadKind === 'version-file'
+          ? 'Project version permission required'
+          : 'Project details permission required',
+      );
     }
 
     if (uploadKind === 'version-file' && project.status !== 'APPROVED') {
@@ -202,6 +208,17 @@ function requiredText(value: string, message: string): string {
   }
 
   return trimmed;
+}
+
+function projectDetailsMemberWhere(userId: string) {
+  return {
+    acceptedAt: { not: null },
+    OR: [
+      { isOwner: true },
+      { permissions: { has: TeamPermission.MANAGE_DETAILS } },
+    ],
+    userId,
+  };
 }
 
 function projectUploadKey({
