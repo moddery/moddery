@@ -189,7 +189,7 @@ describe(SearchService.name, () => {
               must: [
                 {
                   multi_match: {
-                    fields: ['title^3', 'summary^2', 'description'],
+                    fields: ['slug^4', 'title^3', 'summary^2', 'description'],
                     query: 'sodium',
                   },
                 },

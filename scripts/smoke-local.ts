@@ -841,6 +841,10 @@ async function checkCreatorFlow(): Promise<void> {
     slug,
     title,
   });
+  await checkApprovedProjectFilterSearch({
+    projectSlug: slug,
+    projectTitle: title,
+  });
 
   await checkExternalVersionFileUrlGuard({
     projectSlug: slug,
@@ -1121,6 +1125,45 @@ async function checkReviewNotification(options: {
   );
   if (notification === undefined) {
     throw new Error(`Missing ${options.title} creator notification`);
+  }
+}
+
+async function checkApprovedProjectFilterSearch(options: {
+  projectSlug: string;
+  projectTitle: string;
+}): Promise<void> {
+  const cases = [
+    { label: 'category', tags: ['kind:MOD', 'category:utility'] },
+    { label: 'loader', tags: ['kind:MOD', 'loader:fabric'] },
+    {
+      label: 'game version',
+      tags: ['kind:MOD', 'game-version:1.21.6'],
+    },
+    {
+      label: 'combined filters',
+      tags: [
+        'kind:MOD',
+        'category:utility',
+        'loader:fabric',
+        'game-version:1.21.6',
+      ],
+    },
+  ];
+
+  for (const item of cases) {
+    const search = await projectSearch({
+      search: options.projectSlug,
+      tags: item.tags,
+    });
+    const project = search.projects.find(
+      (candidate) => candidate.slug === options.projectSlug,
+    );
+
+    assertProject(required(project, `${item.label} filtered project search`), {
+      kind: 'MOD',
+      slug: options.projectSlug,
+      title: options.projectTitle,
+    });
   }
 }
 
