@@ -109,6 +109,34 @@ interface ProjectAnalyticsResponse {
   errors?: GraphqlError[];
 }
 
+interface CreateOrganizationResponse {
+  data?: {
+    createOrganization?: OrganizationSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface AddProjectToOrganizationResponse {
+  data?: {
+    addProjectToOrganization?: OrganizationSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface OrganizationBySlugResponse {
+  data?: {
+    organizationBySlug?: OrganizationSummary | null;
+  };
+  errors?: GraphqlError[];
+}
+
+interface OrganizationProjectSearchResponse {
+  data?: {
+    organizationProjectSearch?: OrganizationProjectSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
 interface VersionsForProjectResponse {
   data?: {
     versionsForProject?: VersionSummary[];
@@ -188,6 +216,23 @@ interface ProjectAnalyticsSummary {
   totalDownloads: number;
   totalViews: number;
   viewsLast30Days: number;
+}
+
+interface OrganizationSummary {
+  id: string;
+  memberCount: number;
+  name: string;
+  owner: {
+    username: string;
+  };
+  projectCount: number;
+  projects: ProjectSummary[];
+  slug: string;
+}
+
+interface OrganizationProjectSearchResult {
+  projects: ProjectSummary[];
+  totalHits: number;
 }
 
 interface ProjectSearchResponse {
@@ -476,6 +521,12 @@ async function checkCreatorFlow(): Promise<void> {
     fileId: required(publicVersion.files[0], 'public version file').id,
     projectSlug: slug,
   });
+  await checkOrganizationFlow({
+    projectSlug: slug,
+    projectTitle: title,
+    token: auth.accessToken,
+    username,
+  });
 
   await checkCollectionFlow({
     projectSlug: slug,
@@ -760,6 +811,180 @@ async function checkAnalyticsFlow(options: {
   }
 }
 
+async function checkOrganizationFlow(options: {
+  projectSlug: string;
+  projectTitle: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const organizationSlug = `smoke-org-${options.projectSlug}`;
+  const organizationName = `Smoke Org ${options.projectSlug}`;
+
+  const createPayload = await readGraphql<CreateOrganizationResponse>(
+    {
+      query: `
+        mutation SmokeCreateOrganization($input: CreateOrganizationInput!) {
+          createOrganization(input: $input) {
+            id
+            memberCount
+            name
+            owner {
+              username
+            }
+            projectCount
+            projects {
+              kind
+              slug
+              status
+              title
+            }
+            slug
+          }
+        }
+      `,
+      variables: {
+        input: {
+          color: '#4f46e5',
+          description: 'A smoke-test creator organization.',
+          name: organizationName,
+          slug: organizationSlug,
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(createPayload, 'GraphQL create organization');
+
+  const createdOrganization = required(
+    createPayload.data?.createOrganization,
+    'created organization',
+  );
+  assertOrganization(createdOrganization, {
+    name: organizationName,
+    ownerUsername: options.username,
+    slug: organizationSlug,
+  });
+
+  const addPayload = await readGraphql<AddProjectToOrganizationResponse>(
+    {
+      query: `
+        mutation SmokeAddProjectToOrganization($input: AddProjectToOrganizationInput!) {
+          addProjectToOrganization(input: $input) {
+            id
+            memberCount
+            name
+            owner {
+              username
+            }
+            projectCount
+            projects {
+              kind
+              slug
+              status
+              title
+            }
+            slug
+          }
+        }
+      `,
+      variables: {
+        input: {
+          organizationId: createdOrganization.id,
+          projectSlug: options.projectSlug,
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(addPayload, 'GraphQL add project to organization');
+
+  const updatedOrganization = required(
+    addPayload.data?.addProjectToOrganization,
+    'updated organization',
+  );
+  assertOrganization(updatedOrganization, {
+    name: organizationName,
+    ownerUsername: options.username,
+    projectSlug: options.projectSlug,
+    projectTitle: options.projectTitle,
+    slug: organizationSlug,
+  });
+
+  const publicPayload = await readGraphql<OrganizationBySlugResponse>({
+    query: `
+      query SmokeOrganizationBySlug($slug: String!) {
+        organizationBySlug(slug: $slug) {
+          id
+          memberCount
+          name
+          owner {
+            username
+          }
+          projectCount
+          projects {
+            kind
+            slug
+            status
+            title
+          }
+          slug
+        }
+      }
+    `,
+    variables: { slug: organizationSlug },
+  });
+  assertNoGraphqlErrors(publicPayload, 'GraphQL organization by slug');
+  assertOrganization(
+    required(publicPayload.data?.organizationBySlug, 'public organization'),
+    {
+      name: organizationName,
+      ownerUsername: options.username,
+      projectSlug: options.projectSlug,
+      projectTitle: options.projectTitle,
+      slug: organizationSlug,
+    },
+  );
+
+  const projectsPayload = await readGraphql<OrganizationProjectSearchResponse>({
+    query: `
+      query SmokeOrganizationProjectSearch($slug: String!) {
+        organizationProjectSearch(slug: $slug, limit: 5, offset: 0) {
+          projects {
+            kind
+            slug
+            status
+            title
+          }
+          totalHits
+        }
+      }
+    `,
+    variables: { slug: organizationSlug },
+  });
+  assertNoGraphqlErrors(projectsPayload, 'GraphQL organization project search');
+
+  const projectSearch = required(
+    projectsPayload.data?.organizationProjectSearch,
+    'organization project search',
+  );
+  if (projectSearch.totalHits < 1) {
+    throw new Error(`Organization ${organizationSlug} returned no projects`);
+  }
+  assertProject(
+    required(
+      projectSearch.projects.find(
+        (project) => project.slug === options.projectSlug,
+      ),
+      'organization project',
+    ),
+    {
+      kind: 'MOD',
+      slug: options.projectSlug,
+      title: options.projectTitle,
+    },
+  );
+}
+
 async function checkProjectReportFlow(options: {
   projectSlug: string;
   projectTitle: string;
@@ -908,6 +1133,52 @@ function assertProject(
       `Project mismatch: expected ${expected.kind} ${expected.slug} ${expected.title}, received ${project.kind} ${project.slug} ${project.title}`,
     );
   }
+}
+
+function assertOrganization(
+  organization: OrganizationSummary,
+  expected: {
+    name: string;
+    ownerUsername: string;
+    projectSlug?: string;
+    projectTitle?: string;
+    slug: string;
+  },
+): void {
+  if (
+    organization.memberCount !== 1 ||
+    organization.name !== expected.name ||
+    organization.owner.username !== expected.ownerUsername ||
+    organization.slug !== expected.slug
+  ) {
+    throw new Error(
+      `Organization mismatch: expected ${expected.ownerUsername}/${expected.slug}, received ${organization.owner.username}/${organization.slug}`,
+    );
+  }
+
+  if (expected.projectSlug === undefined) {
+    if (organization.projectCount !== 0 || organization.projects.length !== 0) {
+      throw new Error(
+        `Expected empty organization ${organization.slug}, received ${organization.projectCount.toString()} projects`,
+      );
+    }
+    return;
+  }
+
+  if (organization.projectCount !== 1) {
+    throw new Error(
+      `Expected organization ${organization.slug} to contain one project, received ${organization.projectCount.toString()}`,
+    );
+  }
+
+  const project = organization.projects.find(
+    (item) => item.slug === expected.projectSlug,
+  );
+  assertProject(required(project, 'organization project'), {
+    kind: 'MOD',
+    slug: expected.projectSlug,
+    title: required(expected.projectTitle, 'organization project title'),
+  });
 }
 
 function assertReportProjectTarget(
