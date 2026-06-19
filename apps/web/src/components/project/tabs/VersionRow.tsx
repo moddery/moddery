@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import {
-  recordDownload,
+  downloadProjectFile,
   type DownloadRecord,
   type ProjectVersion,
 } from '../../../lib/catalog.ts';
@@ -37,9 +37,8 @@ export function VersionRow({
   const [detailsOpen, setDetailsOpen] = useState(selected);
   const hasDetails = true;
 
-  async function downloadFile(file: ProjectVersion['files'][number]) {
-    onDownloadRecorded(await recordDownload(file.id));
-    window.location.assign(file.url);
+  function downloadFile(file: ProjectVersion['files'][number]) {
+    downloadProjectFile({ file, onRecorded: onDownloadRecorded });
   }
 
   useEffect(() => {

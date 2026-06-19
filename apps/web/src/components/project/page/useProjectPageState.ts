@@ -2,12 +2,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import {
+  downloadProjectFile,
   fetchProjectAnalytics,
   fetchProjectDetails,
   fetchProjectMemberSearch,
   fetchProjectVersions,
   fetchViewerProjectFollowState,
-  recordDownload,
   recordProjectView,
   type DownloadRecord,
   type ProjectAnalytics,
@@ -222,13 +222,12 @@ export function useProjectPageState({
     version.changelog?.trim(),
   );
 
-  async function downloadLatestFile() {
+  function downloadLatestFile() {
     if (latestFile === undefined) {
       return;
     }
 
-    updateDownloadRecord(await recordDownload(latestFile.id));
-    window.location.assign(latestFile.url);
+    downloadProjectFile({ file: latestFile, onRecorded: updateDownloadRecord });
   }
 
   return {
