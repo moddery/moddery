@@ -62,6 +62,7 @@ export class SearchService implements OnModuleInit {
       onDocument: (document) => ({
         index: { _id: document.id, _index: PROJECTS_INDEX },
       }),
+      refreshOnCompletion: true,
     });
   }
 

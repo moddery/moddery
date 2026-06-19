@@ -19,6 +19,46 @@ describe(SearchService.name, () => {
     expect(called).toBe(false);
   });
 
+  test('refreshes the project index after writes', async () => {
+    const bulkCalls: unknown[] = [];
+    const client = {
+      helpers: {
+        bulk: (options: unknown) => {
+          bulkCalls.push(options);
+          return Promise.resolve();
+        },
+      },
+    };
+    const service = new SearchService(client as never);
+
+    await service.indexProjects([
+      {
+        categories: ['optimization'],
+        color: null,
+        description: 'Fast project',
+        downloads: 1,
+        followers: 2,
+        gameVersions: ['1.21.6'],
+        iconUrl: null,
+        id: 'project-a',
+        kind: 'MOD',
+        licenseKey: 'MIT',
+        loaders: ['fabric'],
+        slug: 'project-a',
+        summary: 'Fast',
+        tags: ['kind:MOD'],
+        title: 'Project A',
+        titleSort: 'project a',
+        updatedAt: '2026-06-18T00:00:00.000Z',
+      },
+    ]);
+
+    expect(bulkCalls).toHaveLength(1);
+    expect(bulkCalls[0]).toEqual(
+      expect.objectContaining({ refreshOnCompletion: true }),
+    );
+  });
+
   test('filters project search by tags', async () => {
     const searches: unknown[] = [];
     const client = {

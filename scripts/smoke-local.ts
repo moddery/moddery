@@ -13,18 +13,54 @@ interface ReadinessResult {
   status: string;
 }
 
+interface GraphqlError {
+  extensions?: unknown;
+  message: string;
+}
+
+interface AuthPayload {
+  accessToken: string;
+  user: {
+    username: string;
+  };
+}
+
+interface RegisterResponse {
+  data?: {
+    register?: AuthPayload;
+  };
+  errors?: GraphqlError[];
+}
+
+interface CreateProjectResponse {
+  data?: {
+    createProject?: ProjectSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface ProjectBySlugResponse {
+  data?: {
+    projectBySlug?: ProjectSummary | null;
+  };
+  errors?: GraphqlError[];
+}
+
+interface ProjectSummary {
+  kind: string;
+  slug: string;
+  status: string;
+  title: string;
+}
+
 interface ProjectSearchResponse {
   data?: {
     projectSearch?: {
-      projects: {
-        kind: string;
-        slug: string;
-        title: string;
-      }[];
+      projects: ProjectSummary[];
       totalHits: number;
     };
   };
-  errors?: { message: string }[];
+  errors?: GraphqlError[];
 }
 
 async function main(): Promise<void> {
@@ -36,6 +72,7 @@ async function main(): Promise<void> {
     checkProjectType('PLUGIN'),
     checkProjectType('MODPACK'),
   ]);
+  await checkCreatorFlow();
 
   console.log('Local smoke checks passed');
 }
@@ -96,7 +133,110 @@ async function checkProjectType(kind: string): Promise<void> {
   }
 }
 
+async function checkCreatorFlow(): Promise<void> {
+  const suffix = `${Date.now().toString(36)}${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const username = `smoke_${suffix}`;
+  const slug = `smoke-${suffix}`;
+  const title = `Smoke Project ${suffix}`;
+
+  const registerPayload = await readGraphql<RegisterResponse>({
+    query: `
+      mutation SmokeRegister($input: RegisterInput!) {
+        register(input: $input) {
+          accessToken
+          user {
+            username
+          }
+        }
+      }
+    `,
+    variables: {
+      input: {
+        email: `${username}@example.test`,
+        password: `password-${suffix}`,
+        username,
+      },
+    },
+  });
+  assertNoGraphqlErrors(registerPayload, 'GraphQL register');
+
+  const auth = required(registerPayload.data?.register, 'register payload');
+  if (auth.user.username !== username) {
+    throw new Error(
+      `Registered username mismatch: expected ${username}, received ${auth.user.username}`,
+    );
+  }
+
+  const createPayload = await readGraphql<CreateProjectResponse>(
+    {
+      query: `
+        mutation SmokeCreateProject($input: CreateProjectInput!) {
+          createProject(input: $input) {
+            kind
+            slug
+            status
+            title
+          }
+        }
+      `,
+      variables: {
+        input: {
+          categories: ['utility'],
+          description:
+            'A local smoke-test project created through the authenticated GraphQL flow.',
+          gameVersions: ['1.21.6'],
+          kind: 'MOD',
+          loaders: ['fabric'],
+          slug,
+          summary: 'A local smoke-test project.',
+          title,
+        },
+      },
+    },
+    auth.accessToken,
+  );
+  assertNoGraphqlErrors(createPayload, 'GraphQL create project');
+
+  const createdProject = required(
+    createPayload.data?.createProject,
+    'created project',
+  );
+  assertProject(createdProject, { kind: 'MOD', slug, title });
+
+  const publicPayload = await readGraphql<ProjectBySlugResponse>({
+    query: `
+      query SmokeProjectBySlug($slug: String!) {
+        projectBySlug(slug: $slug) {
+          kind
+          slug
+          status
+          title
+        }
+      }
+    `,
+    variables: { slug },
+  });
+  assertNoGraphqlErrors(publicPayload, 'GraphQL project by slug');
+  assertProject(required(publicPayload.data?.projectBySlug, 'public project'), {
+    kind: 'MOD',
+    slug,
+    title,
+  });
+
+  const indexedProject = (await projectSearch({ search: slug })).projects.find(
+    (project) => project.slug === slug,
+  );
+  assertProject(required(indexedProject, 'indexed project'), {
+    kind: 'MOD',
+    slug,
+    title,
+  });
+}
+
 async function projectSearch(query: {
+  search?: string;
   tags?: string[];
 }): Promise<NonNullable<ProjectSearchResponse['data']>['projectSearch']> {
   const payload = await readGraphql<ProjectSearchResponse>({
@@ -137,10 +277,17 @@ async function projectSearch(query: {
   return search;
 }
 
-async function readGraphql<T>(body: unknown): Promise<T> {
+async function readGraphql<T>(body: unknown, token?: string): Promise<T> {
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+  };
+  if (token !== undefined) {
+    headers.authorization = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${apiUrl}/graphql`, {
     body: JSON.stringify(body),
-    headers: { 'content-type': 'application/json' },
+    headers,
     method: 'POST',
   });
 
@@ -149,6 +296,42 @@ async function readGraphql<T>(body: unknown): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+function assertNoGraphqlErrors(
+  payload: { errors?: GraphqlError[] },
+  label: string,
+): void {
+  if (payload.errors !== undefined && payload.errors.length > 0) {
+    throw new Error(
+      `${label} failed: ${payload.errors
+        .map((error) => JSON.stringify(error))
+        .join('; ')}`,
+    );
+  }
+}
+
+function assertProject(
+  project: ProjectSummary,
+  expected: { kind: string; slug: string; title: string },
+): void {
+  if (
+    project.kind !== expected.kind ||
+    project.slug !== expected.slug ||
+    project.title !== expected.title
+  ) {
+    throw new Error(
+      `Project mismatch: expected ${expected.kind} ${expected.slug} ${expected.title}, received ${project.kind} ${project.slug} ${project.title}`,
+    );
+  }
+}
+
+function required<T>(value: T | null | undefined, name: string): T {
+  if (value === null || value === undefined) {
+    throw new Error(`Missing ${name}`);
+  }
+
+  return value;
 }
 
 async function readJson<T>(url: string, name: string): Promise<T> {
