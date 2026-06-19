@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import {
   fetchModerationReports,
+  type ModerationReport,
   updateReportState,
   type ModerationReportState,
 } from '../../../lib/dashboard.ts';
@@ -14,6 +15,7 @@ const pageSize = 20;
 export function ModerationQueue() {
   const [page, setPage] = useState(1);
   const [updatingReportId, setUpdatingReportId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const reportsQuery = useQuery({
     queryFn: ({ signal }) => fetchModerationReports(page, pageSize, signal),
     queryKey: ['dashboard', 'moderation-reports', page],
@@ -24,12 +26,19 @@ export function ModerationQueue() {
   const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
   async function setReportState(id: string, state: ModerationReportState) {
     setUpdatingReportId(id);
+    setMessage(null);
+
     try {
-      await updateReportState(id, state);
+      const report = await updateReportState(id, state);
+      setMessage(reportStateUpdateMessage(report, state));
       await reportsQuery.refetch();
       if (reports.length === 1 && page > 1) {
         setPage((current) => current - 1);
       }
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'Report update failed',
+      );
     } finally {
       setUpdatingReportId(null);
     }
@@ -45,6 +54,12 @@ export function ModerationQueue() {
           {totalHits.toLocaleString('en-US')} active
         </span>
       </div>
+
+      {message && (
+        <p className="mt-4 rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+          {message}
+        </p>
+      )}
 
       {reportsQuery.isLoading ? (
         <div className="mt-4 grid gap-3">
@@ -85,4 +100,22 @@ export function ModerationQueue() {
       )}
     </section>
   );
+}
+
+export function reportStateUpdateMessage(
+  report: Pick<ModerationReport, 'state'>,
+  requestedState: ModerationReportState,
+) {
+  const state = report.state || requestedState;
+
+  switch (state) {
+    case 'TRIAGED':
+      return 'Marked report as triaged.';
+    case 'OPEN':
+      return 'Reopened report.';
+    case 'CLOSED':
+      return 'Closed report.';
+    default:
+      return 'Updated report.';
+  }
 }
