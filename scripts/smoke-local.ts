@@ -123,6 +123,27 @@ interface RevokeApiTokenResponse {
   errors?: GraphqlError[];
 }
 
+interface CreateOAuthClientResponse {
+  data?: {
+    createOAuthClient?: CreatedOAuthClient;
+  };
+  errors?: GraphqlError[];
+}
+
+interface RevokeOAuthClientResponse {
+  data?: {
+    revokeOAuthClient?: OAuthClientSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface ViewerOAuthClientSearchResponse {
+  data?: {
+    viewerOAuthClientSearch?: OAuthClientSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
 interface MailpitMessageList {
   messages?: MailpitMessageSummary[];
 }
@@ -428,6 +449,28 @@ interface ApiTokenSummary {
 interface CreatedApiToken {
   token: string;
   tokenSummary: ApiTokenSummary;
+}
+
+interface OAuthClientSummary {
+  clientId: string | null;
+  id: string;
+  name: string;
+  redirectUris: {
+    uri: string;
+  }[];
+  revokedAt: string | null;
+  scopes: string[];
+  status: string;
+}
+
+interface CreatedOAuthClient {
+  client: OAuthClientSummary;
+  clientSecret: string;
+}
+
+interface OAuthClientSearchResult {
+  clients: OAuthClientSummary[];
+  totalHits: number;
 }
 
 interface TwoFactorSetup {
@@ -1625,6 +1668,9 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
     versionNumber,
   });
+  await checkDeveloperApplicationFlow({
+    token: auth.accessToken,
+  });
   await checkFileScanFlow({
     fileId: required(publicVersion.files[0], 'public version file').id,
     projectSlug: slug,
@@ -1893,6 +1939,126 @@ async function checkApiTokenFlow(options: {
     'Invalid bearer token',
     'revoked API token project version read',
   );
+}
+
+async function checkDeveloperApplicationFlow(options: {
+  token: string;
+}): Promise<void> {
+  const redirectUri = 'http://localhost:3000/oauth/callback';
+  const createPayload = await readGraphql<CreateOAuthClientResponse>(
+    {
+      query: `
+        mutation SmokeCreateOAuthClient($input: CreateOAuthClientInput!) {
+          createOAuthClient(input: $input) {
+            clientSecret
+            client {
+              clientId
+              id
+              name
+              redirectUris {
+                uri
+              }
+              revokedAt
+              scopes
+              status
+            }
+          }
+        }
+      `,
+      variables: {
+        input: {
+          description: 'Smoke test OAuth application.',
+          homepageUrl: 'https://example.test/smoke-app',
+          name: 'Smoke OAuth application',
+          redirectUris: [redirectUri, ` ${redirectUri} `],
+          scopes: ['read:projects'],
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(createPayload, 'GraphQL create OAuth client');
+
+  const created = required(
+    createPayload.data?.createOAuthClient,
+    'created OAuth client',
+  );
+  if (
+    created.client.clientId === null ||
+    created.client.clientId.length === 0 ||
+    created.client.name !== 'Smoke OAuth application' ||
+    created.client.revokedAt !== null ||
+    created.client.status !== 'ACTIVE' ||
+    created.clientSecret.length === 0 ||
+    created.client.redirectUris.length !== 1 ||
+    created.client.redirectUris[0]?.uri !== redirectUri ||
+    created.client.scopes.length !== 1 ||
+    created.client.scopes[0] !== 'read:projects'
+  ) {
+    throw new Error('Created OAuth client did not match requested metadata');
+  }
+
+  const searchPayload = await readGraphql<ViewerOAuthClientSearchResponse>(
+    {
+      query: `
+        query SmokeOAuthClientSearch {
+          viewerOAuthClientSearch(limit: 20, offset: 0) {
+            clients {
+              id
+              name
+              revokedAt
+              status
+            }
+            totalHits
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(searchPayload, 'GraphQL OAuth client search');
+  const clientSearch = required(
+    searchPayload.data?.viewerOAuthClientSearch,
+    'OAuth client search',
+  );
+  const listedClient = clientSearch.clients.find(
+    (client) => client.id === created.client.id,
+  );
+  if (
+    listedClient?.name !== 'Smoke OAuth application' ||
+    listedClient.status !== 'ACTIVE'
+  ) {
+    throw new Error('Created OAuth client was not visible in viewer search');
+  }
+
+  const revokePayload = await readGraphql<RevokeOAuthClientResponse>(
+    {
+      query: `
+        mutation SmokeRevokeOAuthClient($clientId: String!) {
+          revokeOAuthClient(clientId: $clientId) {
+            id
+            name
+            revokedAt
+            status
+          }
+        }
+      `,
+      variables: { clientId: created.client.id },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(revokePayload, 'GraphQL revoke OAuth client');
+  const revokedClient = required(
+    revokePayload.data?.revokeOAuthClient,
+    'revoked OAuth client',
+  );
+  if (
+    revokedClient.id !== created.client.id ||
+    revokedClient.revokedAt === null ||
+    revokedClient.status !== 'REVOKED'
+  ) {
+    throw new Error('Revoked OAuth client did not return revocation metadata');
+  }
 }
 
 async function checkReviewNotification(options: {
@@ -4029,6 +4195,22 @@ async function checkAuditLogFlow(options: {
     return (
       log.action === 'SECURITY_EVENT' &&
       log.securityAction === 'API_TOKEN_REVOKED' &&
+      log.actor?.username === options.username &&
+      log.targetUser?.username === options.username
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'OAuth client create audit log', (log) => {
+    return (
+      log.action === 'SECURITY_EVENT' &&
+      log.securityAction === 'OAUTH_CLIENT_CREATED' &&
+      log.actor?.username === options.username &&
+      log.targetUser?.username === options.username
+    );
+  });
+  assertAuditLogEvent(auditLogs, 'OAuth client revoke audit log', (log) => {
+    return (
+      log.action === 'SECURITY_EVENT' &&
+      log.securityAction === 'OAUTH_CLIENT_REVOKED' &&
       log.actor?.username === options.username &&
       log.targetUser?.username === options.username
     );

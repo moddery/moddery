@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { AuthTokenService } from '../../auth/services/auth-token.service.js';
 import { normalizeCredentialScopes } from '../../auth/services/credential-scopes.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -17,6 +18,7 @@ const clientSecretPrefix = 'mdy_secret';
 export class DeveloperService {
   constructor(
     private readonly authTokenService: AuthTokenService,
+    private readonly auditService: AuditService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -83,6 +85,16 @@ export class DeveloperService {
       },
       select: oauthClientSelect(),
     });
+    await this.auditService.recordSecurityEvent({
+      action: 'OAUTH_CLIENT_CREATED',
+      actorId: ownerId,
+      metadata: {
+        oauthClientId: client.id,
+        oauthClientName: client.name,
+        scopes: client.scopes,
+      },
+      targetUserId: ownerId,
+    });
 
     return { client, clientSecret };
   }
@@ -109,10 +121,21 @@ export class DeveloperService {
       throw new NotFoundException('Application not found');
     }
 
-    return this.prisma.oAuthClient.findUniqueOrThrow({
+    const client = await this.prisma.oAuthClient.findUniqueOrThrow({
       select: oauthClientSelect(),
       where: { id: clientId },
     });
+    await this.auditService.recordSecurityEvent({
+      action: 'OAUTH_CLIENT_REVOKED',
+      actorId: ownerId,
+      metadata: {
+        oauthClientId: client.id,
+        oauthClientName: client.name,
+      },
+      targetUserId: ownerId,
+    });
+
+    return client;
   }
 }
 

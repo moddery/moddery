@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { type AuditService } from '../../audit/audit.service.js';
 import { type AuthTokenService } from '../../auth/services/auth-token.service.js';
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { DeveloperService } from './developer.service.js';
@@ -8,10 +9,13 @@ describe(DeveloperService.name, () => {
   const authTokenService = {
     hashToken: (token: string) => `hash:${token}`,
   } as AuthTokenService;
+  const auditService = {
+    recordSecurityEvent: () => Promise.resolve(),
+  } as unknown as AuditService;
 
   test('loads viewer applications with pagination', async () => {
     const queries: unknown[] = [];
-    const service = new DeveloperService(authTokenService, {
+    const service = new DeveloperService(authTokenService, auditService, {
       oAuthClient: {
         count: (query: unknown) => {
           queries.push({ count: query });
@@ -49,7 +53,7 @@ describe(DeveloperService.name, () => {
   });
 
   test('loads the legacy viewer application list from search results', async () => {
-    const service = new DeveloperService(authTokenService, {
+    const service = new DeveloperService(authTokenService, auditService, {
       oAuthClient: {
         count: () => Promise.resolve(2),
         findMany: () =>
@@ -69,15 +73,20 @@ describe(DeveloperService.name, () => {
   });
 
   test('creates viewer applications with normalized redirect URIs', async () => {
+    const auditEvents: unknown[] = [];
     const creates: unknown[] = [];
-    const service = new DeveloperService(authTokenService, {
-      oAuthClient: {
-        create: (query: unknown) => {
-          creates.push(query);
-          return Promise.resolve(oauthClientRow());
+    const service = new DeveloperService(
+      authTokenService,
+      fakeAuditService(auditEvents),
+      {
+        oAuthClient: {
+          create: (query: unknown) => {
+            creates.push(query);
+            return Promise.resolve(oauthClientRow());
+          },
         },
-      },
-    } as unknown as PrismaService);
+      } as unknown as PrismaService,
+    );
 
     const created = await service.createViewerOAuthClient({
       input: {
@@ -108,10 +117,21 @@ describe(DeveloperService.name, () => {
         }),
       }),
     );
+    expect(auditEvents[0]).toEqual({
+      action: 'OAUTH_CLIENT_CREATED',
+      actorId: 'user-a',
+      metadata: {
+        oauthClientId: 'client-a',
+        oauthClientName: 'CLI tool',
+        scopes: ['read:projects'],
+      },
+      targetUserId: 'user-a',
+    });
+    expect(JSON.stringify(auditEvents)).not.toContain(created.clientSecret);
   });
 
   test('rejects invalid redirect URIs', async () => {
-    const service = new DeveloperService(authTokenService, {
+    const service = new DeveloperService(authTokenService, auditService, {
       oAuthClient: {
         create: () => Promise.resolve(oauthClientRow()),
       },
@@ -138,7 +158,7 @@ describe(DeveloperService.name, () => {
 
   test('rejects unsupported application scopes', async () => {
     const creates: unknown[] = [];
-    const service = new DeveloperService(authTokenService, {
+    const service = new DeveloperService(authTokenService, auditService, {
       oAuthClient: {
         create: (query: unknown) => {
           creates.push(query);
@@ -169,19 +189,26 @@ describe(DeveloperService.name, () => {
   });
 
   test('revokes viewer-owned applications', async () => {
+    const auditEvents: unknown[] = [];
     const updates: unknown[] = [];
-    const service = new DeveloperService(authTokenService, {
-      oAuthClient: {
-        findUniqueOrThrow: () =>
-          Promise.resolve(
-            oauthClientRow({ revokedAt: new Date('2026-01-01T00:00:00.000Z') }),
-          ),
-        updateMany: (query: unknown) => {
-          updates.push(query);
-          return Promise.resolve({ count: 1 });
+    const service = new DeveloperService(
+      authTokenService,
+      fakeAuditService(auditEvents),
+      {
+        oAuthClient: {
+          findUniqueOrThrow: () =>
+            Promise.resolve(
+              oauthClientRow({
+                revokedAt: new Date('2026-01-01T00:00:00.000Z'),
+              }),
+            ),
+          updateMany: (query: unknown) => {
+            updates.push(query);
+            return Promise.resolve({ count: 1 });
+          },
         },
-      },
-    } as unknown as PrismaService);
+      } as unknown as PrismaService,
+    );
 
     const client = await service.revokeViewerOAuthClient({
       clientId: 'client-a',
@@ -201,8 +228,26 @@ describe(DeveloperService.name, () => {
       }),
     );
     expect(client.revokedAt).toEqual(new Date('2026-01-01T00:00:00.000Z'));
+    expect(auditEvents[0]).toEqual({
+      action: 'OAUTH_CLIENT_REVOKED',
+      actorId: 'user-a',
+      metadata: {
+        oauthClientId: 'client-a',
+        oauthClientName: 'CLI tool',
+      },
+      targetUserId: 'user-a',
+    });
   });
 });
+
+function fakeAuditService(events: unknown[]) {
+  return {
+    recordSecurityEvent: (event: unknown) => {
+      events.push(event);
+      return Promise.resolve();
+    },
+  } as unknown as AuditService;
+}
 
 function oauthClientRow({
   id = 'client-a',

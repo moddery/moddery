@@ -242,6 +242,8 @@ export type SecurityAuditAction =
   | 'API_TOKEN_REVOKED'
   | 'ACCOUNT_CREDENTIALS_REVOKED'
   | 'EMAIL_VERIFICATION_CONFIRMED'
+  | 'OAUTH_CLIENT_CREATED'
+  | 'OAUTH_CLIENT_REVOKED'
   | 'PASSWORD_RESET_CONFIRMED'
   | 'SESSION_CREATED'
   | 'SESSION_REVOKED'
@@ -250,6 +252,8 @@ export type SecurityAuditAction =
 
 export interface SecurityAuditMetadata extends Prisma.InputJsonObject {
   expiresAt?: string | null;
+  oauthClientId?: string;
+  oauthClientName?: string;
   revokedApiTokens?: number;
   revokedSessions?: number;
   scopes?: string[];
@@ -435,6 +439,8 @@ function rowActionIsSecurity(
     metadata.action === 'API_TOKEN_CREATED' ||
     metadata.action === 'API_TOKEN_REVOKED' ||
     metadata.action === 'EMAIL_VERIFICATION_CONFIRMED' ||
+    metadata.action === 'OAUTH_CLIENT_CREATED' ||
+    metadata.action === 'OAUTH_CLIENT_REVOKED' ||
     metadata.action === 'PASSWORD_RESET_CONFIRMED' ||
     metadata.action === 'SESSION_CREATED' ||
     metadata.action === 'SESSION_REVOKED' ||
