@@ -9,6 +9,7 @@ import {
 } from '../../../lib/dashboard.ts';
 import { useQuery } from '@tanstack/react-query';
 import { PublishVersionFields } from './publish-version/PublishVersionFields.tsx';
+import { assertCreateVersionInput } from './publish-version/publish-version-input.ts';
 import { usePublishVersionFormState } from './publish-version/usePublishVersionFormState.ts';
 
 export function PublishVersionForm({
@@ -50,6 +51,7 @@ export function PublishVersionForm({
           url: target.objectUrl,
         };
       }
+      assertCreateVersionInput(input);
       const version = await createVersion(input);
       setCreated(`${version.name} ${version.versionNumber}`);
       setLocalFile(null);
