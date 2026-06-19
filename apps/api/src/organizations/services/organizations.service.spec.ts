@@ -38,7 +38,7 @@ describe(OrganizationsService.name, () => {
         description: '  Creator group  ',
         iconUrl: ' https://cdn.example.test/org.png ',
         name: 'Seed Organization',
-        slug: 'seed',
+        slug: ' Seed Organization! ',
       },
       'user-a',
     );
@@ -46,11 +46,41 @@ describe(OrganizationsService.name, () => {
     expect(transactionSteps[0]).toBe('team');
     expect(transactionSteps[1]).toContain('"isOwner":true');
     expect(transactionSteps[2]).toContain('"ownerId":"user-a"');
+    expect(transactionSteps[2]).toContain('"slug":"seed-organization"');
     expect(transactionSteps[2]).toContain('"description":"Creator group"');
     expect(transactionSteps[2]).toContain(
       '"iconUrl":"https://cdn.example.test/org.png"',
     );
     expect(organization.slug).toBe('seed');
+  });
+
+  test('rejects invalid organization identity before creating teams', async () => {
+    const service = new OrganizationsService({
+      $transaction: () => {
+        throw new Error('Organization transaction should not run');
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createOrganization(
+        {
+          color: null,
+          description: null,
+          iconUrl: null,
+          name: 'Seed Organization',
+          slug: '!!',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Organization slug must be at least 3 characters',
+    );
   });
 
   test('loads organizations owned by the viewer', async () => {

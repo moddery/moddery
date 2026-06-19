@@ -99,6 +99,31 @@ describe(OrganizationManagementService.name, () => {
     expect(organization.id).toBe('org-a');
   });
 
+  test('rejects invalid organization project links before lookups', async () => {
+    const service = createService({
+      organization: {
+        findFirst: () => {
+          throw new Error('Organization lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.addProjectToOrganization(
+        {
+          organizationId: 'org-a',
+          projectSlug: ' ',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project is required');
+  });
+
   test('adds organization team members for member managers', async () => {
     const auditEvents: unknown[] = [];
     const notifications: unknown[] = [];
@@ -280,6 +305,33 @@ describe(OrganizationManagementService.name, () => {
     expect(organization.id).toBe('org-a');
   });
 
+  test('rejects invalid organization team member inputs before lookups', async () => {
+    const service = createService({
+      organization: {
+        findFirst: () => {
+          throw new Error('Organization lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.addOrganizationTeamMember(
+        {
+          organizationId: 'org-a',
+          permissions: [],
+          role: 'Member',
+          username: ' ',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Username is required');
+  });
+
   test('does not remove organization owners', async () => {
     const service = createService({
       organization: {
@@ -345,7 +397,7 @@ describe(OrganizationManagementService.name, () => {
         iconUrl: '  ',
         name: ' Updated Organization ',
         organizationId: 'org-a',
-        slug: 'updated',
+        slug: ' Updated Organization! ',
       },
       'user-a',
     );
@@ -356,11 +408,40 @@ describe(OrganizationManagementService.name, () => {
         description: 'Updated group',
         iconUrl: null,
         name: 'Updated Organization',
-        slug: 'updated',
+        slug: 'updated-organization',
       },
       where: { id: 'org-a' },
     });
     expect(organization.name).toBe('Updated Organization');
+  });
+
+  test('rejects invalid organization updates before lookups', async () => {
+    const service = createService({
+      organization: {
+        findFirst: () => {
+          throw new Error('Organization lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateOrganization(
+        {
+          name: 'Updated Organization',
+          organizationId: 'org-a',
+          slug: '!!',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Organization slug must be at least 3 characters',
+    );
   });
 });
 

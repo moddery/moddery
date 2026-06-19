@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -31,10 +32,15 @@ export class OrganizationManagementService {
     input: AddProjectToOrganizationInput,
     userId: string,
   ) {
+    const organizationId = requiredText(
+      input.organizationId,
+      'Organization is required',
+    );
+    const projectSlug = requiredText(input.projectSlug, 'Project is required');
     const organization = await this.prisma.organization.findFirst({
       select: { id: true },
       where: {
-        id: input.organizationId,
+        id: organizationId,
         ownerId: userId,
       },
     });
@@ -46,7 +52,7 @@ export class OrganizationManagementService {
     const project = await this.prisma.project.findFirst({
       select: { id: true },
       where: {
-        slug: input.projectSlug,
+        slug: projectSlug,
         team: {
           members: {
             some: {
@@ -74,13 +80,18 @@ export class OrganizationManagementService {
     input: AddOrganizationTeamMemberInput,
     userId: string,
   ) {
-    const organization = await this.findOrganizationForMemberManagement(
+    const organizationId = requiredText(
       input.organizationId,
+      'Organization is required',
+    );
+    const username = requiredText(input.username, 'Username is required');
+    const organization = await this.findOrganizationForMemberManagement(
+      organizationId,
       userId,
     );
     const user = await this.prisma.user.findFirst({
       select: { id: true },
-      where: { username: { equals: input.username, mode: 'insensitive' } },
+      where: { username: { equals: username, mode: 'insensitive' } },
     });
 
     if (user === null) {
@@ -144,10 +155,15 @@ export class OrganizationManagementService {
     input: RemoveProjectFromOrganizationInput,
     ownerId: string,
   ) {
+    const organizationId = requiredText(
+      input.organizationId,
+      'Organization is required',
+    );
+    const projectSlug = requiredText(input.projectSlug, 'Project is required');
     const organization = await this.prisma.organization.findFirst({
       select: { id: true },
       where: {
-        id: input.organizationId,
+        id: organizationId,
         ownerId,
       },
     });
@@ -160,7 +176,7 @@ export class OrganizationManagementService {
       select: { id: true },
       where: {
         organizationId: organization.id,
-        slug: input.projectSlug,
+        slug: projectSlug,
         team: {
           members: {
             some: {
@@ -188,8 +204,13 @@ export class OrganizationManagementService {
     input: RemoveOrganizationTeamMemberInput,
     userId: string,
   ) {
-    const organization = await this.findOrganizationForMemberManagement(
+    const organizationId = requiredText(
       input.organizationId,
+      'Organization is required',
+    );
+    const username = requiredText(input.username, 'Username is required');
+    const organization = await this.findOrganizationForMemberManagement(
+      organizationId,
       userId,
     );
     const member = await this.prisma.teamMember.findFirst({
@@ -199,7 +220,7 @@ export class OrganizationManagementService {
       },
       where: {
         teamId: organization.teamId,
-        user: { username: { equals: input.username, mode: 'insensitive' } },
+        user: { username: { equals: username, mode: 'insensitive' } },
       },
     });
 
@@ -231,10 +252,11 @@ export class OrganizationManagementService {
   }
 
   async updateOrganization(input: UpdateOrganizationInput, ownerId: string) {
+    const normalized = normalizeUpdateOrganizationInput(input);
     const organization = await this.prisma.organization.findFirst({
       select: { id: true },
       where: {
-        id: input.organizationId,
+        id: normalized.organizationId,
         ownerId,
       },
     });
@@ -253,8 +275,8 @@ export class OrganizationManagementService {
             : nullableTrim(input.description),
         iconUrl:
           input.iconUrl === undefined ? undefined : nullableTrim(input.iconUrl),
-        name: input.name == null ? undefined : input.name.trim(),
-        slug: input.slug == null ? undefined : input.slug.trim(),
+        name: normalized.name,
+        slug: normalized.slug,
       },
       where: { id: organization.id },
     });
@@ -383,4 +405,49 @@ function organizationMemberPermissions(
       ? [permission as TeamPermission]
       : [],
   );
+}
+
+function normalizeUpdateOrganizationInput(input: UpdateOrganizationInput): {
+  name?: string;
+  organizationId: string;
+  slug?: string;
+} {
+  const organizationId = requiredText(
+    input.organizationId,
+    'Organization is required',
+  );
+  const name =
+    input.name === undefined || input.name === null
+      ? undefined
+      : requiredText(input.name, 'Organization name is required');
+  const slug =
+    input.slug === undefined || input.slug === null
+      ? undefined
+      : normalizeOrganizationSlug(input.slug);
+
+  if (slug !== undefined && slug.length < 3) {
+    throw new BadRequestException(
+      'Organization slug must be at least 3 characters',
+    );
+  }
+
+  return { name, organizationId, slug };
+}
+
+function requiredText(value: string, message: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new BadRequestException(message);
+  }
+
+  return trimmed;
+}
+
+function normalizeOrganizationSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
 }

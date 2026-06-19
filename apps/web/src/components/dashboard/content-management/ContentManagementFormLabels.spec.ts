@@ -11,6 +11,13 @@ import {
   normalizeCreateCollectionInput,
   normalizeUpdateCollectionInput,
 } from './collection-input.ts';
+import {
+  assertOrganizationInput,
+  assertUpdateOrganizationInput,
+  normalizeCreateOrganizationInput,
+  normalizeOrganizationSlug,
+  normalizeUpdateOrganizationInput,
+} from './organization-input.ts';
 
 describe('content management form labels', () => {
   test('describes collection creation states', () => {
@@ -113,5 +120,82 @@ describe(assertUpdateCollectionInput.name, () => {
         visibility: 'PUBLIC',
       });
     }).toThrow('Choose a collection before saving');
+  });
+});
+
+describe(normalizeCreateOrganizationInput.name, () => {
+  test('normalizes organization creation fields', () => {
+    expect(
+      normalizeCreateOrganizationInput({
+        color: ' #1d9bf0 ',
+        description: ' Example group ',
+        iconUrl: ' https://example.test/icon.png ',
+        name: ' Example Org ',
+        slug: ' Example Org! ',
+      }),
+    ).toEqual({
+      color: '#1d9bf0',
+      description: 'Example group',
+      iconUrl: 'https://example.test/icon.png',
+      name: 'Example Org',
+      slug: 'example-org',
+    });
+  });
+});
+
+describe(normalizeUpdateOrganizationInput.name, () => {
+  test('normalizes organization update fields', () => {
+    expect(
+      normalizeUpdateOrganizationInput({
+        color: ' ',
+        description: '',
+        iconUrl: ' ',
+        name: ' Updated Org ',
+        organizationId: ' org-a ',
+        slug: ' Updated Org ',
+      }),
+    ).toEqual({
+      color: null,
+      description: null,
+      iconUrl: null,
+      name: 'Updated Org',
+      organizationId: 'org-a',
+      slug: 'updated-org',
+    });
+  });
+});
+
+describe(normalizeOrganizationSlug.name, () => {
+  test('returns canonical organization slugs', () => {
+    expect(normalizeOrganizationSlug(' Example Org! ')).toBe('example-org');
+  });
+});
+
+describe(assertOrganizationInput.name, () => {
+  test('rejects blank organization names', () => {
+    expect(() => {
+      assertOrganizationInput({ name: ' ', slug: 'example' });
+    }).toThrow('Organization name is required');
+  });
+
+  test('rejects unusable organization slugs', () => {
+    expect(() => {
+      assertOrganizationInput({ name: 'Example', slug: '!!' });
+    }).toThrow('Organization slug must be at least 3 characters');
+  });
+});
+
+describe(assertUpdateOrganizationInput.name, () => {
+  test('rejects missing selected organizations', () => {
+    expect(() => {
+      assertUpdateOrganizationInput({
+        color: null,
+        description: null,
+        iconUrl: null,
+        name: 'Example',
+        organizationId: ' ',
+        slug: 'example',
+      });
+    }).toThrow('Choose an organization before saving');
   });
 });

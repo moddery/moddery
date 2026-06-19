@@ -5,6 +5,10 @@ import {
   type DashboardOrganization,
   type UpdateOrganizationInput,
 } from '../../../lib/dashboard.ts';
+import {
+  assertUpdateOrganizationInput,
+  normalizeUpdateOrganizationInput,
+} from './organization-input.ts';
 import { DashboardField } from './shared.tsx';
 
 export function EditOrganizationForm({
@@ -49,16 +53,17 @@ export function EditOrganizationForm({
     setSubmitting(true);
     setError(null);
 
-    const input: UpdateOrganizationInput = {
-      color: color.trim() || null,
-      description: description.trim() || null,
-      iconUrl: iconUrl.trim() || null,
+    const input: UpdateOrganizationInput = normalizeUpdateOrganizationInput({
+      color,
+      description,
+      iconUrl,
       name,
       organizationId,
       slug,
-    };
+    });
 
     try {
+      assertUpdateOrganizationInput(input);
       await updateOrganization(input);
       await onUpdated();
     } catch (caught) {

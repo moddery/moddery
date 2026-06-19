@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type CreateOrganizationInput } from '../dto/create-organization.input.js';
@@ -12,6 +12,7 @@ export class OrganizationsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createOrganization(input: CreateOrganizationInput, ownerId: string) {
+    const normalized = normalizeCreateOrganizationInput(input);
     const color = input.color?.trim() ?? '';
     const description = input.description?.trim() ?? '';
     const iconUrl = input.iconUrl?.trim() ?? '';
@@ -43,9 +44,9 @@ export class OrganizationsService {
           color: color.length === 0 ? null : color,
           description: description.length === 0 ? null : description,
           iconUrl: iconUrl.length === 0 ? null : iconUrl,
-          name: input.name.trim(),
+          name: normalized.name,
           ownerId,
-          slug: input.slug.trim(),
+          slug: normalized.slug,
           teamId: team.id,
         },
         select: organizationSelect(8, { includeDraftProjects: true }),
@@ -64,4 +65,33 @@ export class OrganizationsService {
 
     return organizations.map(organizationRowToContract);
   }
+}
+
+function normalizeCreateOrganizationInput(input: CreateOrganizationInput): {
+  name: string;
+  slug: string;
+} {
+  const name = input.name.trim();
+  const slug = normalizeOrganizationSlug(input.slug);
+
+  if (name.length === 0) {
+    throw new BadRequestException('Organization name is required');
+  }
+
+  if (slug.length < 3) {
+    throw new BadRequestException(
+      'Organization slug must be at least 3 characters',
+    );
+  }
+
+  return { name, slug };
+}
+
+function normalizeOrganizationSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
 }

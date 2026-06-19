@@ -9,6 +9,10 @@ import {
 import { DashboardField } from './shared.tsx';
 import { EditOrganizationForm } from './EditOrganizationForm.tsx';
 import { OrganizationProjectForms } from './OrganizationProjectForms.tsx';
+import {
+  assertOrganizationInput,
+  normalizeCreateOrganizationInput,
+} from './organization-input.ts';
 
 export function CreateOrganizationForm({
   onCreated,
@@ -32,15 +36,16 @@ export function CreateOrganizationForm({
     setSubmitting(true);
     setError(null);
 
-    const input: CreateOrganizationInput = {
-      color: color.trim() || null,
-      description: description.trim() || null,
-      iconUrl: iconUrl.trim() || null,
+    const input: CreateOrganizationInput = normalizeCreateOrganizationInput({
+      color,
+      description,
+      iconUrl,
       name,
       slug,
-    };
+    });
 
     try {
+      assertOrganizationInput(input);
       await createOrganization(input);
       setName('');
       setSlug('');
