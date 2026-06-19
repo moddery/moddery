@@ -32,6 +32,50 @@ interface RegisterResponse {
   errors?: GraphqlError[];
 }
 
+interface FriendshipResponse {
+  data?: {
+    acceptFriendRequest?: FriendshipSummary;
+    sendFriendRequest?: FriendshipSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface FriendshipSearchResponse {
+  data?: {
+    viewerFriendRequestSearch?: FriendshipSearchResult;
+    viewerFriendSearch?: FriendshipSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
+interface CreateDirectThreadResponse {
+  data?: {
+    createDirectThread?: ThreadSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface CreateDirectThreadMessageResponse {
+  data?: {
+    createDirectThreadMessage?: ThreadSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface MarkDirectThreadReadResponse {
+  data?: {
+    markDirectThreadRead?: ThreadSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface DirectThreadSearchResponse {
+  data?: {
+    viewerDirectThreadSearch?: ThreadSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
 interface CreateProjectResponse {
   data?: {
     createProject?: ProjectSummary;
@@ -245,6 +289,40 @@ interface ProjectSearchResponse {
   errors?: GraphqlError[];
 }
 
+interface FriendshipSummary {
+  direction: string;
+  state: string;
+  user: {
+    username: string;
+  };
+}
+
+interface FriendshipSearchResult {
+  friendships: FriendshipSummary[];
+  totalHits: number;
+}
+
+interface ThreadSummary {
+  id: string;
+  members: {
+    user: {
+      username: string;
+    };
+  }[];
+  messages: {
+    author: {
+      username: string;
+    };
+    body: string;
+  }[];
+  subject: string;
+}
+
+interface ThreadSearchResult {
+  threads: ThreadSummary[];
+  totalHits: number;
+}
+
 async function main(): Promise<void> {
   await checkReadiness();
   await checkWeb();
@@ -315,14 +393,11 @@ async function checkProjectType(kind: string): Promise<void> {
   }
 }
 
-async function checkCreatorFlow(): Promise<void> {
-  const suffix = `${Date.now().toString(36)}${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
-  const username = `smoke_${suffix}`;
-  const slug = `smoke-${suffix}`;
-  const title = `Smoke Project ${suffix}`;
-
+async function registerSmokeUser(input: {
+  email: string;
+  password: string;
+  username: string;
+}): Promise<AuthPayload> {
   const registerPayload = await readGraphql<RegisterResponse>({
     query: `
       mutation SmokeRegister($input: RegisterInput!) {
@@ -335,21 +410,47 @@ async function checkCreatorFlow(): Promise<void> {
       }
     `,
     variables: {
-      input: {
-        email: `${username}@example.test`,
-        password: `password-${suffix}`,
-        username,
-      },
+      input,
     },
   });
   assertNoGraphqlErrors(registerPayload, 'GraphQL register');
 
   const auth = required(registerPayload.data?.register, 'register payload');
-  if (auth.user.username !== username) {
+  if (auth.user.username !== input.username) {
     throw new Error(
-      `Registered username mismatch: expected ${username}, received ${auth.user.username}`,
+      `Registered username mismatch: expected ${input.username}, received ${auth.user.username}`,
     );
   }
+
+  return auth;
+}
+
+async function checkCreatorFlow(): Promise<void> {
+  const suffix = `${Date.now().toString(36)}${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const username = `smoke_${suffix}`;
+  const peerUsername = `smoke_peer_${suffix}`;
+  const slug = `smoke-${suffix}`;
+  const title = `Smoke Project ${suffix}`;
+
+  const auth = await registerSmokeUser({
+    email: `${username}@example.test`,
+    password: `password-${suffix}`,
+    username,
+  });
+  const peerAuth = await registerSmokeUser({
+    email: `${peerUsername}@example.test`,
+    password: `password-${suffix}-peer`,
+    username: peerUsername,
+  });
+
+  await checkSocialFlow({
+    peerToken: peerAuth.accessToken,
+    peerUsername,
+    token: auth.accessToken,
+    username,
+  });
 
   const createPayload = await readGraphql<CreateProjectResponse>(
     {
@@ -540,6 +641,359 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
     username,
   });
+}
+
+async function checkSocialFlow(options: {
+  peerToken: string;
+  peerUsername: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const requestPayload = await readGraphql<FriendshipResponse>(
+    {
+      query: `
+        mutation SmokeSendFriendRequest($username: String!) {
+          sendFriendRequest(username: $username) {
+            direction
+            state
+            user {
+              username
+            }
+          }
+        }
+      `,
+      variables: { username: options.peerUsername },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(requestPayload, 'GraphQL send friend request');
+  assertFriendship(
+    required(requestPayload.data?.sendFriendRequest, 'sent friend request'),
+    {
+      direction: 'OUTGOING',
+      state: 'PENDING',
+      username: options.peerUsername,
+    },
+  );
+
+  const peerRequestsPayload = await readGraphql<FriendshipSearchResponse>(
+    {
+      query: `
+        query SmokeViewerFriendRequestSearch {
+          viewerFriendRequestSearch(limit: 5, offset: 0) {
+            friendships {
+              direction
+              state
+              user {
+                username
+              }
+            }
+            totalHits
+          }
+        }
+      `,
+    },
+    options.peerToken,
+  );
+  assertNoGraphqlErrors(
+    peerRequestsPayload,
+    'GraphQL viewer friend request search',
+  );
+
+  const peerRequests = required(
+    peerRequestsPayload.data?.viewerFriendRequestSearch,
+    'viewer friend request search',
+  );
+  if (peerRequests.totalHits < 1) {
+    throw new Error('Peer friend request search returned no requests');
+  }
+  assertFriendship(
+    required(
+      peerRequests.friendships.find(
+        (friendship) => friendship.user.username === options.username,
+      ),
+      'incoming friend request',
+    ),
+    {
+      direction: 'INCOMING',
+      state: 'PENDING',
+      username: options.username,
+    },
+  );
+
+  const acceptPayload = await readGraphql<FriendshipResponse>(
+    {
+      query: `
+        mutation SmokeAcceptFriendRequest($username: String!) {
+          acceptFriendRequest(username: $username) {
+            direction
+            state
+            user {
+              username
+            }
+          }
+        }
+      `,
+      variables: { username: options.username },
+    },
+    options.peerToken,
+  );
+  assertNoGraphqlErrors(acceptPayload, 'GraphQL accept friend request');
+  assertFriendship(
+    required(acceptPayload.data?.acceptFriendRequest, 'accepted friendship'),
+    {
+      direction: 'MUTUAL',
+      state: 'ACCEPTED',
+      username: options.username,
+    },
+  );
+
+  const viewerFriendsPayload = await readGraphql<FriendshipSearchResponse>(
+    {
+      query: `
+        query SmokeViewerFriendSearch {
+          viewerFriendSearch(limit: 5, offset: 0) {
+            friendships {
+              direction
+              state
+              user {
+                username
+              }
+            }
+            totalHits
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(viewerFriendsPayload, 'GraphQL viewer friend search');
+
+  const viewerFriends = required(
+    viewerFriendsPayload.data?.viewerFriendSearch,
+    'viewer friend search',
+  );
+  if (viewerFriends.totalHits < 1) {
+    throw new Error('Viewer friend search returned no friends');
+  }
+  assertFriendship(
+    required(
+      viewerFriends.friendships.find(
+        (friendship) => friendship.user.username === options.peerUsername,
+      ),
+      'viewer friend',
+    ),
+    {
+      direction: 'MUTUAL',
+      state: 'ACCEPTED',
+      username: options.peerUsername,
+    },
+  );
+
+  await checkDirectThreadFlow(options);
+}
+
+async function checkDirectThreadFlow(options: {
+  peerToken: string;
+  peerUsername: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const firstMessage = `Hello ${options.peerUsername}`;
+  const replyMessage = `Reply to ${options.username}`;
+  const createPayload = await readGraphql<CreateDirectThreadResponse>(
+    {
+      query: `
+        mutation SmokeCreateDirectThread($input: CreateDirectThreadInput!) {
+          createDirectThread(input: $input) {
+            id
+            members {
+              user {
+                username
+              }
+            }
+            messages {
+              author {
+                username
+              }
+              body
+            }
+            subject
+          }
+        }
+      `,
+      variables: {
+        input: {
+          body: firstMessage,
+          username: options.peerUsername,
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(createPayload, 'GraphQL create direct thread');
+
+  const createdThread = required(
+    createPayload.data?.createDirectThread,
+    'created direct thread',
+  );
+  assertDirectThread(createdThread, {
+    messages: [{ body: firstMessage, username: options.username }],
+    usernames: [options.username, options.peerUsername],
+  });
+
+  const replyPayload = await readGraphql<CreateDirectThreadMessageResponse>(
+    {
+      query: `
+        mutation SmokeCreateDirectThreadMessage($input: CreateDirectThreadMessageInput!) {
+          createDirectThreadMessage(input: $input) {
+            id
+            members {
+              user {
+                username
+              }
+            }
+            messages {
+              author {
+                username
+              }
+              body
+            }
+            subject
+          }
+        }
+      `,
+      variables: {
+        input: {
+          body: replyMessage,
+          threadId: createdThread.id,
+        },
+      },
+    },
+    options.peerToken,
+  );
+  assertNoGraphqlErrors(replyPayload, 'GraphQL create direct thread message');
+
+  assertDirectThread(
+    required(replyPayload.data?.createDirectThreadMessage, 'replied thread'),
+    {
+      messages: [
+        { body: firstMessage, username: options.username },
+        { body: replyMessage, username: options.peerUsername },
+      ],
+      threadId: createdThread.id,
+      usernames: [options.username, options.peerUsername],
+    },
+  );
+
+  await assertViewerCanSeeDirectThread({
+    expectedMessages: [firstMessage, replyMessage],
+    threadId: createdThread.id,
+    token: options.token,
+    username: options.username,
+  });
+  await assertViewerCanSeeDirectThread({
+    expectedMessages: [firstMessage, replyMessage],
+    threadId: createdThread.id,
+    token: options.peerToken,
+    username: options.peerUsername,
+  });
+
+  const readPayload = await readGraphql<MarkDirectThreadReadResponse>(
+    {
+      query: `
+        mutation SmokeMarkDirectThreadRead($threadId: String!) {
+          markDirectThreadRead(threadId: $threadId) {
+            id
+            members {
+              user {
+                username
+              }
+            }
+            messages {
+              author {
+                username
+              }
+              body
+            }
+            subject
+          }
+        }
+      `,
+      variables: { threadId: createdThread.id },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(readPayload, 'GraphQL mark direct thread read');
+  assertDirectThread(
+    required(readPayload.data?.markDirectThreadRead, 'read direct thread'),
+    {
+      messages: [
+        { body: firstMessage, username: options.username },
+        { body: replyMessage, username: options.peerUsername },
+      ],
+      threadId: createdThread.id,
+      usernames: [options.username, options.peerUsername],
+    },
+  );
+}
+
+async function assertViewerCanSeeDirectThread(options: {
+  expectedMessages: string[];
+  threadId: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const payload = await readGraphql<DirectThreadSearchResponse>(
+    {
+      query: `
+        query SmokeViewerDirectThreadSearch {
+          viewerDirectThreadSearch(limit: 5, offset: 0) {
+            threads {
+              id
+              members {
+                user {
+                  username
+                }
+              }
+              messages {
+                author {
+                  username
+                }
+                body
+              }
+              subject
+            }
+            totalHits
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL viewer direct thread search');
+
+  const result = required(
+    payload.data?.viewerDirectThreadSearch,
+    'viewer direct thread search',
+  );
+  if (result.totalHits < 1) {
+    throw new Error(
+      `Viewer ${options.username} direct thread search returned no threads`,
+    );
+  }
+
+  const thread = required(
+    result.threads.find((item) => item.id === options.threadId),
+    `direct thread visible to ${options.username}`,
+  );
+  for (const message of options.expectedMessages) {
+    if (!thread.messages.some((item) => item.body === message)) {
+      throw new Error(
+        `Thread ${options.threadId} visible to ${options.username} is missing message ${message}`,
+      );
+    }
+  }
 }
 
 async function checkCollectionFlow(options: {
@@ -1257,6 +1711,58 @@ function assertCollection(
     slug: expected.projectSlug,
     title: required(expected.projectTitle, 'collection project title'),
   });
+}
+
+function assertFriendship(
+  friendship: FriendshipSummary,
+  expected: { direction: string; state: string; username: string },
+): void {
+  if (
+    friendship.direction !== expected.direction ||
+    friendship.state !== expected.state ||
+    friendship.user.username !== expected.username
+  ) {
+    throw new Error(
+      `Friendship mismatch: expected ${expected.direction} ${expected.state} ${expected.username}, received ${friendship.direction} ${friendship.state} ${friendship.user.username}`,
+    );
+  }
+}
+
+function assertDirectThread(
+  thread: ThreadSummary,
+  expected: {
+    messages: { body: string; username: string }[];
+    threadId?: string;
+    usernames: string[];
+  },
+): void {
+  if (expected.threadId !== undefined && thread.id !== expected.threadId) {
+    throw new Error(
+      `Direct thread mismatch: expected ${expected.threadId}, received ${thread.id}`,
+    );
+  }
+
+  for (const username of expected.usernames) {
+    if (!thread.members.some((member) => member.user.username === username)) {
+      throw new Error(
+        `Direct thread ${thread.id} is missing member ${username}`,
+      );
+    }
+  }
+
+  for (const message of expected.messages) {
+    if (
+      !thread.messages.some(
+        (item) =>
+          item.author.username === message.username &&
+          item.body === message.body,
+      )
+    ) {
+      throw new Error(
+        `Direct thread ${thread.id} is missing message from ${message.username}: ${message.body}`,
+      );
+    }
+  }
 }
 
 function required<T>(value: T | null | undefined, name: string): T {
