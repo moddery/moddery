@@ -20,6 +20,20 @@ function fakeRedis() {
   };
 }
 
+function fakeSearch() {
+  const followerUpdates: { followers: number; projectId: string }[] = [];
+
+  return {
+    followerUpdates,
+    search: {
+      updateProjectFollowers: (projectId: string, followers: number) => {
+        followerUpdates.push({ followers, projectId });
+        return Promise.resolve();
+      },
+    },
+  };
+}
+
 describe(ProjectFollowsService.name, () => {
   test('loads viewer project follow state for approved projects', async () => {
     const queries: unknown[] = [];
@@ -37,6 +51,7 @@ describe(ProjectFollowsService.name, () => {
         },
       } as unknown as PrismaService,
       fakeRedis().redis as never,
+      fakeSearch().search as never,
     );
 
     const state = await service.findViewerProjectFollowState('iris', 'user-a');
@@ -68,6 +83,7 @@ describe(ProjectFollowsService.name, () => {
         },
       } as unknown as PrismaService,
       fakeRedis().redis as never,
+      fakeSearch().search as never,
     );
 
     const state = await service.findViewerProjectFollowState(
@@ -81,6 +97,7 @@ describe(ProjectFollowsService.name, () => {
   test('follows approved projects, reconciles follower count, and invalidates cache', async () => {
     const operations: string[] = [];
     const redis = fakeRedis();
+    const search = fakeSearch();
     const tx = {
       project: {
         findFirst: (query: unknown) => {
@@ -109,6 +126,7 @@ describe(ProjectFollowsService.name, () => {
           callback(tx),
       } as unknown as PrismaService,
       redis.redis as never,
+      search.search as never,
     );
 
     redis.cache.set('catalog:project-by-slug:iris', { slug: 'iris' });
@@ -127,6 +145,9 @@ describe(ProjectFollowsService.name, () => {
     ]);
     expect(redis.deletedKeys).toEqual(['catalog:project-by-slug:iris']);
     expect(redis.cache.has('catalog:project-by-slug:iris')).toBe(false);
+    expect(search.followerUpdates).toEqual([
+      { followers: 8, projectId: 'project-a' },
+    ]);
   });
 
   test('rejects following non-public projects', async () => {
@@ -145,6 +166,7 @@ describe(ProjectFollowsService.name, () => {
           }),
       } as unknown as PrismaService,
       fakeRedis().redis as never,
+      fakeSearch().search as never,
     );
 
     let caught: unknown;
@@ -160,6 +182,7 @@ describe(ProjectFollowsService.name, () => {
   test('unfollows approved projects, reconciles follower count, and invalidates cache', async () => {
     const operations: string[] = [];
     const redis = fakeRedis();
+    const search = fakeSearch();
     const tx = {
       project: {
         findFirst: () => Promise.resolve({ id: 'project-a', slug: 'iris' }),
@@ -185,6 +208,7 @@ describe(ProjectFollowsService.name, () => {
           callback(tx),
       } as unknown as PrismaService,
       redis.redis as never,
+      search.search as never,
     );
 
     const state = await service.unfollowProject('iris', 'user-a');
@@ -200,6 +224,9 @@ describe(ProjectFollowsService.name, () => {
       'update:{"data":{"followers":6},"where":{"id":"project-a"}}',
     ]);
     expect(redis.deletedKeys).toEqual(['catalog:project-by-slug:iris']);
+    expect(search.followerUpdates).toEqual([
+      { followers: 6, projectId: 'project-a' },
+    ]);
   });
 
   test('rejects unfollowing non-public projects', async () => {
@@ -218,6 +245,7 @@ describe(ProjectFollowsService.name, () => {
           }),
       } as unknown as PrismaService,
       fakeRedis().redis as never,
+      fakeSearch().search as never,
     );
 
     let caught: unknown;
@@ -248,6 +276,7 @@ describe(ProjectFollowsService.name, () => {
         },
       } as unknown as PrismaService,
       fakeRedis().redis as never,
+      fakeSearch().search as never,
     );
 
     const result = await service.findViewerFollowedProjects('user-a', {
@@ -296,6 +325,7 @@ describe(ProjectFollowsService.name, () => {
         },
       } as unknown as PrismaService,
       fakeRedis().redis as never,
+      fakeSearch().search as never,
     );
 
     const projects = await service.findViewerFollowedProjectList('user-a');

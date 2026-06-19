@@ -91,6 +91,20 @@ export class SearchService implements OnModuleInit {
     });
   }
 
+  async updateProjectFollowers(
+    projectId: string,
+    followers: number,
+  ): Promise<void> {
+    await this.client.update({
+      body: {
+        doc: { followers },
+      },
+      id: projectId,
+      index: PROJECTS_INDEX,
+      refresh: true,
+    });
+  }
+
   async updateProjectUpdatedAt(
     projectId: string,
     updatedAt: string,

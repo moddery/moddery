@@ -3,6 +3,7 @@ import { type ProjectSummaryContract } from '@moddery/shared';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
+import { SearchService } from '../../search/search.service.js';
 import {
   projectBySlugCacheKey,
   projectRowToContract,
@@ -16,11 +17,16 @@ export interface ProjectFollowStateContract {
   projectSlug: string;
 }
 
+interface ProjectFollowMutationState extends ProjectFollowStateContract {
+  projectId: string;
+}
+
 @Injectable()
 export class ProjectFollowsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly search: SearchService,
   ) {}
 
   async findViewerProjectFollowState(
@@ -113,57 +119,67 @@ export class ProjectFollowsService {
     userId: string,
     following: boolean,
   ): Promise<ProjectFollowStateContract> {
-    const state = await this.prisma.$transaction(async (tx) => {
-      const project = await tx.project.findFirst({
-        select: { id: true, slug: true },
-        where: { slug: projectSlug, status: 'APPROVED' },
-      });
+    const state: ProjectFollowMutationState = await this.prisma.$transaction(
+      async (tx) => {
+        const project = await tx.project.findFirst({
+          select: { id: true, slug: true },
+          where: { slug: projectSlug, status: 'APPROVED' },
+        });
 
-      if (project === null) {
-        throw new NotFoundException('Project not found');
-      }
+        if (project === null) {
+          throw new NotFoundException('Project not found');
+        }
 
-      if (following) {
-        await tx.projectFollow.upsert({
-          create: {
-            projectId: project.id,
-            userId,
-          },
-          update: {},
-          where: {
-            userId_projectId: {
+        if (following) {
+          await tx.projectFollow.upsert({
+            create: {
               projectId: project.id,
               userId,
             },
-          },
+            update: {},
+            where: {
+              userId_projectId: {
+                projectId: project.id,
+                userId,
+              },
+            },
+          });
+        } else {
+          await tx.projectFollow.deleteMany({
+            where: {
+              projectId: project.id,
+              userId,
+            },
+          });
+        }
+
+        const followers = await tx.projectFollow.count({
+          where: { projectId: project.id },
         });
-      } else {
-        await tx.projectFollow.deleteMany({
-          where: {
-            projectId: project.id,
-            userId,
-          },
+
+        await tx.project.update({
+          data: { followers },
+          where: { id: project.id },
         });
-      }
 
-      const followers = await tx.projectFollow.count({
-        where: { projectId: project.id },
-      });
+        return {
+          followers,
+          following,
+          projectId: project.id,
+          projectSlug: project.slug,
+        };
+      },
+    );
+    await Promise.all([
+      this.redis.delete(projectBySlugCacheKey(state.projectSlug)),
+      this.search.updateProjectFollowers(state.projectId, state.followers),
+    ]);
 
-      await tx.project.update({
-        data: { followers },
-        where: { id: project.id },
-      });
-
-      return {
-        followers,
-        following,
-        projectSlug: project.slug,
-      };
-    });
-    await this.redis.delete(projectBySlugCacheKey(state.projectSlug));
-
-    return state;
+    return {
+      followers: state.followers,
+      following: state.following,
+      projectSlug: state.projectSlug,
+    };
   }
 }
 

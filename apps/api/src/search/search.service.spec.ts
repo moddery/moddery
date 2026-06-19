@@ -103,6 +103,28 @@ describe(SearchService.name, () => {
     });
   });
 
+  test('updates project follower counts with immediate refresh', async () => {
+    const updates: unknown[] = [];
+    const client = {
+      update: (query: unknown) => {
+        updates.push(query);
+        return Promise.resolve();
+      },
+    };
+    const service = new SearchService(client as never);
+
+    await service.updateProjectFollowers('project-a', 42);
+
+    expect(updates[0]).toEqual({
+      body: {
+        doc: { followers: 42 },
+      },
+      id: 'project-a',
+      index: 'projects',
+      refresh: true,
+    });
+  });
+
   test('updates project timestamps with immediate refresh', async () => {
     const updates: unknown[] = [];
     const client = {
