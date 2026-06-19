@@ -6,14 +6,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PutObjectCommand, type S3Client } from '@aws-sdk/client-s3';
+import {
+  HeadBucketCommand,
+  PutObjectCommand,
+  type S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { type PrepareProjectUploadInput } from './dto/prepare-project-upload.input.js';
-import { S3_CLIENT } from './storage.constants.js';
+import { S3_CLIENT, S3_PRESIGN_CLIENT } from './storage.constants.js';
 
 export interface ProjectUploadTargetContract {
   bucket: string;
@@ -34,7 +38,16 @@ export class StorageService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     @Inject(S3_CLIENT) private readonly s3: S3Client,
+    @Inject(S3_PRESIGN_CLIENT) private readonly presignS3: S3Client,
   ) {}
+
+  async ping(): Promise<void> {
+    await this.s3.send(
+      new HeadBucketCommand({
+        Bucket: this.config.getOrThrow<string>('s3.bucket'),
+      }),
+    );
+  }
 
   async prepareProjectUpload(
     input: PrepareProjectUploadInput,
@@ -80,7 +93,7 @@ export class StorageService {
     });
 
     const uploadUrl = await getSignedUrl(
-      this.s3,
+      this.presignS3,
       new PutObjectCommand({
         Bucket: bucket,
         ContentLength: sizeBytes,

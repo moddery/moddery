@@ -4,8 +4,14 @@ import { AnalyticsService } from '../analytics/analytics.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RedisService } from '../redis/redis.service.js';
 import { SearchService } from '../search/search.service.js';
+import { StorageService } from '../storage/storage.service.js';
 
-export type HealthCheckName = 'analytics' | 'database' | 'redis' | 'search';
+export type HealthCheckName =
+  | 'analytics'
+  | 'database'
+  | 'redis'
+  | 'search'
+  | 'storage';
 
 export interface HealthCheckResult {
   readonly durationMs: number;
@@ -25,6 +31,7 @@ export class HealthService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly search: SearchService,
+    private readonly storage: StorageService,
   ) {}
 
   async readiness(): Promise<ReadinessResult> {
@@ -32,6 +39,7 @@ export class HealthService {
       this.check('database', () => this.prisma.$queryRaw`SELECT 1`),
       this.check('redis', () => this.redis.ping()),
       this.check('search', () => this.search.ping()),
+      this.check('storage', () => this.storage.ping()),
       this.check('analytics', () => this.analytics.ping()),
     ]);
 

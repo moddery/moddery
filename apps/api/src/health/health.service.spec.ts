@@ -9,6 +9,7 @@ describe(HealthService.name, () => {
       { $queryRaw: () => Promise.resolve() } as never,
       { ping: () => Promise.resolve() } as never,
       { ping: () => Promise.resolve() } as never,
+      { ping: () => Promise.resolve() } as never,
     );
 
     await expectReadiness(service, {
@@ -16,6 +17,7 @@ describe(HealthService.name, () => {
         { name: 'database', status: 'up' },
         { name: 'redis', status: 'up' },
         { name: 'search', status: 'up' },
+        { name: 'storage', status: 'up' },
         { name: 'analytics', status: 'up' },
       ],
       status: 'ready',
@@ -28,6 +30,7 @@ describe(HealthService.name, () => {
       { $queryRaw: () => Promise.resolve() } as never,
       { ping: () => Promise.reject(new Error('redis unavailable')) } as never,
       { ping: () => Promise.resolve() } as never,
+      { ping: () => Promise.resolve() } as never,
     );
 
     await expectReadiness(service, {
@@ -35,6 +38,7 @@ describe(HealthService.name, () => {
         { name: 'database', status: 'up' },
         { name: 'redis', status: 'down' },
         { name: 'search', status: 'up' },
+        { name: 'storage', status: 'up' },
         { name: 'analytics', status: 'up' },
       ],
       status: 'not_ready',

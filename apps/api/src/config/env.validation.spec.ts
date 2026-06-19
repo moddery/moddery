@@ -24,6 +24,8 @@ describe(validateEnvironment.name, () => {
       REDIS_URL: 'redis://localhost:6379',
       S3_ACCESS_KEY_ID: 'access-key',
       S3_BUCKET: 'bucket',
+      S3_ENDPOINT: 'http://internal-s3.example.test',
+      S3_PRESIGN_ENDPOINT: 'http://public-s3.example.test',
       S3_PUBLIC_BASE_URL: 'http://localhost:9000/bucket',
       S3_SECRET_ACCESS_KEY: 'secret-key',
       SMTP_HOST: 'localhost',
@@ -35,6 +37,10 @@ describe(validateEnvironment.name, () => {
       requestLoggingEnabled: false,
       securityHeadersEnabled: false,
       trustProxyHops: 0,
+    });
+    expect(validateEnvironment().s3).toMatchObject({
+      endpoint: 'http://internal-s3.example.test',
+      presignEndpoint: 'http://public-s3.example.test',
     });
   });
 });

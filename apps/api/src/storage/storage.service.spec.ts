@@ -1,4 +1,4 @@
-import { S3Client } from '@aws-sdk/client-s3';
+import { HeadBucketCommand, S3Client } from '@aws-sdk/client-s3';
 import { ForbiddenException } from '@nestjs/common';
 import { describe, expect, test } from 'bun:test';
 
@@ -19,16 +19,21 @@ function serviceWithProject(project: unknown) {
         findUnique: () => Promise.resolve(project),
       },
     } as unknown as PrismaService,
-    new S3Client({
-      credentials: {
-        accessKeyId: 'test-key',
-        secretAccessKey: 'test-secret',
-      },
-      endpoint: 'https://s3.example.test',
-      forcePathStyle: true,
-      region: 'us-east-1',
-    }),
+    s3Client('https://internal-s3.example.test'),
+    s3Client('https://s3.example.test'),
   );
+}
+
+function s3Client(endpoint: string): S3Client {
+  return new S3Client({
+    credentials: {
+      accessKeyId: 'test-key',
+      secretAccessKey: 'test-secret',
+    },
+    endpoint,
+    forcePathStyle: true,
+    region: 'us-east-1',
+  });
 }
 
 describe(StorageService.name, () => {
@@ -58,6 +63,32 @@ describe(StorageService.name, () => {
     );
     expect(target.uploadUrl).toContain('https://s3.example.test');
     expect(target.uploadUrl).toContain('X-Amz-Signature=');
+  });
+
+  test('probes the configured storage bucket', async () => {
+    const sentCommands: unknown[] = [];
+    const service = new StorageService(
+      {
+        getOrThrow: (key: string) => {
+          if (key === 's3.bucket') return 'project-files';
+          if (key === 's3.publicBaseUrl') return 'https://cdn.example.test';
+          throw new Error(`Unexpected config key ${key}`);
+        },
+      } as never,
+      { project: {} } as unknown as PrismaService,
+      {
+        send: (command: unknown) => {
+          sentCommands.push(command);
+          return Promise.resolve();
+        },
+      } as never,
+      s3Client('https://s3.example.test'),
+    );
+
+    await service.ping();
+
+    expect(sentCommands).toHaveLength(1);
+    expect(sentCommands[0]).toBeInstanceOf(HeadBucketCommand);
   });
 
   test('requires project membership before preparing uploads', async () => {
