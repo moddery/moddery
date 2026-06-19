@@ -13,16 +13,25 @@ import { PublishVersionFields } from './publish-version/PublishVersionFields.tsx
 import { assertCreateVersionInput } from './publish-version/publish-version-input.ts';
 import { publishableVersionProjects } from './publish-version/publish-version-projects.ts';
 import { usePublishVersionFormState } from './publish-version/usePublishVersionFormState.ts';
+import {
+  canPublishCreatorContent,
+  creatorPublishingRequirementMessage,
+} from './publishing-eligibility.ts';
 
 export function PublishVersionForm({
+  emailVerifiedAt,
   onCreated,
   projects,
 }: {
+  emailVerifiedAt: string | null;
   onCreated?: () => Promise<void>;
   projects: DashboardData['projects'];
 }) {
   const publishableProjects = publishableVersionProjects(projects);
   const form = usePublishVersionFormState(publishableProjects);
+  const canPublish = canPublishCreatorContent(emailVerifiedAt);
+  const requirementMessage =
+    creatorPublishingRequirementMessage(emailVerifiedAt);
   const gameVersionsQuery = useQuery({
     queryFn: ({ signal }) => fetchGameVersionTaxonomy(signal),
     queryKey: ['dashboard', 'taxonomy-game-versions'],
@@ -34,6 +43,11 @@ export function PublishVersionForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canPublish) {
+      setError(requirementMessage);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setCreated(null);
@@ -104,6 +118,11 @@ export function PublishVersionForm({
             }}
           />
 
+          {requirementMessage && (
+            <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold leading-6 text-ink">
+              {requirementMessage}
+            </p>
+          )}
           {error && (
             <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
               {error}
@@ -118,7 +137,7 @@ export function PublishVersionForm({
           <div>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !canPublish}
               className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
               {publishVersionButtonLabel(submitting)}

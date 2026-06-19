@@ -34,7 +34,12 @@ export function DashboardProjectWorkflowForms({
   return (
     <>
       {projectWorkflowFormOrder(projectsByCapability).map((item) =>
-        projectWorkflowForm(item, projectsByCapability, onUpdated),
+        projectWorkflowForm(
+          item,
+          projectsByCapability,
+          dashboard.emailVerifiedAt,
+          onUpdated,
+        ),
       )}
     </>
   );
@@ -118,10 +123,17 @@ function projectsForWorkflowForm(
 function projectWorkflowForm(
   item: ProjectWorkflowFormKey,
   projectsByCapability: ProjectsByCapability,
+  emailVerifiedAt: string | null,
   onUpdated: () => Promise<void>,
 ) {
   if (item === 'publish-project') {
-    return <PublishProjectForm key={item} onCreated={onUpdated} />;
+    return (
+      <PublishProjectForm
+        key={item}
+        emailVerifiedAt={emailVerifiedAt}
+        onCreated={onUpdated}
+      />
+    );
   }
 
   const projects = projectsForWorkflowForm(item, projectsByCapability);
@@ -154,6 +166,7 @@ function projectWorkflowForm(
     return (
       <PublishVersionForm
         key={item}
+        emailVerifiedAt={emailVerifiedAt}
         projects={projects}
         onCreated={onUpdated}
       />

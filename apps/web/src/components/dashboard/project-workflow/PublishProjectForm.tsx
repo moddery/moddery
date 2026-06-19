@@ -12,13 +12,22 @@ import {
 import { PublishProjectFields } from './publish-project/PublishProjectFields.tsx';
 import { assertCreateProjectInput } from './publish-project/publish-project-input.ts';
 import { usePublishProjectFormState } from './publish-project/usePublishProjectFormState.ts';
+import {
+  canPublishCreatorContent,
+  creatorPublishingRequirementMessage,
+} from './publishing-eligibility.ts';
 
 export function PublishProjectForm({
+  emailVerifiedAt,
   onCreated,
 }: {
+  emailVerifiedAt: string | null;
   onCreated: () => Promise<void>;
 }) {
   const form = usePublishProjectFormState();
+  const canPublish = canPublishCreatorContent(emailVerifiedAt);
+  const requirementMessage =
+    creatorPublishingRequirementMessage(emailVerifiedAt);
   const categoriesQuery = useQuery({
     queryFn: ({ signal }) => fetchCategoryTaxonomy(signal),
     queryKey: ['dashboard', 'taxonomy-categories'],
@@ -41,6 +50,11 @@ export function PublishProjectForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canPublish) {
+      setError(requirementMessage);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setCreated(null);
@@ -99,6 +113,11 @@ export function PublishProjectForm({
           onIconFileChange={changeLocalIconFile}
         />
 
+        {requirementMessage && (
+          <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold leading-6 text-ink">
+            {requirementMessage}
+          </p>
+        )}
         {error && (
           <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
             {error}
@@ -113,7 +132,7 @@ export function PublishProjectForm({
         <div>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !canPublish}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
             {publishProjectButtonLabel(submitting)}
