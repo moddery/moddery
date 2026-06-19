@@ -384,6 +384,10 @@ export class AuthService {
         where: { id: verificationToken.id },
       }),
     ]);
+    await this.auditService.recordSecurityEvent({
+      action: 'EMAIL_VERIFICATION_CONFIRMED',
+      targetUserId: verificationToken.userId,
+    });
 
     return true;
   }

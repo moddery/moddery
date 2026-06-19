@@ -362,6 +362,43 @@ describe(AuditService.name, () => {
     });
   });
 
+  test('loads email verification as security audit metadata', async () => {
+    const service = new AuditService({
+      auditLog: {
+        count: () => Promise.resolve(1),
+        findMany: () =>
+          Promise.resolve([
+            {
+              action: 'SECURITY_EVENT',
+              actor: null,
+              actorId: null,
+              createdAt: new Date('2026-01-06T00:00:00.000Z'),
+              id: 'audit-email',
+              metadata: {
+                action: 'EMAIL_VERIFICATION_CONFIRMED',
+              },
+              targetUser: {
+                displayName: null,
+                id: 'user-a',
+                username: 'seed',
+              },
+              targetUserId: 'user-a',
+            },
+          ]),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findAdminAuditLogs();
+
+    expect(result.auditLogs[0]).toMatchObject({
+      action: 'SECURITY_EVENT',
+      securityAction: 'EMAIL_VERIFICATION_CONFIRMED',
+      targetUser: {
+        username: 'seed',
+      },
+    });
+  });
+
   test('records security audit events without sensitive values', async () => {
     const writes: unknown[] = [];
     const service = new AuditService({

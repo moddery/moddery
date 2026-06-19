@@ -713,28 +713,34 @@ describe(AuthService.name, () => {
   });
 
   test('confirms email verification for the matching current email', async () => {
+    const auditEvents: unknown[] = [];
     const operations: unknown[] = [];
-    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
-      $transaction: async (queries: Promise<unknown>[]) => {
-        operations.push(...(await Promise.all(queries)));
-        return Promise.resolve([]);
-      },
-      emailVerificationToken: {
-        findFirst: () =>
-          Promise.resolve({
-            email: 'seed@example.test',
-            expiresAt: new Date(Date.now() + 60_000),
-            id: 'verify-a',
-            usedAt: null,
-            user: { email: 'seed@example.test' },
-            userId: 'user-a',
-          }),
-        update: (query: unknown) => Promise.resolve({ query }),
-      },
-      user: {
-        update: (query: unknown) => Promise.resolve({ query }),
-      },
-    } as unknown as PrismaService);
+    const service = new AuthService(
+      {} as AuthTokenService,
+      fakeMailService(),
+      {
+        $transaction: async (queries: Promise<unknown>[]) => {
+          operations.push(...(await Promise.all(queries)));
+          return Promise.resolve([]);
+        },
+        emailVerificationToken: {
+          findFirst: () =>
+            Promise.resolve({
+              email: 'seed@example.test',
+              expiresAt: new Date(Date.now() + 60_000),
+              id: 'verify-a',
+              usedAt: null,
+              user: { email: 'seed@example.test' },
+              userId: 'user-a',
+            }),
+          update: (query: unknown) => Promise.resolve({ query }),
+        },
+        user: {
+          update: (query: unknown) => Promise.resolve({ query }),
+        },
+      } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
+    );
 
     const result = await service.confirmEmailVerification({
       token: 'verify-token',
@@ -753,6 +759,10 @@ describe(AuthService.name, () => {
         data: { usedAt: expect.any(Date) },
         where: { id: 'verify-a' },
       }),
+    });
+    expect(auditEvents[0]).toEqual({
+      action: 'EMAIL_VERIFICATION_CONFIRMED',
+      targetUserId: 'user-a',
     });
   });
 });

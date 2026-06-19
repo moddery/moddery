@@ -241,6 +241,7 @@ export type SecurityAuditAction =
   | 'API_TOKEN_CREATED'
   | 'API_TOKEN_REVOKED'
   | 'ACCOUNT_CREDENTIALS_REVOKED'
+  | 'EMAIL_VERIFICATION_CONFIRMED'
   | 'PASSWORD_RESET_CONFIRMED'
   | 'SESSION_CREATED'
   | 'SESSION_REVOKED'
@@ -433,6 +434,7 @@ function rowActionIsSecurity(
   return (
     metadata.action === 'API_TOKEN_CREATED' ||
     metadata.action === 'API_TOKEN_REVOKED' ||
+    metadata.action === 'EMAIL_VERIFICATION_CONFIRMED' ||
     metadata.action === 'PASSWORD_RESET_CONFIRMED' ||
     metadata.action === 'SESSION_CREATED' ||
     metadata.action === 'SESSION_REVOKED' ||
