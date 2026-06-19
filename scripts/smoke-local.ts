@@ -60,6 +60,27 @@ interface CreateVersionResponse {
   errors?: GraphqlError[];
 }
 
+interface CreateCollectionResponse {
+  data?: {
+    createCollection?: CollectionSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface AddProjectToCollectionResponse {
+  data?: {
+    addProjectToCollection?: CollectionSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface PublicCollectionBySlugResponse {
+  data?: {
+    publicCollectionBySlug?: CollectionSummary | null;
+  };
+  errors?: GraphqlError[];
+}
+
 interface VersionsForProjectResponse {
   data?: {
     versionsForProject?: VersionSummary[];
@@ -92,6 +113,18 @@ interface VersionSummary {
   projectSlug: string;
   status: string;
   versionNumber: string;
+}
+
+interface CollectionSummary {
+  id: string;
+  name: string;
+  owner: {
+    username: string;
+  };
+  projectCount: number;
+  projects: ProjectSummary[];
+  slug: string;
+  visibility: string;
 }
 
 interface ProjectSearchResponse {
@@ -374,6 +407,151 @@ async function checkCreatorFlow(): Promise<void> {
     projectSlug: slug,
     versionNumber,
   });
+
+  await checkCollectionFlow({
+    projectSlug: slug,
+    projectTitle: title,
+    token: auth.accessToken,
+    username,
+  });
+}
+
+async function checkCollectionFlow(options: {
+  projectSlug: string;
+  projectTitle: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const collectionSlug = `smoke-collection-${options.projectSlug}`;
+  const collectionName = `Smoke Collection ${options.projectSlug}`;
+
+  const createPayload = await readGraphql<CreateCollectionResponse>(
+    {
+      query: `
+        mutation SmokeCreateCollection($input: CreateCollectionInput!) {
+          createCollection(input: $input) {
+            id
+            name
+            owner {
+              username
+            }
+            projectCount
+            projects {
+              kind
+              slug
+              status
+              title
+            }
+            slug
+            visibility
+          }
+        }
+      `,
+      variables: {
+        input: {
+          description: 'A public smoke-test collection.',
+          name: collectionName,
+          slug: collectionSlug,
+          visibility: 'PUBLIC',
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(createPayload, 'GraphQL create collection');
+
+  const createdCollection = required(
+    createPayload.data?.createCollection,
+    'created collection',
+  );
+  assertCollection(createdCollection, {
+    name: collectionName,
+    ownerUsername: options.username,
+    slug: collectionSlug,
+  });
+
+  const addPayload = await readGraphql<AddProjectToCollectionResponse>(
+    {
+      query: `
+        mutation SmokeAddProjectToCollection($input: AddProjectToCollectionInput!) {
+          addProjectToCollection(input: $input) {
+            id
+            name
+            owner {
+              username
+            }
+            projectCount
+            projects {
+              kind
+              slug
+              status
+              title
+            }
+            slug
+            visibility
+          }
+        }
+      `,
+      variables: {
+        input: {
+          collectionId: createdCollection.id,
+          projectSlug: options.projectSlug,
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(addPayload, 'GraphQL add project to collection');
+
+  const updatedCollection = required(
+    addPayload.data?.addProjectToCollection,
+    'updated collection',
+  );
+  assertCollection(updatedCollection, {
+    name: collectionName,
+    ownerUsername: options.username,
+    projectSlug: options.projectSlug,
+    projectTitle: options.projectTitle,
+    slug: collectionSlug,
+  });
+
+  const publicPayload = await readGraphql<PublicCollectionBySlugResponse>({
+    query: `
+      query SmokePublicCollectionBySlug($ownerUsername: String!, $slug: String!) {
+        publicCollectionBySlug(ownerUsername: $ownerUsername, slug: $slug) {
+          id
+          name
+          owner {
+            username
+          }
+          projectCount
+          projects {
+            kind
+            slug
+            status
+            title
+          }
+          slug
+          visibility
+        }
+      }
+    `,
+    variables: {
+      ownerUsername: options.username,
+      slug: collectionSlug,
+    },
+  });
+  assertNoGraphqlErrors(publicPayload, 'GraphQL public collection by slug');
+  assertCollection(
+    required(publicPayload.data?.publicCollectionBySlug, 'public collection'),
+    {
+      name: collectionName,
+      ownerUsername: options.username,
+      projectSlug: options.projectSlug,
+      projectTitle: options.projectTitle,
+      slug: collectionSlug,
+    },
+  );
 }
 
 async function prepareVersionUpload(
@@ -516,6 +694,52 @@ function assertVersion(
       `Version mismatch: expected ${expected.projectSlug} ${expected.versionNumber}, received ${version.projectSlug} ${version.versionNumber}`,
     );
   }
+}
+
+function assertCollection(
+  collection: CollectionSummary,
+  expected: {
+    name: string;
+    ownerUsername: string;
+    projectSlug?: string;
+    projectTitle?: string;
+    slug: string;
+  },
+): void {
+  if (
+    collection.name !== expected.name ||
+    collection.owner.username !== expected.ownerUsername ||
+    collection.slug !== expected.slug ||
+    collection.visibility !== 'PUBLIC'
+  ) {
+    throw new Error(
+      `Collection mismatch: expected ${expected.ownerUsername}/${expected.slug}, received ${collection.owner.username}/${collection.slug}`,
+    );
+  }
+
+  if (expected.projectSlug === undefined) {
+    if (collection.projectCount !== 0 || collection.projects.length !== 0) {
+      throw new Error(
+        `Expected empty collection ${collection.slug}, received ${collection.projectCount.toString()} projects`,
+      );
+    }
+    return;
+  }
+
+  if (collection.projectCount !== 1) {
+    throw new Error(
+      `Expected collection ${collection.slug} to contain one project, received ${collection.projectCount.toString()}`,
+    );
+  }
+
+  const project = collection.projects.find(
+    (item) => item.slug === expected.projectSlug,
+  );
+  assertProject(required(project, 'collection project'), {
+    kind: 'MOD',
+    slug: expected.projectSlug,
+    title: required(expected.projectTitle, 'collection project title'),
+  });
 }
 
 function required<T>(value: T | null | undefined, name: string): T {

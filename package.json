@@ -21,6 +21,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "scan:source": "bun run scripts/check-source-terms.ts",
     "seed:popular-projects": "bun run scripts/seed-popular-projects.ts",
     "smoke:local": "bun run scripts/smoke-local.ts",
     "test": "bun run --filter './packages/*' test && bun run --filter './apps/*' test",
