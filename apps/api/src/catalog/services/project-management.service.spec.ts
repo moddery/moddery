@@ -17,6 +17,99 @@ function createProjectManagementService(
 }
 
 describe(ProjectManagementService.name, () => {
+  test('creates a project with normalized metadata and indexes it', async () => {
+    const operations: string[] = [];
+    const indexed: unknown[] = [];
+    const tx = {
+      category: {
+        upsert: () => Promise.resolve({ id: 'category-a' }),
+      },
+      gameVersion: {
+        upsert: () => Promise.resolve({ id: 'game-version-a' }),
+      },
+      project: {
+        create: (query: unknown) => {
+          operations.push(`project-create:${JSON.stringify(query)}`);
+          return Promise.resolve({ id: 'project-a' });
+        },
+        findUniqueOrThrow: () =>
+          Promise.resolve(projectRow({ title: 'Created Project' })),
+      },
+      projectCategory: {
+        create: () => Promise.resolve({}),
+        deleteMany: (query: unknown) => {
+          operations.push(`categories-delete:${JSON.stringify(query)}`);
+          return Promise.resolve({});
+        },
+      },
+      projectGameVersion: {
+        create: () => Promise.resolve({}),
+        deleteMany: (query: unknown) => {
+          operations.push(`versions-delete:${JSON.stringify(query)}`);
+          return Promise.resolve({});
+        },
+      },
+      projectLoader: {
+        create: () => Promise.resolve({}),
+        deleteMany: (query: unknown) => {
+          operations.push(`loaders-delete:${JSON.stringify(query)}`);
+          return Promise.resolve({});
+        },
+      },
+      team: {
+        create: (query: unknown) => {
+          operations.push(`team-create:${JSON.stringify(query)}`);
+          return Promise.resolve({ id: 'team-a' });
+        },
+      },
+    };
+    const service = createProjectManagementService(
+      {
+        $transaction: (callback: (transaction: typeof tx) => unknown) =>
+          callback(tx),
+        license: {
+          upsert: () => Promise.resolve({ id: 'license-unknown' }),
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: (projects: unknown[]) => {
+          indexed.push(...projects);
+          return Promise.resolve();
+        },
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    const project = await service.createProject(
+      {
+        categories: ['utility'],
+        color: ' #1d9bf0 ',
+        description: ' Created body ',
+        gameVersions: ['1.21.6'],
+        iconUrl: ' https://example.test/icon.png ',
+        kind: 'MOD',
+        loaders: ['fabric'],
+        slug: 'Created Project',
+        summary: ' Created summary ',
+        title: ' Created Project ',
+      },
+      'user-a',
+    );
+
+    expect(project.title).toBe('Created Project');
+    expect(operations[1]).toContain('"slug":"created-project"');
+    expect(operations[1]).toContain(
+      '"iconUrl":"https://example.test/icon.png"',
+    );
+    expect(operations[1]).toContain('"summary":"Created summary"');
+    expect(indexed[0]).toEqual(
+      expect.objectContaining({
+        id: 'project-a',
+        title: 'Created Project',
+      }),
+    );
+  });
+
   test('updates managed project metadata and reindexes search', async () => {
     const operations: string[] = [];
     const indexed: unknown[] = [];

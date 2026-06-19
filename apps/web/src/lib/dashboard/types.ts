@@ -288,6 +288,7 @@ export interface CreateProjectInput {
   color: string | null;
   description: string;
   gameVersions: string[];
+  iconUrl: string | null;
   kind: ProjectKind;
   loaders: string[];
   slug: string;
@@ -350,23 +351,23 @@ export interface RemoveOrganizationTeamMemberInput {
 }
 
 export interface UpdateProjectInput {
-  categories: string[];
-  color: string | null;
-  description: string;
-  discordUrl: string | null;
-  gameVersions: string[];
-  iconUrl: string | null;
-  issuesUrl: string | null;
-  licenseKey: string;
-  licenseName: string;
-  licenseUrl: string | null;
-  links: DashboardProjectLink[];
-  loaders: string[];
+  categories?: string[] | null;
+  color?: string | null;
+  description?: string | null;
+  discordUrl?: string | null;
+  gameVersions?: string[] | null;
+  iconUrl?: string | null;
+  issuesUrl?: string | null;
+  licenseKey?: string | null;
+  licenseName?: string | null;
+  licenseUrl?: string | null;
+  links?: DashboardProjectLink[] | null;
+  loaders?: string[] | null;
   projectSlug: string;
-  sourceUrl: string | null;
-  summary: string;
-  title: string;
-  wikiUrl: string | null;
+  sourceUrl?: string | null;
+  summary?: string | null;
+  title?: string | null;
+  wikiUrl?: string | null;
 }
 
 export interface UpdateViewerProfileInput {

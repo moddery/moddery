@@ -15,6 +15,9 @@ export class CreateProjectInput {
   @Field(() => [String], { nullable: true })
   gameVersions?: string[];
 
+  @Field(() => String, { nullable: true })
+  iconUrl?: string | null;
+
   @Field(() => String)
   kind!: ProjectKind;
 

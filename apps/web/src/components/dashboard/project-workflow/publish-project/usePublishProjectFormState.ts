@@ -8,6 +8,7 @@ export function usePublishProjectFormState() {
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [color, setColor] = useState('#1d9bf0');
+  const [iconUrl, setIconUrl] = useState('');
   const [kind, setKind] = useState<CreateProjectInput['kind']>('MOD');
   const [loaders, setLoaders] = useState<string[]>(['fabric']);
   const [gameVersions, setGameVersions] = useState<string[]>(['1.21.6']);
@@ -23,6 +24,7 @@ export function usePublishProjectFormState() {
     color,
     description,
     gameVersions,
+    iconUrl,
     kind,
     loaders,
     slug,
@@ -32,6 +34,7 @@ export function usePublishProjectFormState() {
     onColorChange: setColor,
     onDescriptionChange: setDescription,
     onGameVersionsChange: setGameVersions,
+    onIconUrlChange: setIconUrl,
     onKindChange: changeKind,
     onLoadersChange: setLoaders,
     onSlugChange: setSlug,
@@ -45,6 +48,7 @@ export function usePublishProjectFormState() {
       color: color.trim() || null,
       description,
       gameVersions,
+      iconUrl: iconUrl.trim() || null,
       kind,
       loaders,
       slug,
@@ -59,6 +63,7 @@ export function usePublishProjectFormState() {
     setSummary('');
     setDescription('');
     setColor('#1d9bf0');
+    setIconUrl('');
   }
 
   return { buildInput, fields, reset };

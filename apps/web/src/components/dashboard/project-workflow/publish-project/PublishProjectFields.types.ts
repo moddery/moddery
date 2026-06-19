@@ -11,6 +11,7 @@ export interface PublishProjectFieldsProps {
   description: string;
   gameVersionOptions: GameVersionTaxonomy[];
   gameVersions: string[];
+  iconUrl: string;
   kind: CreateProjectInput['kind'];
   loaders: string[];
   slug: string;
@@ -20,6 +21,8 @@ export interface PublishProjectFieldsProps {
   onColorChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onGameVersionsChange: (value: string[]) => void;
+  onIconUrlChange: (value: string) => void;
+  onIconFileChange: (value: File | null) => void;
   onKindChange: (value: CreateProjectInput['kind']) => void;
   onLoadersChange: (value: string[]) => void;
   onSlugChange: (value: string) => void;

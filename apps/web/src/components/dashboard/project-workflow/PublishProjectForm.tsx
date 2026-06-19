@@ -5,6 +5,8 @@ import {
   createProject,
   fetchCategoryTaxonomy,
   fetchGameVersionTaxonomy,
+  updateProject,
+  uploadProjectFile,
 } from '../../../lib/dashboard.ts';
 import { PublishProjectFields } from './publish-project/PublishProjectFields.tsx';
 import { usePublishProjectFormState } from './publish-project/usePublishProjectFormState.ts';
@@ -25,6 +27,7 @@ export function PublishProjectForm({
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localIconFile, setLocalIconFile] = useState<File | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,8 +35,20 @@ export function PublishProjectForm({
     setError(null);
 
     try {
-      await createProject(form.buildInput());
+      const createdProject = await createProject(form.buildInput());
+      if (localIconFile !== null) {
+        const target = await uploadProjectFile({
+          file: localIconFile,
+          projectSlug: createdProject.slug,
+          uploadKind: 'project-icon',
+        });
+        await updateProject({
+          iconUrl: target.objectUrl,
+          projectSlug: createdProject.slug,
+        });
+      }
       form.reset();
+      setLocalIconFile(null);
       await onCreated();
     } catch (caught) {
       setError(
@@ -64,6 +79,7 @@ export function PublishProjectForm({
           {...form.fields}
           categoryOptions={categoriesQuery.data ?? []}
           gameVersionOptions={gameVersionsQuery.data ?? []}
+          onIconFileChange={setLocalIconFile}
         />
 
         {error && (

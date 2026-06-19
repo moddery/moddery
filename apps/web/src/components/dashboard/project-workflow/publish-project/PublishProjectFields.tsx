@@ -8,11 +8,14 @@ export function PublishProjectFields(props: PublishProjectFieldsProps) {
       <PublishProjectIdentityFields
         color={props.color}
         description={props.description}
+        iconUrl={props.iconUrl}
         slug={props.slug}
         summary={props.summary}
         title={props.title}
         onColorChange={props.onColorChange}
         onDescriptionChange={props.onDescriptionChange}
+        onIconFileChange={props.onIconFileChange}
+        onIconUrlChange={props.onIconUrlChange}
         onSlugChange={props.onSlugChange}
         onSummaryChange={props.onSummaryChange}
         onTitleChange={props.onTitleChange}

@@ -73,6 +73,7 @@ export class ProjectManagementService {
           approvedAt: now,
           color: nullableTrim(input.color),
           description: input.description.trim(),
+          iconUrl: nullableTrim(input.iconUrl),
           kind: input.kind,
           licenseId: license.id,
           publishedAt: now,
