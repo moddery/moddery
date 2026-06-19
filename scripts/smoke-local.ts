@@ -45,6 +45,24 @@ interface RegisterResponse {
   errors?: GraphqlError[];
 }
 
+interface LoginResponse {
+  data?: {
+    login?: AuthPayload;
+  };
+  errors?: GraphqlError[];
+}
+
+interface MeResponse {
+  data?: {
+    me?: {
+      isAdmin: boolean;
+      role: string;
+      username: string;
+    };
+  };
+  errors?: GraphqlError[];
+}
+
 interface FriendshipResponse {
   data?: {
     acceptFriendRequest?: FriendshipSummary;
@@ -660,6 +678,74 @@ async function registerSmokeUser(input: {
   return auth;
 }
 
+async function loginSmokeUser(input: {
+  identifier: string;
+  password: string;
+  username: string;
+}): Promise<AuthPayload> {
+  const loginPayload = await readGraphql<LoginResponse>({
+    query: `
+      mutation SmokeLogin($input: LoginInput!) {
+        login(input: $input) {
+          accessToken
+          user {
+            username
+          }
+        }
+      }
+    `,
+    variables: {
+      input: {
+        identifier: input.identifier,
+        password: input.password,
+      },
+    },
+  });
+  assertNoGraphqlErrors(loginPayload, 'GraphQL login');
+
+  const auth = required(loginPayload.data?.login, 'login payload');
+  if (auth.user.username !== input.username) {
+    throw new Error(
+      `Logged-in username mismatch: expected ${input.username}, received ${auth.user.username}`,
+    );
+  }
+
+  await checkMe({
+    token: auth.accessToken,
+    username: input.username,
+  });
+
+  return auth;
+}
+
+async function checkMe(options: {
+  token: string;
+  username: string;
+}): Promise<void> {
+  const payload = await readGraphql<MeResponse>(
+    {
+      query: `
+        query SmokeMe {
+          me {
+            isAdmin
+            role
+            username
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL me');
+
+  const me = required(payload.data?.me, 'me payload');
+  if (me.username !== options.username || me.role !== 'USER' || me.isAdmin) {
+    throw new Error(
+      `Unexpected me payload for ${options.username}: ${me.username} ${me.role}`,
+    );
+  }
+}
+
 async function promoteSmokeUserToAdmin(username: string): Promise<void> {
   const prisma = new PrismaClient({
     datasources: {
@@ -702,15 +788,27 @@ async function checkCreatorFlow(): Promise<void> {
   const peerUsername = `smoke_peer_${suffix}`;
   const slug = `smoke-${suffix}`;
   const title = `Smoke Project ${suffix}`;
+  const password = `password-${suffix}`;
+  const peerPassword = `password-${suffix}-peer`;
 
-  const auth = await registerSmokeUser({
+  await registerSmokeUser({
     email: `${username}@example.test`,
-    password: `password-${suffix}`,
+    password,
     username,
   });
-  const peerAuth = await registerSmokeUser({
+  await registerSmokeUser({
     email: `${peerUsername}@example.test`,
-    password: `password-${suffix}-peer`,
+    password: peerPassword,
+    username: peerUsername,
+  });
+  const auth = await loginSmokeUser({
+    identifier: username,
+    password,
+    username,
+  });
+  const peerAuth = await loginSmokeUser({
+    identifier: peerUsername,
+    password: peerPassword,
     username: peerUsername,
   });
 
