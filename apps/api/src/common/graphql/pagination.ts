@@ -58,4 +58,10 @@ export class PaginationArgs implements PaginationInput {
 
   @Allow()
   username?: string | null;
+
+  @Allow()
+  type?: string | null;
+
+  @Allow()
+  unreadOnly?: boolean | null;
 }

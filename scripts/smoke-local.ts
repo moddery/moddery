@@ -104,6 +104,13 @@ interface ModerateVersionResponse {
   errors?: GraphqlError[];
 }
 
+interface NotificationSearchResponse {
+  data?: {
+    viewerNotificationSearch?: NotificationSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
 interface ProjectBySlugResponse {
   data?: {
     projectBySlug?: ProjectSummary | null;
@@ -356,6 +363,18 @@ interface ThreadSummary {
 interface ThreadSearchResult {
   threads: ThreadSummary[];
   totalHits: number;
+}
+
+interface NotificationSearchResult {
+  notifications: NotificationSummary[];
+  totalHits: number;
+}
+
+interface NotificationSummary {
+  actionUrl: string | null;
+  body: string | null;
+  title: string;
+  type: string;
 }
 
 async function main(): Promise<void> {
@@ -660,6 +679,11 @@ async function checkCreatorFlow(): Promise<void> {
       `Expected approved project status, received ${approvedProject.status}`,
     );
   }
+  await checkReviewNotification({
+    bodyIncludes: `${title} was approved.`,
+    title: 'Project approved',
+    token: auth.accessToken,
+  });
 
   const approvedPublicPayload = await readGraphql<ProjectBySlugResponse>({
     query: `
@@ -775,6 +799,11 @@ async function checkCreatorFlow(): Promise<void> {
     auth.accessToken,
   );
   assertVersion(approvedVersion, { projectSlug: slug, versionNumber });
+  await checkReviewNotification({
+    bodyIncludes: `Smoke Version ${suffix} ${versionNumber} was approved.`,
+    title: 'Release approved',
+    token: auth.accessToken,
+  });
 
   const versionsPayload = await readGraphql<VersionsForProjectResponse>({
     query: `
@@ -904,6 +933,51 @@ async function approveSmokeVersion(
   assertNoGraphqlErrors(payload, 'GraphQL approve version');
 
   return required(payload.data?.moderateVersion, 'approved version');
+}
+
+async function checkReviewNotification(options: {
+  bodyIncludes: string;
+  title: string;
+  token: string;
+}): Promise<void> {
+  const payload = await readGraphql<NotificationSearchResponse>(
+    {
+      query: `
+        query SmokeReviewNotificationSearch {
+          viewerNotificationSearch(type: "moderation", limit: 10, offset: 0) {
+            notifications {
+              actionUrl
+              body
+              title
+              type
+            }
+            totalHits
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL review notification search');
+
+  const search = required(
+    payload.data?.viewerNotificationSearch,
+    'review notification search',
+  );
+  if (search.totalHits < 1) {
+    throw new Error('Review notification search returned no notifications');
+  }
+
+  const notification = search.notifications.find(
+    (candidate) =>
+      candidate.title === options.title &&
+      candidate.type === 'moderation' &&
+      candidate.actionUrl === '/dashboard#dashboard-projects' &&
+      candidate.body?.includes(options.bodyIncludes) === true,
+  );
+  if (notification === undefined) {
+    throw new Error(`Missing ${options.title} creator notification`);
+  }
 }
 
 async function checkQueuedProjectReleaseGuards(options: {

@@ -19,6 +19,22 @@ describe('PaginationArgs', () => {
     expect(errors).toHaveLength(0);
   });
 
+  test('allows notification filter args beside pagination args', async () => {
+    const args = Object.assign(new PaginationArgs(), {
+      limit: 10,
+      offset: 20,
+      type: 'moderation',
+      unreadOnly: true,
+    });
+
+    const errors = await validate(args, {
+      forbidNonWhitelisted: true,
+      whitelist: true,
+    });
+
+    expect(errors).toHaveLength(0);
+  });
+
   test('rejects negative pagination args', async () => {
     const args = Object.assign(new PaginationArgs(), {
       limit: -1,
