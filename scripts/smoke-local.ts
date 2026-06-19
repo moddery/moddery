@@ -543,6 +543,10 @@ async function checkCreatorFlow(): Promise<void> {
   if (publicPayload.data.projectBySlug !== null) {
     throw new Error('Queued project was visible before moderation approval');
   }
+  await checkQueuedProjectReleaseGuards({
+    projectSlug: slug,
+    token: auth.accessToken,
+  });
 
   await promoteSmokeUserToAdmin(username);
   const approvedProject = await approveSmokeProject(slug, auth.accessToken);
@@ -749,6 +753,82 @@ async function approveSmokeProject(
   assertNoGraphqlErrors(payload, 'GraphQL approve project');
 
   return required(payload.data?.moderateProject, 'approved project');
+}
+
+async function checkQueuedProjectReleaseGuards(options: {
+  projectSlug: string;
+  token: string;
+}): Promise<void> {
+  const uploadPayload = await readGraphql<PrepareUploadResponse>(
+    {
+      query: `
+        mutation SmokePrepareQueuedProjectUpload($input: PrepareProjectUploadInput!) {
+          prepareProjectUpload(input: $input) {
+            key
+          }
+        }
+      `,
+      variables: {
+        input: {
+          contentType: 'application/java-archive',
+          fileName: 'queued-smoke.jar',
+          projectSlug: options.projectSlug,
+          sizeBytes: 128,
+          uploadKind: 'version-file',
+        },
+      },
+    },
+    options.token,
+  );
+  assertGraphqlError(
+    uploadPayload,
+    'Project must be approved before release files can be uploaded',
+    'queued project upload',
+  );
+
+  const versionPayload = await readGraphql<CreateVersionResponse>(
+    {
+      query: `
+        mutation SmokeCreateQueuedProjectVersion($input: CreateVersionInput!) {
+          createVersion(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          channel: 'RELEASE',
+          changelog: 'This queued release should not publish.',
+          files: [
+            {
+              fileName: 'queued-smoke.jar',
+              hashes: [
+                {
+                  algorithm: 'SHA256',
+                  value:
+                    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                },
+              ],
+              primary: true,
+              sizeBytes: 128,
+              url: 'https://cdn.example.test/queued-smoke.jar',
+            },
+          ],
+          gameVersions: ['1.21.6'],
+          loaders: ['fabric'],
+          name: 'Queued Smoke Version',
+          projectSlug: options.projectSlug,
+          versionNumber: '0.0.0-queued',
+        },
+      },
+    },
+    options.token,
+  );
+  assertGraphqlError(
+    versionPayload,
+    'Project must be approved before publishing versions',
+    'queued project version',
+  );
 }
 
 async function checkSocialFlow(options: {
@@ -1731,6 +1811,21 @@ function assertNoGraphqlErrors(
     throw new Error(
       `${label} failed: ${payload.errors
         .map((error) => JSON.stringify(error))
+        .join('; ')}`,
+    );
+  }
+}
+
+function assertGraphqlError(
+  payload: { errors?: GraphqlError[] },
+  expectedMessage: string,
+  label: string,
+): void {
+  const errors = payload.errors ?? [];
+  if (!errors.some((error) => error.message === expectedMessage)) {
+    throw new Error(
+      `Expected ${label} to fail with "${expectedMessage}", received ${errors
+        .map((error) => error.message)
         .join('; ')}`,
     );
   }
