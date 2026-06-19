@@ -13,6 +13,7 @@ import {
   versionSortOrderFieldValue,
   versionSortOrderFromField,
 } from './versionChannel.ts';
+import { normalizeUpdateVersionInput } from './update-version-input.ts';
 
 export function useEditVersionFormState(projects: DashboardData['projects']) {
   const [projectSlug, setProjectSlug] = useState(projects[0]?.slug ?? '');
@@ -84,7 +85,7 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
   function buildInput(): UpdateVersionInput | null {
     if (selectedVersion === null) return null;
 
-    return {
+    return normalizeUpdateVersionInput({
       changelog: changelog.trim() || null,
       channel,
       featured,
@@ -94,7 +95,7 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
       sortOrder: versionSortOrderFromField(sortOrder),
       versionId: selectedVersion.id,
       versionNumber,
-    };
+    });
   }
 
   return {

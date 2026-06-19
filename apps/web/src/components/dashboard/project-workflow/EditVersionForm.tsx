@@ -8,6 +8,7 @@ import {
 } from '../../../lib/dashboard.ts';
 import { EditVersionFields } from './edit-version/EditVersionFields.tsx';
 import { EditVersionSelectors } from './edit-version/EditVersionSelectors.tsx';
+import { assertUpdateVersionInput } from './edit-version/update-version-input.ts';
 import { useEditVersionFormState } from './edit-version/useEditVersionFormState.ts';
 
 export function EditVersionForm({
@@ -40,11 +41,12 @@ export function EditVersionForm({
     event.preventDefault();
     const input = form.buildInput();
     if (input === null) return;
-    setSubmitting(true);
     setError(null);
     setUpdated(null);
 
     try {
+      assertUpdateVersionInput(input);
+      setSubmitting(true);
       const version = await updateVersion(input);
       setUpdated(`${version.name} ${version.versionNumber}`);
       await form.versionsQuery.refetch();
