@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   localVersionFilePatch,
   localVersionFileSelection,
+  parseVersionFileSizeBytes,
 } from './usePublishVersionFormState.ts';
 
 describe(localVersionFileSelection.name, () => {
@@ -41,5 +42,33 @@ describe(localVersionFilePatch.name, () => {
       fileName: '',
       fileSize: '0',
     });
+  });
+});
+
+describe(parseVersionFileSizeBytes.name, () => {
+  test('parses positive integer file sizes', () => {
+    expect(parseVersionFileSizeBytes('1')).toBe(1);
+    expect(parseVersionFileSizeBytes(' 128 ')).toBe(128);
+  });
+
+  test('rejects invalid file sizes', () => {
+    expect(() => parseVersionFileSizeBytes('')).toThrow(
+      'Version file size must be a positive integer',
+    );
+    expect(() => parseVersionFileSizeBytes('0')).toThrow(
+      'Version file size must be a positive integer',
+    );
+    expect(() => parseVersionFileSizeBytes('12.5')).toThrow(
+      'Version file size must be a positive integer',
+    );
+    expect(() => parseVersionFileSizeBytes('huge')).toThrow(
+      'Version file size must be a positive integer',
+    );
+  });
+
+  test('rejects unsafe integer file sizes', () => {
+    expect(() =>
+      parseVersionFileSizeBytes(Number.MAX_SAFE_INTEGER.toString() + '0'),
+    ).toThrow('Version file size must be a positive integer');
   });
 });

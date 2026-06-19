@@ -104,7 +104,7 @@ export function usePublishVersionFormState(
           fileName,
           hashes: versionFileHashes({ sha1, sha256 }),
           primary: true,
-          sizeBytes: Number(fileSize),
+          sizeBytes: parseVersionFileSizeBytes(fileSize),
           url: fileUrl,
         },
       ],
@@ -159,4 +159,18 @@ export function localVersionFilePatch(
         sha1: '',
         sha256: '',
       };
+}
+
+export function parseVersionFileSizeBytes(value: string): number {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error('Version file size must be a positive integer');
+  }
+
+  const sizeBytes = Number.parseInt(trimmed, 10);
+  if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
+    throw new Error('Version file size must be a positive integer');
+  }
+
+  return sizeBytes;
 }
