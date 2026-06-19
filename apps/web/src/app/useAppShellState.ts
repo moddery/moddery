@@ -14,6 +14,8 @@ import {
   projectFromNavigationUrl,
   projectTypeFromPath,
   projectTypeFromNavigationUrl,
+  staticNavigationUrl,
+  staticViewFromNavigationUrl,
   viewFromUrl,
   writeCollectionToUrl,
   writeCollectionsToUrl,
@@ -279,45 +281,12 @@ export function useAppShellState() {
       return true;
     }
 
-    if (url.pathname === '/') {
-      openHome();
-      return true;
-    }
-
-    if (url.pathname === '/collections') {
-      openCollections();
-      return true;
-    }
-
-    if (url.pathname === '/users') {
-      openUsers();
-      return true;
-    }
-
-    if (url.pathname === '/organizations') {
-      openOrganizations();
-      return true;
-    }
-
-    if (url.pathname === '/dashboard') {
-      resetSelection('dashboard');
-      window.history.pushState(null, '', url);
-      scrollToUrlTarget(url);
-      return true;
-    }
-
-    if (url.pathname === '/notifications') {
-      openNotifications();
-      return true;
-    }
-
-    if (url.pathname === '/status') {
-      openStatus();
-      return true;
-    }
-
-    if (url.pathname === '/platform') {
-      openPlatform();
+    const nextStaticView = staticViewFromNavigationUrl(url);
+    if (nextStaticView) {
+      const nextUrl = staticNavigationUrl(url) ?? url;
+      resetSelection(nextStaticView);
+      window.history.pushState(null, '', nextUrl);
+      scrollToUrlTarget(nextUrl);
       return true;
     }
 

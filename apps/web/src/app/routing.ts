@@ -42,14 +42,10 @@ export function collectionFromUrl(): SelectedCollection | null {
 }
 
 export function viewFromUrl(): AppView {
-  if (window.location.pathname === '/dashboard') return 'dashboard';
-  if (window.location.pathname === '/notifications') return 'notifications';
-  if (window.location.pathname === '/platform') return 'platform';
-  if (window.location.pathname === '/status') return 'status';
-  if (window.location.pathname === '/collections') return 'collections';
-  if (window.location.pathname === '/users') return 'users';
+  const staticView = staticViewFromPathname(window.location.pathname);
+  if (staticView) return staticView;
+
   if (collectionFromUrl()) return 'collections';
-  if (window.location.pathname === '/organizations') return 'organization';
   if (organizationFromUrl()) return 'organization';
   if (profileFromUrl()) return 'profile';
   if (projectTypeFromPath()) return 'discover';
@@ -209,6 +205,19 @@ export function projectTypeFromNavigationUrl(url: URL): ProjectType | null {
   return projectTypeFromPathname(url.pathname);
 }
 
+export function staticViewFromNavigationUrl(url: URL): AppView | null {
+  return staticViewFromPathname(url.pathname);
+}
+
+export function staticNavigationUrl(url: URL): URL | null {
+  if (staticViewFromNavigationUrl(url) === null) return null;
+
+  const nextUrl = new URL(url);
+  clearProjectSearchParams(nextUrl);
+
+  return nextUrl;
+}
+
 function collectionFromPathname(pathname: string): SelectedCollection | null {
   const [resource, ownerUsername, slug] = pathname.split('/').filter(Boolean);
   if (resource !== 'collections' || !ownerUsername || !slug) return null;
@@ -238,6 +247,29 @@ function projectTypeFromPathname(pathname: string): ProjectType | null {
   const meta = CONTENT_TYPES.find((item) => item.path === segment);
 
   return meta?.type ?? null;
+}
+
+function staticViewFromPathname(pathname: string): AppView | null {
+  switch (pathname) {
+    case '/':
+      return 'home';
+    case '/collections':
+      return 'collections';
+    case '/dashboard':
+      return 'dashboard';
+    case '/notifications':
+      return 'notifications';
+    case '/organizations':
+      return 'organization';
+    case '/platform':
+      return 'platform';
+    case '/status':
+      return 'status';
+    case '/users':
+      return 'users';
+    default:
+      return null;
+  }
 }
 
 function writeStaticViewToUrl(pathname: string) {

@@ -9,6 +9,8 @@ import {
   profileFromUrl,
   projectFromUrl,
   projectPath,
+  staticNavigationUrl,
+  staticViewFromNavigationUrl,
   userPath,
   viewFromUrl,
   writeOrganizationToUrl,
@@ -133,6 +135,55 @@ describe('routing helpers', () => {
 
     expect(fakeWindow.location.pathname).toBe('/status');
     expect(fakeWindow.location.search).toBe('');
+  });
+
+  test('recognizes static app routes for internal anchor navigation', () => {
+    expect(staticViewFromNavigationUrl(new URL('https://moddery.test/'))).toBe(
+      'home',
+    );
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/collections')),
+    ).toBe('collections');
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/dashboard')),
+    ).toBe('dashboard');
+    expect(
+      staticViewFromNavigationUrl(
+        new URL('https://moddery.test/notifications'),
+      ),
+    ).toBe('notifications');
+    expect(
+      staticViewFromNavigationUrl(
+        new URL('https://moddery.test/organizations'),
+      ),
+    ).toBe('organization');
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/platform')),
+    ).toBe('platform');
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/status')),
+    ).toBe('status');
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/users')),
+    ).toBe('users');
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/users/alex')),
+    ).toBeNull();
+  });
+
+  test('cleans stale project parameters from static navigation URLs', () => {
+    const nextUrl = staticNavigationUrl(
+      new URL(
+        'https://moddery.test/dashboard?project=old&type=plugin&tab=versions&view=discover#dashboard-messages',
+      ),
+    );
+
+    expect(nextUrl?.pathname).toBe('/dashboard');
+    expect(nextUrl?.search).toBe('');
+    expect(nextUrl?.hash).toBe('#dashboard-messages');
+    expect(
+      staticNavigationUrl(new URL('https://moddery.test/users/alex')),
+    ).toBeNull();
   });
 
   test('reads and writes the platform route', () => {
