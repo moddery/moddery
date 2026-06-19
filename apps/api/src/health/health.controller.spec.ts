@@ -11,6 +11,12 @@ describe(HealthController.name, () => {
     expect(controller.check()).toEqual({ status: 'ok' });
   });
 
+  test('returns liveness status without dependency probes', () => {
+    const controller = new HealthController(healthService());
+
+    expect(controller.live()).toEqual({ status: 'live' });
+  });
+
   test('returns readiness checks when dependencies are up', async () => {
     const controller = new HealthController(
       healthService({

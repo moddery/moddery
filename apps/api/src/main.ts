@@ -13,6 +13,8 @@ async function bootstrap(): Promise<void> {
   const port = config.getOrThrow<number>('app.port');
   const trustProxyHops = config.getOrThrow<number>('app.trustProxyHops');
 
+  app.enableShutdownHooks();
+
   if (trustProxyHops > 0) {
     app.set('trust proxy', trustProxyHops);
   }

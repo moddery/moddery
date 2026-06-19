@@ -11,6 +11,11 @@ export class HealthController {
     return { status: 'ok' };
   }
 
+  @Get('live')
+  live(): { status: 'live' } {
+    return { status: 'live' };
+  }
+
   @Get('ready')
   async ready() {
     const result = await this.health.readiness();
