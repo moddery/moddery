@@ -5,6 +5,7 @@ import {
   oauthClientRevoked,
   redirectUriLabel,
 } from './developer-application-labels.ts';
+import { developerApplicationActionMessage } from './useDeveloperApplicationsState.ts';
 
 describe(redirectUriLabel.name, () => {
   test('includes the redirect URI creation age', () => {
@@ -35,5 +36,16 @@ describe(oauthClientRevoked.name, () => {
         status: 'ACTIVE',
       }),
     ).toBe(true);
+  });
+});
+
+describe(developerApplicationActionMessage.name, () => {
+  test('formats create and revoke feedback with the application name', () => {
+    expect(
+      developerApplicationActionMessage('create', { name: 'CLI uploader' }),
+    ).toBe('Created application CLI uploader.');
+    expect(
+      developerApplicationActionMessage('revoke', { name: 'CLI uploader' }),
+    ).toBe('Revoked application CLI uploader.');
   });
 });

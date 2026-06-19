@@ -3,20 +3,20 @@ import { Pagination } from '../../../Pagination.tsx';
 import { DeveloperApplicationRow } from './DeveloperApplicationRow.tsx';
 
 export function DeveloperApplicationList({
-  busy,
   clients,
   isLoading,
   page,
   pageSize,
+  revokingClientId,
   revoke,
   setPage,
   totalHits,
 }: {
-  busy: boolean;
   clients: OAuthClientSummary[];
   isLoading: boolean;
   page: number;
   pageSize: number;
+  revokingClientId: string | null;
   revoke: (clientId: string) => void;
   setPage: (page: number) => void;
   totalHits: number;
@@ -52,7 +52,7 @@ export function DeveloperApplicationList({
       {clients.map((client) => (
         <DeveloperApplicationRow
           key={client.id}
-          busy={busy}
+          busy={revokingClientId === client.id}
           client={client}
           revoke={revoke}
         />

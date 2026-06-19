@@ -25,11 +25,11 @@ export function DeveloperApplicationsPanel() {
       <DeveloperApplicationForm state={state} />
       <ClientSecretNotice clientSecret={state.clientSecret} />
       <DeveloperApplicationList
-        busy={state.busy}
         clients={state.clients}
         isLoading={state.isLoading}
         page={state.page}
         pageSize={state.pageSize}
+        revokingClientId={state.revokingClientId}
         revoke={(clientId) => void state.revoke(clientId)}
         setPage={state.setPage}
         totalHits={state.totalHits}

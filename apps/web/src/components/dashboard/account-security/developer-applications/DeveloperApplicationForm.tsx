@@ -9,23 +9,27 @@ export function DeveloperApplicationForm({
   return (
     <form onSubmit={state.submit} className="mt-4 grid gap-3 lg:grid-cols-2">
       <DashboardField
+        disabled={state.creating}
         required
         label="Application name"
         value={state.name}
         onChange={state.setName}
       />
       <DashboardField
+        disabled={state.creating}
         label="Homepage URL"
         placeholder="https://example.com"
         value={state.homepageUrl}
         onChange={state.setHomepageUrl}
       />
       <DashboardField
+        disabled={state.creating}
         label="Scopes"
         value={state.scopes}
         onChange={state.setScopes}
       />
       <DashboardField
+        disabled={state.creating}
         required
         label="Redirect URIs"
         value={state.redirectUris}
@@ -34,18 +38,19 @@ export function DeveloperApplicationForm({
       <label className="grid gap-1 text-sm font-bold text-ink lg:col-span-2">
         Description
         <textarea
+          disabled={state.creating}
           value={state.description}
           rows={3}
           onChange={(event) => state.setDescription(event.target.value)}
-          className="rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          className="rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         />
       </label>
       <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
         <button
-          disabled={state.busy}
+          disabled={state.creating}
           className="rounded-lg bg-accent px-4 py-2 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Create application
+          {state.creating ? 'Creating...' : 'Create application'}
         </button>
         {state.message && (
           <span className="text-sm font-semibold text-muted">

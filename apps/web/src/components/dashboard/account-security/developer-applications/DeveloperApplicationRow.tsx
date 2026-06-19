@@ -38,7 +38,7 @@ export function DeveloperApplicationRow({
           onClick={() => revoke(client.id)}
           className="rounded-lg border border-line px-3 py-2 text-sm font-extrabold text-ink transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {revoked ? 'Revoked' : 'Revoke'}
+          {revoked ? 'Revoked' : busy ? 'Revoking...' : 'Revoke'}
         </button>
       </div>
       {client.description && (

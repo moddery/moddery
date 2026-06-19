@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import {
+  type OAuthClientSummary,
   createOAuthClient,
   fetchViewerOAuthClientSearch,
   revokeOAuthClient,
@@ -13,8 +14,8 @@ interface PreventableSubmitEvent {
 }
 
 export function useDeveloperApplicationsState() {
-  const [busy, setBusy] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [description, setDescription] = useState('');
   const [homepageUrl, setHomepageUrl] = useState('');
   const [message, setMessage] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export function useDeveloperApplicationsState() {
   const [redirectUris, setRedirectUris] = useState(
     'http://localhost:3000/callback',
   );
+  const [revokingClientId, setRevokingClientId] = useState<string | null>(null);
   const [scopes, setScopes] = useState('read:projects');
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -30,10 +32,11 @@ export function useDeveloperApplicationsState() {
       fetchViewerOAuthClientSearch(page, pageSize, signal),
     queryKey: ['dashboard', 'oauth-clients', page],
   });
+  const clients = clientsQuery.data?.clients ?? [];
 
   async function submit(event: PreventableSubmitEvent) {
     event.preventDefault();
-    setBusy(true);
+    setCreating(true);
     setClientSecret(null);
     setMessage(null);
 
@@ -46,6 +49,7 @@ export function useDeveloperApplicationsState() {
         scopes: splitList(scopes),
       });
       setClientSecret(created.clientSecret);
+      setMessage(developerApplicationActionMessage('create', created.client));
       setDescription('');
       setHomepageUrl('');
       setName('');
@@ -58,30 +62,35 @@ export function useDeveloperApplicationsState() {
           : 'Application creation failed',
       );
     } finally {
-      setBusy(false);
+      setCreating(false);
     }
   }
 
   async function revoke(clientId: string) {
-    setBusy(true);
+    setRevokingClientId(clientId);
     setMessage(null);
+    setClientSecret(null);
 
     try {
-      await revokeOAuthClient(clientId);
+      const client = await revokeOAuthClient(clientId);
+      setMessage(developerApplicationActionMessage('revoke', client));
       await clientsQuery.refetch();
+      if (clients.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      }
     } catch (caught) {
       setMessage(
         caught instanceof Error ? caught.message : 'Application revoke failed',
       );
     } finally {
-      setBusy(false);
+      setRevokingClientId(null);
     }
   }
 
   return {
-    busy,
     clientSecret,
-    clients: clientsQuery.data?.clients ?? [],
+    clients,
+    creating,
     description,
     homepageUrl,
     isLoading: clientsQuery.isLoading,
@@ -90,6 +99,7 @@ export function useDeveloperApplicationsState() {
     page,
     pageSize,
     redirectUris,
+    revokingClientId,
     revoke,
     scopes,
     setDescription,
@@ -110,4 +120,13 @@ export type DeveloperApplicationsState = ReturnType<
 function nullableText(value: string): string | null {
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+export function developerApplicationActionMessage(
+  action: 'create' | 'revoke',
+  client: Pick<OAuthClientSummary, 'name'>,
+) {
+  return action === 'create'
+    ? `Created application ${client.name}.`
+    : `Revoked application ${client.name}.`;
 }
