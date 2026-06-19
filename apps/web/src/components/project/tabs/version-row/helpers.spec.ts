@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
-import { dependencyProjectHref } from './helpers.ts';
+import { dependencyLabel, dependencyProjectHref } from './helpers.ts';
 
 describe(dependencyProjectHref.name, () => {
   test('links dependency targets to their exact version when present', () => {
@@ -49,6 +49,38 @@ describe(dependencyProjectHref.name, () => {
         }),
       ),
     ).toBeNull();
+  });
+});
+
+describe(dependencyLabel.name, () => {
+  test('includes exact version context for project dependency chips', () => {
+    expect(
+      dependencyLabel(
+        dependencyFixture({
+          dependencyKind: 'OPTIONAL',
+          targetProject: {
+            id: 'project-a',
+            kind: 'MOD',
+            slug: 'required-lib',
+            title: 'Required Lib',
+          },
+          targetVersion: {
+            id: 'version-a',
+            versionNumber: '1.0.0',
+          },
+        }),
+      ),
+    ).toBe('optional: Required Lib version 1.0.0');
+  });
+
+  test('falls back to external file names for external dependencies', () => {
+    expect(
+      dependencyLabel(
+        dependencyFixture({
+          externalFileName: 'external.jar',
+        }),
+      ),
+    ).toBe('required: external.jar');
   });
 });
 

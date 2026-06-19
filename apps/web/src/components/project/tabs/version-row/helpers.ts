@@ -9,12 +9,27 @@ export function shortHash(value: string): string {
 export function dependencyLabel(
   dependency: ProjectVersion['dependencies'][number],
 ) {
-  const target =
-    dependency.targetProject?.title ??
-    dependency.targetVersion?.versionNumber ??
+  return `${dependency.dependencyKind.toLowerCase()}: ${dependencyTargetLabel(
+    dependency,
+  )}`;
+}
+
+export function dependencyTargetLabel(
+  dependency: ProjectVersion['dependencies'][number],
+) {
+  const projectTitle = dependency.targetProject?.title;
+  const versionNumber = dependency.targetVersion?.versionNumber;
+
+  if (projectTitle && versionNumber) {
+    return `${projectTitle} version ${versionNumber}`;
+  }
+
+  return (
+    projectTitle ??
+    versionNumber ??
     dependency.externalFileName ??
-    'External file';
-  return `${dependency.dependencyKind.toLowerCase()}: ${target}`;
+    'External file'
+  );
 }
 
 export function dependencyProjectHref(

@@ -2,7 +2,11 @@ import { PackageCheck } from 'lucide-react';
 
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 import { Chip } from '../../../Chips.tsx';
-import { dependencyLabel, dependencyProjectHref } from './helpers.ts';
+import {
+  dependencyLabel,
+  dependencyProjectHref,
+  dependencyTargetLabel,
+} from './helpers.ts';
 
 export function VersionDependencies({
   dependencies,
@@ -56,11 +60,7 @@ function DependencyRow({
   dependency: ProjectVersion['dependencies'][number];
 }) {
   const href = dependencyProjectHref(dependency);
-  const target =
-    dependency.targetProject?.title ??
-    dependency.targetVersion?.versionNumber ??
-    dependency.externalFileName ??
-    'External file';
+  const target = dependencyTargetLabel(dependency);
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -76,11 +76,6 @@ function DependencyRow({
         >
           {target}
         </a>
-      )}
-      {dependency.targetProject !== null && dependency.targetVersion && (
-        <span className="text-xs font-semibold text-muted">
-          Version {dependency.targetVersion.versionNumber}
-        </span>
       )}
     </div>
   );
