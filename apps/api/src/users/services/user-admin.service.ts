@@ -65,6 +65,8 @@ export class UserAdminService {
   async updateUserAccount(input: UpdateUserAccountInput, actorId: string) {
     const role = accountRole(input.role);
     const status = accountStatus(input.status);
+    const shouldRevokeCredentials =
+      status !== undefined && status !== AccountStatus.ACTIVE;
 
     if (
       input.userId === actorId &&
@@ -83,13 +85,20 @@ export class UserAdminService {
       throw new NotFoundException('User not found');
     }
 
-    await this.prisma.user.update({
-      data: {
-        role,
-        status,
-      },
-      where: { id: input.userId },
-    });
+    const transactionResult = await this.prisma.$transaction([
+      this.prisma.user.update({
+        data: {
+          role,
+          status,
+        },
+        where: { id: input.userId },
+      }),
+      ...(shouldRevokeCredentials
+        ? credentialRevocationQueries(this.prisma, input.userId, new Date())
+        : []),
+    ]);
+    const revokedSessions = revocationCount(transactionResult[1]);
+    const revokedApiTokens = revocationCount(transactionResult[2]);
 
     const updated = await this.prisma.user.findUnique({
       select: userProfileSelect({
@@ -116,11 +125,54 @@ export class UserAdminService {
       },
       targetUserId: input.userId,
     });
+    if (shouldRevokeCredentials) {
+      await this.auditService.recordSecurityEvent({
+        action: 'ACCOUNT_CREDENTIALS_REVOKED',
+        actorId,
+        metadata: {
+          revokedApiTokens,
+          revokedSessions,
+        },
+        targetUserId: input.userId,
+      });
+    }
 
     return userProfileRowToContract(updated, {
       includePrivateAccountFields: true,
     });
   }
+}
+
+function credentialRevocationQueries(
+  prisma: PrismaService,
+  userId: string,
+  revokedAt: Date,
+) {
+  return [
+    prisma.session.updateMany({
+      data: { revokedAt },
+      where: {
+        revokedAt: null,
+        userId,
+      },
+    }),
+    prisma.apiToken.updateMany({
+      data: { revokedAt },
+      where: {
+        revokedAt: null,
+        userId,
+      },
+    }),
+  ];
+}
+
+function revocationCount(result: unknown): number {
+  return typeof result === 'object' &&
+    result !== null &&
+    'count' in result &&
+    typeof result.count === 'number'
+    ? result.count
+    : 0;
 }
 
 function adminUserWhere(search: string | null | undefined) {

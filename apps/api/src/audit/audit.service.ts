@@ -240,6 +240,7 @@ export interface TeamMemberAuditSnapshot extends Prisma.InputJsonObject {
 export type SecurityAuditAction =
   | 'API_TOKEN_CREATED'
   | 'API_TOKEN_REVOKED'
+  | 'ACCOUNT_CREDENTIALS_REVOKED'
   | 'PASSWORD_RESET_CONFIRMED'
   | 'SESSION_CREATED'
   | 'SESSION_REVOKED'

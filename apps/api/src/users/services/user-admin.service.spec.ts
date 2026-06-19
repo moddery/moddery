@@ -11,6 +11,14 @@ describe(UserAdminService.name, () => {
     const updates: unknown[] = [];
     const service = createUserAdminService(
       {
+        $transaction: async (queries: Promise<unknown>[]) =>
+          Promise.all(queries),
+        apiToken: {
+          updateMany: (query: unknown) => Promise.resolve({ count: 1, query }),
+        },
+        session: {
+          updateMany: (query: unknown) => Promise.resolve({ count: 2, query }),
+        },
         user: {
           findUnique: ({ where }: { where: { id: string } }) => {
             findUniqueCalls += 1;
@@ -79,6 +87,58 @@ describe(UserAdminService.name, () => {
       },
       targetUserId: 'user-b',
     });
+    expect(auditEvents[1]).toEqual({
+      action: 'ACCOUNT_CREDENTIALS_REVOKED',
+      actorId: 'admin-a',
+      metadata: {
+        revokedApiTokens: 1,
+        revokedSessions: 2,
+      },
+      targetUserId: 'user-b',
+    });
+  });
+
+  test('does not revoke credentials for role-only account updates', async () => {
+    const auditEvents: unknown[] = [];
+    const revocations: unknown[] = [];
+    const service = createUserAdminService(
+      {
+        $transaction: async (queries: Promise<unknown>[]) =>
+          Promise.all(queries),
+        apiToken: {
+          updateMany: (query: unknown) => {
+            revocations.push({ apiToken: query });
+            return Promise.resolve({ count: 0 });
+          },
+        },
+        session: {
+          updateMany: (query: unknown) => {
+            revocations.push({ session: query });
+            return Promise.resolve({ count: 0 });
+          },
+        },
+        user: {
+          findUnique: () =>
+            Promise.resolve({
+              ...userProfileRow(),
+              role: auditEvents.length === 0 ? 'USER' : 'MODERATOR',
+            }),
+          update: () => Promise.resolve({}),
+        },
+      } as unknown as PrismaService,
+      auditEvents,
+    );
+
+    await service.updateUserAccount(
+      {
+        role: 'moderator',
+        userId: 'user-b',
+      },
+      'admin-a',
+    );
+
+    expect(revocations).toEqual([]);
+    expect(auditEvents).toHaveLength(1);
   });
 
   test('loads admin users with pagination and private fields', async () => {
@@ -169,6 +229,10 @@ function createUserAdminService(
 ) {
   const auditService = {
     recordUserAccountUpdate: (event: unknown) => {
+      auditEvents.push(event);
+      return Promise.resolve();
+    },
+    recordSecurityEvent: (event: unknown) => {
       auditEvents.push(event);
       return Promise.resolve();
     },
