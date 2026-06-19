@@ -39,6 +39,22 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
           title
         }
         reason
+        reportAfter {
+          id
+          reason
+          state
+          targetId
+          targetKind
+          targetLabel
+        }
+        reportBefore {
+          id
+          reason
+          state
+          targetId
+          targetKind
+          targetLabel
+        }
         resource {
           id
           kind

@@ -83,6 +83,29 @@ export class AuditService {
     });
   }
 
+  async recordReportStateUpdate({
+    actorId,
+    after,
+    before,
+  }: {
+    actorId: string;
+    after: ReportAuditSnapshot;
+    before: ReportAuditSnapshot;
+  }): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'REPORT_STATE_UPDATED',
+        actorId,
+        metadata: {
+          after,
+          before,
+          entity: 'REPORT',
+        },
+        targetUserId: after.targetKind === 'USER' ? after.targetId : undefined,
+      },
+    });
+  }
+
   async recordTeamMembershipChange({
     action,
     actorId,
@@ -136,6 +159,15 @@ export interface AuditResourceSnapshot extends Prisma.InputJsonObject {
   slug: string;
 }
 
+export interface ReportAuditSnapshot extends Prisma.InputJsonObject {
+  id: string;
+  reason: string;
+  state: string;
+  targetId: string | null;
+  targetKind: 'PROJECT' | 'USER' | 'VERSION' | 'UNKNOWN';
+  targetLabel: string;
+}
+
 export interface TeamMemberAuditSnapshot extends Prisma.InputJsonObject {
   accepted: boolean;
   owner: boolean;
@@ -160,6 +192,8 @@ export interface AuditLogContract {
   projectAfter: ProjectAuditSnapshot | null;
   projectBefore: ProjectAuditSnapshot | null;
   reason: string | null;
+  reportAfter: ReportAuditSnapshot | null;
+  reportBefore: ReportAuditSnapshot | null;
   moderationAction: string | null;
   resource: AuditResourceSnapshot | null;
   targetUser: AuditUserRow | null;
@@ -218,6 +252,8 @@ function auditLogRowToContract(row: {
     projectAfter: metadata.projectAfter,
     projectBefore: metadata.projectBefore,
     reason: metadata.reason,
+    reportAfter: metadata.reportAfter,
+    reportBefore: metadata.reportBefore,
     resource: metadata.resource,
     targetUser: row.targetUser,
     targetUserId: row.targetUserId,
@@ -234,6 +270,8 @@ function auditMetadata(metadata: Prisma.JsonValue): {
   projectAfter: ProjectAuditSnapshot | null;
   projectBefore: ProjectAuditSnapshot | null;
   reason: string | null;
+  reportAfter: ReportAuditSnapshot | null;
+  reportBefore: ReportAuditSnapshot | null;
   resource: AuditResourceSnapshot | null;
   teamMemberAction: string | null;
   teamMemberAfter: TeamMemberAuditSnapshot | null;
@@ -249,7 +287,9 @@ function auditMetadata(metadata: Prisma.JsonValue): {
 
   return {
     moderationAction:
-      metadata.resource === undefined && typeof metadata.action === 'string'
+      metadata.entity !== 'REPORT' &&
+      metadata.resource === undefined &&
+      typeof metadata.action === 'string'
         ? metadata.action
         : null,
     after: auditSnapshot(metadata.after),
@@ -257,6 +297,8 @@ function auditMetadata(metadata: Prisma.JsonValue): {
     projectAfter: projectSnapshot(metadata.after),
     projectBefore: projectSnapshot(metadata.before),
     reason: typeof metadata.reason === 'string' ? metadata.reason : null,
+    reportAfter: reportSnapshot(metadata.after),
+    reportBefore: reportSnapshot(metadata.before),
     resource: resourceSnapshot(metadata.resource),
     teamMemberAction:
       metadata.resource !== undefined && typeof metadata.action === 'string'
@@ -275,6 +317,8 @@ function emptyAuditMetadata() {
     projectAfter: null,
     projectBefore: null,
     reason: null,
+    reportAfter: null,
+    reportBefore: null,
     resource: null,
     teamMemberAction: null,
     teamMemberAfter: null,
@@ -328,6 +372,46 @@ function projectSnapshot(
         title: value.title,
       }
     : null;
+}
+
+function reportSnapshot(
+  value: Prisma.JsonValue | undefined,
+): ReportAuditSnapshot | null {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    return null;
+  }
+
+  const targetKind =
+    value.targetKind === 'PROJECT' ||
+    value.targetKind === 'USER' ||
+    value.targetKind === 'VERSION' ||
+    value.targetKind === 'UNKNOWN'
+      ? value.targetKind
+      : null;
+
+  if (
+    typeof value.id !== 'string' ||
+    typeof value.reason !== 'string' ||
+    typeof value.state !== 'string' ||
+    targetKind === null ||
+    typeof value.targetLabel !== 'string' ||
+    (typeof value.targetId !== 'string' && value.targetId !== null)
+  ) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    reason: value.reason,
+    state: value.state,
+    targetId: value.targetId,
+    targetKind,
+    targetLabel: value.targetLabel,
+  };
 }
 
 function resourceSnapshot(

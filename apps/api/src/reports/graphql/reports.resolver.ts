@@ -139,6 +139,7 @@ export class ReportsResolver {
   ) {
     assertCanModerate(user);
     return this.reportsService.updateReportState({
+      actorId: user.id,
       id: input.id,
       state: input.state,
     });

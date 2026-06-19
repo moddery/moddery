@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AuditModule } from '../audit/audit.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { ReportsResolver } from './graphql/reports.resolver.js';
@@ -9,7 +10,7 @@ import { ReportThreadsService } from './services/report-threads.service.js';
 import { ReportsService } from './services/reports.service.js';
 
 @Module({
-  imports: [NotificationsModule, PrismaModule],
+  imports: [AuditModule, NotificationsModule, PrismaModule],
   providers: [
     ReportDirectThreadsService,
     ReportModerationNotesService,

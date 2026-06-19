@@ -3,10 +3,25 @@ import { describe, expect, test } from 'bun:test';
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { ReportsService } from './reports.service.js';
 
+function createReportsService(
+  prisma: PrismaService,
+  auditEvents: unknown[] = [],
+) {
+  return new ReportsService(
+    {
+      recordReportStateUpdate: (event: unknown) => {
+        auditEvents.push(event);
+        return Promise.resolve();
+      },
+    } as never,
+    prisma,
+  );
+}
+
 describe(ReportsService.name, () => {
   test('loads active moderation reports with reporter and project context', async () => {
     const queries: unknown[] = [];
-    const service = new ReportsService({
+    const service = createReportsService({
       report: {
         count: (query: unknown) => {
           queries.push(query);
@@ -84,7 +99,7 @@ describe(ReportsService.name, () => {
 
   test('loads the legacy moderation report list from search results', async () => {
     const queries: unknown[] = [];
-    const service = new ReportsService({
+    const service = createReportsService({
       report: {
         count: (query: unknown) => {
           queries.push(query);
@@ -127,33 +142,60 @@ describe(ReportsService.name, () => {
 
   test('updates report state and closes reports with a timestamp', async () => {
     const updates: unknown[] = [];
-    const service = new ReportsService({
-      report: {
-        update: (query: unknown) => {
-          updates.push(query);
-          return Promise.resolve({
-            body: 'Resolved report',
-            closedAt: new Date('2026-01-02T00:00:00.000Z'),
-            createdAt: new Date('2026-01-01T00:00:00.000Z'),
-            id: 'report-a',
-            project: null,
-            projectId: null,
-            reason: 'OTHER',
-            reporter: {
-              displayName: null,
-              id: 'user-a',
-              username: 'reporter',
+    const auditEvents: unknown[] = [];
+    const service = createReportsService(
+      {
+        $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            report: {
+              findUniqueOrThrow: () =>
+                Promise.resolve({
+                  id: 'report-a',
+                  project: {
+                    id: 'project-a',
+                    slug: 'iris',
+                    title: 'Iris',
+                  },
+                  reason: 'OTHER',
+                  state: 'TRIAGED',
+                  userTarget: null,
+                  version: null,
+                }),
+              update: (query: unknown) => {
+                updates.push(query);
+                return Promise.resolve({
+                  body: 'Resolved report',
+                  closedAt: new Date('2026-01-02T00:00:00.000Z'),
+                  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                  id: 'report-a',
+                  project: {
+                    id: 'project-a',
+                    kind: 'MOD',
+                    slug: 'iris',
+                    title: 'Iris',
+                  },
+                  projectId: 'project-a',
+                  reason: 'OTHER',
+                  reporter: {
+                    displayName: null,
+                    id: 'user-a',
+                    username: 'reporter',
+                  },
+                  state: 'CLOSED',
+                  userTarget: null,
+                  userTargetId: null,
+                  version: null,
+                  versionId: null,
+                });
+              },
             },
-            state: 'CLOSED',
-            userTarget: null,
-            userTargetId: null,
-            versionId: null,
-          });
-        },
-      },
-    } as unknown as PrismaService);
+          }),
+      } as unknown as PrismaService,
+      auditEvents,
+    );
 
     const report = await service.updateReportState({
+      actorId: 'moderator-a',
       id: 'report-a',
       state: 'CLOSED',
     });
@@ -167,13 +209,32 @@ describe(ReportsService.name, () => {
         where: { id: 'report-a' },
       }),
     );
+    expect(auditEvents[0]).toEqual({
+      actorId: 'moderator-a',
+      after: {
+        id: 'report-a',
+        reason: 'OTHER',
+        state: 'CLOSED',
+        targetId: 'project-a',
+        targetKind: 'PROJECT',
+        targetLabel: 'Iris',
+      },
+      before: {
+        id: 'report-a',
+        reason: 'OTHER',
+        state: 'TRIAGED',
+        targetId: 'project-a',
+        targetKind: 'PROJECT',
+        targetLabel: 'Iris',
+      },
+    });
     expect(report.state).toBe('CLOSED');
     expect(report.closedAt).toEqual(new Date('2026-01-02T00:00:00.000Z'));
   });
 
   test('creates project reports against existing projects', async () => {
     const creates: unknown[] = [];
-    const service = new ReportsService({
+    const service = createReportsService({
       project: {
         findUnique: () => Promise.resolve({ id: 'project-a' }),
       },
@@ -229,7 +290,7 @@ describe(ReportsService.name, () => {
   });
 
   test('rejects invalid project report inputs before lookups', async () => {
-    const service = new ReportsService({
+    const service = createReportsService({
       project: {
         findUnique: () => {
           throw new Error('Project lookup should not run');
@@ -254,7 +315,7 @@ describe(ReportsService.name, () => {
 
   test('creates version reports against existing versions', async () => {
     const creates: unknown[] = [];
-    const service = new ReportsService({
+    const service = createReportsService({
       report: {
         create: (query: unknown) => {
           creates.push(query);
@@ -315,7 +376,7 @@ describe(ReportsService.name, () => {
   });
 
   test('rejects invalid version report targets before lookups', async () => {
-    const service = new ReportsService({
+    const service = createReportsService({
       version: {
         findUnique: () => {
           throw new Error('Version lookup should not run');
@@ -341,7 +402,7 @@ describe(ReportsService.name, () => {
   test('creates user reports against existing users', async () => {
     const creates: unknown[] = [];
     const userLookups: unknown[] = [];
-    const service = new ReportsService({
+    const service = createReportsService({
       report: {
         create: (query: unknown) => {
           creates.push(query);
@@ -401,7 +462,7 @@ describe(ReportsService.name, () => {
   });
 
   test('rejects self-reports', async () => {
-    const service = new ReportsService({
+    const service = createReportsService({
       user: {
         findFirst: () => Promise.resolve({ id: 'user-a' }),
       },

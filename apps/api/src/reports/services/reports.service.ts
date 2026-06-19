@@ -5,11 +5,15 @@ import {
 } from '@nestjs/common';
 import { type ReportReason, type ReportState } from '@moddery/shared';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async findModerationReports({
     limit = 50,
@@ -44,19 +48,44 @@ export class ReportsService {
     return result.reports;
   }
 
-  async updateReportState({ id, state }: { id: string; state: ReportState }) {
+  async updateReportState({
+    actorId,
+    id,
+    state,
+  }: {
+    actorId: string;
+    id: string;
+    state: ReportState;
+  }) {
+    let result: { before: ReportAuditRow; report: ReportSummaryRow };
     try {
-      return await this.prisma.report.update({
-        data: {
-          closedAt: state === 'CLOSED' ? new Date() : null,
-          state,
-        },
-        select: reportSelect(),
-        where: { id },
+      result = await this.prisma.$transaction(async (tx) => {
+        const before = await tx.report.findUniqueOrThrow({
+          select: reportAuditSelect(),
+          where: { id },
+        });
+        const report = await tx.report.update({
+          data: {
+            closedAt: state === 'CLOSED' ? new Date() : null,
+            state,
+          },
+          select: reportSelect(),
+          where: { id },
+        });
+
+        return { before, report };
       });
     } catch {
       throw new NotFoundException('Report not found');
     }
+
+    await this.auditService.recordReportStateUpdate({
+      actorId,
+      after: reportAuditSnapshot(result.report),
+      before: reportAuditSnapshot(result.before),
+    });
+
+    return result.report;
   }
 
   async createProjectReport({
@@ -163,6 +192,41 @@ export class ReportsService {
   }
 }
 
+function reportAuditSelect() {
+  return {
+    id: true,
+    project: {
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+      },
+    },
+    reason: true,
+    state: true,
+    userTarget: {
+      select: {
+        displayName: true,
+        id: true,
+        username: true,
+      },
+    },
+    version: {
+      select: {
+        id: true,
+        name: true,
+        project: {
+          select: {
+            slug: true,
+            title: true,
+          },
+        },
+        versionNumber: true,
+      },
+    },
+  };
+}
+
 function reportSelect() {
   return {
     body: true,
@@ -212,6 +276,92 @@ function reportSelect() {
     },
     versionId: true,
   };
+}
+
+function reportAuditSnapshot(report: ReportAuditRow) {
+  if (report.project !== null) {
+    return {
+      id: report.id,
+      reason: report.reason,
+      state: report.state,
+      targetId: report.project.id,
+      targetKind: 'PROJECT',
+      targetLabel: report.project.title,
+    } as const;
+  }
+
+  if (report.version !== null) {
+    return {
+      id: report.id,
+      reason: report.reason,
+      state: report.state,
+      targetId: report.version.id,
+      targetKind: 'VERSION',
+      targetLabel: `${report.version.project.title} ${report.version.versionNumber}`,
+    } as const;
+  }
+
+  if (report.userTarget !== null) {
+    return {
+      id: report.id,
+      reason: report.reason,
+      state: report.state,
+      targetId: report.userTarget.id,
+      targetKind: 'USER',
+      targetLabel: report.userTarget.displayName ?? report.userTarget.username,
+    } as const;
+  }
+
+  return {
+    id: report.id,
+    reason: report.reason,
+    state: report.state,
+    targetId: null,
+    targetKind: 'UNKNOWN',
+    targetLabel: 'Unknown target',
+  } as const;
+}
+
+export interface ReportAuditRow {
+  id: string;
+  project: {
+    id: string;
+    kind?: string;
+    slug: string;
+    title: string;
+  } | null;
+  reason: ReportReason;
+  state: ReportState;
+  userTarget: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  } | null;
+  version: {
+    id: string;
+    name: string;
+    project: {
+      id?: string;
+      kind?: string;
+      slug: string;
+      title: string;
+    };
+    versionNumber: string;
+  } | null;
+}
+
+export interface ReportSummaryRow extends ReportAuditRow {
+  body: string;
+  closedAt: Date | null;
+  createdAt: Date;
+  projectId: string | null;
+  reporter: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
+  userTargetId: string | null;
+  versionId: string | null;
 }
 
 function activeReportWhere() {

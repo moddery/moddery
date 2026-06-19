@@ -61,6 +61,27 @@ export class AuditResourceSnapshot {
 }
 
 @ObjectType()
+export class ReportAuditSnapshot {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  reason!: string;
+
+  @Field(() => String)
+  state!: string;
+
+  @Field(() => String, { nullable: true })
+  targetId!: string | null;
+
+  @Field(() => String)
+  targetKind!: string;
+
+  @Field(() => String)
+  targetLabel!: string;
+}
+
+@ObjectType()
 export class TeamMemberAuditSnapshot {
   @Field(() => Boolean)
   accepted!: boolean;
@@ -112,6 +133,12 @@ export class AuditLogSummary {
 
   @Field(() => String, { nullable: true })
   reason!: string | null;
+
+  @Field(() => ReportAuditSnapshot, { nullable: true })
+  reportAfter!: ReportAuditSnapshot | null;
+
+  @Field(() => ReportAuditSnapshot, { nullable: true })
+  reportBefore!: ReportAuditSnapshot | null;
 
   @Field(() => AuditResourceSnapshot, { nullable: true })
   resource!: AuditResourceSnapshot | null;

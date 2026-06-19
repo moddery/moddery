@@ -82,6 +82,8 @@ export interface AdminAuditLog {
   projectAfter: ProjectAuditSnapshot | null;
   projectBefore: ProjectAuditSnapshot | null;
   reason: string | null;
+  reportAfter: ReportAuditSnapshot | null;
+  reportBefore: ReportAuditSnapshot | null;
   resource: AuditResourceSnapshot | null;
   targetUser: AdminAuditUser | null;
   targetUserId: string | null;
@@ -105,6 +107,15 @@ export interface ProjectAuditSnapshot {
   slug: string;
   status: string;
   title: string;
+}
+
+export interface ReportAuditSnapshot {
+  id: string;
+  reason: string;
+  state: string;
+  targetId: string | null;
+  targetKind: 'PROJECT' | 'USER' | 'VERSION' | 'UNKNOWN';
+  targetLabel: string;
 }
 
 export interface TeamMemberAuditSnapshot {

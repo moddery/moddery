@@ -201,4 +201,63 @@ describe(AuditService.name, () => {
       },
     });
   });
+
+  test('loads report state audit metadata', async () => {
+    const service = new AuditService({
+      auditLog: {
+        count: () => Promise.resolve(1),
+        findMany: () =>
+          Promise.resolve([
+            {
+              action: 'REPORT_STATE_UPDATED',
+              actor: {
+                displayName: 'Moderator',
+                id: 'user-a',
+                username: 'mod',
+              },
+              actorId: 'user-a',
+              createdAt: new Date('2026-01-04T00:00:00.000Z'),
+              id: 'audit-d',
+              metadata: {
+                after: {
+                  id: 'report-a',
+                  reason: 'MALWARE',
+                  state: 'CLOSED',
+                  targetId: 'project-a',
+                  targetKind: 'PROJECT',
+                  targetLabel: 'Example',
+                },
+                before: {
+                  id: 'report-a',
+                  reason: 'MALWARE',
+                  state: 'OPEN',
+                  targetId: 'project-a',
+                  targetKind: 'PROJECT',
+                  targetLabel: 'Example',
+                },
+                entity: 'REPORT',
+              },
+              targetUser: null,
+              targetUserId: null,
+            },
+          ]),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findAdminAuditLogs();
+
+    expect(result.auditLogs[0]).toMatchObject({
+      action: 'REPORT_STATE_UPDATED',
+      moderationAction: null,
+      reportAfter: {
+        state: 'CLOSED',
+        targetKind: 'PROJECT',
+        targetLabel: 'Example',
+      },
+      reportBefore: {
+        state: 'OPEN',
+        targetKind: 'PROJECT',
+      },
+    });
+  });
 });

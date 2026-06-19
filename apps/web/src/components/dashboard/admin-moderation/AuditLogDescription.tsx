@@ -47,6 +47,21 @@ export function AuditDescription({ auditLog }: { auditLog: AdminAuditLog }) {
     );
   }
 
+  if (auditLog.action === 'REPORT_STATE_UPDATED') {
+    return (
+      <>
+        <AuditUserLink
+          fallback={auditLog.actorId ?? 'Unknown actor'}
+          user={auditLog.actor}
+        />{' '}
+        moved report on {auditLog.reportAfter?.targetLabel ?? 'a target'} to{' '}
+        {auditLog.reportAfter?.state
+          ? enumLabel(auditLog.reportAfter.state).toLowerCase()
+          : 'a new state'}
+      </>
+    );
+  }
+
   return (
     <>
       <AuditUserLink
