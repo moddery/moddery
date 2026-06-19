@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ExternalLink } from 'lucide-react';
 
+import { projectPath } from '../../../app/routing.ts';
 import { fetchProjectAnalytics } from '../../../lib/catalog.ts';
 import { type DashboardProject } from '../../../lib/dashboard.ts';
+import { projectTypeFromKind } from '../../../lib/projectTypes.ts';
 import { ProjectAnalyticsSummary } from './analytics/ProjectAnalyticsSummary.tsx';
 
 export function ProjectAnalyticsPanel({
@@ -24,6 +27,8 @@ export function ProjectAnalyticsPanel({
     queryKey: ['dashboard', 'project-analytics', projectSlug],
   });
   const analytics = analyticsQuery.data ?? null;
+  const selectedProject =
+    projects.find((project) => project.slug === projectSlug) ?? projects[0];
 
   if (projects.length === 0) return null;
 
@@ -38,20 +43,31 @@ export function ProjectAnalyticsPanel({
             Track recent views and downloads for projects you manage.
           </p>
         </div>
-        <label className="grid gap-1 text-sm font-bold text-ink sm:min-w-64">
-          Project
-          <select
-            value={projectSlug}
-            onChange={(event) => setProjectSlug(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
-          >
-            {projects.map((project) => (
-              <option key={project.slug} value={project.slug}>
-                {project.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-2 sm:min-w-64">
+          <label className="grid gap-1 text-sm font-bold text-ink">
+            Project
+            <select
+              value={projectSlug}
+              onChange={(event) => setProjectSlug(event.target.value)}
+              className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            >
+              {projects.map((project) => (
+                <option key={project.slug} value={project.slug}>
+                  {project.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          {selectedProject && (
+            <a
+              href={projectAnalyticsHref(selectedProject)}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-line px-3 text-sm font-extrabold text-ink transition-colors hover:bg-control-hover"
+            >
+              <ExternalLink className="size-4 text-accent-icon" />
+              Open project
+            </a>
+          )}
+        </div>
       </div>
 
       {analyticsQuery.isLoading ? (
@@ -70,4 +86,10 @@ export function ProjectAnalyticsPanel({
       )}
     </section>
   );
+}
+
+export function projectAnalyticsHref(
+  project: Pick<DashboardProject, 'kind' | 'slug'>,
+) {
+  return projectPath(projectTypeFromKind(project.kind), project.slug);
 }
