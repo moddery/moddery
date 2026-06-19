@@ -63,6 +63,33 @@ export const ACCOUNT_STATUSES = [
   'DELETED',
 ] as const satisfies readonly AccountStatus[];
 
+export const COLLECTION_VISIBILITIES = [
+  'PRIVATE',
+  'UNLISTED',
+  'PUBLIC',
+] as const satisfies readonly CollectionVisibility[];
+
+export const DEPENDENCY_KINDS = [
+  'REQUIRED',
+  'OPTIONAL',
+  'INCOMPATIBLE',
+  'EMBEDDED',
+] as const satisfies readonly DependencyKind[];
+
+export const PROJECT_STATUSES = [
+  'DRAFT',
+  'PENDING_REVIEW',
+  'APPROVED',
+  'REJECTED',
+  'ARCHIVED',
+] as const satisfies readonly ProjectStatus[];
+
+export const REPORT_STATES = [
+  'OPEN',
+  'TRIAGED',
+  'CLOSED',
+] as const satisfies readonly ReportState[];
+
 export const REPORT_REASONS = [
   'BROKEN_OR_MISLEADING',
   'MALWARE',

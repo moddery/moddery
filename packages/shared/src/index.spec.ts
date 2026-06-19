@@ -3,12 +3,17 @@ import { describe, expect, test } from 'bun:test';
 import {
   ACCOUNT_ROLES,
   ACCOUNT_STATUSES,
+  COLLECTION_VISIBILITIES,
+  DEPENDENCY_KINDS,
   PROJECT_KINDS,
+  PROJECT_STATUSES,
   PROJECT_TYPES,
   REPORT_REASON_OPTIONS,
   REPORT_REASONS,
+  REPORT_STATES,
   SUPPORTED_GAME_VERSIONS,
   SUPPORTED_LOADERS,
+  VERSION_CHANNELS,
 } from './index.js';
 
 describe('shared platform constants', () => {
@@ -21,6 +26,14 @@ describe('shared platform constants', () => {
     expect(PROJECT_KINDS).toContain('RESOURCE_PACK');
     expect(PROJECT_TYPES).toContain('resourcepack');
     expect(PROJECT_KINDS.length).toBe(PROJECT_TYPES.length);
+  });
+
+  test('defines API validation option sets', () => {
+    expect(COLLECTION_VISIBILITIES).toEqual(['PRIVATE', 'UNLISTED', 'PUBLIC']);
+    expect(DEPENDENCY_KINDS).toContain('REQUIRED');
+    expect(PROJECT_STATUSES).toContain('APPROVED');
+    expect(REPORT_STATES).toEqual(['OPEN', 'TRIAGED', 'CLOSED']);
+    expect(VERSION_CHANNELS).toEqual(['ALPHA', 'BETA', 'RELEASE']);
   });
 
   test('defines account moderation states', () => {

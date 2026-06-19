@@ -46,11 +46,52 @@ interface ProjectBySlugResponse {
   errors?: GraphqlError[];
 }
 
+interface PrepareUploadResponse {
+  data?: {
+    prepareProjectUpload?: ProjectUploadTarget;
+  };
+  errors?: GraphqlError[];
+}
+
+interface CreateVersionResponse {
+  data?: {
+    createVersion?: VersionSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface VersionsForProjectResponse {
+  data?: {
+    versionsForProject?: VersionSummary[];
+  };
+  errors?: GraphqlError[];
+}
+
 interface ProjectSummary {
   kind: string;
   slug: string;
   status: string;
   title: string;
+}
+
+interface ProjectUploadTarget {
+  bucket: string;
+  key: string;
+  method: string;
+  objectUrl: string;
+  uploadUrl: string;
+}
+
+interface VersionSummary {
+  files: {
+    fileName: string;
+    primary: boolean;
+    url: string;
+  }[];
+  id: string;
+  projectSlug: string;
+  status: string;
+  versionNumber: string;
 }
 
 interface ProjectSearchResponse {
@@ -233,6 +274,140 @@ async function checkCreatorFlow(): Promise<void> {
     slug,
     title,
   });
+
+  const uploadTarget = await prepareVersionUpload(slug, auth.accessToken);
+  if (
+    uploadTarget.bucket.length === 0 ||
+    uploadTarget.key.length === 0 ||
+    uploadTarget.method !== 'PUT' ||
+    uploadTarget.objectUrl.length === 0 ||
+    uploadTarget.uploadUrl.length === 0
+  ) {
+    throw new Error('Version upload target was incomplete');
+  }
+
+  const versionNumber = `1.0.${suffix}`;
+  const versionPayload = await readGraphql<CreateVersionResponse>(
+    {
+      query: `
+        mutation SmokeCreateVersion($input: CreateVersionInput!) {
+          createVersion(input: $input) {
+            files {
+              fileName
+              primary
+              url
+            }
+            id
+            projectSlug
+            status
+            versionNumber
+          }
+        }
+      `,
+      variables: {
+        input: {
+          channel: 'RELEASE',
+          changelog: 'Initial smoke-test release.',
+          files: [
+            {
+              fileName: `smoke-${suffix}.jar`,
+              hashes: [
+                {
+                  algorithm: 'SHA256',
+                  value:
+                    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                },
+              ],
+              primary: true,
+              sizeBytes: 128,
+              url: uploadTarget.objectUrl,
+            },
+          ],
+          gameVersions: ['1.21.6'],
+          loaders: ['fabric'],
+          name: `Smoke Version ${suffix}`,
+          projectSlug: slug,
+          versionNumber,
+        },
+      },
+    },
+    auth.accessToken,
+  );
+  assertNoGraphqlErrors(versionPayload, 'GraphQL create version');
+
+  const createdVersion = required(
+    versionPayload.data?.createVersion,
+    'created version',
+  );
+  assertVersion(createdVersion, {
+    projectSlug: slug,
+    versionNumber,
+  });
+
+  const versionsPayload = await readGraphql<VersionsForProjectResponse>({
+    query: `
+      query SmokeVersionsForProject($projectSlug: String!) {
+        versionsForProject(projectSlug: $projectSlug) {
+          files {
+            fileName
+            primary
+            url
+          }
+          id
+          projectSlug
+          status
+          versionNumber
+        }
+      }
+    `,
+    variables: { projectSlug: slug },
+  });
+  assertNoGraphqlErrors(versionsPayload, 'GraphQL versions for project');
+
+  const publicVersion = required(
+    versionsPayload.data?.versionsForProject?.find(
+      (version) => version.versionNumber === versionNumber,
+    ),
+    'public version',
+  );
+  assertVersion(publicVersion, {
+    projectSlug: slug,
+    versionNumber,
+  });
+}
+
+async function prepareVersionUpload(
+  projectSlug: string,
+  token: string,
+): Promise<ProjectUploadTarget> {
+  const payload = await readGraphql<PrepareUploadResponse>(
+    {
+      query: `
+        mutation SmokePrepareProjectUpload($input: PrepareProjectUploadInput!) {
+          prepareProjectUpload(input: $input) {
+            bucket
+            key
+            method
+            objectUrl
+            uploadUrl
+          }
+        }
+      `,
+      variables: {
+        input: {
+          contentType: 'application/java-archive',
+          fileName: 'smoke.jar',
+          projectSlug,
+          sizeBytes: 128,
+          uploadKind: 'version-file',
+        },
+      },
+    },
+    token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL prepare project upload');
+
+  return required(payload.data?.prepareProjectUpload, 'project upload target');
 }
 
 async function projectSearch(query: {
@@ -322,6 +497,23 @@ function assertProject(
   ) {
     throw new Error(
       `Project mismatch: expected ${expected.kind} ${expected.slug} ${expected.title}, received ${project.kind} ${project.slug} ${project.title}`,
+    );
+  }
+}
+
+function assertVersion(
+  version: VersionSummary,
+  expected: { projectSlug: string; versionNumber: string },
+): void {
+  if (
+    version.projectSlug !== expected.projectSlug ||
+    version.versionNumber !== expected.versionNumber ||
+    version.status !== 'APPROVED' ||
+    version.files.length !== 1 ||
+    !version.files[0]?.primary
+  ) {
+    throw new Error(
+      `Version mismatch: expected ${expected.projectSlug} ${expected.versionNumber}, received ${version.projectSlug} ${version.versionNumber}`,
     );
   }
 }
