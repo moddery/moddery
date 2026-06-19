@@ -45,6 +45,10 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  SECURITY_HEADERS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   REDIS_URL: z.string().url(),
   S3_ACCESS_KEY_ID: z.string().min(1),
   S3_BUCKET: z.string().min(1),
@@ -58,6 +62,7 @@ const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().min(1),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
 });
 
 export type Environment = z.infer<typeof envSchema>;
@@ -72,6 +77,8 @@ export function validateEnvironment(): {
     rateLimitRequests: Environment['RATE_LIMIT_REQUESTS'];
     rateLimitTtlSeconds: Environment['RATE_LIMIT_TTL_SECONDS'];
     requestLoggingEnabled: Environment['REQUEST_LOGGING_ENABLED'];
+    securityHeadersEnabled: Environment['SECURITY_HEADERS_ENABLED'];
+    trustProxyHops: Environment['TRUST_PROXY_HOPS'];
   };
   database: {
     url: Environment['DATABASE_URL'];
@@ -117,6 +124,8 @@ export function validateEnvironment(): {
       rateLimitRequests: env.RATE_LIMIT_REQUESTS,
       rateLimitTtlSeconds: env.RATE_LIMIT_TTL_SECONDS,
       requestLoggingEnabled: env.REQUEST_LOGGING_ENABLED,
+      securityHeadersEnabled: env.SECURITY_HEADERS_ENABLED,
+      trustProxyHops: env.TRUST_PROXY_HOPS,
     },
     database: {
       url: env.DATABASE_URL,

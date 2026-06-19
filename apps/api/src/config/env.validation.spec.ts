@@ -20,6 +20,7 @@ describe(validateEnvironment.name, () => {
       RATE_LIMIT_REQUESTS: '42',
       RATE_LIMIT_TTL_SECONDS: '15',
       REQUEST_LOGGING_ENABLED: 'false',
+      SECURITY_HEADERS_ENABLED: 'false',
       REDIS_URL: 'redis://localhost:6379',
       S3_ACCESS_KEY_ID: 'access-key',
       S3_BUCKET: 'bucket',
@@ -32,6 +33,8 @@ describe(validateEnvironment.name, () => {
       rateLimitRequests: 42,
       rateLimitTtlSeconds: 15,
       requestLoggingEnabled: false,
+      securityHeadersEnabled: false,
+      trustProxyHops: 0,
     });
   });
 });
