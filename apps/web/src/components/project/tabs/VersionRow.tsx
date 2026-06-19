@@ -5,7 +5,9 @@ import {
   type DownloadRecord,
   type ProjectVersion,
 } from '../../../lib/catalog.ts';
+import { type ProjectType } from '../../../types.ts';
 import { cn } from '../../../lib/cn.ts';
+import { type SearchTag } from '../../ModCard.tsx';
 import { VersionActions } from './version-row/VersionActions.tsx';
 import { VersionChangelog } from './version-row/VersionChangelog.tsx';
 import { VersionDependencies } from './version-row/VersionDependencies.tsx';
@@ -16,14 +18,18 @@ import { VersionSummary } from './version-row/VersionSummary.tsx';
 
 export function VersionRow({
   onDownloadRecorded,
+  onSelectVersion,
+  onTagSearch,
+  projectType,
   selected,
   version,
-  onSelectVersion,
 }: {
   onDownloadRecorded: (record: DownloadRecord) => void;
+  onSelectVersion: (versionNumber: string | null) => void;
+  onTagSearch?: (tag: SearchTag) => void;
+  projectType: ProjectType;
   selected: boolean;
   version: ProjectVersion;
-  onSelectVersion: (versionNumber: string | null) => void;
 }) {
   const primaryFile =
     version.files.find((file) => file.primary) ?? version.files[0];
@@ -57,6 +63,8 @@ export function VersionRow({
         version={version}
         primaryFile={primaryFile}
         onSelectVersion={onSelectVersion}
+        onTagSearch={onTagSearch}
+        projectType={projectType}
       />
 
       <VersionActions
@@ -81,7 +89,11 @@ export function VersionRow({
 
       {detailsOpen && (
         <div className="grid gap-3 sm:col-span-2">
-          <VersionMetadata version={version} />
+          <VersionMetadata
+            version={version}
+            onTagSearch={onTagSearch}
+            projectType={projectType}
+          />
           <VersionChangelog changelog={version.changelog} />
           <VersionDependencies dependencies={version.dependencies} />
           <VersionFiles files={version.files} onDownload={downloadFile} />

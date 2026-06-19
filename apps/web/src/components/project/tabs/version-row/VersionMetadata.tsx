@@ -2,11 +2,21 @@ import { type ReactNode } from 'react';
 import { Clock3, PackageCheck, Tags } from 'lucide-react';
 
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
+import { type ProjectType } from '../../../../types.ts';
 import { formatDate, timeAgo } from '../../../../lib/format.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
-import { Chip, LoaderTag } from '../../../Chips.tsx';
+import { Chip, LoaderTag, VersionTag } from '../../../Chips.tsx';
+import { type SearchTag } from '../../../ModCard.tsx';
 
-export function VersionMetadata({ version }: { version: ProjectVersion }) {
+export function VersionMetadata({
+  onTagSearch,
+  projectType,
+  version,
+}: {
+  onTagSearch?: (tag: SearchTag) => void;
+  projectType: ProjectType;
+  version: ProjectVersion;
+}) {
   const lifecycle = [
     { label: 'Published', value: formatDate(version.datePublished) },
     { label: 'Created', value: formatDate(version.createdAt) },
@@ -49,12 +59,42 @@ export function VersionMetadata({ version }: { version: ProjectVersion }) {
         <div className="grid gap-2">
           <TagGroup label="Loaders">
             {version.loaders.map((loader) => (
-              <LoaderTag key={loader} loader={loader} />
+              <LoaderTag
+                key={loader}
+                loader={loader}
+                onClick={
+                  onTagSearch === undefined
+                    ? undefined
+                    : () =>
+                        onTagSearch(
+                          versionCompatibilityTag(
+                            'loader',
+                            projectType,
+                            loader,
+                          ),
+                        )
+                }
+              />
             ))}
           </TagGroup>
           <TagGroup label="Game versions">
             {version.gameVersions.map((gameVersion) => (
-              <Chip key={gameVersion}>{gameVersion}</Chip>
+              <VersionTag
+                key={gameVersion}
+                version={gameVersion}
+                onClick={
+                  onTagSearch === undefined
+                    ? undefined
+                    : () =>
+                        onTagSearch(
+                          versionCompatibilityTag(
+                            'version',
+                            projectType,
+                            gameVersion,
+                          ),
+                        )
+                }
+              />
             ))}
           </TagGroup>
           <TagGroup label="Files">
@@ -67,6 +107,14 @@ export function VersionMetadata({ version }: { version: ProjectVersion }) {
       </section>
     </div>
   );
+}
+
+export function versionCompatibilityTag(
+  kind: Extract<SearchTag['kind'], 'loader' | 'version'>,
+  projectType: ProjectType,
+  value: string,
+): SearchTag {
+  return { kind, projectType, value };
 }
 
 function TagGroup({ children, label }: { children: ReactNode; label: string }) {

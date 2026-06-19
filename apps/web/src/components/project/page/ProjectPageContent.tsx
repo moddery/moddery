@@ -94,9 +94,11 @@ export function ProjectPageContent({
             <VersionsTab
               onDownloadRecorded={onDownloadRecorded}
               projectSlug={project.slug}
+              projectType={project.projectType}
               selectedVersion={selectedVersion}
               versions={versions}
               onSelectVersion={onSelectVersion}
+              onTagSearch={onTagSearch}
             />
           )}
         </div>

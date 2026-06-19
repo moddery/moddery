@@ -2,17 +2,24 @@ import { userPath } from '../../../../app/routing.ts';
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 import { cn } from '../../../../lib/cn.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
+import { type ProjectType } from '../../../../types.ts';
 import { Chip, LoaderTag } from '../../../Chips.tsx';
+import { type SearchTag } from '../../../ModCard.tsx';
 import { versionHref } from './helpers.ts';
 import { DependencyChip } from './VersionDependencies.tsx';
+import { versionCompatibilityTag } from './VersionMetadata.tsx';
 
 export function VersionSummary({
+  onTagSearch,
   onSelectVersion,
   primaryFile,
+  projectType,
   version,
 }: {
+  onTagSearch?: (tag: SearchTag) => void;
   onSelectVersion: (versionNumber: string | null) => void;
   primaryFile: ProjectVersion['files'][number] | undefined;
+  projectType: ProjectType;
   version: ProjectVersion;
 }) {
   const authorName =
@@ -54,10 +61,37 @@ export function VersionSummary({
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {version.loaders.slice(0, 3).map((loader) => (
-          <LoaderTag key={loader} loader={loader} />
+          <LoaderTag
+            key={loader}
+            loader={loader}
+            onClick={
+              onTagSearch === undefined
+                ? undefined
+                : () =>
+                    onTagSearch(
+                      versionCompatibilityTag('loader', projectType, loader),
+                    )
+            }
+          />
         ))}
         {version.gameVersions.slice(0, 4).map((gameVersion) => (
-          <Chip key={gameVersion}>{gameVersion}</Chip>
+          <Chip
+            key={gameVersion}
+            onClick={
+              onTagSearch === undefined
+                ? undefined
+                : () =>
+                    onTagSearch(
+                      versionCompatibilityTag(
+                        'version',
+                        projectType,
+                        gameVersion,
+                      ),
+                    )
+            }
+          >
+            {gameVersion}
+          </Chip>
         ))}
         {version.dependencies.slice(0, 3).map((dependency) => (
           <DependencyChip key={dependency.id} dependency={dependency} />

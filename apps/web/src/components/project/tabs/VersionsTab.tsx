@@ -2,6 +2,8 @@ import {
   type DownloadRecord,
   type ProjectVersion,
 } from '../../../lib/catalog.ts';
+import { type ProjectType } from '../../../types.ts';
+import { type SearchTag } from '../../ModCard.tsx';
 import { EmptyTab } from './EmptyTab.tsx';
 import { useVersionSearchState } from './versions-tab/useVersionSearchState.ts';
 import { VersionSearchResults } from './versions-tab/VersionSearchResults.tsx';
@@ -9,15 +11,19 @@ import { VersionsToolbar } from './VersionsToolbar.tsx';
 
 export function VersionsTab({
   onDownloadRecorded,
-  selectedVersion,
   onSelectVersion,
+  onTagSearch,
   projectSlug,
+  projectType,
+  selectedVersion,
   versions,
 }: {
   onDownloadRecorded: (record: DownloadRecord) => void;
-  selectedVersion: string | null;
   onSelectVersion: (versionNumber: string | null) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   projectSlug: string;
+  projectType: ProjectType;
+  selectedVersion: string | null;
   versions: ProjectVersion[];
 }) {
   const search = useVersionSearchState({
@@ -60,6 +66,8 @@ export function VersionsTab({
         onDownloadRecorded={onDownloadRecorded}
         onPage={search.setPage}
         onSelectVersion={onSelectVersion}
+        onTagSearch={onTagSearch}
+        projectType={projectType}
       />
     </section>
   );

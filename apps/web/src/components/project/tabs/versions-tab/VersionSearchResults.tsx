@@ -2,6 +2,8 @@ import {
   type DownloadRecord,
   type ProjectVersion,
 } from '../../../../lib/catalog.ts';
+import { type ProjectType } from '../../../../types.ts';
+import { type SearchTag } from '../../../ModCard.tsx';
 import { Pagination } from '../../../Pagination.tsx';
 import { EmptyTab } from '../EmptyTab.tsx';
 import { VersionRow } from '../VersionRow.tsx';
@@ -12,7 +14,9 @@ export function VersionSearchResults({
   onDownloadRecorded,
   onPage,
   onSelectVersion,
+  onTagSearch,
   page,
+  projectType,
   selectedVersion,
   totalPages,
   versions,
@@ -22,7 +26,9 @@ export function VersionSearchResults({
   onDownloadRecorded: (record: DownloadRecord) => void;
   onPage: (page: number) => void;
   onSelectVersion: (versionNumber: string | null) => void;
+  onTagSearch?: (tag: SearchTag) => void;
   page: number;
+  projectType: ProjectType;
   selectedVersion: string | null;
   totalPages: number;
   versions: ProjectVersion[];
@@ -67,6 +73,8 @@ export function VersionSearchResults({
           version={version}
           onDownloadRecorded={onDownloadRecorded}
           onSelectVersion={onSelectVersion}
+          onTagSearch={onTagSearch}
+          projectType={projectType}
         />
       ))}
 
