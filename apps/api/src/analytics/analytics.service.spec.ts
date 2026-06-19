@@ -14,6 +14,8 @@ describe(AnalyticsService.name, () => {
         },
       } as never,
       {} as PrismaService,
+      { delete: () => Promise.resolve() } as never,
+      { updateProjectDownloads: () => Promise.resolve() } as never,
     );
 
     await service.ensureSchema();
@@ -62,6 +64,8 @@ describe(AnalyticsService.name, () => {
             }),
         },
       } as unknown as PrismaService,
+      { delete: () => Promise.resolve() } as never,
+      { updateProjectDownloads: () => Promise.resolve() } as never,
     );
 
     const summary = await service.projectAnalytics('iris');
@@ -83,6 +87,8 @@ describe(AnalyticsService.name, () => {
   });
 
   test('records download events and increments counters', async () => {
+    const deletedKeys: string[] = [];
+    const searchUpdates: unknown[] = [];
     const transactionCalls: unknown[] = [];
     const inserts: unknown[] = [];
     const service = new AnalyticsService(
@@ -97,7 +103,7 @@ describe(AnalyticsService.name, () => {
         $transaction: (queries: unknown[]) => {
           transactionCalls.push(queries);
           return Promise.resolve([
-            { downloads: 100, id: 'project-a' },
+            { downloads: 100, id: 'project-a', slug: 'iris' },
             { downloads: 12, id: 'version-a' },
             { id: 'event-a' },
           ]);
@@ -122,6 +128,18 @@ describe(AnalyticsService.name, () => {
             }),
         },
       } as unknown as PrismaService,
+      {
+        delete: (key: string) => {
+          deletedKeys.push(key);
+          return Promise.resolve();
+        },
+      } as never,
+      {
+        updateProjectDownloads: (projectId: string, downloads: number) => {
+          searchUpdates.push({ downloads, projectId });
+          return Promise.resolve();
+        },
+      } as never,
     );
 
     const record = await service.recordDownload('file-a');
@@ -129,7 +147,7 @@ describe(AnalyticsService.name, () => {
     expect(transactionCalls[0]).toEqual([
       {
         data: { downloads: { increment: 1 } },
-        select: { downloads: true, id: true },
+        select: { downloads: true, id: true, slug: true },
         where: { id: 'project-a' },
       },
       {
@@ -144,6 +162,8 @@ describe(AnalyticsService.name, () => {
         },
       },
     ]);
+    expect(deletedKeys).toEqual(['catalog:project-by-slug:iris']);
+    expect(searchUpdates).toEqual([{ downloads: 100, projectId: 'project-a' }]);
     expect(record).toEqual({
       fileId: 'file-a',
       projectDownloads: 100,
@@ -193,6 +213,8 @@ describe(AnalyticsService.name, () => {
           },
         },
       } as unknown as PrismaService,
+      { delete: () => Promise.resolve() } as never,
+      { updateProjectDownloads: () => Promise.resolve() } as never,
     );
 
     const record = await service.recordProjectView('iris');

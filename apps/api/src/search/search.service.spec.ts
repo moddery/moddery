@@ -59,6 +59,28 @@ describe(SearchService.name, () => {
     );
   });
 
+  test('updates project download counts with immediate refresh', async () => {
+    const updates: unknown[] = [];
+    const client = {
+      update: (query: unknown) => {
+        updates.push(query);
+        return Promise.resolve();
+      },
+    };
+    const service = new SearchService(client as never);
+
+    await service.updateProjectDownloads('project-a', 42);
+
+    expect(updates[0]).toEqual({
+      body: {
+        doc: { downloads: 42 },
+      },
+      id: 'project-a',
+      index: 'projects',
+      refresh: true,
+    });
+  });
+
   test('filters project search by tags', async () => {
     const searches: unknown[] = [];
     const client = {

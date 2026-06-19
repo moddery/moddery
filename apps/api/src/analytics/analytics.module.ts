@@ -6,10 +6,12 @@ import { CLICKHOUSE_CLIENT } from './analytics.constants.js';
 import { AnalyticsService } from './analytics.service.js';
 import { AnalyticsResolver } from './graphql/analytics.resolver.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
+import { RedisModule } from '../redis/redis.module.js';
+import { SearchModule } from '../search/search.module.js';
 
 @Module({
   exports: [AnalyticsService],
-  imports: [PrismaModule],
+  imports: [PrismaModule, RedisModule, SearchModule],
   providers: [
     {
       provide: CLICKHOUSE_CLIENT,

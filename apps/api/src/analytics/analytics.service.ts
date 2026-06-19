@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { type ClickHouseClient } from '@clickhouse/client';
 
+import { projectBySlugCacheKey } from '../catalog/services/project-read-model.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { RedisService } from '../redis/redis.service.js';
+import { SearchService } from '../search/search.service.js';
 import { CLICKHOUSE_CLIENT } from './analytics.constants.js';
 
 @Injectable()
@@ -14,6 +17,8 @@ export class AnalyticsService implements OnModuleInit {
   constructor(
     @Inject(CLICKHOUSE_CLIENT) private readonly client: ClickHouseClient,
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+    private readonly search: SearchService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -154,7 +159,7 @@ export class AnalyticsService implements OnModuleInit {
     const [project, version] = await this.prisma.$transaction([
       this.prisma.project.update({
         data: { downloads: { increment: 1 } },
-        select: { downloads: true, id: true },
+        select: { downloads: true, id: true, slug: true },
         where: { id: file.version.projectId },
       }),
       this.prisma.version.update({
@@ -174,6 +179,10 @@ export class AnalyticsService implements OnModuleInit {
       projectId: file.version.projectId,
       versionId: file.version.id,
     });
+    await Promise.all([
+      this.redis.delete(projectBySlugCacheKey(project.slug)),
+      this.search.updateProjectDownloads(project.id, project.downloads),
+    ]);
 
     return {
       fileId: file.id,
