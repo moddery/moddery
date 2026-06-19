@@ -53,14 +53,26 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
   }
 
   function fillVersion(version: DashboardVersion | null) {
-    setName(version?.name ?? '');
-    setVersionNumber(version?.versionNumber ?? '');
+    if (version === null) {
+      setName('');
+      setVersionNumber('');
+      setChannel('RELEASE');
+      setFeatured(false);
+      setSortOrder('');
+      setChangelog('');
+      setLoaders([]);
+      setGameVersions([]);
+      return;
+    }
+
+    setName(version.name);
+    setVersionNumber(version.versionNumber);
     setChannel(versionChannelFromDashboardVersion(version));
-    setFeatured(version?.featured ?? false);
+    setFeatured(version.featured);
     setSortOrder(versionSortOrderFieldValue(version));
-    setChangelog(version?.changelog ?? '');
-    setLoaders(version?.loaders ?? []);
-    setGameVersions(version?.gameVersions ?? []);
+    setChangelog(version.changelog ?? '');
+    setLoaders(version.loaders);
+    setGameVersions(version.gameVersions);
   }
 
   const fields = {
