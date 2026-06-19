@@ -143,6 +143,9 @@ export const VIEWER_COLLECTION_CHOICES_QUERY = gql`
           }
         }
         name
+        owner {
+          username
+        }
         projectCount
         slug
         visibility

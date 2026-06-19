@@ -1,6 +1,14 @@
 import { BookmarkMinus, BookmarkPlus } from 'lucide-react';
 
-import { type ProjectDetails } from '../../../lib/catalog.ts';
+import {
+  collectionPath,
+  dashboardPath,
+  type SelectedCollection,
+} from '../../../app/routing.ts';
+import {
+  type ProjectDetails,
+  type ViewerCollectionChoice,
+} from '../../../lib/catalog.ts';
 import { useProjectCollectionSaveState } from './collection-save/useProjectCollectionSaveState.ts';
 
 export function ProjectCollectionSave({
@@ -27,7 +35,13 @@ export function ProjectCollectionSave({
         </p>
       ) : collections.collections.length === 0 ? (
         <p className="mt-2 text-xs font-semibold leading-5 text-muted">
-          Create a collection from your dashboard first.
+          <a
+            className="font-bold text-ink transition-colors hover:text-accent"
+            href={dashboardPath('dashboard-collections')}
+          >
+            Create a collection
+          </a>{' '}
+          from your dashboard first.
         </p>
       ) : (
         <>
@@ -38,9 +52,12 @@ export function ProjectCollectionSave({
                   key={collection.id}
                   className="flex items-center justify-between gap-2 rounded-md bg-surface-2 px-2 py-1.5"
                 >
-                  <span className="min-w-0 truncate text-xs font-bold text-muted">
+                  <a
+                    className="min-w-0 truncate text-xs font-bold text-muted transition-colors hover:text-accent"
+                    href={viewerCollectionHref(collection)}
+                  >
                     {collection.name}
-                  </span>
+                  </a>
                   <button
                     type="button"
                     onClick={() => void collections.removeProject(collection)}
@@ -105,4 +122,15 @@ export function ProjectCollectionSave({
       )}
     </div>
   );
+}
+
+export function viewerCollectionHref(
+  collection: Pick<ViewerCollectionChoice, 'owner' | 'slug'>,
+) {
+  const selected: SelectedCollection = {
+    ownerUsername: collection.owner.username,
+    slug: collection.slug,
+  };
+
+  return collectionPath(selected);
 }

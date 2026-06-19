@@ -26,6 +26,9 @@ export interface ViewerCollectionChoice {
   id: string;
   items: { project: { slug: string } }[];
   name: string;
+  owner: {
+    username: string;
+  };
   projectCount: number;
   slug: string;
   visibility: string;
