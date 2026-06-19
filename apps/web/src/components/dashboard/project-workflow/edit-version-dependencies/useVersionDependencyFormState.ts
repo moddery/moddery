@@ -57,6 +57,39 @@ export function dependencyVersionPatch(
       };
 }
 
+export function dependencyInputTargetFields(
+  dependency: DependencyDraft,
+): Pick<
+  UpdateVersionDependenciesInput['dependencies'][number],
+  'externalFileName' | 'targetProjectSlug' | 'targetVersionId'
+> {
+  const externalFileName = nullableText(dependency.externalFileName);
+  const targetProjectSlug = nullableText(dependency.targetProjectSlug);
+  const targetVersionId = nullableText(dependency.targetVersionId);
+
+  if (targetVersionId !== null) {
+    return {
+      externalFileName: null,
+      targetProjectSlug: null,
+      targetVersionId,
+    };
+  }
+
+  if (externalFileName !== null) {
+    return {
+      externalFileName,
+      targetProjectSlug: null,
+      targetVersionId: null,
+    };
+  }
+
+  return {
+    externalFileName: null,
+    targetProjectSlug,
+    targetVersionId: null,
+  };
+}
+
 export function useVersionDependencyFormState(
   projects: DashboardData['projects'],
 ) {
@@ -141,9 +174,7 @@ export function useVersionDependencyFormState(
     const filledDependencies = dependencies
       .map((dependency) => ({
         dependencyKind: dependency.dependencyKind,
-        externalFileName: nullableText(dependency.externalFileName),
-        targetProjectSlug: nullableText(dependency.targetProjectSlug),
-        targetVersionId: nullableText(dependency.targetVersionId),
+        ...dependencyInputTargetFields(dependency),
       }))
       .filter(
         (dependency) =>

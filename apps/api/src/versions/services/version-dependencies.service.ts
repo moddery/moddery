@@ -74,13 +74,18 @@ async function createVersionDependency(
   const targetProjectSlug = nullableTrim(input.targetProjectSlug);
   const externalFileName = nullableTrim(input.externalFileName);
   const targetVersionId = nullableTrim(input.targetVersionId);
+  const targetCount = [
+    targetProjectSlug,
+    externalFileName,
+    targetVersionId,
+  ].filter((target) => target !== null).length;
 
-  if (
-    targetProjectSlug === null &&
-    externalFileName === null &&
-    targetVersionId === null
-  ) {
+  if (targetCount === 0) {
     throw new BadRequestException('Dependency target required');
+  }
+
+  if (targetCount > 1) {
+    throw new BadRequestException('Dependency must have exactly one target');
   }
 
   const targetProject =

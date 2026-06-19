@@ -82,6 +82,54 @@ describe(VersionsService.name, () => {
     expect(version.dependencies[0]?.targetProject?.slug).toBe('library');
   });
 
+  test('rejects version dependencies with multiple targets', async () => {
+    const operations: string[] = [];
+    const service = createVersionsService({
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          project: {
+            findUnique: () => {
+              throw new Error('Dependency project lookup should not run');
+            },
+          },
+          versionDependency: {
+            deleteMany: (query: unknown) => {
+              operations.push(`delete:${JSON.stringify(query)}`);
+              return Promise.resolve({});
+            },
+          },
+        }),
+      version: {
+        findFirst: () => Promise.resolve(managedVersion()),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateVersionDependencies(
+        {
+          dependencies: [
+            {
+              dependencyKind: 'REQUIRED',
+              externalFileName: 'client.jar',
+              targetProjectSlug: 'library',
+            },
+          ],
+          versionId: 'version-a',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Dependency must have exactly one target',
+    );
+    expect(operations).toEqual(['delete:{"where":{"versionId":"version-a"}}']);
+  });
+
   test('updates versions for accepted project members', async () => {
     const operations: string[] = [];
     const service = createVersionsService({

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { editDependencyButtonLabel } from './EditVersionDependencyForm.tsx';
 import {
   dependencyExternalFilePatch,
+  dependencyInputTargetFields,
   dependencyProjectPatch,
   dependencyVersionPatch,
 } from './edit-version-dependencies/useVersionDependencyFormState.ts';
@@ -41,6 +42,38 @@ describe('dependency target patches', () => {
     expect(dependencyVersionPatch('version-1')).toEqual({
       externalFileName: '',
       targetVersionId: 'version-1',
+    });
+  });
+
+  test('normalizes selected versions as the only submitted dependency target', () => {
+    expect(
+      dependencyInputTargetFields({
+        dependencyKind: 'REQUIRED',
+        externalFileName: '',
+        key: 'dependency-a',
+        targetProjectSlug: 'library',
+        targetVersionId: 'version-1',
+      }),
+    ).toEqual({
+      externalFileName: null,
+      targetProjectSlug: null,
+      targetVersionId: 'version-1',
+    });
+  });
+
+  test('normalizes external files as the only submitted dependency target', () => {
+    expect(
+      dependencyInputTargetFields({
+        dependencyKind: 'OPTIONAL',
+        externalFileName: 'client.jar',
+        key: 'dependency-a',
+        targetProjectSlug: 'library',
+        targetVersionId: '',
+      }),
+    ).toEqual({
+      externalFileName: 'client.jar',
+      targetProjectSlug: null,
+      targetVersionId: null,
     });
   });
 });
