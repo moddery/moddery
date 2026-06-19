@@ -8,6 +8,7 @@ export function PublishProjectFields(props: PublishProjectFieldsProps) {
       <PublishProjectIdentityFields
         color={props.color}
         description={props.description}
+        disabled={props.disabled}
         iconUrl={props.iconUrl}
         slug={props.slug}
         summary={props.summary}
@@ -23,6 +24,7 @@ export function PublishProjectFields(props: PublishProjectFieldsProps) {
       <PublishProjectTaxonomyFields
         categories={props.categories}
         categoryOptions={props.categoryOptions}
+        disabled={props.disabled}
         gameVersionOptions={props.gameVersionOptions}
         gameVersions={props.gameVersions}
         kind={props.kind}

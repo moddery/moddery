@@ -6,6 +6,7 @@ import { PublishVersionMetadataFields } from './PublishVersionMetadataFields.tsx
 export function PublishVersionFields({
   channel,
   changelog,
+  disabled,
   fileName,
   fileSize,
   fileUrl,
@@ -37,6 +38,7 @@ export function PublishVersionFields({
     <>
       <PublishVersionMetadataFields
         channel={channel}
+        disabled={disabled}
         gameVersionOptions={gameVersionOptions}
         gameVersions={gameVersions}
         loaders={loaders}
@@ -55,6 +57,7 @@ export function PublishVersionFields({
         fileName={fileName}
         fileSize={fileSize}
         fileUrl={fileUrl}
+        disabled={disabled}
         hasLocalFile={hasLocalFile}
         sha1={sha1}
         sha256={sha256}
@@ -67,6 +70,7 @@ export function PublishVersionFields({
       />
       <PublishVersionChangelogField
         changelog={changelog}
+        disabled={disabled}
         onChangelogChange={onChangelogChange}
       />
     </>

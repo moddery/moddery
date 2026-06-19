@@ -8,6 +8,7 @@ type TaxonomyFieldsProps = Pick<
   PublishProjectFieldsProps,
   | 'categories'
   | 'categoryOptions'
+  | 'disabled'
   | 'gameVersionOptions'
   | 'gameVersions'
   | 'kind'
@@ -21,6 +22,7 @@ type TaxonomyFieldsProps = Pick<
 export function PublishProjectTaxonomyFields({
   categories,
   categoryOptions,
+  disabled,
   gameVersionOptions,
   gameVersions,
   kind,
@@ -43,11 +45,12 @@ export function PublishProjectTaxonomyFields({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Type
         <select
+          disabled={disabled}
           value={kind}
           onChange={(event) =>
             onKindChange(event.target.value as CreateProjectInput['kind'])
           }
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           <option value="MOD">Mod</option>
           <option value="MODPACK">Modpack</option>
@@ -58,6 +61,7 @@ export function PublishProjectTaxonomyFields({
         </select>
       </label>
       <TaxonomyCheckboxGroup
+        disabled={disabled}
         label="Loaders"
         options={SUPPORTED_LOADERS.map((loader) => ({
           label: enumLabel(loader),
@@ -67,6 +71,7 @@ export function PublishProjectTaxonomyFields({
         onChange={onLoadersChange}
       />
       <TaxonomyCheckboxGroup
+        disabled={disabled}
         label="Game versions"
         options={activeGameVersions.map((version) => ({
           label: version.version,
@@ -76,6 +81,7 @@ export function PublishProjectTaxonomyFields({
         onChange={onGameVersionsChange}
       />
       <TaxonomyCheckboxGroup
+        disabled={disabled}
         label="Categories"
         options={filteredCategories.map((category) => ({
           label: category.name,

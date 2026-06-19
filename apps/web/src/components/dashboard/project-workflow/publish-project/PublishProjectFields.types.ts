@@ -9,6 +9,7 @@ export interface PublishProjectFieldsProps {
   categoryOptions: CategoryTaxonomy[];
   color: string;
   description: string;
+  disabled?: boolean;
   gameVersionOptions: GameVersionTaxonomy[];
   gameVersions: string[];
   iconUrl: string;

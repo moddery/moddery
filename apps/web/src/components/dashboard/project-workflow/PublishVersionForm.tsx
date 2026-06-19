@@ -95,6 +95,7 @@ export function PublishVersionForm({
         >
           <PublishVersionFields
             {...form.fields}
+            disabled={submitting}
             gameVersionOptions={gameVersionsQuery.data ?? []}
             hasLocalFile={localFile !== null}
             onLocalFileChange={(file) => {
@@ -120,7 +121,7 @@ export function PublishVersionForm({
               disabled={submitting}
               className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? 'Publishing...' : 'Publish version'}
+              {publishVersionButtonLabel(submitting)}
             </button>
           </div>
         </form>
@@ -141,4 +142,8 @@ export function versionCreationReviewMessage(
   }
 
   return 'It is saved, but it is not public yet.';
+}
+
+export function publishVersionButtonLabel(submitting: boolean) {
+  return submitting ? 'Publishing...' : 'Publish version';
 }

@@ -86,6 +86,7 @@ export function PublishProjectForm({
         <PublishProjectFields
           {...form.fields}
           categoryOptions={categoriesQuery.data ?? []}
+          disabled={submitting}
           gameVersionOptions={gameVersionsQuery.data ?? []}
           onIconFileChange={setLocalIconFile}
         />
@@ -107,7 +108,7 @@ export function PublishProjectForm({
             disabled={submitting}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Publishing...' : 'Publish project'}
+            {publishProjectButtonLabel(submitting)}
           </button>
         </div>
       </form>
@@ -121,4 +122,8 @@ export function projectCreationReviewMessage(
   return project.status === 'APPROVED'
     ? 'It is approved and ready for releases.'
     : 'It is queued for review before releases can be published.';
+}
+
+export function publishProjectButtonLabel(submitting: boolean) {
+  return submitting ? 'Publishing...' : 'Publish project';
 }

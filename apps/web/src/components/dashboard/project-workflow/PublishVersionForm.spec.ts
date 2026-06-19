@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { versionCreationReviewMessage } from './PublishVersionForm.tsx';
+import {
+  publishVersionButtonLabel,
+  versionCreationReviewMessage,
+} from './PublishVersionForm.tsx';
 
 describe(versionCreationReviewMessage.name, () => {
   test('describes approved versions as visible', () => {
@@ -19,5 +22,12 @@ describe(versionCreationReviewMessage.name, () => {
     expect(versionCreationReviewMessage({ status: 'DRAFT' })).toBe(
       'It is saved, but it is not public yet.',
     );
+  });
+});
+
+describe(publishVersionButtonLabel.name, () => {
+  test('describes idle and submitting states', () => {
+    expect(publishVersionButtonLabel(false)).toBe('Publish version');
+    expect(publishVersionButtonLabel(true)).toBe('Publishing...');
   });
 });

@@ -1,9 +1,11 @@
 export function TaxonomyCheckboxGroup({
+  disabled,
   label,
   onChange,
   options,
   selected,
 }: {
+  disabled?: boolean;
   label: string;
   onChange: (value: string[]) => void;
   options: { label: string; value: string }[];
@@ -19,6 +21,7 @@ export function TaxonomyCheckboxGroup({
             className="flex items-center gap-2 rounded-lg border border-line bg-control px-3 py-2 text-sm font-semibold text-muted transition-colors hover:border-line-strong hover:bg-control-hover"
           >
             <input
+              disabled={disabled}
               type="checkbox"
               checked={selected.includes(option.value)}
               onChange={(event) => {
@@ -28,7 +31,7 @@ export function TaxonomyCheckboxGroup({
                     : selected.filter((value) => value !== option.value),
                 );
               }}
-              className="size-4 accent-[var(--color-accent)]"
+              className="size-4 accent-[var(--color-accent)] disabled:cursor-not-allowed"
             />
             {option.label}
           </label>

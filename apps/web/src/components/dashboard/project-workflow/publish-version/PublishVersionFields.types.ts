@@ -7,6 +7,7 @@ import {
 export interface PublishVersionFieldsProps {
   channel: CreateVersionInput['channel'];
   changelog: string;
+  disabled?: boolean;
   fileName: string;
   fileSize: string;
   fileUrl: string;
