@@ -35,6 +35,7 @@ import {
   type RemoveProjectTeamMemberInput,
   type ReportThread,
   type UpdateCollectionInput,
+  type UpdateCollectionProjectInput,
   type UpdateOrganizationInput,
   type UpdateProjectGalleryImageInput,
   type UpdateProjectInput,
@@ -224,6 +225,14 @@ export interface UpdateCollectionMutationData {
 
 export interface UpdateCollectionMutationVariables {
   input: UpdateCollectionInput;
+}
+
+export interface UpdateCollectionProjectMutationData {
+  updateCollectionProject: DashboardCollection;
+}
+
+export interface UpdateCollectionProjectMutationVariables {
+  input: UpdateCollectionProjectInput;
 }
 
 export interface CreateOrganizationMutationData {

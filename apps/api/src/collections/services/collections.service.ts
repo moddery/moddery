@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { type AddProjectToCollectionInput } from '../dto/add-project-to-collection.input.js';
 import { type CreateCollectionInput } from '../dto/create-collection.input.js';
 import { type RemoveProjectFromCollectionInput } from '../dto/remove-project-from-collection.input.js';
+import { type UpdateCollectionProjectInput } from '../dto/update-collection-project.input.js';
 import { type UpdateCollectionInput } from '../dto/update-collection.input.js';
 import {
   collectionRowToContract,
@@ -147,6 +148,44 @@ export class CollectionsService {
         visibility: input.visibility ?? undefined,
       },
       where: { id: collection.id },
+    });
+
+    return this.findCollectionForOwner(collection.id, ownerId);
+  }
+
+  async updateCollectionProject(
+    input: UpdateCollectionProjectInput,
+    ownerId: string,
+  ) {
+    const collection = await this.prisma.collection.findFirst({
+      select: { id: true },
+      where: {
+        id: input.collectionId,
+        ownerId,
+      },
+    });
+
+    if (collection === null) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    const project = await this.prisma.project.findUnique({
+      select: { id: true },
+      where: { slug: input.projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.prisma.collectionProject.update({
+      data: { sortOrder: input.sortOrder },
+      where: {
+        collectionId_projectId: {
+          collectionId: collection.id,
+          projectId: project.id,
+        },
+      },
     });
 
     return this.findCollectionForOwner(collection.id, ownerId);

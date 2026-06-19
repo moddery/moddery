@@ -3,6 +3,7 @@ import {
   type DashboardData,
 } from '../../../lib/dashboard.ts';
 import { CollectionProjectForms } from './CollectionProjectForms.tsx';
+import { CollectionProjectOrderForm } from './CollectionProjectOrderForm.tsx';
 import { CreateCollectionForm } from './CreateCollectionForm.tsx';
 import { EditCollectionForm } from './EditCollectionForm.tsx';
 
@@ -35,14 +36,19 @@ export function CollectionManagement({
       )}
 
       {collections.length > 0 && projects.length > 0 && (
-        <>
-          <CollectionProjectForms
-            collections={collections}
-            ownerUsername={ownerUsername}
-            projects={projects}
-            onChanged={onChanged}
-          />
-        </>
+        <CollectionProjectForms
+          collections={collections}
+          ownerUsername={ownerUsername}
+          projects={projects}
+          onChanged={onChanged}
+        />
+      )}
+
+      {collections.length > 0 && (
+        <CollectionProjectOrderForm
+          collections={collections}
+          onChanged={onChanged}
+        />
       )}
     </section>
   );

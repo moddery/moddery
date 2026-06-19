@@ -186,6 +186,54 @@ describe(CollectionsService.name, () => {
     });
     expect(collection.name).toBe('Updated');
   });
+
+  test('updates collection project ordering for owned collections', async () => {
+    const updates: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: (query: { select?: unknown; where?: { id?: string } }) => {
+          if (query.where?.id === 'collection-a') {
+            return Promise.resolve(
+              query.select === undefined
+                ? { id: 'collection-a' }
+                : collectionRow(),
+            );
+          }
+
+          return Promise.resolve(null);
+        },
+      },
+      collectionProject: {
+        update: (query: unknown) => {
+          updates.push(query);
+          return Promise.resolve({});
+        },
+      },
+      project: {
+        findUnique: () => Promise.resolve({ id: 'project-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const collection = await service.updateCollectionProject(
+      {
+        collectionId: 'collection-a',
+        projectSlug: 'example',
+        sortOrder: 4,
+      },
+      'user-a',
+    );
+
+    expect(updates[0]).toEqual({
+      data: { sortOrder: 4 },
+      where: {
+        collectionId_projectId: {
+          collectionId: 'collection-a',
+          projectId: 'project-a',
+        },
+      },
+    });
+    expect(collection.id).toBe('collection-a');
+  });
 });
 
 function collectionRow(overrides: Partial<{ name: string }> = {}) {

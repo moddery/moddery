@@ -54,6 +54,33 @@ export const UPDATE_COLLECTION_MUTATION = gql`
   }
 `;
 
+export const UPDATE_COLLECTION_PROJECT_MUTATION = gql`
+  mutation UpdateCollectionProject($input: UpdateCollectionProjectInput!) {
+    updateCollectionProject(input: $input) {
+      color
+      description
+      iconUrl
+      id
+      items {
+        createdAt
+        project {
+          iconUrl
+          kind
+          slug
+          summary
+          title
+        }
+        sortOrder
+      }
+      name
+      projectCount
+      slug
+      updatedAt
+      visibility
+    }
+  }
+`;
+
 export const CREATE_ORGANIZATION_MUTATION = gql`
   mutation CreateOrganization($input: CreateOrganizationInput!) {
     createOrganization(input: $input) {

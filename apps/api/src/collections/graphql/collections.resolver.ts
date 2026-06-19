@@ -10,6 +10,7 @@ import {
 import { AddProjectToCollectionInput } from '../dto/add-project-to-collection.input.js';
 import { CreateCollectionInput } from '../dto/create-collection.input.js';
 import { RemoveProjectFromCollectionInput } from '../dto/remove-project-from-collection.input.js';
+import { UpdateCollectionProjectInput } from '../dto/update-collection-project.input.js';
 import { UpdateCollectionInput } from '../dto/update-collection.input.js';
 import { CollectionsService } from '../services/collections.service.js';
 import { PublicCollectionsService } from '../services/public-collections.service.js';
@@ -104,5 +105,13 @@ export class CollectionsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.collectionsService.updateCollection(input, user.id);
+  }
+
+  @Mutation(() => CollectionSummary)
+  updateCollectionProject(
+    @Args('input') input: UpdateCollectionProjectInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.collectionsService.updateCollectionProject(input, user.id);
   }
 }

@@ -2,6 +2,7 @@ import { apolloClient } from '../../../apollo.js';
 import {
   CREATE_COLLECTION_MUTATION,
   UPDATE_COLLECTION_MUTATION,
+  UPDATE_COLLECTION_PROJECT_MUTATION,
   CREATE_ORGANIZATION_MUTATION,
   UPDATE_ORGANIZATION_MUTATION,
   ADD_PROJECT_TO_ORGANIZATION_MUTATION,
@@ -16,6 +17,8 @@ import {
   type CreateCollectionMutationVariables,
   type UpdateCollectionMutationData,
   type UpdateCollectionMutationVariables,
+  type UpdateCollectionProjectMutationData,
+  type UpdateCollectionProjectMutationVariables,
   type CreateOrganizationMutationData,
   type CreateOrganizationMutationVariables,
   type UpdateOrganizationMutationData,
@@ -41,6 +44,7 @@ import {
   type DashboardOrganization,
   type RemoveOrganizationTeamMemberInput,
   type UpdateCollectionInput,
+  type UpdateCollectionProjectInput,
   type UpdateOrganizationInput,
 } from '../types.js';
 
@@ -78,6 +82,24 @@ export async function updateCollection(
   }
 
   return data.updateCollection;
+}
+
+export async function updateCollectionProject(
+  input: UpdateCollectionProjectInput,
+): Promise<DashboardCollection> {
+  const { data } = await apolloClient.mutate<
+    UpdateCollectionProjectMutationData,
+    UpdateCollectionProjectMutationVariables
+  >({
+    mutation: UPDATE_COLLECTION_PROJECT_MUTATION,
+    variables: { input },
+  });
+
+  if (!data?.updateCollectionProject) {
+    throw new Error('Collection project update did not return a collection');
+  }
+
+  return data.updateCollectionProject;
 }
 
 export async function createOrganization(

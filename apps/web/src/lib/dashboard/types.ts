@@ -314,6 +314,12 @@ export interface UpdateCollectionInput {
   visibility: CollectionVisibility;
 }
 
+export interface UpdateCollectionProjectInput {
+  collectionId: string;
+  projectSlug: string;
+  sortOrder: number;
+}
+
 export interface CreateOrganizationInput {
   color: string | null;
   description: string | null;
