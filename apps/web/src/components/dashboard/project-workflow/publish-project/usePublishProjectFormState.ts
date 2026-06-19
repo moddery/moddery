@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { type CreateProjectInput } from '../../../../lib/dashboard.ts';
+import { normalizeCreateProjectInput } from './publish-project-input.ts';
 
 export function usePublishProjectFormState() {
   const [title, setTitle] = useState('');
@@ -43,18 +44,18 @@ export function usePublishProjectFormState() {
   };
 
   function buildInput(): CreateProjectInput {
-    return {
+    return normalizeCreateProjectInput({
       categories,
-      color: color.trim() || null,
+      color,
       description,
       gameVersions,
-      iconUrl: iconUrl.trim() || null,
+      iconUrl,
       kind,
       loaders,
       slug,
       summary,
       title,
-    };
+    });
   }
 
   function reset() {
