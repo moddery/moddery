@@ -210,6 +210,8 @@ export class ProjectModerationService {
       await this.searchService.indexProjects([
         projectContractToSearch(contract),
       ]);
+    } else {
+      await this.searchService.deleteProject(contract.id);
     }
     await this.invalidateProjectBySlugCache(contract.slug);
 

@@ -66,6 +66,17 @@ export class SearchService implements OnModuleInit {
     });
   }
 
+  async deleteProject(projectId: string): Promise<void> {
+    await this.client.delete(
+      {
+        id: projectId,
+        index: PROJECTS_INDEX,
+        refresh: true,
+      },
+      { ignore: [404] },
+    );
+  }
+
   async updateProjectDownloads(
     projectId: string,
     downloads: number,

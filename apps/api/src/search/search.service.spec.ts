@@ -59,6 +59,28 @@ describe(SearchService.name, () => {
     );
   });
 
+  test('removes projects from the index with immediate refresh', async () => {
+    const deletes: unknown[] = [];
+    const client = {
+      delete: (query: unknown, options: unknown) => {
+        deletes.push({ options, query });
+        return Promise.resolve();
+      },
+    };
+    const service = new SearchService(client as never);
+
+    await service.deleteProject('project-a');
+
+    expect(deletes[0]).toEqual({
+      options: { ignore: [404] },
+      query: {
+        id: 'project-a',
+        index: 'projects',
+        refresh: true,
+      },
+    });
+  });
+
   test('updates project download counts with immediate refresh', async () => {
     const updates: unknown[] = [];
     const client = {

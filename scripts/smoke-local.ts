@@ -1,9 +1,15 @@
+import { PrismaClient } from '@prisma/client';
+
 const apiUrl = trimTrailingSlash(
   process.env.SMOKE_API_URL ?? 'http://localhost:13001',
 );
 const webUrl = trimTrailingSlash(
   process.env.SMOKE_WEB_URL ?? 'http://localhost:15174',
 );
+const databaseUrl =
+  process.env.SMOKE_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  'postgresql://moddery:moddery@localhost:5433/moddery?schema=public';
 
 interface ReadinessResult {
   checks: {
@@ -79,6 +85,13 @@ interface DirectThreadSearchResponse {
 interface CreateProjectResponse {
   data?: {
     createProject?: ProjectSummary;
+  };
+  errors?: GraphqlError[];
+}
+
+interface ModerateProjectResponse {
+  data?: {
+    moderateProject?: ProjectSummary;
   };
   errors?: GraphqlError[];
 }
@@ -425,6 +438,23 @@ async function registerSmokeUser(input: {
   return auth;
 }
 
+async function promoteSmokeUserToAdmin(username: string): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: { url: databaseUrl },
+    },
+  });
+
+  try {
+    await prisma.user.update({
+      data: { role: 'ADMIN' },
+      where: { username },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function checkCreatorFlow(): Promise<void> {
   const suffix = `${Date.now().toString(36)}${Math.random()
     .toString(36)
@@ -487,6 +517,11 @@ async function checkCreatorFlow(): Promise<void> {
     'created project',
   );
   assertProject(createdProject, { kind: 'MOD', slug, title });
+  if (createdProject.status !== 'PENDING_REVIEW') {
+    throw new Error(
+      `Expected created project to be queued, received ${createdProject.status}`,
+    );
+  }
 
   const publicPayload = await readGraphql<ProjectBySlugResponse>({
     query: `
@@ -501,14 +536,52 @@ async function checkCreatorFlow(): Promise<void> {
     `,
     variables: { slug },
   });
-  assertNoGraphqlErrors(publicPayload, 'GraphQL project by slug');
-  assertProject(required(publicPayload.data?.projectBySlug, 'public project'), {
+  assertNoGraphqlErrors(publicPayload, 'GraphQL queued project by slug');
+  if (publicPayload.data === undefined) {
+    throw new Error('Queued project lookup did not return data');
+  }
+  if (publicPayload.data.projectBySlug !== null) {
+    throw new Error('Queued project was visible before moderation approval');
+  }
+
+  await promoteSmokeUserToAdmin(username);
+  const approvedProject = await approveSmokeProject(slug, auth.accessToken);
+  assertProject(approvedProject, {
     kind: 'MOD',
     slug,
     title,
   });
+  if (approvedProject.status !== 'APPROVED') {
+    throw new Error(
+      `Expected approved project status, received ${approvedProject.status}`,
+    );
+  }
 
-  const indexedProject = (await projectSearch({ search: slug })).projects.find(
+  const approvedPublicPayload = await readGraphql<ProjectBySlugResponse>({
+    query: `
+      query SmokeApprovedProjectBySlug($slug: String!) {
+        projectBySlug(slug: $slug) {
+          kind
+          slug
+          status
+          title
+        }
+      }
+    `,
+    variables: { slug },
+  });
+  assertNoGraphqlErrors(approvedPublicPayload, 'GraphQL project by slug');
+  assertProject(
+    required(approvedPublicPayload.data?.projectBySlug, 'public project'),
+    {
+      kind: 'MOD',
+      slug,
+      title,
+    },
+  );
+
+  const indexedSearch = await projectSearch({ search: slug });
+  const indexedProject = indexedSearch.projects.find(
     (project) => project.slug === slug,
   );
   assertProject(required(indexedProject, 'indexed project'), {
@@ -645,6 +718,37 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
     username,
   });
+}
+
+async function approveSmokeProject(
+  projectSlug: string,
+  token: string,
+): Promise<ProjectSummary> {
+  const payload = await readGraphql<ModerateProjectResponse>(
+    {
+      query: `
+        mutation SmokeApproveProject($input: ModerateProjectInput!) {
+          moderateProject(input: $input) {
+            kind
+            slug
+            status
+            title
+          }
+        }
+      `,
+      variables: {
+        input: {
+          action: 'APPROVE',
+          projectSlug,
+          reason: 'Smoke test approval',
+        },
+      },
+    },
+    token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL approve project');
+
+  return required(payload.data?.moderateProject, 'approved project');
 }
 
 async function checkSocialFlow(options: {

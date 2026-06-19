@@ -17,7 +17,7 @@ function createProjectManagementService(
 }
 
 describe(ProjectManagementService.name, () => {
-  test('creates a project with normalized metadata and indexes it', async () => {
+  test('creates a queued project with normalized metadata', async () => {
     const operations: string[] = [];
     const indexed: unknown[] = [];
     const tx = {
@@ -100,17 +100,14 @@ describe(ProjectManagementService.name, () => {
     );
 
     expect(project.title).toBe('Created Project');
+    expect(operations[1]).toContain('"requestedStatus":"APPROVED"');
     expect(operations[1]).toContain('"slug":"created-project"');
+    expect(operations[1]).toContain('"status":"PENDING_REVIEW"');
     expect(operations[1]).toContain(
       '"iconUrl":"https://example.test/icon.png"',
     );
     expect(operations[1]).toContain('"summary":"Created summary"');
-    expect(indexed[0]).toEqual(
-      expect.objectContaining({
-        id: 'project-a',
-        title: 'Created Project',
-      }),
-    );
+    expect(indexed).toEqual([]);
   });
 
   test('rejects duplicate project slugs before creating teams', async () => {

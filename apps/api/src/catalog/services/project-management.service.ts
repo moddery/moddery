@@ -85,15 +85,15 @@ export class ProjectManagementService {
 
       const created = await tx.project.create({
         data: {
-          approvedAt: now,
           color: nullableTrim(input.color),
           description: input.description.trim(),
           iconUrl: nullableTrim(input.iconUrl),
           kind: input.kind,
           licenseId: license.id,
-          publishedAt: now,
+          queuedAt: now,
+          requestedStatus: 'APPROVED',
           slug,
-          status: 'APPROVED',
+          status: 'PENDING_REVIEW',
           summary: input.summary.trim(),
           teamId: team.id,
           title: input.title.trim(),
@@ -116,7 +116,6 @@ export class ProjectManagementService {
     });
 
     const contract = projectRowToContract(project);
-    await this.searchService.indexProjects([projectContractToSearch(contract)]);
     await this.invalidateProjectBySlugCache(contract.slug);
 
     return contract;

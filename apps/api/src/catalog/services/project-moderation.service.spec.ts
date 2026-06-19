@@ -200,6 +200,60 @@ describe(ProjectModerationService.name, () => {
     expect(project.status).toBe('APPROVED');
   });
 
+  test('removes rejected projects from public search', async () => {
+    const deleted: string[] = [];
+    const service = createProjectModerationService(
+      {
+        $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            moderationAction: {
+              create: () => Promise.resolve({}),
+            },
+            project: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  projectRow({ status: 'REJECTED', title: 'Rejected' }),
+                ),
+              update: () => Promise.resolve({}),
+            },
+          }),
+        project: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'project-a',
+              kind: 'MOD',
+              requestedStatus: null,
+              slug: 'example',
+              status: 'APPROVED',
+              title: 'Public Project',
+            }),
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: (projectId: string) => {
+          deleted.push(projectId);
+          return Promise.resolve();
+        },
+        indexProjects: () => {
+          throw new Error('Rejected projects should not be indexed');
+        },
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    const project = await service.moderateProject(
+      {
+        action: 'reject',
+        projectSlug: 'example',
+        reason: 'Needs changes',
+      },
+      'moderator-a',
+    );
+
+    expect(project.status).toBe('REJECTED');
+    expect(deleted).toEqual(['project-a']);
+  });
+
   test('loads project moderation actions newest first with pagination', async () => {
     const queries: unknown[] = [];
     const service = createProjectModerationService(
