@@ -39,10 +39,12 @@ function PagerButton({
 }
 
 export function Pagination({
+  disabled,
   page,
   totalPages,
   onPage,
 }: {
+  disabled?: boolean;
   page: number;
   totalPages: number;
   onPage: (page: number) => void;
@@ -54,7 +56,7 @@ export function Pagination({
     <nav aria-label="Pagination" className="flex items-center gap-1">
       <PagerButton
         ariaLabel="Previous page"
-        disabled={page <= 1}
+        disabled={disabled || page <= 1}
         onClick={() => onPage(page - 1)}
       >
         <ChevronLeft className="size-4" />
@@ -74,9 +76,10 @@ export function Pagination({
             type="button"
             aria-label={`Page ${p}`}
             aria-current={p === page ? 'page' : undefined}
+            disabled={disabled}
             onClick={() => onPage(p)}
             className={cn(
-              'grid size-9 place-items-center rounded-lg text-sm font-bold tabular-nums transition-colors',
+              'grid size-9 place-items-center rounded-lg text-sm font-bold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-40',
               p === page
                 ? 'bg-accent text-white'
                 : 'text-muted hover:bg-control-hover hover:text-ink',
@@ -89,7 +92,7 @@ export function Pagination({
 
       <PagerButton
         ariaLabel="Next page"
-        disabled={page >= totalPages}
+        disabled={disabled || page >= totalPages}
         onClick={() => onPage(page + 1)}
       >
         <ChevronRight className="size-4" />

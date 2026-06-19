@@ -20,9 +20,11 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
     users,
     usersQuery,
   } = useAdminUsersPanelState();
+  const busy = adminUsersPanelBusy(busyUserId);
 
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     submitSearch();
   }
 
@@ -42,7 +44,7 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
             {totalHits.toLocaleString('en-US')} users
           </span>
           <ReportActionButton
-            disabled={usersQuery.isFetching}
+            disabled={busy || usersQuery.isFetching}
             onClick={() => void usersQuery.refetch()}
           >
             Refresh
@@ -54,13 +56,15 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
           <DashboardField
             label="Search users"
             placeholder="username, email, role, or status"
+            disabled={busy}
             value={searchInput}
             onChange={setSearchInput}
           />
         </div>
         <button
           type="submit"
-          className="mt-6 rounded-lg bg-accent px-4 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong"
+          disabled={busy}
+          className="mt-6 rounded-lg bg-accent px-4 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
           Search
         </button>
@@ -74,13 +78,18 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
       <div className="mt-4 grid gap-3">
         {totalPages > 1 && (
           <div className="flex justify-end">
-            <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+            <Pagination
+              disabled={busy}
+              page={page}
+              totalPages={totalPages}
+              onPage={setPage}
+            />
           </div>
         )}
         {users.map((user) => (
           <AdminUserRow
             key={user.id}
-            busy={busyUserId === user.id}
+            busy={busy}
             self={user.id === viewerId}
             user={user}
             onUpdate={updateAccount}
@@ -91,10 +100,19 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
         )}
         {totalPages > 1 && (
           <div className="flex justify-end">
-            <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+            <Pagination
+              disabled={busy}
+              page={page}
+              totalPages={totalPages}
+              onPage={setPage}
+            />
           </div>
         )}
       </div>
     </section>
   );
+}
+
+export function adminUsersPanelBusy(busyUserId: string | null) {
+  return busyUserId !== null;
 }
