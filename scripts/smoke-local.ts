@@ -11,6 +11,11 @@ const databaseUrl =
   process.env.DATABASE_URL ??
   'postgresql://moddery:moddery@localhost:5433/moddery?schema=public';
 const seedFixtures = process.env.SMOKE_SEED_FIXTURES === 'true';
+const smokeDownloadCountryCode = 'AU';
+const smokeDownloadUserAgent = 'ModderySmokeDownload/1.0';
+const smokeViewCountryCode = 'NZ';
+const smokeViewReferrer = `${webUrl}/mods`;
+const smokeViewUserAgent = 'ModderySmokeView/1.0';
 const smokeVersionFileSizeBytes = 128;
 
 interface ReadinessResult {
@@ -2345,20 +2350,28 @@ async function checkAnalyticsFlow(options: {
   fileId: string;
   projectSlug: string;
 }): Promise<void> {
-  const viewPayload = await readGraphql<RecordProjectViewResponse>({
-    query: `
-      mutation SmokeRecordProjectView($input: RecordProjectViewInput!) {
-        recordProjectView(input: $input) {
-          projectSlug
+  const viewPayload = await readGraphql<RecordProjectViewResponse>(
+    {
+      query: `
+        mutation SmokeRecordProjectView($input: RecordProjectViewInput!) {
+          recordProjectView(input: $input) {
+            projectSlug
+          }
         }
-      }
-    `,
-    variables: {
-      input: {
-        projectSlug: options.projectSlug,
+      `,
+      variables: {
+        input: {
+          projectSlug: options.projectSlug,
+        },
       },
     },
-  });
+    undefined,
+    {
+      referer: smokeViewReferrer,
+      'user-agent': smokeViewUserAgent,
+      'x-country-code': smokeViewCountryCode,
+    },
+  );
   assertNoGraphqlErrors(viewPayload, 'GraphQL record project view');
 
   const viewRecord = required(
@@ -2373,7 +2386,13 @@ async function checkAnalyticsFlow(options: {
 
   const downloadResponse = await fetch(
     `${apiUrl}/downloads/files/${encodeURIComponent(options.fileId)}`,
-    { redirect: 'manual' },
+    {
+      headers: {
+        'user-agent': smokeDownloadUserAgent,
+        'x-country-code': smokeDownloadCountryCode,
+      },
+      redirect: 'manual',
+    },
   );
   if (downloadResponse.status !== 302) {
     throw new Error(
@@ -2423,6 +2442,53 @@ async function checkAnalyticsFlow(options: {
     throw new Error(
       `Analytics mismatch for ${options.projectSlug}: views=${analytics.totalViews.toString()} downloads=${analytics.totalDownloads.toString()}`,
     );
+  }
+
+  await checkAnalyticsMetadata(options.projectSlug);
+}
+
+async function checkAnalyticsMetadata(projectSlug: string): Promise<void> {
+  const prisma = new PrismaClient({
+    datasources: {
+      db: { url: databaseUrl },
+    },
+  });
+
+  try {
+    const project = await prisma.project.findUnique({
+      select: { id: true },
+      where: { slug: projectSlug },
+    });
+    const projectId = required(project, 'analytics metadata project').id;
+
+    const [viewEvent, downloadEvent] = await Promise.all([
+      prisma.projectViewEvent.findFirst({
+        orderBy: { createdAt: 'desc' },
+        where: {
+          countryCode: smokeViewCountryCode,
+          projectId,
+          referrer: smokeViewReferrer,
+          userAgent: smokeViewUserAgent,
+        },
+      }),
+      prisma.downloadEvent.findFirst({
+        orderBy: { createdAt: 'desc' },
+        where: {
+          countryCode: smokeDownloadCountryCode,
+          projectId,
+          userAgent: smokeDownloadUserAgent,
+        },
+      }),
+    ]);
+
+    if (viewEvent === null) {
+      throw new Error('Smoke project view did not capture request metadata');
+    }
+    if (downloadEvent === null) {
+      throw new Error('Smoke download did not capture request metadata');
+    }
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
@@ -2798,9 +2864,14 @@ async function projectSearch(query: {
   return search;
 }
 
-async function readGraphql<T>(body: unknown, token?: string): Promise<T> {
+async function readGraphql<T>(
+  body: unknown,
+  token?: string,
+  extraHeaders: Record<string, string> = {},
+): Promise<T> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
+    ...extraHeaders,
   };
   if (token !== undefined) {
     headers.authorization = `Bearer ${token}`;
