@@ -69,8 +69,28 @@ export class VersionsService {
       throw new ForbiddenException('Project membership required');
     }
 
+    validateVersionFiles(input.files);
+    const versionNumber = input.versionNumber.trim();
+    if (versionNumber.length === 0) {
+      throw new BadRequestException('Version number is required');
+    }
+
     const touchedAt = new Date();
     const version = await this.prisma.$transaction(async (tx) => {
+      const existingVersion = await tx.version.findUnique({
+        select: { id: true },
+        where: {
+          projectId_versionNumber: {
+            projectId: project.id,
+            versionNumber,
+          },
+        },
+      });
+
+      if (existingVersion !== null) {
+        throw new BadRequestException('Version number already exists');
+      }
+
       const created = await tx.version.create({
         data: {
           authorId,
@@ -80,7 +100,7 @@ export class VersionsService {
           projectId: project.id,
           publishedAt: new Date(),
           status: 'APPROVED',
-          versionNumber: input.versionNumber.trim(),
+          versionNumber,
         },
         select: { id: true },
       });
@@ -367,6 +387,30 @@ async function createVersionFiles(
           },
         },
       });
+    }
+  }
+}
+
+function validateVersionFiles(files: CreateVersionInput['files']): void {
+  if (files.length === 0) {
+    throw new BadRequestException('At least one version file is required');
+  }
+
+  if (!files.some((file) => file.primary)) {
+    throw new BadRequestException('A primary version file is required');
+  }
+
+  for (const file of files.slice(0, 8)) {
+    if (file.fileName.trim().length === 0) {
+      throw new BadRequestException('Version file name is required');
+    }
+
+    if (file.url.trim().length === 0) {
+      throw new BadRequestException('Version file URL is required');
+    }
+
+    if (!Number.isSafeInteger(file.sizeBytes) || file.sizeBytes <= 0) {
+      throw new BadRequestException('Version file size must be positive');
     }
   }
 }

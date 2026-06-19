@@ -222,6 +222,7 @@ describe(VersionsService.name, () => {
             upsert: () => Promise.resolve({ id: 'game-version-a' }),
           },
           version: {
+            findUnique: () => Promise.resolve(null),
             create: () => {
               transactionSteps.push('version');
               return Promise.resolve({ id: 'version-a' });
@@ -302,7 +303,99 @@ describe(VersionsService.name, () => {
     expect(version.files[0]?.sizeBytes).toBe('123');
     expect(version.projectSlug).toBe('example');
   });
+
+  test('rejects duplicate version numbers before creating files', async () => {
+    const transactionSteps: string[] = [];
+    const service = createVersionsService({
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          version: {
+            findUnique: () => Promise.resolve({ id: 'version-existing' }),
+            create: () => {
+              transactionSteps.push('version');
+              return Promise.resolve({ id: 'version-a' });
+            },
+          },
+        }),
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createVersion(validCreateVersionInput(), 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Version number already exists');
+    expect(transactionSteps).toEqual([]);
+  });
+
+  test('rejects invalid version file metadata before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      primary: false,
+      sizeBytes: 0,
+    };
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'A primary version file is required',
+    );
+  });
 });
+
+function validCreateVersionInput() {
+  return {
+    changelog: 'Notes',
+    channel: 'RELEASE' as const,
+    files: [
+      {
+        fileName: 'example.jar',
+        hashes: [{ algorithm: 'sha256', value: 'ABC123' }],
+        primary: true,
+        sizeBytes: 123,
+        url: 'https://example.test/example.jar',
+      },
+    ],
+    gameVersions: ['1.21.6'],
+    loaders: ['fabric'],
+    name: 'Example',
+    projectSlug: 'example',
+    versionNumber: '1.0.0',
+  };
+}
 
 function managedVersion() {
   return {
