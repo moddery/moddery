@@ -8,12 +8,14 @@ export interface MeQueryData {
 }
 
 export interface AuthMutationData {
+  confirmPasswordReset?: boolean;
   login?: {
     accessToken: string;
   };
   register?: {
     accessToken: string;
   };
+  requestPasswordReset?: boolean;
 }
 
 export interface NotificationsQueryData {
@@ -23,4 +25,4 @@ export interface NotificationsQueryData {
 
 export type { NotificationItem };
 
-export type AuthMode = 'login' | 'register';
+export type AuthMode = 'login' | 'register' | 'reset-request' | 'reset-confirm';

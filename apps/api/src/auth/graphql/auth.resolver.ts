@@ -1,10 +1,12 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../decorators/current-user.decorator.js';
+import { ConfirmPasswordResetInput } from '../dto/confirm-password-reset.input.js';
 import { CreateApiTokenInput } from '../dto/create-api-token.input.js';
 import { Public } from '../decorators/public.decorator.js';
 import { LoginInput } from '../dto/login.input.js';
 import { RegisterInput } from '../dto/register.input.js';
+import { RequestPasswordResetInput } from '../dto/request-password-reset.input.js';
 import { ApiTokensService } from '../services/api-tokens.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { type AuthenticatedUser } from '../services/auth-token.service.js';
@@ -56,6 +58,18 @@ export class AuthResolver {
     @Context('req') request: GqlRequest,
   ) {
     return this.authService.register(input, requestMetadata(request));
+  }
+
+  @Public()
+  @Mutation(() => Boolean)
+  requestPasswordReset(@Args('input') input: RequestPasswordResetInput) {
+    return this.authService.requestPasswordReset(input);
+  }
+
+  @Public()
+  @Mutation(() => Boolean)
+  confirmPasswordReset(@Args('input') input: ConfirmPasswordResetInput) {
+    return this.authService.confirmPasswordReset(input);
   }
 
   @Query(() => [ApiTokenSummary])

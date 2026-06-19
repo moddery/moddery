@@ -11,15 +11,20 @@ export function AuthPopover({
   error,
   identifier,
   mode,
+  newPassword,
+  notice,
   onEmailChange,
   onIdentifierChange,
   onModeChange,
+  onNewPasswordChange,
   onOpenChange,
   onPasswordChange,
+  onResetTokenChange,
   onSubmit,
   onUsernameChange,
   open,
   password,
+  resetToken,
   username,
 }: {
   busy: boolean;
@@ -27,17 +32,31 @@ export function AuthPopover({
   error: string | null;
   identifier: string;
   mode: AuthMode;
+  newPassword: string;
+  notice: string | null;
   onEmailChange: (value: string) => void;
   onIdentifierChange: (value: string) => void;
   onModeChange: (mode: AuthMode) => void;
+  onNewPasswordChange: (value: string) => void;
   onOpenChange: (open: boolean) => void;
   onPasswordChange: (value: string) => void;
+  onResetTokenChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onUsernameChange: (value: string) => void;
   open: boolean;
   password: string;
+  resetToken: string;
   username: string;
 }) {
+  const submitLabel =
+    mode === 'login'
+      ? 'Login'
+      : mode === 'register'
+        ? 'Create account'
+        : mode === 'reset-request'
+          ? 'Send reset email'
+          : 'Reset password';
+
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
       <Popover.Trigger className={controlButton}>Sign in</Popover.Trigger>
@@ -85,6 +104,35 @@ export function AuthPopover({
             </div>
 
             <form onSubmit={onSubmit} className="space-y-2.5">
+              {mode === 'reset-request' && (
+                <input
+                  className={fieldInput}
+                  placeholder="Username or email"
+                  value={identifier}
+                  onChange={(event) => onIdentifierChange(event.target.value)}
+                />
+              )}
+
+              {mode === 'reset-confirm' && (
+                <>
+                  <input
+                    className={fieldInput}
+                    placeholder="Reset token"
+                    value={resetToken}
+                    onChange={(event) => onResetTokenChange(event.target.value)}
+                  />
+                  <input
+                    className={fieldInput}
+                    placeholder="New password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) =>
+                      onNewPasswordChange(event.target.value)
+                    }
+                  />
+                </>
+              )}
+
               {mode === 'register' && (
                 <>
                   <input
@@ -112,16 +160,21 @@ export function AuthPopover({
                 />
               )}
 
-              <input
-                className={fieldInput}
-                placeholder="Password"
-                type="password"
-                value={password}
-                onChange={(event) => onPasswordChange(event.target.value)}
-              />
+              {!mode.startsWith('reset') && (
+                <input
+                  className={fieldInput}
+                  placeholder="Password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => onPasswordChange(event.target.value)}
+                />
+              )}
 
               {error && (
                 <p className="text-xs font-semibold text-error">{error}</p>
+              )}
+              {notice && (
+                <p className="text-xs font-semibold text-muted">{notice}</p>
               )}
 
               <button
@@ -129,8 +182,26 @@ export function AuthPopover({
                 disabled={busy}
                 className="h-10 w-full rounded-md bg-accent text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {mode === 'login' ? 'Login' : 'Create account'}
+                {submitLabel}
               </button>
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  className="w-full text-xs font-bold text-muted transition-colors hover:text-ink"
+                  onClick={() => onModeChange('reset-request')}
+                >
+                  Forgot password?
+                </button>
+              )}
+              {mode.startsWith('reset') && (
+                <button
+                  type="button"
+                  className="w-full text-xs font-bold text-muted transition-colors hover:text-ink"
+                  onClick={() => onModeChange('login')}
+                >
+                  Back to login
+                </button>
+              )}
             </form>
           </Popover.Popup>
         </Popover.Positioner>

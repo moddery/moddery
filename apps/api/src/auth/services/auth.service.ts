@@ -4,11 +4,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { compare, hash } from 'bcryptjs';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
+import { MailService } from '../../mail/mail.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type ConfirmPasswordResetInput } from '../dto/confirm-password-reset.input.js';
 import { type LoginInput } from '../dto/login.input.js';
 import { type RegisterInput } from '../dto/register.input.js';
+import { type RequestPasswordResetInput } from '../dto/request-password-reset.input.js';
 import {
   AuthTokenService,
   type AuthenticatedUser,
@@ -18,6 +21,7 @@ import {
 export class AuthService {
   constructor(
     private readonly authTokenService: AuthTokenService,
+    private readonly mailService: MailService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -57,6 +61,97 @@ export class AuthService {
       },
       metadata,
     );
+  }
+
+  async requestPasswordReset(
+    input: RequestPasswordResetInput,
+  ): Promise<boolean> {
+    const identifier = input.identifier.trim();
+    const user = await this.prisma.user.findFirst({
+      select: { email: true, id: true, username: true },
+      where: {
+        OR: [
+          { username: { equals: identifier, mode: 'insensitive' } },
+          { email: { equals: identifier.toLowerCase(), mode: 'insensitive' } },
+        ],
+        passwordCredential: { isNot: null },
+        status: 'ACTIVE',
+      },
+    });
+
+    if (user?.email === undefined || user.email === null) {
+      return true;
+    }
+
+    const token = randomBytes(32).toString('base64url');
+    await this.prisma.passwordResetToken.create({
+      data: {
+        expiresAt: new Date(Date.now() + passwordResetTokenTtlMs),
+        tokenHash: hashSecret(token),
+        userId: user.id,
+      },
+    });
+
+    await this.mailService.send({
+      subject: 'Reset your Moddery password',
+      text: [
+        `A password reset was requested for ${user.username}.`,
+        '',
+        `Reset token: ${token}`,
+        '',
+        'This token expires in 1 hour. If you did not request this, you can ignore this email.',
+      ].join('\n'),
+      to: user.email,
+    });
+
+    return true;
+  }
+
+  async confirmPasswordReset(
+    input: ConfirmPasswordResetInput,
+  ): Promise<boolean> {
+    const tokenHash = hashSecret(input.token.trim());
+    const resetToken = await this.prisma.passwordResetToken.findFirst({
+      select: { expiresAt: true, id: true, userId: true, usedAt: true },
+      where: { tokenHash },
+    });
+
+    if (resetToken?.usedAt !== null) {
+      throw new UnauthorizedException('Invalid password reset token');
+    }
+
+    if (resetToken.expiresAt <= new Date()) {
+      throw new UnauthorizedException('Invalid password reset token');
+    }
+
+    const passwordHash = await hash(input.newPassword, 12);
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.passwordCredential.upsert({
+        create: {
+          passwordHash,
+          userId: resetToken.userId,
+        },
+        update: {
+          passwordChangedAt: now,
+          passwordHash,
+        },
+        where: { userId: resetToken.userId },
+      }),
+      this.prisma.passwordResetToken.update({
+        data: { usedAt: now },
+        where: { id: resetToken.id },
+      }),
+      this.prisma.session.updateMany({
+        data: { revokedAt: now },
+        where: {
+          revokedAt: null,
+          userId: resetToken.userId,
+        },
+      }),
+    ]);
+
+    return true;
   }
 
   async register(input: RegisterInput, metadata: AuthRequestMetadata = {}) {
@@ -219,6 +314,10 @@ function hashIpAddress(ipAddress: string): string {
   return createHash('sha256').update(ipAddress).digest('hex');
 }
 
+function hashSecret(secret: string): string {
+  return createHash('sha256').update(secret).digest('hex');
+}
+
 function sessionSelect() {
   return {
     createdAt: true,
@@ -237,3 +336,5 @@ function clampInteger(value: number, minimum: number, maximum: number): number {
 
   return Math.min(maximum, Math.max(minimum, Math.floor(value)));
 }
+
+const passwordResetTokenTtlMs = 60 * 60 * 1000;

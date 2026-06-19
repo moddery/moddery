@@ -29,3 +29,15 @@ export const REGISTER_MUTATION = gql`
     }
   }
 `;
+
+export const REQUEST_PASSWORD_RESET_MUTATION = gql`
+  mutation NavRequestPasswordReset($input: RequestPasswordResetInput!) {
+    requestPasswordReset(input: $input)
+  }
+`;
+
+export const CONFIRM_PASSWORD_RESET_MUTATION = gql`
+  mutation NavConfirmPasswordReset($input: ConfirmPasswordResetInput!) {
+    confirmPasswordReset(input: $input)
+  }
+`;
