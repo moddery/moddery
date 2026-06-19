@@ -26,16 +26,7 @@ import {
   CreateOrganizationForm,
   OrganizationTeamManagementForm,
 } from '../ContentManagementPanels.tsx';
-import { ProjectAnalyticsPanel } from '../ProjectInsightsPanels.tsx';
-import { ProjectMetadataForm } from '../ProjectMetadataForm.tsx';
-import {
-  AddGalleryImageForm,
-  EditVersionDependencyForm,
-  EditVersionForm,
-  ProjectTeamManagementForm,
-  PublishProjectForm,
-  PublishVersionForm,
-} from '../ProjectWorkflowPanels.tsx';
+import { DashboardProjectWorkflowForms } from './DashboardProjectWorkflowForms.tsx';
 import { DashboardSummarySections } from './DashboardSummarySections.tsx';
 
 export function DashboardSections({
@@ -167,28 +158,10 @@ function DashboardProjectsSection({
 }) {
   return (
     <section id="dashboard-projects" className="scroll-mt-32">
-      <PublishProjectForm onCreated={onUpdated} />
-
-      {dashboard.projects.length > 0 && (
-        <>
-          <ProjectMetadataForm
-            projects={dashboard.projects}
-            onUpdated={onUpdated}
-          />
-          <AddGalleryImageForm
-            projects={dashboard.projects}
-            onAdded={onUpdated}
-          />
-          <ProjectTeamManagementForm projects={dashboard.projects} />
-          <ProjectAnalyticsPanel projects={dashboard.projects} />
-          <EditVersionForm projects={dashboard.projects} />
-          <EditVersionDependencyForm projects={dashboard.projects} />
-          <PublishVersionForm
-            projects={dashboard.projects}
-            onCreated={onUpdated}
-          />
-        </>
-      )}
+      <DashboardProjectWorkflowForms
+        dashboard={dashboard}
+        onUpdated={onUpdated}
+      />
     </section>
   );
 }
