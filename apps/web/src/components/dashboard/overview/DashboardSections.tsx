@@ -182,7 +182,10 @@ function DashboardProjectsSection({
           <ProjectAnalyticsPanel projects={dashboard.projects} />
           <EditVersionForm projects={dashboard.projects} />
           <EditVersionDependencyForm projects={dashboard.projects} />
-          <PublishVersionForm projects={dashboard.projects} />
+          <PublishVersionForm
+            projects={dashboard.projects}
+            onCreated={onUpdated}
+          />
         </>
       )}
     </section>

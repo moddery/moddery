@@ -5,6 +5,7 @@ import {
   createVersion,
   fetchGameVersionTaxonomy,
   type DashboardData,
+  type DashboardVersion,
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
 import { useQuery } from '@tanstack/react-query';
@@ -14,8 +15,10 @@ import { publishableVersionProjects } from './publish-version/publish-version-pr
 import { usePublishVersionFormState } from './publish-version/usePublishVersionFormState.ts';
 
 export function PublishVersionForm({
+  onCreated,
   projects,
 }: {
+  onCreated?: () => Promise<void>;
   projects: DashboardData['projects'];
 }) {
   const publishableProjects = publishableVersionProjects(projects);
@@ -27,7 +30,7 @@ export function PublishVersionForm({
   const [localFile, setLocalFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<string | null>(null);
+  const [created, setCreated] = useState<DashboardVersion | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,9 +58,10 @@ export function PublishVersionForm({
       }
       assertCreateVersionInput(input);
       const version = await createVersion(input);
-      setCreated(`${version.name} ${version.versionNumber}`);
+      setCreated(version);
       setLocalFile(null);
       form.reset();
+      await onCreated?.();
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : 'Version creation failed',
@@ -105,8 +109,9 @@ export function PublishVersionForm({
             </p>
           )}
           {created && (
-            <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold text-ink">
-              Published {created}.
+            <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold leading-6 text-ink">
+              Published {created.name} {created.versionNumber}.{' '}
+              {versionCreationReviewMessage(created)}
             </p>
           )}
           <div>
@@ -122,4 +127,18 @@ export function PublishVersionForm({
       )}
     </section>
   );
+}
+
+export function versionCreationReviewMessage(
+  version: Pick<DashboardVersion, 'status'>,
+) {
+  if (version.status === 'APPROVED') {
+    return 'It is approved and visible on the project page.';
+  }
+
+  if (version.status === 'PENDING_REVIEW') {
+    return 'It is queued for review before becoming public.';
+  }
+
+  return 'It is saved, but it is not public yet.';
 }
