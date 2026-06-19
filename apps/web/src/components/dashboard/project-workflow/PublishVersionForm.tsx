@@ -10,6 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { PublishVersionFields } from './publish-version/PublishVersionFields.tsx';
 import { assertCreateVersionInput } from './publish-version/publish-version-input.ts';
+import { publishableVersionProjects } from './publish-version/publish-version-projects.ts';
 import { usePublishVersionFormState } from './publish-version/usePublishVersionFormState.ts';
 
 export function PublishVersionForm({
@@ -17,7 +18,8 @@ export function PublishVersionForm({
 }: {
   projects: DashboardData['projects'];
 }) {
-  const form = usePublishVersionFormState(projects);
+  const publishableProjects = publishableVersionProjects(projects);
+  const form = usePublishVersionFormState(publishableProjects);
   const gameVersionsQuery = useQuery({
     queryFn: ({ signal }) => fetchGameVersionTaxonomy(signal),
     queryKey: ['dashboard', 'taxonomy-game-versions'],
@@ -77,40 +79,47 @@ export function PublishVersionForm({
         </p>
       </div>
 
-      <form
-        onSubmit={(event) => void submit(event)}
-        className="mt-4 grid gap-3"
-      >
-        <PublishVersionFields
-          {...form.fields}
-          gameVersionOptions={gameVersionsQuery.data ?? []}
-          hasLocalFile={localFile !== null}
-          onLocalFileChange={(file) => {
-            setLocalFile(file);
-            form.fields.onLocalFileChange(file);
-          }}
-        />
+      {publishableProjects.length === 0 ? (
+        <p className="mt-4 rounded-lg bg-control px-3 py-2 text-sm font-bold text-ink">
+          Approved projects can publish versions. Create a project and wait for
+          approval before adding release files.
+        </p>
+      ) : (
+        <form
+          onSubmit={(event) => void submit(event)}
+          className="mt-4 grid gap-3"
+        >
+          <PublishVersionFields
+            {...form.fields}
+            gameVersionOptions={gameVersionsQuery.data ?? []}
+            hasLocalFile={localFile !== null}
+            onLocalFileChange={(file) => {
+              setLocalFile(file);
+              form.fields.onLocalFileChange(file);
+            }}
+          />
 
-        {error && (
-          <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
-            {error}
-          </p>
-        )}
-        {created && (
-          <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold text-ink">
-            Published {created}.
-          </p>
-        )}
-        <div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? 'Publishing...' : 'Publish version'}
-          </button>
-        </div>
-      </form>
+          {error && (
+            <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
+              {error}
+            </p>
+          )}
+          {created && (
+            <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold text-ink">
+              Published {created}.
+            </p>
+          )}
+          <div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? 'Publishing...' : 'Publish version'}
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   );
 }

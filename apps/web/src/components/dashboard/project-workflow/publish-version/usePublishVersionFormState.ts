@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   type CreateVersionInput,
@@ -24,6 +24,24 @@ export function usePublishVersionFormState(
   const [gameVersions, setGameVersions] = useState<string[]>(
     projects[0]?.gameVersions ?? [],
   );
+
+  useEffect(() => {
+    if (projects.length === 0) {
+      setProjectSlug('');
+      setLoaders([]);
+      setGameVersions([]);
+      return;
+    }
+
+    const selectedProject = projects.find((item) => item.slug === projectSlug);
+    if (selectedProject !== undefined) return;
+
+    const [firstProject] = projects;
+    if (firstProject === undefined) return;
+    setProjectSlug(firstProject.slug);
+    setLoaders(firstProject.loaders);
+    setGameVersions(firstProject.gameVersions);
+  }, [projectSlug, projects]);
 
   function selectProject(slug: string) {
     const project = projects.find((item) => item.slug === slug);
