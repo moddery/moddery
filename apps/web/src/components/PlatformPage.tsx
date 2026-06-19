@@ -1,6 +1,6 @@
 import { type ProjectKind } from '@moddery/shared';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Search } from 'lucide-react';
 
 import {
   fetchPlatformMetadata,
@@ -197,27 +197,31 @@ function LicensesSection({ licenses }: { licenses: PlatformLicense[] }) {
         subtitle="Known license options available for published projects."
       />
       <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {licenses.map((license) =>
-          license.url ? (
+        {licenses.map((license) => (
+          <div
+            key={license.key}
+            className="rounded-lg border border-line bg-surface p-3 text-sm transition-colors hover:border-line-strong hover:bg-surface-2"
+          >
             <a
-              key={license.key}
-              href={license.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface p-3 text-sm transition-colors hover:border-line-strong hover:bg-surface-2"
+              href={discoverHref({ license: license.key })}
+              className="flex items-center justify-between gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
             >
               <LicenseText license={license} />
-              <ExternalLink className="size-4 shrink-0 text-accent-icon" />
+              <Search className="size-4 shrink-0 text-accent-icon" />
             </a>
-          ) : (
-            <div
-              key={license.key}
-              className="rounded-lg border border-line bg-surface p-3 text-sm"
-            >
-              <LicenseText license={license} />
-            </div>
-          ),
-        )}
+            {license.url && (
+              <a
+                href={license.url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-accent transition-colors hover:text-accent-strong"
+              >
+                License text
+                <ExternalLink className="size-3.5" />
+              </a>
+            )}
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -251,11 +255,13 @@ function SectionHeader({
 
 function discoverHref({
   category,
+  license,
   loader,
   projectKind,
   version,
 }: {
   category?: string;
+  license?: string;
   loader?: string;
   projectKind?: ProjectKind | null;
   version?: string;
@@ -269,6 +275,7 @@ function discoverHref({
     ) ?? projectTypeMeta('mod');
   const params = new URLSearchParams();
   if (category) params.set('category', category);
+  if (license) params.set('license', license);
   if (loader) params.set('loader', loader);
   if (version) params.set('version', version);
 
@@ -276,3 +283,5 @@ function discoverHref({
 
   return `/${projectType.path}${query ? `?${query}` : ''}`;
 }
+
+export { discoverHref as buildPlatformDiscoverHref };
