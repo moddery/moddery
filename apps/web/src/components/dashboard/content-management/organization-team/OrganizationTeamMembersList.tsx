@@ -1,6 +1,7 @@
 import { userPath } from '../../../../app/routing.ts';
 import { type DashboardOrganization } from '../../../../lib/dashboard.ts';
 import { permissionLabel } from '../../../../lib/permissions.ts';
+import { organizationMemberPosition } from '../../../organization/organization-member-meta.ts';
 
 export function OrganizationTeamMembersList({
   organization,
@@ -29,6 +30,8 @@ export function OrganizationTeamMembersList({
             </a>
             <div className="truncate text-xs font-semibold text-muted">
               {member.role}
+              {' · '}
+              {organizationMemberPosition(member.sortOrder)}
               {member.isOwner ? ' · Owner' : ''}
             </div>
             {member.permissions.length > 0 && (

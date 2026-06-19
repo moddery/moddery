@@ -8,6 +8,7 @@ import {
 } from '../../lib/organizations.ts';
 import { permissionLabel } from '../../lib/permissions.ts';
 import { Pagination } from '../Pagination.tsx';
+import { organizationMemberPosition } from './organization-member-meta.ts';
 
 export function OrganizationMembers({
   isLoading,
@@ -89,7 +90,7 @@ function MemberGrid({ members }: { members: OrganizationMember[] }) {
                 )}
               </div>
               <p className="truncate text-xs font-semibold text-muted">
-                {member.role}
+                {member.role} · {organizationMemberPosition(member.sortOrder)}
               </p>
               {(member.isOwner || member.permissions.length > 0) && (
                 <div className="mt-2 flex flex-wrap gap-1">
