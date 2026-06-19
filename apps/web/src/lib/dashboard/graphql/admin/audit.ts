@@ -62,6 +62,7 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
           projectKind
           slug
         }
+        securityAction
         targetUser {
           displayName
           id

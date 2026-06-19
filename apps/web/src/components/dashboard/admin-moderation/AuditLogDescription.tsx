@@ -81,6 +81,25 @@ export function AuditDescription({ auditLog }: { auditLog: AdminAuditLog }) {
     );
   }
 
+  if (auditLog.action === 'SECURITY_EVENT') {
+    return (
+      <>
+        <AuditUserLink
+          fallback={auditLog.actorId ?? auditLog.targetUserId ?? 'System'}
+          user={auditLog.actor ?? auditLog.targetUser}
+        />{' '}
+        {auditLog.securityAction
+          ? enumLabel(auditLog.securityAction).toLowerCase()
+          : 'recorded a security event'}{' '}
+        for{' '}
+        <AuditUserLink
+          fallback={auditLog.targetUserId ?? 'a user'}
+          user={auditLog.targetUser}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <AuditUserLink

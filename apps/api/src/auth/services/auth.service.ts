@@ -1,11 +1,13 @@
 import {
   ConflictException,
   Injectable,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { compare, hash } from 'bcryptjs';
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { MailService } from '../../mail/mail.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type ConfirmEmailVerificationInput } from '../dto/confirm-email-verification.input.js';
@@ -20,11 +22,16 @@ import {
 
 @Injectable()
 export class AuthService {
+  private readonly auditService: AuditService;
+
   constructor(
     private readonly authTokenService: AuthTokenService,
     private readonly mailService: MailService,
     private readonly prisma: PrismaService,
-  ) {}
+    @Optional() auditService?: AuditService,
+  ) {
+    this.auditService = auditService ?? noopAuditService;
+  }
 
   async login(input: LoginInput, metadata: AuthRequestMetadata = {}) {
     const identifier = input.identifier.trim();
@@ -167,6 +174,11 @@ export class AuthService {
         where: { id: userId },
       }),
     ]);
+    await this.auditService.recordSecurityEvent({
+      action: 'TWO_FACTOR_ENABLED',
+      actorId: userId,
+      targetUserId: userId,
+    });
 
     return true;
   }
@@ -188,6 +200,11 @@ export class AuthService {
         where: { id: userId },
       }),
     ]);
+    await this.auditService.recordSecurityEvent({
+      action: 'TWO_FACTOR_DISABLED',
+      actorId: userId,
+      targetUserId: userId,
+    });
 
     return true;
   }
@@ -211,7 +228,7 @@ export class AuthService {
 
     const passwordHash = await hash(input.newPassword, 12);
     const now = new Date();
-    await this.prisma.$transaction([
+    const transactionResult = await this.prisma.$transaction([
       this.prisma.passwordCredential.upsert({
         create: {
           passwordHash,
@@ -242,6 +259,16 @@ export class AuthService {
         },
       }),
     ]);
+    const sessionUpdate = transactionResult[2] as { count?: number };
+    const apiTokenUpdate = transactionResult[3] as { count?: number };
+    await this.auditService.recordSecurityEvent({
+      action: 'PASSWORD_RESET_CONFIRMED',
+      metadata: {
+        revokedApiTokens: apiTokenUpdate.count ?? 0,
+        revokedSessions: sessionUpdate.count ?? 0,
+      },
+      targetUserId: resetToken.userId,
+    });
 
     return true;
   }
@@ -399,6 +426,15 @@ export class AuthService {
       data: { tokenHash: this.authTokenService.hashToken(accessToken) },
       where: { id: session.id },
     });
+    await this.auditService.recordSecurityEvent({
+      action: 'SESSION_CREATED',
+      actorId: user.id,
+      metadata: {
+        sessionId: session.id,
+        userAgent: metadata.userAgent ?? null,
+      },
+      targetUserId: user.id,
+    });
 
     return {
       accessToken,
@@ -479,12 +515,24 @@ export class AuthService {
       throw new UnauthorizedException('Session not found');
     }
 
-    return this.prisma.session.findUniqueOrThrow({
+    const session = await this.prisma.session.findUniqueOrThrow({
       select: sessionSelect(),
       where: { id: sessionId },
     });
+    await this.auditService.recordSecurityEvent({
+      action: 'SESSION_REVOKED',
+      actorId: userId,
+      metadata: { sessionId },
+      targetUserId: userId,
+    });
+
+    return session;
   }
 }
+
+const noopAuditService = {
+  recordSecurityEvent: () => Promise.resolve(),
+} as unknown as AuditService;
 
 export interface AuthRequestMetadata {
   readonly ipAddress?: string | null;

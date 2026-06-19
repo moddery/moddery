@@ -85,6 +85,7 @@ export interface AdminAuditLog {
   reportAfter: ReportAuditSnapshot | null;
   reportBefore: ReportAuditSnapshot | null;
   resource: AuditResourceSnapshot | null;
+  securityAction: string | null;
   targetUser: AdminAuditUser | null;
   targetUserId: string | null;
   teamMemberAction: string | null;

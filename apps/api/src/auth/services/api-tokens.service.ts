@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import {
   type AuthenticatedUser,
@@ -16,10 +18,15 @@ const tokenPrefix = 'mdy_pat';
 
 @Injectable()
 export class ApiTokensService {
+  private readonly auditService: AuditService;
+
   constructor(
     private readonly authTokenService: AuthTokenService,
     private readonly prisma: PrismaService,
-  ) {}
+    @Optional() auditService?: AuditService,
+  ) {
+    this.auditService = auditService ?? noopAuditService;
+  }
 
   async findViewerTokens(
     userId: string,
@@ -86,15 +93,27 @@ export class ApiTokensService {
         ? null
         : expiresAtFromDays(input.expiresInDays);
 
+    const scopes = normalizeCredentialScopes(input.scopes);
     const tokenSummary = await this.prisma.apiToken.create({
       data: {
         expiresAt,
         name,
-        scopes: normalizeCredentialScopes(input.scopes),
+        scopes,
         tokenHash: this.authTokenService.hashToken(token),
         userId: input.user.id,
       },
       select: apiTokenSelect(),
+    });
+    await this.auditService.recordSecurityEvent({
+      action: 'API_TOKEN_CREATED',
+      actorId: input.user.id,
+      metadata: {
+        expiresAt: expiresAt?.toISOString() ?? null,
+        scopes,
+        tokenId: tokenSummary.id,
+        tokenName: tokenSummary.name,
+      },
+      targetUserId: input.user.id,
     });
 
     return { token, tokenSummary };
@@ -119,12 +138,27 @@ export class ApiTokensService {
       throw new NotFoundException('Token not found');
     }
 
-    return this.prisma.apiToken.findUniqueOrThrow({
+    const token = await this.prisma.apiToken.findUniqueOrThrow({
       select: apiTokenSelect(),
       where: { id: tokenId },
     });
+    await this.auditService.recordSecurityEvent({
+      action: 'API_TOKEN_REVOKED',
+      actorId: userId,
+      metadata: {
+        tokenId: token.id,
+        tokenName: token.name,
+      },
+      targetUserId: userId,
+    });
+
+    return token;
   }
 }
+
+const noopAuditService = {
+  recordSecurityEvent: () => Promise.resolve(),
+} as unknown as AuditService;
 
 function apiTokenSelect() {
   return {

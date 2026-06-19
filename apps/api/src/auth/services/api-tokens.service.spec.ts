@@ -144,6 +144,7 @@ describe(ApiTokensService.name, () => {
 
   test('creates viewer tokens and stores only the hash', async () => {
     const creates: unknown[] = [];
+    const auditEvents: unknown[] = [];
     const service = new ApiTokensService(
       {
         hashToken: (token: string) => `hash:${token}`,
@@ -164,6 +165,7 @@ describe(ApiTokensService.name, () => {
           },
         },
       } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
     );
 
     const created = await service.createViewerToken({
@@ -188,6 +190,18 @@ describe(ApiTokensService.name, () => {
       select: expect.any(Object),
     });
     expect(created.tokenSummary.id).toBe('token-a');
+    expect(auditEvents[0]).toEqual({
+      action: 'API_TOKEN_CREATED',
+      actorId: 'user-a',
+      metadata: {
+        expiresAt: null,
+        scopes: ['read:projects'],
+        tokenId: 'token-a',
+        tokenName: 'Local automation',
+      },
+      targetUserId: 'user-a',
+    });
+    expect(JSON.stringify(auditEvents[0])).not.toContain(created.token);
   });
 
   test('creates viewer tokens with the default scope', async () => {
@@ -271,6 +285,7 @@ describe(ApiTokensService.name, () => {
   });
 
   test('revokes viewer tokens by owner', async () => {
+    const auditEvents: unknown[] = [];
     const updates: unknown[] = [];
     const service = new ApiTokensService(
       {} as AuthTokenService,
@@ -292,6 +307,7 @@ describe(ApiTokensService.name, () => {
           },
         },
       } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
     );
 
     const token = await service.revokeViewerToken({
@@ -309,8 +325,26 @@ describe(ApiTokensService.name, () => {
       }),
     );
     expect(token.revokedAt).toEqual(new Date('2026-01-02T00:00:00.000Z'));
+    expect(auditEvents[0]).toEqual({
+      action: 'API_TOKEN_REVOKED',
+      actorId: 'user-a',
+      metadata: {
+        tokenId: 'token-a',
+        tokenName: 'Local automation',
+      },
+      targetUserId: 'user-a',
+    });
   });
 });
+
+function fakeAuditService(events: unknown[]) {
+  return {
+    recordSecurityEvent: (event: unknown) => {
+      events.push(event);
+      return Promise.resolve();
+    },
+  } as never;
+}
 
 function apiTokenRow({ id }: { id: string }) {
   return {

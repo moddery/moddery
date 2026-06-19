@@ -163,6 +163,30 @@ export class AuditService {
       },
     });
   }
+
+  async recordSecurityEvent({
+    action,
+    actorId,
+    metadata = {},
+    targetUserId,
+  }: {
+    action: SecurityAuditAction;
+    actorId?: string | null;
+    metadata?: SecurityAuditMetadata;
+    targetUserId: string;
+  }): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'SECURITY_EVENT',
+        actorId,
+        metadata: {
+          action,
+          ...metadata,
+        },
+        targetUserId,
+      },
+    });
+  }
 }
 
 export interface UserAccountAuditSnapshot extends Prisma.InputJsonObject {
@@ -213,6 +237,26 @@ export interface TeamMemberAuditSnapshot extends Prisma.InputJsonObject {
   username: string;
 }
 
+export type SecurityAuditAction =
+  | 'API_TOKEN_CREATED'
+  | 'API_TOKEN_REVOKED'
+  | 'PASSWORD_RESET_CONFIRMED'
+  | 'SESSION_CREATED'
+  | 'SESSION_REVOKED'
+  | 'TWO_FACTOR_DISABLED'
+  | 'TWO_FACTOR_ENABLED';
+
+export interface SecurityAuditMetadata extends Prisma.InputJsonObject {
+  expiresAt?: string | null;
+  revokedApiTokens?: number;
+  revokedSessions?: number;
+  scopes?: string[];
+  sessionId?: string;
+  tokenId?: string;
+  tokenName?: string;
+  userAgent?: string | null;
+}
+
 export interface AuditLogSearchResultContract {
   auditLogs: AuditLogContract[];
   totalHits: number;
@@ -233,6 +277,7 @@ export interface AuditLogContract {
   reportBefore: ReportAuditSnapshot | null;
   moderationAction: string | null;
   resource: AuditResourceSnapshot | null;
+  securityAction: string | null;
   targetUser: AuditUserRow | null;
   targetUserId: string | null;
   teamMemberAction: string | null;
@@ -294,6 +339,7 @@ function auditLogRowToContract(row: {
     reportAfter: metadata.reportAfter,
     reportBefore: metadata.reportBefore,
     resource: metadata.resource,
+    securityAction: metadata.securityAction,
     targetUser: row.targetUser,
     targetUserId: row.targetUserId,
     teamMemberAction: metadata.teamMemberAction,
@@ -314,6 +360,7 @@ function auditMetadata(metadata: Prisma.JsonValue): {
   reportAfter: ReportAuditSnapshot | null;
   reportBefore: ReportAuditSnapshot | null;
   resource: AuditResourceSnapshot | null;
+  securityAction: string | null;
   teamMemberAction: string | null;
   teamMemberAfter: TeamMemberAuditSnapshot | null;
   teamMemberBefore: TeamMemberAuditSnapshot | null;
@@ -332,6 +379,7 @@ function auditMetadata(metadata: Prisma.JsonValue): {
     moderationAction:
       metadata.entity !== 'REPORT' &&
       metadata.resource === undefined &&
+      !rowActionIsSecurity(metadata) &&
       typeof metadata.action === 'string'
         ? metadata.action
         : null,
@@ -343,6 +391,10 @@ function auditMetadata(metadata: Prisma.JsonValue): {
     reportAfter: reportSnapshot(metadata.after),
     reportBefore: reportSnapshot(metadata.before),
     resource: resourceSnapshot(metadata.resource),
+    securityAction:
+      rowActionIsSecurity(metadata) && typeof metadata.action === 'string'
+        ? metadata.action
+        : null,
     teamMemberAction:
       metadata.resource !== undefined && typeof metadata.action === 'string'
         ? metadata.action
@@ -365,12 +417,27 @@ function emptyAuditMetadata() {
     reportAfter: null,
     reportBefore: null,
     resource: null,
+    securityAction: null,
     teamMemberAction: null,
     teamMemberAfter: null,
     teamMemberBefore: null,
     versionAfter: null,
     versionBefore: null,
   };
+}
+
+function rowActionIsSecurity(
+  metadata: Prisma.JsonObject,
+): metadata is Prisma.JsonObject & { action: string } {
+  return (
+    metadata.action === 'API_TOKEN_CREATED' ||
+    metadata.action === 'API_TOKEN_REVOKED' ||
+    metadata.action === 'PASSWORD_RESET_CONFIRMED' ||
+    metadata.action === 'SESSION_CREATED' ||
+    metadata.action === 'SESSION_REVOKED' ||
+    metadata.action === 'TWO_FACTOR_DISABLED' ||
+    metadata.action === 'TWO_FACTOR_ENABLED'
+  );
 }
 
 function auditSnapshot(

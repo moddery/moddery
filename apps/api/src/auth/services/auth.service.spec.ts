@@ -136,6 +136,7 @@ describe(AuthService.name, () => {
   });
 
   test('stores request metadata when creating login sessions', async () => {
+    const auditEvents: unknown[] = [];
     const userQueries: unknown[] = [];
     const sessions: unknown[] = [];
     const service = new AuthService(
@@ -170,6 +171,7 @@ describe(AuthService.name, () => {
           },
         },
       } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
     );
 
     const payload = await service.login(
@@ -207,6 +209,15 @@ describe(AuthService.name, () => {
     expect(sessions[1]).toEqual({
       data: { tokenHash: 'hash:session-token' },
       where: { id: 'session-a' },
+    });
+    expect(auditEvents[0]).toEqual({
+      action: 'SESSION_CREATED',
+      actorId: 'user-a',
+      metadata: {
+        sessionId: 'session-a',
+        userAgent: 'Mozilla/5.0 Test Browser',
+      },
+      targetUserId: 'user-a',
     });
   });
 
@@ -332,20 +343,26 @@ describe(AuthService.name, () => {
   });
 
   test('enables two-factor authentication with a valid code', async () => {
+    const auditEvents: unknown[] = [];
     const operations: unknown[] = [];
-    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
-      $transaction: async (queries: Promise<unknown>[]) => {
-        operations.push(...(await Promise.all(queries)));
-        return Promise.resolve([]);
-      },
-      user: {
-        update: (query: unknown) => Promise.resolve({ query }),
-      },
-      userTotpSecret: {
-        findUnique: () => Promise.resolve({ secret: totpSecretFixture }),
-        update: (query: unknown) => Promise.resolve({ query }),
-      },
-    } as unknown as PrismaService);
+    const service = new AuthService(
+      {} as AuthTokenService,
+      fakeMailService(),
+      {
+        $transaction: async (queries: Promise<unknown>[]) => {
+          operations.push(...(await Promise.all(queries)));
+          return Promise.resolve([]);
+        },
+        user: {
+          update: (query: unknown) => Promise.resolve({ query }),
+        },
+        userTotpSecret: {
+          findUnique: () => Promise.resolve({ secret: totpSecretFixture }),
+          update: (query: unknown) => Promise.resolve({ query }),
+        },
+      } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
+    );
 
     const result = await service.enableTwoFactor(
       'user-a',
@@ -360,23 +377,34 @@ describe(AuthService.name, () => {
         where: { id: 'user-a' },
       },
     });
+    expect(auditEvents[0]).toEqual({
+      action: 'TWO_FACTOR_ENABLED',
+      actorId: 'user-a',
+      targetUserId: 'user-a',
+    });
   });
 
   test('disables two-factor authentication with a valid code', async () => {
+    const auditEvents: unknown[] = [];
     const operations: unknown[] = [];
-    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
-      $transaction: async (queries: Promise<unknown>[]) => {
-        operations.push(...(await Promise.all(queries)));
-        return Promise.resolve([]);
-      },
-      user: {
-        update: (query: unknown) => Promise.resolve({ query }),
-      },
-      userTotpSecret: {
-        delete: (query: unknown) => Promise.resolve({ query }),
-        findUnique: () => Promise.resolve({ secret: totpSecretFixture }),
-      },
-    } as unknown as PrismaService);
+    const service = new AuthService(
+      {} as AuthTokenService,
+      fakeMailService(),
+      {
+        $transaction: async (queries: Promise<unknown>[]) => {
+          operations.push(...(await Promise.all(queries)));
+          return Promise.resolve([]);
+        },
+        user: {
+          update: (query: unknown) => Promise.resolve({ query }),
+        },
+        userTotpSecret: {
+          delete: (query: unknown) => Promise.resolve({ query }),
+          findUnique: () => Promise.resolve({ secret: totpSecretFixture }),
+        },
+      } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
+    );
 
     const result = await service.disableTwoFactor(
       'user-a',
@@ -393,6 +421,11 @@ describe(AuthService.name, () => {
         },
       },
     ]);
+    expect(auditEvents[0]).toEqual({
+      action: 'TWO_FACTOR_DISABLED',
+      actorId: 'user-a',
+      targetUserId: 'user-a',
+    });
   });
 
   test('requests password reset without revealing unknown accounts', async () => {
@@ -442,32 +475,39 @@ describe(AuthService.name, () => {
   });
 
   test('confirms password reset once and revokes sessions and API tokens', async () => {
+    const auditEvents: unknown[] = [];
     const operations: unknown[] = [];
-    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
-      $transaction: async (queries: Promise<unknown>[]) => {
-        operations.push(...(await Promise.all(queries)));
-        return Promise.resolve([]);
-      },
-      apiToken: {
-        updateMany: (query: unknown) => Promise.resolve({ query }),
-      },
-      passwordCredential: {
-        upsert: (query: unknown) => Promise.resolve({ query }),
-      },
-      passwordResetToken: {
-        findFirst: () =>
-          Promise.resolve({
-            expiresAt: new Date(Date.now() + 60_000),
-            id: 'reset-a',
-            usedAt: null,
-            userId: 'user-a',
-          }),
-        update: (query: unknown) => Promise.resolve({ query }),
-      },
-      session: {
-        updateMany: (query: unknown) => Promise.resolve({ query }),
-      },
-    } as unknown as PrismaService);
+    const service = new AuthService(
+      {} as AuthTokenService,
+      fakeMailService(),
+      {
+        $transaction: async (queries: Promise<unknown>[]) => {
+          const result = await Promise.all(queries);
+          operations.push(...result);
+          return result;
+        },
+        apiToken: {
+          updateMany: (query: unknown) => Promise.resolve({ count: 1, query }),
+        },
+        passwordCredential: {
+          upsert: (query: unknown) => Promise.resolve({ query }),
+        },
+        passwordResetToken: {
+          findFirst: () =>
+            Promise.resolve({
+              expiresAt: new Date(Date.now() + 60_000),
+              id: 'reset-a',
+              usedAt: null,
+              userId: 'user-a',
+            }),
+          update: (query: unknown) => Promise.resolve({ query }),
+        },
+        session: {
+          updateMany: (query: unknown) => Promise.resolve({ count: 2, query }),
+        },
+      } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
+    );
 
     const result = await service.confirmPasswordReset({
       newPassword: 'new-correct-password',
@@ -494,6 +534,7 @@ describe(AuthService.name, () => {
           userId: 'user-a',
         },
       }),
+      count: 2,
     });
     expect(operations[3]).toEqual({
       query: expect.objectContaining({
@@ -502,6 +543,57 @@ describe(AuthService.name, () => {
           userId: 'user-a',
         },
       }),
+      count: 1,
+    });
+    expect(auditEvents[0]).toEqual({
+      action: 'PASSWORD_RESET_CONFIRMED',
+      metadata: {
+        revokedApiTokens: 1,
+        revokedSessions: 2,
+      },
+      targetUserId: 'user-a',
+    });
+  });
+
+  test('revokes viewer sessions and records an audit event', async () => {
+    const auditEvents: unknown[] = [];
+    const updates: unknown[] = [];
+    const service = new AuthService(
+      {} as AuthTokenService,
+      fakeMailService(),
+      {
+        session: {
+          findUniqueOrThrow: () =>
+            Promise.resolve(sessionRow({ id: 'session-a' })),
+          updateMany: (query: unknown) => {
+            updates.push(query);
+            return Promise.resolve({ count: 1 });
+          },
+        },
+      } as unknown as PrismaService,
+      fakeAuditService(auditEvents),
+    );
+
+    const session = await service.revokeViewerSession({
+      sessionId: 'session-a',
+      userId: 'user-a',
+    });
+
+    expect(session.id).toBe('session-a');
+    expect(updates[0]).toEqual(
+      expect.objectContaining({
+        data: { revokedAt: expect.any(Date) },
+        where: {
+          id: 'session-a',
+          userId: 'user-a',
+        },
+      }),
+    );
+    expect(auditEvents[0]).toEqual({
+      action: 'SESSION_REVOKED',
+      actorId: 'user-a',
+      metadata: { sessionId: 'session-a' },
+      targetUserId: 'user-a',
     });
   });
 
@@ -614,6 +706,15 @@ function fakeMailService(sent: unknown[] = []) {
   return {
     send: (message: unknown) => {
       sent.push(message);
+      return Promise.resolve();
+    },
+  } as never;
+}
+
+function fakeAuditService(events: unknown[]) {
+  return {
+    recordSecurityEvent: (event: unknown) => {
+      events.push(event);
       return Promise.resolve();
     },
   } as never;

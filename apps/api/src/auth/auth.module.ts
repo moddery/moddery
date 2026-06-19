@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 
+import { AuditModule } from '../audit/audit.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { MailModule } from '../mail/mail.module.js';
 import { UsersModule } from '../users/users.module.js';
@@ -13,7 +14,7 @@ import { AuthTokenService } from './services/auth-token.service.js';
 
 @Module({
   exports: [AuthTokenService],
-  imports: [JwtModule, MailModule, PrismaModule, UsersModule],
+  imports: [AuditModule, JwtModule, MailModule, PrismaModule, UsersModule],
   providers: [
     AuthResolver,
     ApiTokensService,

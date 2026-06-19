@@ -164,6 +164,9 @@ export class AuditLogSummary {
   @Field(() => AuditResourceSnapshot, { nullable: true })
   resource!: AuditResourceSnapshot | null;
 
+  @Field(() => String, { nullable: true })
+  securityAction!: string | null;
+
   @Field(() => AuditUserSummary, { nullable: true })
   targetUser!: AuditUserSummary | null;
 

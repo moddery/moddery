@@ -317,4 +317,85 @@ describe(AuditService.name, () => {
       },
     });
   });
+
+  test('loads security audit metadata', async () => {
+    const service = new AuditService({
+      auditLog: {
+        count: () => Promise.resolve(1),
+        findMany: () =>
+          Promise.resolve([
+            {
+              action: 'SECURITY_EVENT',
+              actor: {
+                displayName: null,
+                id: 'user-a',
+                username: 'seed',
+              },
+              actorId: 'user-a',
+              createdAt: new Date('2026-01-06T00:00:00.000Z'),
+              id: 'audit-f',
+              metadata: {
+                action: 'API_TOKEN_REVOKED',
+                tokenId: 'token-a',
+                tokenName: 'Local automation',
+              },
+              targetUser: {
+                displayName: null,
+                id: 'user-a',
+                username: 'seed',
+              },
+              targetUserId: 'user-a',
+            },
+          ]),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findAdminAuditLogs();
+
+    expect(result.auditLogs[0]).toMatchObject({
+      action: 'SECURITY_EVENT',
+      moderationAction: null,
+      securityAction: 'API_TOKEN_REVOKED',
+      targetUser: {
+        username: 'seed',
+      },
+    });
+  });
+
+  test('records security audit events without sensitive values', async () => {
+    const writes: unknown[] = [];
+    const service = new AuditService({
+      auditLog: {
+        create: (query: unknown) => {
+          writes.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    await service.recordSecurityEvent({
+      action: 'API_TOKEN_CREATED',
+      actorId: 'user-a',
+      metadata: {
+        scopes: ['read:projects'],
+        tokenId: 'token-a',
+        tokenName: 'Local automation',
+      },
+      targetUserId: 'user-a',
+    });
+
+    expect(writes[0]).toEqual({
+      data: {
+        action: 'SECURITY_EVENT',
+        actorId: 'user-a',
+        metadata: {
+          action: 'API_TOKEN_CREATED',
+          scopes: ['read:projects'],
+          tokenId: 'token-a',
+          tokenName: 'Local automation',
+        },
+        targetUserId: 'user-a',
+      },
+    });
+  });
 });
