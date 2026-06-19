@@ -1,6 +1,7 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 
 import { CurrentUser } from '../decorators/current-user.decorator.js';
+import { ConfirmEmailVerificationInput } from '../dto/confirm-email-verification.input.js';
 import { ConfirmPasswordResetInput } from '../dto/confirm-password-reset.input.js';
 import { CreateApiTokenInput } from '../dto/create-api-token.input.js';
 import { Public } from '../decorators/public.decorator.js';
@@ -70,6 +71,19 @@ export class AuthResolver {
   @Mutation(() => Boolean)
   confirmPasswordReset(@Args('input') input: ConfirmPasswordResetInput) {
     return this.authService.confirmPasswordReset(input);
+  }
+
+  @Mutation(() => Boolean)
+  requestEmailVerification(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.requestEmailVerification(user.id);
+  }
+
+  @Public()
+  @Mutation(() => Boolean)
+  confirmEmailVerification(
+    @Args('input') input: ConfirmEmailVerificationInput,
+  ) {
+    return this.authService.confirmEmailVerification(input);
   }
 
   @Query(() => [ApiTokenSummary])

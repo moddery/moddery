@@ -198,6 +198,7 @@ model User {
   threadMemberships       ThreadMember[]
   uploadedVersions        Version[]
   passwordCredential      PasswordCredential?
+  emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   auditLogsAuthored       AuditLog[]               @relation("AuditLogActor")
   auditLogsTargetingUser  AuditLog[]               @relation("AuditLogTargetUser")
@@ -261,6 +262,22 @@ model PasswordResetToken {
   @@index([userId, usedAt])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+  @@index([email])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
 }
 
 model UserAuthAccount {

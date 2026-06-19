@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import {
+  confirmEmailVerification,
+  requestEmailVerification,
   updateViewerProfile,
   type DashboardData,
   type UpdateViewerProfileInput,
@@ -21,6 +23,7 @@ export function useAccountProfileFormState({
     dashboard.newsletterOptIn,
   );
   const [busy, setBusy] = useState(false);
+  const [verificationToken, setVerificationToken] = useState('');
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,6 +66,42 @@ export function useAccountProfileFormState({
     }
   }
 
+  async function sendVerification() {
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await requestEmailVerification();
+      setMessage('Verification email sent.');
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error
+          ? caught.message
+          : 'Email verification request failed.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmVerification() {
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await confirmEmailVerification(verificationToken);
+      setVerificationToken('');
+      await onUpdated();
+      setMessage('Email verified.');
+    } catch (caught) {
+      setMessage(
+        caught instanceof Error ? caught.message : 'Email verification failed.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return {
     avatarUrl,
     bio,
@@ -71,11 +110,15 @@ export function useAccountProfileFormState({
     email,
     message,
     newsletterOptIn,
+    sendVerification,
+    confirmVerification,
     setAvatarUrl,
     setBio,
     setDisplayName,
     setEmail,
     setNewsletterOptIn,
+    setVerificationToken,
     submit,
+    verificationToken,
   };
 }

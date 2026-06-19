@@ -22,7 +22,7 @@ describe(UsersService.name, () => {
             createdAt: new Date('2026-01-01T00:00:00.000Z'),
             displayName: 'Creator',
             email: 'creator@example.test',
-            emailVerifiedAt: null,
+            emailVerifiedAt: new Date('2026-01-02T00:00:00.000Z'),
             friendRequestsReceived: [],
             friendRequestsSent: [],
             id: 'user-a',
@@ -44,7 +44,7 @@ describe(UsersService.name, () => {
       avatarUrl: ' https://example.test/avatar.png ',
       bio: '   ',
       displayName: ' Creator ',
-      email: ' creator@example.test ',
+      email: ' creator+updated@example.test ',
       newsletterOptIn: true,
     });
 
@@ -53,7 +53,8 @@ describe(UsersService.name, () => {
         avatarUrl: 'https://example.test/avatar.png',
         bio: null,
         displayName: 'Creator',
-        email: 'creator@example.test',
+        email: 'creator+updated@example.test',
+        emailVerifiedAt: null,
         newsletterOptIn: true,
       },
       where: { id: 'user-a' },

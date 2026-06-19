@@ -16,6 +16,18 @@ export const UPDATE_VIEWER_PROFILE_MUTATION = gql`
   }
 `;
 
+export const REQUEST_EMAIL_VERIFICATION_MUTATION = gql`
+  mutation RequestEmailVerification {
+    requestEmailVerification
+  }
+`;
+
+export const CONFIRM_EMAIL_VERIFICATION_MUTATION = gql`
+  mutation ConfirmEmailVerification($input: ConfirmEmailVerificationInput!) {
+    confirmEmailVerification(input: $input)
+  }
+`;
+
 export const VIEWER_API_TOKENS_QUERY = gql`
   query ViewerApiTokens($includeRevoked: Boolean) {
     viewerApiTokens(includeRevoked: $includeRevoked) {

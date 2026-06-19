@@ -1,5 +1,9 @@
 import { apolloClient } from '../../../../apollo.js';
-import { UPDATE_VIEWER_PROFILE_MUTATION } from '../../graphql.js';
+import {
+  CONFIRM_EMAIL_VERIFICATION_MUTATION,
+  REQUEST_EMAIL_VERIFICATION_MUTATION,
+  UPDATE_VIEWER_PROFILE_MUTATION,
+} from '../../graphql.js';
 import {
   type UpdateViewerProfileMutationData,
   type UpdateViewerProfileMutationVariables,
@@ -28,4 +32,36 @@ export async function updateViewerProfile(
   }
 
   return data.updateViewerProfile;
+}
+
+export async function requestEmailVerification(): Promise<boolean> {
+  const { data } = await apolloClient.mutate<{
+    requestEmailVerification: boolean;
+  }>({
+    mutation: REQUEST_EMAIL_VERIFICATION_MUTATION,
+  });
+
+  if (data?.requestEmailVerification !== true) {
+    throw new Error('Email verification request failed');
+  }
+
+  return true;
+}
+
+export async function confirmEmailVerification(
+  token: string,
+): Promise<boolean> {
+  const { data } = await apolloClient.mutate<
+    { confirmEmailVerification: boolean },
+    { input: { token: string } }
+  >({
+    mutation: CONFIRM_EMAIL_VERIFICATION_MUTATION,
+    variables: { input: { token } },
+  });
+
+  if (data?.confirmEmailVerification !== true) {
+    throw new Error('Email verification failed');
+  }
+
+  return true;
 }

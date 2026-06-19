@@ -76,6 +76,34 @@ export function AccountProfileForm({
               Newsletter opt-in
             </label>
             <AccountStatusMeta dashboard={dashboard} />
+            {dashboard.email && !dashboard.emailVerifiedAt && (
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <input
+                  value={profile.verificationToken}
+                  onChange={(event) =>
+                    profile.setVerificationToken(event.target.value)
+                  }
+                  placeholder="Verification token"
+                  className="h-9 rounded-md border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent"
+                />
+                <button
+                  type="button"
+                  disabled={profile.busy}
+                  onClick={() => void profile.sendVerification()}
+                  className="h-9 rounded-md border border-line bg-control px-3 text-xs font-bold text-ink transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Send verification
+                </button>
+                <button
+                  type="button"
+                  disabled={profile.busy || profile.verificationToken === ''}
+                  onClick={() => void profile.confirmVerification()}
+                  className="h-9 rounded-md bg-accent px-3 text-xs font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Verify
+                </button>
+              </div>
+            )}
           </div>
 
           <label className="block text-sm font-bold text-ink">

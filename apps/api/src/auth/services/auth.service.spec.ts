@@ -294,6 +294,96 @@ describe(AuthService.name, () => {
       }),
     });
   });
+
+  test('requests email verification for unverified viewer email', async () => {
+    const sent: unknown[] = [];
+    const service = new AuthService(
+      {} as AuthTokenService,
+      fakeMailService(sent),
+      {
+        emailVerificationToken: {
+          create: (query: unknown) => {
+            sent.push({ tokenCreate: query });
+            return Promise.resolve({});
+          },
+        },
+        user: {
+          findUnique: () =>
+            Promise.resolve({
+              email: 'seed@example.test',
+              emailVerifiedAt: null,
+              id: 'user-a',
+              username: 'seed',
+            }),
+        },
+      } as unknown as PrismaService,
+    );
+
+    const result = await service.requestEmailVerification('user-a');
+
+    expect(result).toBe(true);
+    expect(sent).toHaveLength(2);
+    expect(sent[0]).toEqual({
+      tokenCreate: {
+        data: {
+          email: 'seed@example.test',
+          expiresAt: expect.any(Date),
+          tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+          userId: 'user-a',
+        },
+      },
+    });
+    expect(sent[1]).toEqual(
+      expect.objectContaining({
+        subject: 'Verify your Moddery email',
+        to: 'seed@example.test',
+      }),
+    );
+  });
+
+  test('confirms email verification for the matching current email', async () => {
+    const operations: unknown[] = [];
+    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
+      $transaction: async (queries: Promise<unknown>[]) => {
+        operations.push(...(await Promise.all(queries)));
+        return Promise.resolve([]);
+      },
+      emailVerificationToken: {
+        findFirst: () =>
+          Promise.resolve({
+            email: 'seed@example.test',
+            expiresAt: new Date(Date.now() + 60_000),
+            id: 'verify-a',
+            usedAt: null,
+            user: { email: 'seed@example.test' },
+            userId: 'user-a',
+          }),
+        update: (query: unknown) => Promise.resolve({ query }),
+      },
+      user: {
+        update: (query: unknown) => Promise.resolve({ query }),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.confirmEmailVerification({
+      token: 'verify-token',
+    });
+
+    expect(result).toBe(true);
+    expect(operations).toHaveLength(2);
+    expect(operations[0]).toEqual({
+      query: expect.objectContaining({
+        data: { emailVerifiedAt: expect.any(Date) },
+        where: { id: 'user-a' },
+      }),
+    });
+    expect(operations[1]).toEqual({
+      query: expect.objectContaining({
+        data: { usedAt: expect.any(Date) },
+        where: { id: 'verify-a' },
+      }),
+    });
+  });
 });
 
 const passwordHashFixture = await hash('correct-password', 4);

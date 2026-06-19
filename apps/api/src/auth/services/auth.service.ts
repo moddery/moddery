@@ -8,6 +8,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { MailService } from '../../mail/mail.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type ConfirmEmailVerificationInput } from '../dto/confirm-email-verification.input.js';
 import { type ConfirmPasswordResetInput } from '../dto/confirm-password-reset.input.js';
 import { type LoginInput } from '../dto/login.input.js';
 import { type RegisterInput } from '../dto/register.input.js';
@@ -148,6 +149,95 @@ export class AuthService {
           revokedAt: null,
           userId: resetToken.userId,
         },
+      }),
+    ]);
+
+    return true;
+  }
+
+  async requestEmailVerification(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      select: {
+        email: true,
+        emailVerifiedAt: true,
+        id: true,
+        username: true,
+      },
+      where: { id: userId },
+    });
+
+    if (user?.email === undefined || user.email === null) {
+      return true;
+    }
+
+    if (user.emailVerifiedAt !== null) {
+      return true;
+    }
+
+    const token = randomBytes(32).toString('base64url');
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        email: user.email,
+        expiresAt: new Date(Date.now() + emailVerificationTokenTtlMs),
+        tokenHash: hashSecret(token),
+        userId: user.id,
+      },
+    });
+
+    await this.mailService.send({
+      subject: 'Verify your Moddery email',
+      text: [
+        `Verify the email address for ${user.username}.`,
+        '',
+        `Verification token: ${token}`,
+        '',
+        'This token expires in 24 hours. If you did not request this, you can ignore this email.',
+      ].join('\n'),
+      to: user.email,
+    });
+
+    return true;
+  }
+
+  async confirmEmailVerification(
+    input: ConfirmEmailVerificationInput,
+  ): Promise<boolean> {
+    const tokenHash = hashSecret(input.token.trim());
+    const verificationToken =
+      await this.prisma.emailVerificationToken.findFirst({
+        select: {
+          email: true,
+          expiresAt: true,
+          id: true,
+          usedAt: true,
+          user: {
+            select: { email: true },
+          },
+          userId: true,
+        },
+        where: { tokenHash },
+      });
+
+    if (verificationToken?.usedAt !== null) {
+      throw new UnauthorizedException('Invalid email verification token');
+    }
+
+    if (
+      verificationToken.expiresAt <= new Date() ||
+      verificationToken.user.email !== verificationToken.email
+    ) {
+      throw new UnauthorizedException('Invalid email verification token');
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        data: { emailVerifiedAt: now },
+        where: { id: verificationToken.userId },
+      }),
+      this.prisma.emailVerificationToken.update({
+        data: { usedAt: now },
+        where: { id: verificationToken.id },
       }),
     ]);
 
@@ -338,3 +428,4 @@ function clampInteger(value: number, minimum: number, maximum: number): number {
 }
 
 const passwordResetTokenTtlMs = 60 * 60 * 1000;
+const emailVerificationTokenTtlMs = 24 * 60 * 60 * 1000;

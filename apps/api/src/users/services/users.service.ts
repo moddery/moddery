@@ -40,6 +40,18 @@ export class UsersService {
   }
 
   async updateViewerProfile(id: string, input: UpdateViewerProfileInput) {
+    const nextEmail =
+      input.email === undefined
+        ? undefined
+        : (nullableTrim(input.email)?.toLowerCase() ?? null);
+    const existing =
+      nextEmail === undefined
+        ? null
+        : await this.prisma.user.findUnique({
+            select: { email: true },
+            where: { id },
+          });
+
     await this.prisma.user.update({
       data: {
         avatarUrl:
@@ -51,8 +63,11 @@ export class UsersService {
           input.displayName === undefined
             ? undefined
             : nullableTrim(input.displayName),
-        email:
-          input.email === undefined ? undefined : nullableTrim(input.email),
+        email: nextEmail,
+        emailVerifiedAt:
+          nextEmail === undefined || existing?.email === nextEmail
+            ? undefined
+            : null,
         newsletterOptIn: input.newsletterOptIn ?? undefined,
       },
       where: { id },
