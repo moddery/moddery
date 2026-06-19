@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { projectSummaryLinks } from './ProjectsSummary.js';
+import {
+  isPublicDashboardProject,
+  managedProjectStatusMessage,
+  projectSummaryLinks,
+} from './ProjectsSummary.js';
 
 describe('projectSummaryLinks', () => {
   test('includes standard, license, and custom project links', () => {
@@ -55,5 +59,31 @@ describe('projectSummaryLinks', () => {
         label: 'Community',
       },
     ]);
+  });
+});
+
+describe(isPublicDashboardProject.name, () => {
+  test('only approved dashboard projects should open as public project cards', () => {
+    expect(isPublicDashboardProject({ status: 'APPROVED' })).toBe(true);
+    expect(isPublicDashboardProject({ status: 'PENDING_REVIEW' })).toBe(false);
+    expect(isPublicDashboardProject({ status: 'REJECTED' })).toBe(false);
+    expect(isPublicDashboardProject({ status: 'ARCHIVED' })).toBe(false);
+  });
+});
+
+describe(managedProjectStatusMessage.name, () => {
+  test('explains private managed project lifecycle states', () => {
+    expect(managedProjectStatusMessage({ status: 'PENDING_REVIEW' })).toContain(
+      'review',
+    );
+    expect(managedProjectStatusMessage({ status: 'REJECTED' })).toContain(
+      'private',
+    );
+    expect(managedProjectStatusMessage({ status: 'ARCHIVED' })).toContain(
+      'restored',
+    );
+    expect(managedProjectStatusMessage({ status: 'DRAFT' })).toContain(
+      'not public',
+    );
   });
 });

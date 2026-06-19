@@ -40,12 +40,16 @@ export function ProjectsSummary({
             const mod = dashboardProjectToMod(project);
             return (
               <div key={project.slug} className="space-y-2">
-                <ModCard
-                  mod={mod}
-                  layout="list"
-                  onOpen={onOpenProject}
-                  onTagSearch={onTagSearch}
-                />
+                {isPublicDashboardProject(project) ? (
+                  <ModCard
+                    mod={mod}
+                    layout="list"
+                    onOpen={onOpenProject}
+                    onTagSearch={onTagSearch}
+                  />
+                ) : (
+                  <ManagedProjectCard project={project} />
+                )}
                 <ProjectLifecycleSummary project={project} />
                 <ProjectLinkSummary project={project} />
               </div>
@@ -55,6 +59,71 @@ export function ProjectsSummary({
       )}
     </section>
   );
+}
+
+function ManagedProjectCard({ project }: { project: DashboardProject }) {
+  return (
+    <article className="rounded-lg border border-line bg-surface px-4 py-3">
+      <div className="flex gap-4">
+        {project.iconUrl ? (
+          <img
+            src={project.iconUrl}
+            alt={`${project.title} icon`}
+            loading="lazy"
+            width={64}
+            height={64}
+            className="size-16 shrink-0 rounded-md bg-surface-2 object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="size-16 shrink-0 rounded-md bg-surface-2"
+          />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="min-w-0 text-balance font-display text-lg font-extrabold text-ink">
+              {project.title}
+            </h3>
+            <span className="rounded-md bg-control px-2 py-1 text-xs font-extrabold text-muted">
+              {enumLabel(project.status)}
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-2 text-pretty text-sm text-muted">
+            {project.summary}
+          </p>
+          <p className="mt-3 text-xs font-semibold text-muted">
+            {managedProjectStatusMessage(project)}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export function isPublicDashboardProject(
+  project: Pick<DashboardProject, 'status'>,
+) {
+  return project.status === 'APPROVED';
+}
+
+export function managedProjectStatusMessage(
+  project: Pick<DashboardProject, 'status'>,
+) {
+  if (project.status === 'PENDING_REVIEW') {
+    return 'Queued projects are visible here while moderators review them.';
+  }
+
+  if (project.status === 'REJECTED') {
+    return 'Rejected projects are private until their metadata is ready for another review.';
+  }
+
+  if (project.status === 'ARCHIVED') {
+    return 'Archived projects are private until restored by moderation.';
+  }
+
+  return 'This project is not public yet.';
 }
 
 function ProjectLifecycleSummary({ project }: { project: DashboardProject }) {
