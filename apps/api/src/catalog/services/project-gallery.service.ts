@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { type ProjectSummaryContract } from '@moddery/shared';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -24,14 +28,16 @@ export class ProjectGalleryService {
     userId: string,
   ): Promise<ProjectSummaryContract> {
     const project = await this.findManagedProject(input.projectSlug, userId);
+    const displayUrl = requiredGalleryUrl(input.displayUrl);
+    const rawUrl = requiredGalleryUrl(input.rawUrl);
 
     await this.prisma.projectGalleryImage.create({
       data: {
         description: nullableTrim(input.description),
-        displayUrl: input.displayUrl.trim(),
+        displayUrl,
         featured: input.featured,
         projectId: project.id,
-        rawUrl: input.rawUrl.trim(),
+        rawUrl,
         sortOrder: input.sortOrder ?? 0,
         title: nullableTrim(input.title),
       },
@@ -58,13 +64,15 @@ export class ProjectGalleryService {
     userId: string,
   ): Promise<ProjectSummaryContract> {
     const image = await this.findManagedGalleryImage(input.imageId, userId);
+    const displayUrl = requiredGalleryUrl(input.displayUrl);
+    const rawUrl = requiredGalleryUrl(input.rawUrl);
 
     await this.prisma.projectGalleryImage.update({
       data: {
         description: nullableTrim(input.description),
-        displayUrl: input.displayUrl.trim(),
+        displayUrl,
         featured: input.featured,
-        rawUrl: input.rawUrl.trim(),
+        rawUrl,
         sortOrder: input.sortOrder,
         title: nullableTrim(input.title),
       },
@@ -142,4 +150,13 @@ export class ProjectGalleryService {
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function requiredGalleryUrl(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new BadRequestException('Gallery image URL is required');
+  }
+
+  return trimmed;
 }

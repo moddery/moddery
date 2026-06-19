@@ -70,6 +70,36 @@ describe(ProjectGalleryService.name, () => {
     expect(project.gallery[0]?.id).toBe('image-a');
   });
 
+  test('rejects blank gallery image URLs before creating records', async () => {
+    const service = createProjectGalleryService({
+      project: {
+        findFirst: () => Promise.resolve({ id: 'project-a' }),
+      },
+      projectGalleryImage: {
+        create: () => {
+          throw new Error('Gallery image creation should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.addProjectGalleryImage(
+        {
+          displayUrl: ' ',
+          featured: false,
+          projectSlug: 'example',
+          rawUrl: 'https://example.test/raw.png',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Gallery image URL is required');
+  });
+
   test('updates managed gallery images', async () => {
     const updates: unknown[] = [];
     const service = createProjectGalleryService({
@@ -130,6 +160,36 @@ describe(ProjectGalleryService.name, () => {
     expect(project.gallery[0]?.displayUrl).toBe(
       'https://example.test/display-2.png',
     );
+  });
+
+  test('rejects blank gallery image URLs before updating records', async () => {
+    const service = createProjectGalleryService({
+      projectGalleryImage: {
+        findFirst: () =>
+          Promise.resolve({ id: 'image-a', projectId: 'project-a' }),
+        update: () => {
+          throw new Error('Gallery image update should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateProjectGalleryImage(
+        {
+          displayUrl: 'https://example.test/display.png',
+          featured: false,
+          imageId: 'image-a',
+          rawUrl: ' ',
+          sortOrder: 0,
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Gallery image URL is required');
   });
 
   test('removes managed gallery images', async () => {

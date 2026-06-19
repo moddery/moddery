@@ -91,6 +91,13 @@ interface CreateProjectResponse {
   errors?: GraphqlError[];
 }
 
+interface AddProjectGalleryImageResponse {
+  data?: {
+    addProjectGalleryImage?: ProjectSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface ModerateProjectResponse {
   data?: {
     moderateProject?: ProjectSummary;
@@ -255,10 +262,20 @@ interface VersionsForProjectResponse {
 }
 
 interface ProjectSummary {
+  gallery?: GalleryImageSummary[];
   kind: string;
   slug: string;
   status: string;
   title: string;
+}
+
+interface GalleryImageSummary {
+  description: string | null;
+  displayUrl: string;
+  featured: boolean;
+  rawUrl: string;
+  sortOrder: number;
+  title: string | null;
 }
 
 interface ViewerDashboardProject extends ProjectSummary {
@@ -831,6 +848,11 @@ async function checkCreatorFlow(): Promise<void> {
       title,
     },
   );
+  await checkProjectGalleryFlow({
+    projectSlug: slug,
+    projectTitle: title,
+    token: auth.accessToken,
+  });
 
   const indexedSearch = await projectSearch({ search: slug });
   const indexedProject = indexedSearch.projects.find(
@@ -1126,6 +1148,100 @@ async function checkReviewNotification(options: {
   if (notification === undefined) {
     throw new Error(`Missing ${options.title} creator notification`);
   }
+}
+
+async function checkProjectGalleryFlow(options: {
+  projectSlug: string;
+  projectTitle: string;
+  token: string;
+}): Promise<void> {
+  const galleryUrl = `${apiUrl}/smoke-gallery/${encodeURIComponent(
+    options.projectSlug,
+  )}.png`;
+  const payload = await readGraphql<AddProjectGalleryImageResponse>(
+    {
+      query: `
+        mutation SmokeAddProjectGalleryImage($input: AddProjectGalleryImageInput!) {
+          addProjectGalleryImage(input: $input) {
+            gallery {
+              description
+              displayUrl
+              featured
+              rawUrl
+              sortOrder
+              title
+            }
+            kind
+            slug
+            status
+            title
+          }
+        }
+      `,
+      variables: {
+        input: {
+          description: 'Smoke gallery description',
+          displayUrl: galleryUrl,
+          featured: true,
+          projectSlug: options.projectSlug,
+          rawUrl: galleryUrl,
+          sortOrder: 7,
+          title: 'Smoke gallery image',
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL add project gallery image');
+  assertProject(
+    required(payload.data?.addProjectGalleryImage, 'gallery project'),
+    {
+      kind: 'MOD',
+      slug: options.projectSlug,
+      title: options.projectTitle,
+    },
+  );
+
+  const publicPayload = await readGraphql<ProjectBySlugResponse>({
+    query: `
+      query SmokeGalleryProjectBySlug($slug: String!) {
+        projectBySlug(slug: $slug) {
+          gallery {
+            description
+            displayUrl
+            featured
+            rawUrl
+            sortOrder
+            title
+          }
+          kind
+          slug
+          status
+          title
+        }
+      }
+    `,
+    variables: { slug: options.projectSlug },
+  });
+  assertNoGraphqlErrors(publicPayload, 'GraphQL gallery project by slug');
+
+  const project = required(
+    publicPayload.data?.projectBySlug,
+    'public gallery project',
+  );
+  assertProject(project, {
+    kind: 'MOD',
+    slug: options.projectSlug,
+    title: options.projectTitle,
+  });
+  assertProjectGalleryImage(project, {
+    description: 'Smoke gallery description',
+    displayUrl: galleryUrl,
+    featured: true,
+    rawUrl: galleryUrl,
+    sortOrder: 7,
+    title: 'Smoke gallery image',
+  });
 }
 
 async function checkApprovedProjectFilterSearch(options: {
@@ -2744,6 +2860,25 @@ function assertProject(
   ) {
     throw new Error(
       `Project mismatch: expected ${expected.kind} ${expected.slug} ${expected.title}, received ${project.kind} ${project.slug} ${project.title}`,
+    );
+  }
+}
+
+function assertProjectGalleryImage(
+  project: ProjectSummary,
+  expected: GalleryImageSummary,
+): void {
+  const gallery = project.gallery ?? [];
+  const image = gallery.find((item) => item.displayUrl === expected.displayUrl);
+  if (
+    image?.description !== expected.description ||
+    image.featured !== expected.featured ||
+    image.rawUrl !== expected.rawUrl ||
+    image.sortOrder !== expected.sortOrder ||
+    image.title !== expected.title
+  ) {
+    throw new Error(
+      `Project gallery mismatch for ${project.slug}: expected ${expected.displayUrl}`,
     );
   }
 }
