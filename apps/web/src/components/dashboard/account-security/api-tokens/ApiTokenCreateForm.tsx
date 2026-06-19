@@ -1,6 +1,10 @@
 import { type FormEvent } from 'react';
 
-import { DashboardField } from '../shared.tsx';
+import {
+  CredentialScopesField,
+  type CredentialScope,
+  DashboardField,
+} from '../shared.tsx';
 
 export function ApiTokenCreateForm({
   busy,
@@ -17,10 +21,10 @@ export function ApiTokenCreateForm({
   expiresInDays: string;
   message: string | null;
   name: string;
-  scopes: string;
+  scopes: readonly CredentialScope[];
   onExpiresInDaysChange: (value: string) => void;
   onNameChange: (value: string) => void;
-  onScopesChange: (value: string) => void;
+  onScopesChange: (scopes: CredentialScope[]) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
@@ -33,10 +37,9 @@ export function ApiTokenCreateForm({
           onChange={onNameChange}
           required
         />
-        <DashboardField
+        <CredentialScopesField
           disabled={busy}
-          label="Scopes"
-          value={scopes}
+          scopes={scopes}
           onChange={onScopesChange}
         />
         <DashboardField

@@ -1,4 +1,4 @@
-import { DashboardField } from '../shared.tsx';
+import { CredentialScopesField, DashboardField } from '../shared.tsx';
 import { type DeveloperApplicationsState } from './useDeveloperApplicationsState.ts';
 
 export function DeveloperApplicationForm({
@@ -22,10 +22,9 @@ export function DeveloperApplicationForm({
         value={state.homepageUrl}
         onChange={state.setHomepageUrl}
       />
-      <DashboardField
+      <CredentialScopesField
         disabled={state.creating}
-        label="Scopes"
-        value={state.scopes}
+        scopes={state.scopes}
         onChange={state.setScopes}
       />
       <DashboardField

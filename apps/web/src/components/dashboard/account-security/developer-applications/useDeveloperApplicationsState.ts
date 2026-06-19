@@ -7,7 +7,7 @@ import {
   fetchViewerOAuthClientSearch,
   revokeOAuthClient,
 } from '../../../../lib/dashboard.ts';
-import { splitList } from '../shared.tsx';
+import { type CredentialScope, splitList } from '../shared.tsx';
 
 interface PreventableSubmitEvent {
   preventDefault: () => void;
@@ -24,7 +24,7 @@ export function useDeveloperApplicationsState() {
     'http://localhost:3000/callback',
   );
   const [revokingClientId, setRevokingClientId] = useState<string | null>(null);
-  const [scopes, setScopes] = useState('read:projects');
+  const [scopes, setScopes] = useState<CredentialScope[]>(['read:projects']);
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const clientsQuery = useQuery({
@@ -46,7 +46,7 @@ export function useDeveloperApplicationsState() {
         homepageUrl: nullableText(homepageUrl),
         name,
         redirectUris: splitList(redirectUris),
-        scopes: splitList(scopes),
+        scopes,
       });
       setClientSecret(created.clientSecret);
       setMessage(developerApplicationActionMessage('create', created.client));

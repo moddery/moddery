@@ -11,13 +11,13 @@ import {
 import { ApiTokenCreatedNotice } from './api-tokens/ApiTokenCreatedNotice.tsx';
 import { ApiTokenCreateForm } from './api-tokens/ApiTokenCreateForm.tsx';
 import { ApiTokenList } from './api-tokens/ApiTokenList.tsx';
-import { splitList } from './shared.tsx';
+import { type CredentialScope } from './shared.tsx';
 
 const pageSize = 20;
 
 export function ApiTokensPanel() {
   const [name, setName] = useState('');
-  const [scopes, setScopes] = useState('read:projects');
+  const [scopes, setScopes] = useState<CredentialScope[]>(['read:projects']);
   const [expiresInDays, setExpiresInDays] = useState('90');
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -45,7 +45,7 @@ export function ApiTokensPanel() {
         expiresInDays:
           expiresInDays.trim() === '' ? null : Number(expiresInDays),
         name,
-        scopes: splitList(scopes),
+        scopes,
       });
       setCreatedToken(created.token);
       setMessage(apiTokenActionMessage('create', created.tokenSummary));
