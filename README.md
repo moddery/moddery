@@ -34,8 +34,9 @@ Use `bun run docker:dev:detached` to start it in the background and
 Nest watch mode and the web app with Vite, so application source changes do not
 require rebuilding Docker images.
 
-The web app is exposed at `http://localhost:15173`, the API at
-`http://localhost:13001`, Postgres at `localhost:5433`, Redis at
+The web app is exposed at `http://localhost:15175` for the production Compose
+stack and `http://localhost:15174` for the Docker development stack. The API is
+exposed at `http://localhost:13001`, Postgres at `localhost:5433`, Redis at
 `localhost:6380`, OpenSearch at `http://localhost:9200`, ClickHouse at
 `http://localhost:8123`, Mailpit at `http://localhost:8026`, and the MinIO
 console at `http://localhost:9003`.
@@ -53,4 +54,11 @@ Prisma commands for the API:
 ```sh
 bun run --filter @moddery/api prisma:generate
 bun run --filter @moddery/api prisma:migrate:dev
+bun run db:migrate:deploy
+```
+
+Seed local catalog data:
+
+```sh
+bun run seed:popular-projects
 ```
