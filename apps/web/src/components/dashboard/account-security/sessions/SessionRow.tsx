@@ -32,7 +32,7 @@ export function SessionRow({
           onClick={() => void onRevoke(session.id)}
           className="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Revoke
+          {busy ? 'Revoking...' : 'Revoke'}
         </button>
       )}
     </div>

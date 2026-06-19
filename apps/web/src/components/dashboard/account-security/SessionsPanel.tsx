@@ -3,6 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import {
+  type SessionSummary,
   fetchViewerSessionSearch,
   revokeSession,
 } from '../../../lib/dashboard.ts';
@@ -29,8 +30,12 @@ export function SessionsPanel() {
     setMessage(null);
 
     try {
-      await revokeSession(sessionId);
+      const session = await revokeSession(sessionId);
+      setMessage(sessionActionMessage('revoke', session));
       await sessionsQuery.refetch();
+      if (sessions.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      }
     } catch (caught) {
       setMessage(
         caught instanceof Error ? caught.message : 'Session revocation failed',
@@ -77,4 +82,13 @@ export function SessionsPanel() {
       />
     </section>
   );
+}
+
+export function sessionActionMessage(
+  action: 'revoke',
+  session: Pick<SessionSummary, 'userAgent'>,
+) {
+  const label = session.userAgent ?? 'browser session';
+
+  return `Revoked ${label}.`;
 }
