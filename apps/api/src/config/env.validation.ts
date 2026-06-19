@@ -41,6 +41,10 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   RATE_LIMIT_REQUESTS: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  REQUEST_LOGGING_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   REDIS_URL: z.string().url(),
   S3_ACCESS_KEY_ID: z.string().min(1),
   S3_BUCKET: z.string().min(1),
@@ -67,6 +71,7 @@ export function validateEnvironment(): {
     port: Environment['PORT'];
     rateLimitRequests: Environment['RATE_LIMIT_REQUESTS'];
     rateLimitTtlSeconds: Environment['RATE_LIMIT_TTL_SECONDS'];
+    requestLoggingEnabled: Environment['REQUEST_LOGGING_ENABLED'];
   };
   database: {
     url: Environment['DATABASE_URL'];
@@ -111,6 +116,7 @@ export function validateEnvironment(): {
       port: env.PORT,
       rateLimitRequests: env.RATE_LIMIT_REQUESTS,
       rateLimitTtlSeconds: env.RATE_LIMIT_TTL_SECONDS,
+      requestLoggingEnabled: env.REQUEST_LOGGING_ENABLED,
     },
     database: {
       url: env.DATABASE_URL,
