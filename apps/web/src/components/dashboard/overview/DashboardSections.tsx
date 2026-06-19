@@ -112,7 +112,7 @@ function DashboardAccountSection({
       <NotificationPreferencesPanel />
       <FriendsPanel />
       <TeamInvitationsPanel />
-      <DirectMessagesPanel />
+      <DirectMessagesPanel viewerId={dashboard.id} />
       {canModerate && <SendNotificationPanel />}
     </section>
   );

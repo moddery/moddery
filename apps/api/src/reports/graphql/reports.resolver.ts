@@ -220,6 +220,17 @@ export class ReportsResolver {
     });
   }
 
+  @Mutation(() => ThreadSummary)
+  markDirectThreadRead(
+    @Args('threadId') threadId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.reportDirectThreadsService.markDirectThreadRead({
+      threadId,
+      userId: user.id,
+    });
+  }
+
   @Mutation(() => ModerationNoteSummary)
   createProjectModerationNote(
     @Args('input') input: CreateProjectModerationNoteInput,

@@ -144,7 +144,10 @@ describe(ReportDirectThreadsService.name, () => {
     expect(creates[0]).toEqual({
       data: {
         members: {
-          create: [{ userId: 'user-a' }, { userId: 'user-b' }],
+          create: [
+            { lastReadAt: expect.any(Date), userId: 'user-a' },
+            { userId: 'user-b' },
+          ],
         },
         messages: {
           create: {
@@ -188,6 +191,53 @@ describe(ReportDirectThreadsService.name, () => {
 
     expect(thrown).toBeInstanceOf(Error);
     expect((thrown as Error).message).toBe('Thread access required');
+  });
+
+  test('marks direct threads read for existing members', async () => {
+    const queries: unknown[] = [];
+    const service = new ReportDirectThreadsService({
+      thread: {
+        findFirst: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(directThreadRow());
+        },
+      },
+      threadMember: {
+        findUnique: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve({ threadId: 'thread-a' });
+        },
+        update: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    const thread = await service.markDirectThreadRead({
+      threadId: 'thread-a',
+      userId: 'user-a',
+    });
+
+    expect(queries[0]).toEqual({
+      select: { threadId: true },
+      where: {
+        threadId_userId: {
+          threadId: 'thread-a',
+          userId: 'user-a',
+        },
+      },
+    });
+    expect(queries[1]).toEqual({
+      data: { lastReadAt: expect.any(Date) },
+      where: {
+        threadId_userId: {
+          threadId: 'thread-a',
+          userId: 'user-a',
+        },
+      },
+    });
+    expect(thread.id).toBe('thread-a');
   });
 });
 

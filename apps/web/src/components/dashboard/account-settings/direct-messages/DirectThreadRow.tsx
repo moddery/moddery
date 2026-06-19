@@ -4,14 +4,18 @@ import { timeAgo } from '../../../../lib/format.ts';
 
 export function DirectThreadRow({
   onChange,
+  onRead,
   onReply,
   thread,
   value,
+  viewerId,
 }: {
   onChange: (value: string) => void;
+  onRead: () => void;
   onReply: () => void;
   thread: DirectThread;
   value: string;
+  viewerId: string;
 }) {
   const messages = [...thread.messages].sort(
     (left, right) =>
@@ -20,7 +24,7 @@ export function DirectThreadRow({
 
   return (
     <article className="rounded-lg border border-line bg-surface p-4">
-      <ThreadHeader thread={thread} />
+      <ThreadHeader thread={thread} viewerId={viewerId} onRead={onRead} />
       <ThreadMessages messages={messages} />
       <div className="mt-3 flex gap-2">
         <input
@@ -41,7 +45,17 @@ export function DirectThreadRow({
   );
 }
 
-function ThreadHeader({ thread }: { thread: DirectThread }) {
+function ThreadHeader({
+  onRead,
+  thread,
+  viewerId,
+}: {
+  onRead: () => void;
+  thread: DirectThread;
+  viewerId: string;
+}) {
+  const unreadCount = directThreadUnreadCount(thread, viewerId);
+
   return (
     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
       <div className="min-w-0">
@@ -64,9 +78,23 @@ function ThreadHeader({ thread }: { thread: DirectThread }) {
           })}
         </div>
       </div>
-      <span className="text-xs font-semibold uppercase text-muted">
-        {directThreadTiming(thread)}
-      </span>
+      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase text-muted sm:justify-end">
+        {unreadCount > 0 && (
+          <>
+            <span className="rounded-full border border-accent/30 bg-accent-soft px-2 py-1 text-accent-icon">
+              {unreadCount.toLocaleString('en-US')} unread
+            </span>
+            <button
+              type="button"
+              onClick={onRead}
+              className="rounded-full border border-line px-2 py-1 text-ink transition-colors hover:bg-control-hover"
+            >
+              Mark read
+            </button>
+          </>
+        )}
+        <span>{directThreadTiming(thread)}</span>
+      </div>
     </div>
   );
 }
@@ -79,6 +107,26 @@ export function directThreadTiming(
     thread.updatedAt,
     now,
   )}`;
+}
+
+export function directThreadUnreadCount(
+  thread: Pick<DirectThread, 'members' | 'messages'>,
+  viewerId: string,
+) {
+  const viewerMember = thread.members.find(
+    (member) => member.user.id === viewerId,
+  );
+  const lastReadAt =
+    viewerMember?.lastReadAt === null || viewerMember?.lastReadAt === undefined
+      ? null
+      : new Date(viewerMember.lastReadAt).getTime();
+
+  return thread.messages.filter((message) => {
+    if (message.author.id === viewerId) return false;
+
+    const messageCreatedAt = new Date(message.createdAt).getTime();
+    return lastReadAt === null || messageCreatedAt > lastReadAt;
+  }).length;
 }
 
 function ThreadMessages({ messages }: { messages: DirectThread['messages'] }) {

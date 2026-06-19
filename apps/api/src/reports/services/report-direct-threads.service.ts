@@ -97,10 +97,14 @@ export class ReportDirectThreadsService {
       });
     }
 
+    const createdAt = new Date();
     const thread = await this.prisma.thread.create({
       data: {
         members: {
-          create: [{ userId: authorId }, { userId: target.id }],
+          create: [
+            { lastReadAt: createdAt, userId: authorId },
+            { userId: target.id },
+          ],
         },
         messages: {
           create: {
@@ -167,6 +171,28 @@ export class ReportDirectThreadsService {
     });
 
     return directThread;
+  }
+
+  async markDirectThreadRead({
+    threadId,
+    userId,
+  }: {
+    threadId: string;
+    userId: string;
+  }) {
+    await this.assertThreadMember({ threadId, userId });
+
+    await this.prisma.threadMember.update({
+      data: { lastReadAt: new Date() },
+      where: {
+        threadId_userId: {
+          threadId,
+          userId,
+        },
+      },
+    });
+
+    return this.findViewerThreadOrThrow({ threadId, userId });
   }
 
   private async assertThreadMember({

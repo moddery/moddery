@@ -45,6 +45,14 @@ export interface CreateDirectThreadMessageMutationVariables {
   };
 }
 
+export interface MarkDirectThreadReadMutationData {
+  markDirectThreadRead: DirectThread;
+}
+
+export interface MarkDirectThreadReadMutationVariables {
+  threadId: string;
+}
+
 export interface ViewerApiTokensQueryData {
   viewerApiTokens: ApiTokenSummary[];
 }

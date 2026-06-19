@@ -6,13 +6,14 @@ import {
   createDirectThread,
   createDirectThreadMessage,
   fetchViewerDirectThreads,
+  markDirectThreadRead,
 } from '../../../lib/dashboard/actions/account.ts';
 import { DirectMessageComposer } from './direct-messages/DirectMessageComposer.tsx';
 import { DirectThreadList } from './direct-messages/DirectThreadList.tsx';
 
 const pageSize = 20;
 
-export function DirectMessagesPanel() {
+export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
   const [body, setBody] = useState('');
   const [messageBodyByThread, setMessageBodyByThread] = useState<
     Record<string, string>
@@ -55,6 +56,18 @@ export function DirectMessagesPanel() {
     }
   }
 
+  async function markThreadRead(threadId: string) {
+    setStatus(null);
+    try {
+      await markDirectThreadRead(threadId);
+      await threadsQuery.refetch();
+    } catch (caught) {
+      setStatus(
+        caught instanceof Error ? caught.message : 'Read update failed',
+      );
+    }
+  }
+
   const threads = threadsQuery.data?.threads ?? [];
   const totalHits = threadsQuery.data?.totalHits ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
@@ -94,6 +107,7 @@ export function DirectMessagesPanel() {
         page={page}
         threads={threads}
         totalPages={totalPages}
+        viewerId={viewerId}
         onMessageChange={(threadId, value) =>
           setMessageBodyByThread((current) => ({
             ...current,
@@ -101,6 +115,7 @@ export function DirectMessagesPanel() {
           }))
         }
         onPage={setPage}
+        onRead={(threadId) => void markThreadRead(threadId)}
         onReply={(threadId) => void replyToThread(threadId)}
       />
     </section>

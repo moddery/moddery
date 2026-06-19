@@ -7,19 +7,23 @@ export function DirectThreadList({
   messageBodyByThread,
   onMessageChange,
   onPage,
+  onRead,
   onReply,
   page,
   threads,
   totalPages,
+  viewerId,
 }: {
   loading: boolean;
   messageBodyByThread: Record<string, string>;
   onMessageChange: (threadId: string, value: string) => void;
   onPage: (page: number) => void;
+  onRead: (threadId: string) => void;
   onReply: (threadId: string) => void;
   page: number;
   threads: DirectThread[];
   totalPages: number;
+  viewerId: string;
 }) {
   if (loading) {
     return (
@@ -49,7 +53,9 @@ export function DirectThreadList({
           key={thread.id}
           thread={thread}
           value={messageBodyByThread[thread.id] ?? ''}
+          viewerId={viewerId}
           onChange={(value) => onMessageChange(thread.id, value)}
+          onRead={() => onRead(thread.id)}
           onReply={() => onReply(thread.id)}
         />
       ))}

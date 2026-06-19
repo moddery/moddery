@@ -350,3 +350,12 @@ export const CREATE_DIRECT_THREAD_MESSAGE_MUTATION = gql`
     }
   }
 `;
+
+export const MARK_DIRECT_THREAD_READ_MUTATION = gql`
+  ${DIRECT_THREAD_FIELDS}
+  mutation MarkDirectThreadRead($threadId: String!) {
+    markDirectThreadRead(threadId: $threadId) {
+      ...DirectThreadFields
+    }
+  }
+`;
