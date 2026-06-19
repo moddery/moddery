@@ -4,7 +4,7 @@ import { type GameVersionTaxonomy } from '../../../../lib/dashboard.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
 import { TaxonomyCheckboxGroup } from '../../TaxonomyCheckboxGroup.tsx';
 import { DashboardField } from '../shared.tsx';
-import { type VersionChannel, versionStatusOptions } from './versionChannel.ts';
+import { type VersionChannel } from './versionChannel.ts';
 
 export function EditVersionFields({
   channel,
@@ -14,9 +14,7 @@ export function EditVersionFields({
   gameVersions,
   loaders,
   name,
-  requestedStatus,
   sortOrder,
-  status,
   versionNumber,
   onChannelChange,
   onChangelogChange,
@@ -24,9 +22,7 @@ export function EditVersionFields({
   onGameVersionsChange,
   onLoadersChange,
   onNameChange,
-  onRequestedStatusChange,
   onSortOrderChange,
-  onStatusChange,
   onVersionNumberChange,
 }: {
   channel: VersionChannel;
@@ -36,9 +32,7 @@ export function EditVersionFields({
   gameVersions: string[];
   loaders: string[];
   name: string;
-  requestedStatus: string;
   sortOrder: string;
-  status: string;
   versionNumber: string;
   onChannelChange: (value: VersionChannel) => void;
   onChangelogChange: (value: string) => void;
@@ -46,9 +40,7 @@ export function EditVersionFields({
   onGameVersionsChange: (value: string[]) => void;
   onLoadersChange: (value: string[]) => void;
   onNameChange: (value: string) => void;
-  onRequestedStatusChange: (value: string) => void;
   onSortOrderChange: (value: string) => void;
-  onStatusChange: (value: string) => void;
   onVersionNumberChange: (value: string) => void;
 }) {
   const activeGameVersions = gameVersionOptions.filter(
@@ -105,37 +97,6 @@ export function EditVersionFields({
         />
         Featured version
       </label>
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="grid gap-1 text-sm font-bold text-ink">
-          Status
-          <select
-            value={status}
-            onChange={(event) => onStatusChange(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
-          >
-            {versionStatusOptions.map((value) => (
-              <option key={value} value={value}>
-                {enumLabel(value)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm font-bold text-ink">
-          Requested status
-          <select
-            value={requestedStatus}
-            onChange={(event) => onRequestedStatusChange(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
-          >
-            <option value="">None</option>
-            {versionStatusOptions.map((value) => (
-              <option key={value} value={value}>
-                {enumLabel(value)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
       <div className="grid gap-3">
         <TaxonomyCheckboxGroup
           label="Loaders"

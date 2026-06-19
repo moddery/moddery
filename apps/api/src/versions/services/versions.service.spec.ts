@@ -106,7 +106,7 @@ describe(VersionsService.name, () => {
                   name: 'Updated',
                   requestedStatus: null,
                   sortOrder: 3,
-                  status: 'ARCHIVED',
+                  status: 'APPROVED',
                   versionNumber: '1.0.1',
                 }),
               ),
@@ -143,9 +143,7 @@ describe(VersionsService.name, () => {
         gameVersions: ['1.21.6'],
         loaders: ['fabric'],
         name: 'Updated',
-        requestedStatus: null,
         sortOrder: 3,
-        status: 'ARCHIVED',
         versionId: 'version-a',
         versionNumber: '1.0.1',
       },
@@ -154,9 +152,9 @@ describe(VersionsService.name, () => {
 
     expect(operations[0]).toContain('"name":"Updated"');
     expect(operations[0]).toContain('"featured":false');
-    expect(operations[0]).toContain('"requestedStatus":null');
     expect(operations[0]).toContain('"sortOrder":3');
-    expect(operations[0]).toContain('"status":"ARCHIVED"');
+    expect(operations[0]).not.toContain('requestedStatus');
+    expect(operations[0]).not.toContain('status');
     expect(operations).toContain(
       'versions-delete:{"where":{"versionId":"version-a"}}',
     );
@@ -169,12 +167,41 @@ describe(VersionsService.name, () => {
     expect(version.versionNumber).toBe('1.0.1');
   });
 
+  test('rejects creator version status updates', async () => {
+    const service = createVersionsService({
+      version: {
+        findFirst: () => {
+          throw new Error('Version lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateVersion(
+        {
+          status: 'ARCHIVED',
+          versionId: 'version-a',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Version status is managed by moderation',
+    );
+  });
+
   test('loads all managed project versions regardless of status', async () => {
     const service = createVersionsService({
       project: {
         findUnique: () =>
           Promise.resolve({
             id: 'project-a',
+            status: 'APPROVED',
             team: { members: [{ userId: 'user-a' }] },
           }),
       },
@@ -271,6 +298,7 @@ describe(VersionsService.name, () => {
           Promise.resolve({
             id: 'project-a',
             slug: 'example',
+            status: 'APPROVED',
             team: { members: [{ userId: 'user-a' }] },
           }),
       },
@@ -304,6 +332,35 @@ describe(VersionsService.name, () => {
     expect(version.projectSlug).toBe('example');
   });
 
+  test('requires approved projects before creating versions', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'PENDING_REVIEW',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createVersion(validCreateVersionInput(), 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Project must be approved before publishing versions',
+    );
+  });
+
   test('rejects duplicate version numbers before creating files', async () => {
     const transactionSteps: string[] = [];
     const service = createVersionsService({
@@ -322,6 +379,7 @@ describe(VersionsService.name, () => {
           Promise.resolve({
             id: 'project-a',
             slug: 'example',
+            status: 'APPROVED',
             team: { members: [{ userId: 'user-a' }] },
           }),
       },
@@ -348,6 +406,7 @@ describe(VersionsService.name, () => {
           Promise.resolve({
             id: 'project-a',
             slug: 'example',
+            status: 'APPROVED',
             team: { members: [{ userId: 'user-a' }] },
           }),
       },
@@ -403,6 +462,7 @@ function managedVersion() {
     project: {
       id: 'project-a',
       slug: 'example',
+      status: 'APPROVED',
       team: { members: [{ userId: 'user-a' }] },
     },
   };

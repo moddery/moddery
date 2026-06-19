@@ -4,7 +4,6 @@ import {
   versionChannelFromDashboardVersion,
   versionSortOrderFieldValue,
   versionSortOrderFromField,
-  versionStatusOptions,
 } from './versionChannel.ts';
 
 describe(versionChannelFromDashboardVersion.name, () => {
@@ -13,14 +12,6 @@ describe(versionChannelFromDashboardVersion.name, () => {
       'BETA',
     );
     expect(versionChannelFromDashboardVersion(null)).toBe('RELEASE');
-  });
-});
-
-describe('versionStatusOptions', () => {
-  test('includes the editable lifecycle states', () => {
-    expect(versionStatusOptions).toContain('DRAFT');
-    expect(versionStatusOptions).toContain('APPROVED');
-    expect(versionStatusOptions).toContain('ARCHIVED');
   });
 });
 

@@ -518,9 +518,7 @@ export interface UpdateVersionInput {
   gameVersions: string[];
   loaders: string[];
   name: string;
-  requestedStatus: string | null;
   sortOrder: number;
-  status: string;
   versionId: string;
   versionNumber: string;
 }

@@ -4,14 +4,6 @@ import { type DashboardVersion } from '../../../../lib/dashboard.ts';
 
 export { type VersionChannel };
 
-export const versionStatusOptions = [
-  'DRAFT',
-  'PENDING_REVIEW',
-  'APPROVED',
-  'REJECTED',
-  'ARCHIVED',
-] as const;
-
 export function versionChannelFromDashboardVersion(
   version: Pick<DashboardVersion, 'channel'> | null,
 ): VersionChannel {

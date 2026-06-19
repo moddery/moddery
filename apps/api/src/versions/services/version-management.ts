@@ -1,4 +1,8 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { type PrismaService } from '../../prisma/prisma.service.js';
 
@@ -14,6 +18,7 @@ export async function findManagedVersion(
         select: {
           id: true,
           slug: true,
+          status: true,
           team: {
             select: {
               members: {
@@ -38,6 +43,12 @@ export async function findManagedVersion(
 
   if (version.project.team.members.length === 0) {
     throw new ForbiddenException('Project membership required');
+  }
+
+  if (version.project.status !== 'APPROVED') {
+    throw new BadRequestException(
+      'Project must be approved before releases can be changed',
+    );
   }
 
   return version;

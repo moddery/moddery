@@ -45,6 +45,7 @@ export class VersionsService {
       select: {
         id: true,
         slug: true,
+        status: true,
         team: {
           select: {
             members: {
@@ -67,6 +68,12 @@ export class VersionsService {
 
     if (project.team.members.length === 0) {
       throw new ForbiddenException('Project membership required');
+    }
+
+    if (project.status !== 'APPROVED') {
+      throw new BadRequestException(
+        'Project must be approved before publishing versions',
+      );
     }
 
     validateVersionFiles(input.files);
@@ -197,6 +204,7 @@ export class VersionsService {
     input: UpdateVersionInput,
     userId: string,
   ): Promise<VersionSummaryContract> {
+    validateVersionUpdate(input);
     const version = await findManagedVersion(
       this.prisma,
       input.versionId,
@@ -268,6 +276,23 @@ export class VersionsService {
       this.redis.delete(projectBySlugCacheKey(projectSlug)),
       this.search.updateProjectUpdatedAt(projectId, updatedAt.toISOString()),
     ]);
+  }
+}
+
+function validateVersionUpdate(input: UpdateVersionInput): void {
+  if (input.status !== undefined || input.requestedStatus !== undefined) {
+    throw new BadRequestException('Version status is managed by moderation');
+  }
+
+  if (input.name !== undefined && input.name?.trim().length === 0) {
+    throw new BadRequestException('Version name is required');
+  }
+
+  if (
+    input.versionNumber !== undefined &&
+    input.versionNumber?.trim().length === 0
+  ) {
+    throw new BadRequestException('Version number is required');
   }
 }
 

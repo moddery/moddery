@@ -30,8 +30,6 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
   const [channel, setChannel] = useState<VersionChannel>('RELEASE');
   const [featured, setFeatured] = useState(false);
   const [sortOrder, setSortOrder] = useState('0');
-  const [status, setStatus] = useState('APPROVED');
-  const [requestedStatus, setRequestedStatus] = useState('');
   const [changelog, setChangelog] = useState('');
   const [loaders, setLoaders] = useState<string[]>([]);
   const [gameVersions, setGameVersions] = useState<string[]>([]);
@@ -59,8 +57,6 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     setChannel(versionChannelFromDashboardVersion(version));
     setFeatured(version?.featured ?? false);
     setSortOrder(versionSortOrderFieldValue(version));
-    setStatus(version?.status ?? 'APPROVED');
-    setRequestedStatus(version?.requestedStatus ?? '');
     setChangelog(version?.changelog ?? '');
     setLoaders(version?.loaders ?? []);
     setGameVersions(version?.gameVersions ?? []);
@@ -73,9 +69,7 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     gameVersions,
     loaders,
     name,
-    requestedStatus,
     sortOrder,
-    status,
     versionNumber,
     onChannelChange: setChannel,
     onChangelogChange: setChangelog,
@@ -83,9 +77,7 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     onGameVersionsChange: setGameVersions,
     onLoadersChange: setLoaders,
     onNameChange: setName,
-    onRequestedStatusChange: setRequestedStatus,
     onSortOrderChange: setSortOrder,
-    onStatusChange: setStatus,
     onVersionNumberChange: setVersionNumber,
   };
 
@@ -99,9 +91,7 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
       gameVersions,
       loaders,
       name,
-      requestedStatus: requestedStatus === '' ? null : requestedStatus,
       sortOrder: versionSortOrderFromField(sortOrder),
-      status,
       versionId: selectedVersion.id,
       versionNumber,
     };
