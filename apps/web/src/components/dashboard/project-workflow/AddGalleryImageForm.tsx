@@ -6,7 +6,10 @@ import {
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
 import { GalleryImageFields } from './gallery-image/GalleryImageFields.tsx';
-import { GalleryImageManager } from './gallery-image/GalleryImageManager.tsx';
+import {
+  GalleryImageManager,
+  parseGalleryImageSortOrder,
+} from './gallery-image/GalleryImageManager.tsx';
 import { GalleryPreview } from './gallery-image/GalleryPreview.tsx';
 import { nullableText } from './shared.tsx';
 
@@ -65,7 +68,7 @@ export function AddGalleryImageForm({
         featured,
         projectSlug,
         rawUrl: nextRawUrl,
-        sortOrder: sortOrder.trim() === '' ? null : Number(sortOrder),
+        sortOrder: parseOptionalGalleryImageSortOrder(sortOrder),
         title: nullableText(title),
       });
       setCreated(project.title);
@@ -164,4 +167,10 @@ export function addGalleryImageButtonLabel(submitting: boolean) {
 
 export function shouldClearGalleryImageUrls(file: File | null) {
   return file !== null;
+}
+
+export function parseOptionalGalleryImageSortOrder(
+  value: string,
+): number | null {
+  return value.trim() === '' ? null : parseGalleryImageSortOrder(value);
 }
