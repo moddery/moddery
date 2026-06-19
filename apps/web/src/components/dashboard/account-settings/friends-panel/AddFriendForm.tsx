@@ -7,7 +7,7 @@ export function AddFriendForm({
   onRequestFriend,
 }: {
   busyUsername: string | null;
-  onRequestFriend: (username: string) => Promise<unknown>;
+  onRequestFriend: (username: string) => Promise<boolean>;
 }) {
   const [username, setUsername] = useState('');
 
@@ -18,8 +18,10 @@ export function AddFriendForm({
       return;
     }
 
-    await onRequestFriend(trimmedUsername);
-    setUsername('');
+    const requested = await onRequestFriend(trimmedUsername);
+    if (requested) {
+      setUsername('');
+    }
   }
 
   return (
