@@ -157,38 +157,17 @@ function ReleaseModerationRow({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            className="rounded-md bg-accent px-3 py-1.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={busy}
-            type="button"
-            onClick={() => onAction('APPROVE')}
-          >
-            Approve
-          </button>
-          <button
-            className="rounded-md border border-line bg-control px-3 py-1.5 text-sm font-bold text-ink disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={busy}
-            type="button"
-            onClick={() => onAction('REJECT')}
-          >
-            Reject
-          </button>
-          <button
-            className="rounded-md border border-line bg-control px-3 py-1.5 text-sm font-bold text-ink disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={busy}
-            type="button"
-            onClick={() => onAction('ARCHIVE')}
-          >
-            Archive
-          </button>
-          <button
-            className="rounded-md border border-line bg-control px-3 py-1.5 text-sm font-bold text-ink disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={busy}
-            type="button"
-            onClick={() => onAction('RESTORE')}
-          >
-            Restore
-          </button>
+          {releaseModerationActions(version.status).map((action) => (
+            <button
+              className={releaseModerationButtonClass(action.kind)}
+              disabled={busy}
+              key={action.kind}
+              type="button"
+              onClick={() => onAction(action.kind)}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -210,6 +189,39 @@ function ReleaseModerationRow({
       </dl>
     </article>
   );
+}
+
+export function releaseModerationActions(
+  status: string,
+): { kind: string; label: string }[] {
+  if (status === 'PENDING_REVIEW') {
+    return [
+      { kind: 'APPROVE', label: 'Approve' },
+      { kind: 'REJECT', label: 'Reject' },
+      { kind: 'ARCHIVE', label: 'Archive' },
+    ];
+  }
+
+  if (status === 'REJECTED') {
+    return [
+      { kind: 'APPROVE', label: 'Approve' },
+      { kind: 'ARCHIVE', label: 'Archive' },
+    ];
+  }
+
+  if (status === 'ARCHIVED') {
+    return [{ kind: 'RESTORE', label: 'Restore' }];
+  }
+
+  return [];
+}
+
+function releaseModerationButtonClass(action: string): string {
+  const base =
+    'rounded-md px-3 py-1.5 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-60';
+  return action === 'APPROVE'
+    ? `${base} bg-accent text-white`
+    : `${base} border border-line bg-control text-ink`;
 }
 
 export function releaseModerationActionMessage(
