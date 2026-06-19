@@ -11,6 +11,7 @@ export interface AuthenticatedUser {
   readonly credentialScopes?: readonly CredentialScope[];
   readonly id: string;
   readonly role: string;
+  readonly sessionId?: string;
   readonly username: string;
 }
 
@@ -135,6 +136,7 @@ export class AuthTokenService {
         authMethod: 'session',
         id: session.user.id,
         role: session.user.role,
+        sessionId: session.id,
         username: session.user.username,
       };
     } catch {

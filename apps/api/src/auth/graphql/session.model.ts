@@ -11,6 +11,9 @@ export class SessionSummary {
   @Field(() => String)
   id!: string;
 
+  @Field(() => Boolean)
+  isCurrent!: boolean;
+
   @Field(() => Date)
   lastUsedAt!: Date;
 

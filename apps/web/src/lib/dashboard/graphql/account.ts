@@ -73,6 +73,7 @@ export const VIEWER_SESSIONS_QUERY = gql`
       createdAt
       expiresAt
       id
+      isCurrent
       lastUsedAt
       revokedAt
       userAgent
@@ -95,6 +96,7 @@ export const VIEWER_SESSION_SEARCH_QUERY = gql`
         createdAt
         expiresAt
         id
+        isCurrent
         lastUsedAt
         revokedAt
         userAgent
@@ -141,6 +143,7 @@ export const REVOKE_SESSION_MUTATION = gql`
       createdAt
       expiresAt
       id
+      isCurrent
       lastUsedAt
       revokedAt
       userAgent

@@ -145,7 +145,10 @@ export class AuthResolver {
     @Args('includeRevoked', { nullable: true, type: () => Boolean })
     includeRevoked?: boolean | null,
   ) {
-    return this.authService.findViewerSessionList(user.id, { includeRevoked });
+    return this.authService.findViewerSessionList(user.id, {
+      currentSessionId: user.sessionId,
+      includeRevoked,
+    });
   }
 
   @Query(() => SessionSearchResult)
@@ -156,6 +159,7 @@ export class AuthResolver {
     @Args() pagination?: PaginationArgs,
   ) {
     return this.authService.findViewerSessions(user.id, {
+      currentSessionId: user.sessionId,
       includeRevoked,
       ...paginationOptions(pagination ?? {}),
     });
@@ -191,6 +195,7 @@ export class AuthResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.authService.revokeViewerSession({
+      currentSessionId: user.sessionId,
       sessionId,
       userId: user.id,
     });

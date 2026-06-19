@@ -63,12 +63,14 @@ describe(AuthService.name, () => {
     } as unknown as PrismaService);
 
     const result = await service.findViewerSessions('user-a', {
+      currentSessionId: 'session-b',
       limit: 1,
       offset: 4,
     });
 
     expect(result.totalHits).toBe(12);
     expect(result.sessions.map((session) => session.id)).toEqual(['session-b']);
+    expect(result.sessions[0]?.isCurrent).toBe(true);
     expect(queries[1]).toEqual({
       findMany: expect.objectContaining({
         orderBy: [{ revokedAt: 'asc' }, { lastUsedAt: 'desc' }],
@@ -132,6 +134,10 @@ describe(AuthService.name, () => {
     expect(sessions.map((session) => session.id)).toEqual([
       'session-a',
       'session-b',
+    ]);
+    expect(sessions.map((session) => session.isCurrent)).toEqual([
+      false,
+      false,
     ]);
   });
 
@@ -575,11 +581,13 @@ describe(AuthService.name, () => {
     );
 
     const session = await service.revokeViewerSession({
+      currentSessionId: 'session-a',
       sessionId: 'session-a',
       userId: 'user-a',
     });
 
     expect(session.id).toBe('session-a');
+    expect(session.isCurrent).toBe(true);
     expect(updates[0]).toEqual(
       expect.objectContaining({
         data: { revokedAt: expect.any(Date) },

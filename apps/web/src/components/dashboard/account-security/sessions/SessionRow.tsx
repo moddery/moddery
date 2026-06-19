@@ -15,6 +15,11 @@ export function SessionRow({
       <div className="min-w-0">
         <p className="font-display text-base font-extrabold text-ink">
           {session.userAgent ?? 'Browser session'}
+          {session.isCurrent && (
+            <span className="ml-2 rounded-md bg-control px-2 py-1 align-middle text-xs font-extrabold text-muted">
+              Current
+            </span>
+          )}
         </p>
         <p className="mt-1 text-sm font-semibold text-muted">
           Created {timeAgo(session.createdAt)} · used{' '}

@@ -19,6 +19,7 @@ export interface SessionSummary {
   createdAt: string;
   expiresAt: string;
   id: string;
+  isCurrent: boolean;
   lastUsedAt: string;
   revokedAt: string | null;
   userAgent: string | null;

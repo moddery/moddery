@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 
+import { apolloClient, clearStoredAuthToken } from '../../../apollo.js';
 import {
   type SessionSummary,
   fetchViewerSessionSearch,
@@ -32,6 +33,11 @@ export function SessionsPanel() {
     try {
       const session = await revokeSession(sessionId);
       setMessage(sessionActionMessage('revoke', session));
+      if (session.isCurrent) {
+        clearStoredAuthToken();
+        await apolloClient.clearStore();
+        return;
+      }
       await sessionsQuery.refetch();
       if (sessions.length === 1 && page > 1) {
         setPage((current) => current - 1);
@@ -86,9 +92,11 @@ export function SessionsPanel() {
 
 export function sessionActionMessage(
   action: 'revoke',
-  session: Pick<SessionSummary, 'userAgent'>,
+  session: Pick<SessionSummary, 'isCurrent' | 'userAgent'>,
 ) {
   const label = session.userAgent ?? 'browser session';
 
-  return `Revoked ${label}.`;
+  return session.isCurrent
+    ? `Revoked current ${label}. Sign in again to continue.`
+    : `Revoked ${label}.`;
 }

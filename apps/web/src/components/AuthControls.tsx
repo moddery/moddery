@@ -1,7 +1,13 @@
 import { useMutation, useQuery } from '@apollo/client';
 import { useEffect, useState, type FormEvent } from 'react';
 
-import { apolloClient, authTokenStorageKey } from '../apollo.js';
+import {
+  apolloClient,
+  authTokenChangedEvent,
+  clearStoredAuthToken,
+  readStoredAuthToken,
+  writeStoredAuthToken,
+} from '../apollo.js';
 import { AuthPopover } from './auth-controls/AuthPopover.tsx';
 import {
   CONFIRM_PASSWORD_RESET_MUTATION,
@@ -30,9 +36,7 @@ export function AuthControls({
   onOpenNotifications?: () => void;
   onOpenProfile?: (username: string) => void;
 }) {
-  const [token, setToken] = useState(() =>
-    localStorage.getItem(authTokenStorageKey),
-  );
+  const [token, setToken] = useState(() => readStoredAuthToken());
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>('login');
   const [identifier, setIdentifier] = useState('');
@@ -76,12 +80,26 @@ export function AuthControls({
   }, [authPromptKey, token]);
 
   useEffect(() => {
+    function syncTokenState() {
+      setToken(readStoredAuthToken());
+    }
+
+    window.addEventListener(authTokenChangedEvent, syncTokenState);
+    window.addEventListener('storage', syncTokenState);
+
+    return () => {
+      window.removeEventListener(authTokenChangedEvent, syncTokenState);
+      window.removeEventListener('storage', syncTokenState);
+    };
+  }, []);
+
+  useEffect(() => {
     if (token === null || !isRejectedAuthSessionError(meError)) return;
     void clearStoredToken();
   }, [meError, token]);
 
   async function saveToken(accessToken: string): Promise<void> {
-    localStorage.setItem(authTokenStorageKey, accessToken);
+    writeStoredAuthToken(accessToken);
     setToken(accessToken);
     setOpen(false);
     setError(null);
@@ -89,7 +107,7 @@ export function AuthControls({
   }
 
   async function clearStoredToken(): Promise<void> {
-    localStorage.removeItem(authTokenStorageKey);
+    clearStoredAuthToken();
     setToken(null);
     await apolloClient.clearStore();
   }

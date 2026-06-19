@@ -72,6 +72,7 @@ describe(AuthTokenService.name, () => {
       authMethod: 'session',
       id: 'user_123',
       role: 'USER',
+      sessionId: 'session-a',
       username: 'tester',
     });
     expect(updates[0]).toEqual({

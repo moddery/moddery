@@ -452,9 +452,11 @@ export class AuthService {
     userId: string,
     {
       includeRevoked,
+      currentSessionId,
       limit = 20,
       offset = 0,
     }: {
+      currentSessionId?: string;
       includeRevoked?: boolean | null;
       limit?: number;
       offset?: number;
@@ -478,7 +480,9 @@ export class AuthService {
     ]);
 
     return {
-      sessions,
+      sessions: sessions.map((session) =>
+        sessionSummaryWithCurrentState(session, currentSessionId),
+      ),
       totalHits,
     };
   }
@@ -487,19 +491,26 @@ export class AuthService {
     userId: string,
     {
       includeRevoked,
+      currentSessionId,
     }: {
+      currentSessionId?: string;
       includeRevoked?: boolean | null;
     } = {},
   ) {
-    const result = await this.findViewerSessions(userId, { includeRevoked });
+    const result = await this.findViewerSessions(userId, {
+      currentSessionId,
+      includeRevoked,
+    });
 
     return result.sessions;
   }
 
   async revokeViewerSession({
+    currentSessionId,
     sessionId,
     userId,
   }: {
+    currentSessionId?: string;
     sessionId: string;
     userId: string;
   }) {
@@ -526,7 +537,7 @@ export class AuthService {
       targetUserId: userId,
     });
 
-    return session;
+    return sessionSummaryWithCurrentState(session, currentSessionId);
   }
 }
 
@@ -635,6 +646,16 @@ function sessionSelect() {
     lastUsedAt: true,
     revokedAt: true,
     userAgent: true,
+  };
+}
+
+function sessionSummaryWithCurrentState<T extends { id: string }>(
+  session: T,
+  currentSessionId: string | undefined,
+): T & { isCurrent: boolean } {
+  return {
+    ...session,
+    isCurrent: session.id === currentSessionId,
   };
 }
 
