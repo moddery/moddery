@@ -68,6 +68,7 @@ export function EditVersionDependencyForm({
         className="mt-4 grid gap-3"
       >
         <DependencyVersionSelectors
+          disabled={submitting}
           projectSlug={form.projectSlug}
           projects={projects}
           selectedVersion={form.selectedVersion}
@@ -85,7 +86,11 @@ export function EditVersionDependencyForm({
             Publish a version before editing dependencies.
           </p>
         ) : (
-          <DependencyFields projects={projects} {...form.fields} />
+          <DependencyFields
+            disabled={submitting}
+            projects={projects}
+            {...form.fields}
+          />
         )}
 
         {error && (
@@ -105,10 +110,14 @@ export function EditVersionDependencyForm({
             disabled={submitting || form.selectedVersion === null}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Saving...' : 'Save dependencies'}
+            {editDependencyButtonLabel(submitting)}
           </button>
         </div>
       </form>
     </section>
   );
+}
+
+export function editDependencyButtonLabel(submitting: boolean) {
+  return submitting ? 'Saving...' : 'Save dependencies';
 }

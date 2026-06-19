@@ -73,6 +73,7 @@ export function EditVersionForm({
         className="mt-4 grid gap-3"
       >
         <EditVersionSelectors
+          disabled={submitting}
           projectSlug={form.projectSlug}
           projects={projects}
           selectedVersion={form.selectedVersion}
@@ -92,6 +93,7 @@ export function EditVersionForm({
         ) : (
           <EditVersionFields
             {...form.fields}
+            disabled={submitting}
             gameVersionOptions={gameVersionsQuery.data ?? []}
           />
         )}
@@ -113,10 +115,14 @@ export function EditVersionForm({
             disabled={submitting || form.selectedVersion === null}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Saving...' : 'Save version'}
+            {editVersionButtonLabel(submitting)}
           </button>
         </div>
       </form>
     </section>
   );
+}
+
+export function editVersionButtonLabel(submitting: boolean) {
+  return submitting ? 'Saving...' : 'Save version';
 }

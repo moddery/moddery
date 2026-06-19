@@ -9,6 +9,7 @@ import { type VersionChannel } from './versionChannel.ts';
 export function EditVersionFields({
   channel,
   changelog,
+  disabled,
   featured,
   gameVersionOptions,
   gameVersions,
@@ -27,6 +28,7 @@ export function EditVersionFields({
 }: {
   channel: VersionChannel;
   changelog: string;
+  disabled?: boolean;
   featured: boolean;
   gameVersionOptions: GameVersionTaxonomy[];
   gameVersions: string[];
@@ -51,12 +53,14 @@ export function EditVersionFields({
     <>
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,0.6fr)_minmax(8rem,0.4fr)]">
         <DashboardField
+          disabled={disabled}
           label="Name"
           value={name}
           onChange={onNameChange}
           required
         />
         <DashboardField
+          disabled={disabled}
           label="Version number"
           value={versionNumber}
           onChange={onVersionNumberChange}
@@ -65,11 +69,12 @@ export function EditVersionFields({
         <label className="grid gap-1 text-sm font-bold text-ink">
           Channel
           <select
+            disabled={disabled}
             value={channel}
             onChange={(event) =>
               onChannelChange(event.target.value as VersionChannel)
             }
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             {VERSION_CHANNELS.map((value) => (
               <option key={value} value={value}>
@@ -81,24 +86,27 @@ export function EditVersionFields({
         <label className="grid gap-1 text-sm font-bold text-ink">
           Order
           <input
+            disabled={disabled}
             type="number"
             value={sortOrder}
             onChange={(event) => onSortOrderChange(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
       </div>
       <label className="flex items-center gap-2 text-sm font-bold text-ink">
         <input
+          disabled={disabled}
           type="checkbox"
           checked={featured}
           onChange={(event) => onFeaturedChange(event.target.checked)}
-          className="h-4 w-4 accent-accent"
+          className="h-4 w-4 accent-accent disabled:cursor-not-allowed"
         />
         Featured version
       </label>
       <div className="grid gap-3">
         <TaxonomyCheckboxGroup
+          disabled={disabled}
           label="Loaders"
           options={SUPPORTED_LOADERS.map((loader) => ({
             label: enumLabel(loader),
@@ -108,6 +116,7 @@ export function EditVersionFields({
           onChange={onLoadersChange}
         />
         <TaxonomyCheckboxGroup
+          disabled={disabled}
           label="Game versions"
           options={activeGameVersions.map((version) => ({
             label: version.version,
@@ -120,9 +129,10 @@ export function EditVersionFields({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Changelog
         <textarea
+          disabled={disabled}
           value={changelog}
           onChange={(event) => onChangelogChange(event.target.value)}
-          className="min-h-24 rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          className="min-h-24 rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         />
       </label>
     </>

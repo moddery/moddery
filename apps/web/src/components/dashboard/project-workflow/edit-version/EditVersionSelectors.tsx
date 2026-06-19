@@ -10,6 +10,7 @@ import {
 } from '../version-route-links.ts';
 
 export function EditVersionSelectors({
+  disabled,
   projectSlug,
   projects,
   selectedVersion,
@@ -17,6 +18,7 @@ export function EditVersionSelectors({
   onProjectChange,
   onVersionChange,
 }: {
+  disabled?: boolean;
   projectSlug: string;
   projects: DashboardData['projects'];
   selectedVersion: DashboardVersion | null;
@@ -32,9 +34,10 @@ export function EditVersionSelectors({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Project
         <select
+          disabled={disabled}
           value={projectSlug}
           onChange={(event) => onProjectChange(event.target.value)}
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           {projects.map((project) => (
             <option key={project.slug} value={project.slug}>
@@ -46,6 +49,7 @@ export function EditVersionSelectors({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Version
         <select
+          disabled={disabled}
           value={selectedVersion?.id ?? ''}
           onChange={(event) => {
             onVersionChange(
@@ -53,7 +57,7 @@ export function EditVersionSelectors({
                 null,
             );
           }}
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           {versions.length === 0 ? (
             <option value="">No versions</option>

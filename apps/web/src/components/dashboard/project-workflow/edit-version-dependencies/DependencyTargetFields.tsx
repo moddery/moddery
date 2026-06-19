@@ -8,10 +8,12 @@ import { type DependencyDraft } from './useVersionDependencyFormState.ts';
 
 export function DependencyTargetFields({
   dependency,
+  disabled,
   projects,
   onUpdateDependency,
 }: {
   dependency: DependencyDraft;
+  disabled?: boolean;
   projects: DashboardData['projects'];
   onUpdateDependency: (
     key: string,
@@ -38,6 +40,7 @@ export function DependencyTargetFields({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Target project slug
         <input
+          disabled={disabled}
           list={projectListId}
           value={dependency.targetProjectSlug}
           onChange={(event) =>
@@ -46,7 +49,7 @@ export function DependencyTargetFields({
               targetVersionId: '',
             })
           }
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         />
         <datalist id={projectListId}>
           {projects.map((project) => (
@@ -62,6 +65,7 @@ export function DependencyTargetFields({
         <select
           value={dependency.targetVersionId}
           disabled={
+            disabled ||
             targetProjectSlug.length === 0 ||
             versionsQuery.isLoading ||
             versionsQuery.isError
@@ -96,6 +100,7 @@ export function DependencyTargetFields({
       </label>
 
       <DashboardField
+        disabled={disabled}
         label="External file"
         value={dependency.externalFileName}
         onChange={(value) =>
