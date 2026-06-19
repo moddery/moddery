@@ -11,6 +11,7 @@ const databaseUrl =
   process.env.DATABASE_URL ??
   'postgresql://moddery:moddery@localhost:5433/moddery?schema=public';
 const seedFixtures = process.env.SMOKE_SEED_FIXTURES === 'true';
+const smokeVersionFileSizeBytes = 128;
 
 interface ReadinessResult {
   checks: {
@@ -846,7 +847,12 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
   });
 
-  const uploadTarget = await prepareVersionUpload(slug, auth.accessToken);
+  const versionBytes = smokeVersionBytes(suffix);
+  const uploadTarget = await prepareVersionUpload({
+    projectSlug: slug,
+    sizeBytes: versionBytes.byteLength,
+    token: auth.accessToken,
+  });
   if (
     uploadTarget.bucket.length === 0 ||
     uploadTarget.key.length === 0 ||
@@ -857,7 +863,6 @@ async function checkCreatorFlow(): Promise<void> {
     throw new Error('Version upload target was incomplete');
   }
 
-  const versionBytes = smokeVersionBytes(suffix);
   const versionHash = sha256Hex(versionBytes);
   await uploadVersionFile(uploadTarget, versionBytes);
   await verifyUploadedVersionFile(uploadTarget.objectUrl, versionBytes);
@@ -895,7 +900,7 @@ async function checkCreatorFlow(): Promise<void> {
                 },
               ],
               primary: true,
-              sizeBytes: 128,
+              sizeBytes: versionBytes.byteLength,
               url: uploadTarget.objectUrl,
             },
           ],
@@ -2084,10 +2089,15 @@ async function checkCollectionFlow(options: {
   );
 }
 
-async function prepareVersionUpload(
-  projectSlug: string,
-  token: string,
-): Promise<ProjectUploadTarget> {
+async function prepareVersionUpload({
+  projectSlug,
+  sizeBytes,
+  token,
+}: {
+  projectSlug: string;
+  sizeBytes: number;
+  token: string;
+}): Promise<ProjectUploadTarget> {
   const payload = await readGraphql<PrepareUploadResponse>(
     {
       query: `
@@ -2106,7 +2116,7 @@ async function prepareVersionUpload(
           contentType: 'application/java-archive',
           fileName: 'smoke.jar',
           projectSlug,
-          sizeBytes: 128,
+          sizeBytes,
           uploadKind: 'version-file',
         },
       },
@@ -2120,7 +2130,7 @@ async function prepareVersionUpload(
 
 function smokeVersionBytes(suffix: string): Uint8Array {
   const content = `smoke release artifact ${suffix}\n`;
-  const bytes = new Uint8Array(128);
+  const bytes = new Uint8Array(smokeVersionFileSizeBytes);
   bytes.set(new TextEncoder().encode(content));
   return bytes;
 }
