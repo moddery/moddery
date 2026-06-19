@@ -42,8 +42,7 @@ export function ApiTokensPanel() {
 
     try {
       const created = await createApiToken({
-        expiresInDays:
-          expiresInDays.trim() === '' ? null : Number(expiresInDays),
+        expiresInDays: parseOptionalApiTokenExpiryDays(expiresInDays),
         name,
         scopes,
       });
@@ -140,4 +139,22 @@ export function apiTokenActionMessage(
   return action === 'create'
     ? `Created token ${token.name}.`
     : `Revoked token ${token.name}.`;
+}
+
+export function parseOptionalApiTokenExpiryDays(value: string): number | null {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    throw new Error('Token expiration must be a whole number of days');
+  }
+
+  const days = Number.parseInt(trimmed, 10);
+  if (days < 1) {
+    throw new Error('Token expiration must be at least 1 day');
+  }
+
+  return days;
 }

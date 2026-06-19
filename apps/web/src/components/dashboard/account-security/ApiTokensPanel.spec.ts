@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { apiTokenActionMessage } from './ApiTokensPanel.tsx';
+import {
+  apiTokenActionMessage,
+  parseOptionalApiTokenExpiryDays,
+} from './ApiTokensPanel.tsx';
 import { toggleCredentialScope } from './shared.tsx';
 
 describe(apiTokenActionMessage.name, () => {
@@ -28,5 +31,32 @@ describe(toggleCredentialScope.name, () => {
         'read:projects',
       ),
     ).toEqual(['write:projects']);
+  });
+});
+
+describe(parseOptionalApiTokenExpiryDays.name, () => {
+  test('parses positive whole-day expirations', () => {
+    expect(parseOptionalApiTokenExpiryDays('1')).toBe(1);
+    expect(parseOptionalApiTokenExpiryDays(' 90 ')).toBe(90);
+  });
+
+  test('preserves blank expirations as no expiration', () => {
+    expect(parseOptionalApiTokenExpiryDays('')).toBeNull();
+    expect(parseOptionalApiTokenExpiryDays('   ')).toBeNull();
+  });
+
+  test('rejects invalid expiration input', () => {
+    expect(() => parseOptionalApiTokenExpiryDays('3.5')).toThrow(
+      'Token expiration must be a whole number of days',
+    );
+    expect(() => parseOptionalApiTokenExpiryDays('soon')).toThrow(
+      'Token expiration must be a whole number of days',
+    );
+    expect(() => parseOptionalApiTokenExpiryDays('-1')).toThrow(
+      'Token expiration must be a whole number of days',
+    );
+    expect(() => parseOptionalApiTokenExpiryDays('0')).toThrow(
+      'Token expiration must be at least 1 day',
+    );
   });
 });
