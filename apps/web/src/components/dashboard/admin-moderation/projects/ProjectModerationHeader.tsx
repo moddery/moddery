@@ -1,9 +1,14 @@
-import { organizationPath, userPath } from '../../../../app/routing.ts';
+import {
+  organizationPath,
+  projectPath,
+  userPath,
+} from '../../../../app/routing.ts';
 import {
   dashboardProjectToMod,
   type DashboardProject,
 } from '../../../../lib/dashboard.ts';
 import { enumLabel } from '../../../../lib/labels.ts';
+import { projectTypeFromKind } from '../../../../lib/projectTypes.ts';
 import { type Mod } from '../../../../types.ts';
 
 export function ProjectModerationHeader({
@@ -14,6 +19,7 @@ export function ProjectModerationHeader({
   project: DashboardProject;
 }) {
   const mod = dashboardProjectToMod(project);
+  const projectHref = projectModerationHref(project);
   const ownerName =
     project.owner === null || project.owner === undefined
       ? null
@@ -23,13 +29,16 @@ export function ProjectModerationHeader({
     <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <button
-            type="button"
-            onClick={() => onOpenProject(mod)}
+          <a
+            href={projectHref}
+            onClick={(event) => {
+              event.preventDefault();
+              onOpenProject(mod);
+            }}
             className="text-left font-display text-lg font-extrabold text-ink transition-colors hover:text-accent"
           >
             {project.title}
-          </button>
+          </a>
           {(ownerName || project.organization) && (
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted">
               {project.owner && ownerName && (
@@ -71,4 +80,10 @@ export function ProjectModerationHeader({
       </div>
     </>
   );
+}
+
+export function projectModerationHref(
+  project: Pick<DashboardProject, 'kind' | 'slug'>,
+) {
+  return projectPath(projectTypeFromKind(project.kind), project.slug);
 }
