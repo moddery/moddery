@@ -78,9 +78,10 @@ export function ProjectRelationOperationForm({
         <label className="grid gap-1 text-sm font-bold text-ink">
           {containerLabel}
           <select
+            disabled={submitting}
             value={containerId}
             onChange={(event) => setContainerId(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             {containers.map((container) => (
               <option key={container.id} value={container.id}>
@@ -92,9 +93,10 @@ export function ProjectRelationOperationForm({
         <label className="grid gap-1 text-sm font-bold text-ink">
           Project
           <select
+            disabled={submitting}
             value={projectSlug}
             onChange={(event) => setProjectSlug(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             {projects.map((project) => (
               <option key={project.slug} value={project.slug}>
@@ -121,11 +123,18 @@ export function ProjectRelationOperationForm({
           disabled={submitting}
           className="inline-flex h-10 items-center rounded-lg border border-line bg-control px-4 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {submitting ? action.pendingLabel : action.idleLabel}
+          {projectRelationButtonLabel(action, submitting)}
         </button>
       </div>
     </form>
   );
+}
+
+export function projectRelationButtonLabel(
+  action: Pick<ProjectRelationAction, 'idleLabel' | 'pendingLabel'>,
+  submitting: boolean,
+) {
+  return submitting ? action.pendingLabel : action.idleLabel;
 }
 
 function RelationLinkButton({ link }: { link: ProjectRelationLink }) {

@@ -125,10 +125,11 @@ function CollectionProjectOrderRow({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Order
         <input
+          disabled={submitting}
           type="number"
           value={sortOrder}
           onChange={(event) => setSortOrder(event.target.value)}
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         />
       </label>
       <a
@@ -143,13 +144,17 @@ function CollectionProjectOrderRow({
         disabled={submitting}
         className="inline-flex h-10 items-center justify-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {submitting ? 'Saving...' : 'Save'}
+        {collectionProjectOrderButtonLabel(submitting)}
       </button>
     </form>
   );
 }
 
-function parseSortOrder(value: string): number {
+export function collectionProjectOrderButtonLabel(submitting: boolean) {
+  return submitting ? 'Saving...' : 'Save';
+}
+
+export function parseSortOrder(value: string): number {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : 0;
 }
