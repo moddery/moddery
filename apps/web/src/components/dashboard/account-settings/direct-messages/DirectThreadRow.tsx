@@ -43,27 +43,42 @@ export function DirectThreadRow({
 
 function ThreadHeader({ thread }: { thread: DirectThread }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap items-center gap-1.5">
-        {thread.members.map((member) => {
-          const name = member.user.displayName ?? member.user.username;
+    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+      <div className="min-w-0">
+        <h3 className="truncate font-display text-base font-extrabold text-ink">
+          {thread.subject}
+        </h3>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {thread.members.map((member) => {
+            const name = member.user.displayName ?? member.user.username;
 
-          return (
-            <a
-              key={member.user.id}
-              href={userPath(member.user.username)}
-              className="font-bold text-ink transition-colors hover:text-accent"
-            >
-              {name}
-            </a>
-          );
-        })}
+            return (
+              <a
+                key={member.user.id}
+                href={userPath(member.user.username)}
+                className="font-bold text-ink transition-colors hover:text-accent"
+              >
+                {name}
+              </a>
+            );
+          })}
+        </div>
       </div>
       <span className="text-xs font-semibold uppercase text-muted">
-        Updated {timeAgo(thread.updatedAt)}
+        {directThreadTiming(thread)}
       </span>
     </div>
   );
+}
+
+export function directThreadTiming(
+  thread: Pick<DirectThread, 'createdAt' | 'updatedAt'>,
+  now = new Date(),
+) {
+  return `Opened ${timeAgo(thread.createdAt, now)} · updated ${timeAgo(
+    thread.updatedAt,
+    now,
+  )}`;
 }
 
 function ThreadMessages({ messages }: { messages: DirectThread['messages'] }) {
