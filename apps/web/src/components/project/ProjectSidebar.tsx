@@ -22,6 +22,7 @@ import { ProjectAnalyticsSection } from './sidebar/ProjectAnalyticsSection.tsx';
 import { ProjectCategoriesSection } from './sidebar/ProjectCategoriesSection.tsx';
 import { ProjectCollectionSave } from './sidebar/ProjectCollectionSave.tsx';
 import { ProjectLifecycleSection } from './sidebar/ProjectLifecycleSection.tsx';
+import { ProjectLicenseSection } from './sidebar/ProjectLicenseSection.tsx';
 import { ProjectLinksSection } from './sidebar/ProjectLinksSection.tsx';
 import { ProjectMembersSection } from './sidebar/ProjectMembersSection.tsx';
 import { ProjectModerationNotes } from './sidebar/ProjectModerationNotes.tsx';
@@ -90,11 +91,6 @@ export function ProjectSidebar({
           value={timeAgo(project.updated)}
         />
         <MetaRow label="Published" value={formatDate(project.published)} />
-        <MetaRow
-          href={project.license.url}
-          label="License"
-          value={project.license.name}
-        />
         {latestFile && (
           <MetaRow label="Latest file" value={formatBytes(latestFile.size)} />
         )}
@@ -103,6 +99,8 @@ export function ProjectSidebar({
       {analytics && <ProjectAnalyticsSection analytics={analytics} />}
 
       <ProjectLifecycleSection project={project} />
+
+      <ProjectLicenseSection project={project} onTagSearch={onTagSearch} />
 
       <LatestVersionSection
         version={latestVersion}
