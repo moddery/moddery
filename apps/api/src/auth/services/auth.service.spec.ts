@@ -441,12 +441,15 @@ describe(AuthService.name, () => {
     );
   });
 
-  test('confirms password reset once and revokes sessions', async () => {
+  test('confirms password reset once and revokes sessions and API tokens', async () => {
     const operations: unknown[] = [];
     const service = new AuthService({} as AuthTokenService, fakeMailService(), {
       $transaction: async (queries: Promise<unknown>[]) => {
         operations.push(...(await Promise.all(queries)));
         return Promise.resolve([]);
+      },
+      apiToken: {
+        updateMany: (query: unknown) => Promise.resolve({ query }),
       },
       passwordCredential: {
         upsert: (query: unknown) => Promise.resolve({ query }),
@@ -472,7 +475,7 @@ describe(AuthService.name, () => {
     });
 
     expect(result).toBe(true);
-    expect(operations).toHaveLength(3);
+    expect(operations).toHaveLength(4);
     expect(operations[0]).toEqual({
       query: expect.objectContaining({
         where: { userId: 'user-a' },
@@ -485,6 +488,14 @@ describe(AuthService.name, () => {
       }),
     });
     expect(operations[2]).toEqual({
+      query: expect.objectContaining({
+        where: {
+          revokedAt: null,
+          userId: 'user-a',
+        },
+      }),
+    });
+    expect(operations[3]).toEqual({
       query: expect.objectContaining({
         where: {
           revokedAt: null,

@@ -234,6 +234,13 @@ export class AuthService {
           userId: resetToken.userId,
         },
       }),
+      this.prisma.apiToken.updateMany({
+        data: { revokedAt: now },
+        where: {
+          revokedAt: null,
+          userId: resetToken.userId,
+        },
+      }),
     ]);
 
     return true;
