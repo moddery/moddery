@@ -1,9 +1,9 @@
 import { userProjectToMod, type PublicUserListItem } from '../../lib/users.ts';
 import { userPath } from '../../app/routing.ts';
-import { timeAgo } from '../../lib/format.ts';
 import type { Mod } from '../../types.ts';
 import { ModCard, type SearchTag } from '../ModCard.tsx';
 import { ProfileAvatar } from '../user-profile/profile-header/ProfileAvatar.tsx';
+import { userDirectoryMeta } from './user-directory-meta.ts';
 
 export function UserDirectoryRow({
   onOpenProject,
@@ -35,10 +35,7 @@ export function UserDirectoryRow({
             )}
           </div>
           <p className="mt-1 text-sm font-semibold text-muted">
-            @{user.username} · joined {timeAgo(user.createdAt)} ·{' '}
-            {user.projectCount.toLocaleString('en-US')} projects ·{' '}
-            {user.collectionCount.toLocaleString('en-US')} collections ·{' '}
-            {user.friendCount.toLocaleString('en-US')} friends
+            {userDirectoryMeta(user)}
           </p>
           {user.bio && (
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">

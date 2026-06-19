@@ -1,30 +1,38 @@
 import { type ReactNode } from 'react';
-import { BookMarked, Heart, Package, Users } from 'lucide-react';
+import { BookMarked, Building2, Heart, Package, Users } from 'lucide-react';
 
 import { type PublicUserProfile } from '../../../lib/users.ts';
+import { profileStatCounts } from './profile-stats.ts';
 
 export function ProfileStats({ profile }: { profile: PublicUserProfile }) {
+  const stats = profileStatCounts(profile);
+
   return (
-    <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       <ProfileStat
         icon={<Package className="size-4" />}
         label="Projects"
-        value={profile.projectCount}
+        value={stats.projects}
       />
       <ProfileStat
         icon={<BookMarked className="size-4" />}
         label="Collections"
-        value={profile.collectionCount}
+        value={stats.collections}
+      />
+      <ProfileStat
+        icon={<Building2 className="size-4" />}
+        label="Organizations"
+        value={stats.organizations}
       />
       <ProfileStat
         icon={<Heart className="size-4" />}
         label="Following"
-        value={profile.followedProjectCount}
+        value={stats.following}
       />
       <ProfileStat
         icon={<Users className="size-4" />}
         label="Friends"
-        value={profile.friendCount}
+        value={stats.friends}
       />
     </div>
   );
