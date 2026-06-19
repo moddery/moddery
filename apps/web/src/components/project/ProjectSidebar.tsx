@@ -26,6 +26,7 @@ import { ProjectLicenseSection } from './sidebar/ProjectLicenseSection.tsx';
 import { ProjectLinksSection } from './sidebar/ProjectLinksSection.tsx';
 import { ProjectMembersSection } from './sidebar/ProjectMembersSection.tsx';
 import { ProjectModerationNotes } from './sidebar/ProjectModerationNotes.tsx';
+import { ProjectOwnershipSection } from './sidebar/ProjectOwnershipSection.tsx';
 import { ProjectReportSection } from './sidebar/ProjectReportSection.tsx';
 import { SupportedVersionsSection } from './sidebar/SupportedVersionsSection.tsx';
 
@@ -110,6 +111,8 @@ export function ProjectSidebar({
       />
 
       <ProjectLinksSection project={project} />
+
+      <ProjectOwnershipSection members={members} project={project} />
 
       <ProjectCategoriesSection
         categories={project.categories}
