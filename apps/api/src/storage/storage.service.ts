@@ -31,6 +31,13 @@ export interface ProjectUploadTargetContract {
 const maxUploadBytes = 512 * 1024 * 1024;
 const uploadUrlTtlSeconds = 10 * 60;
 const uploadKinds = new Set(['gallery-image', 'project-icon', 'version-file']);
+const imageUploadKinds = new Set(['gallery-image', 'project-icon']);
+const allowedImageContentTypes = new Set([
+  'image/gif',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 
 @Injectable()
 export class StorageService {
@@ -54,6 +61,11 @@ export class StorageService {
     userId: string,
   ): Promise<ProjectUploadTargetContract> {
     const uploadKind = normalizedUploadKind(input.uploadKind);
+    const projectSlug = requiredText(input.projectSlug, 'Project is required');
+    const fileName = normalizedFileName(input.fileName);
+    const sizeBytes = normalizedSize(input.sizeBytes);
+    const contentType = normalizedContentType(input.contentType);
+    validateUploadContentType(uploadKind, contentType);
     const project = await this.prisma.project.findUnique({
       select: {
         id: true,
@@ -72,7 +84,7 @@ export class StorageService {
           },
         },
       },
-      where: { slug: input.projectSlug },
+      where: { slug: projectSlug },
     });
 
     if (project === null) {
@@ -89,9 +101,6 @@ export class StorageService {
       );
     }
 
-    const fileName = normalizedFileName(input.fileName);
-    const sizeBytes = normalizedSize(input.sizeBytes);
-    const contentType = nullableTrim(input.contentType);
     const bucket = this.config.getOrThrow<string>('s3.bucket');
     const key = projectUploadKey({
       fileName,
@@ -160,9 +169,39 @@ function normalizedSize(sizeBytes: number): number {
   return sizeBytes;
 }
 
-function nullableTrim(value: string | null | undefined): string | null {
+function normalizedContentType(
+  value: string | null | undefined,
+): string | null {
   const trimmed = value?.trim() ?? '';
-  return trimmed.length === 0 ? null : trimmed;
+  return trimmed.length === 0 ? null : trimmed.toLowerCase();
+}
+
+function validateUploadContentType(
+  uploadKind: string,
+  contentType: string | null,
+): void {
+  if (!imageUploadKinds.has(uploadKind)) {
+    return;
+  }
+
+  if (contentType === null) {
+    throw new BadRequestException('Image upload content type is required');
+  }
+
+  if (!allowedImageContentTypes.has(contentType)) {
+    throw new BadRequestException(
+      'Image uploads must be PNG, JPEG, GIF, or WebP',
+    );
+  }
+}
+
+function requiredText(value: string, message: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new BadRequestException(message);
+  }
+
+  return trimmed;
 }
 
 function projectUploadKey({

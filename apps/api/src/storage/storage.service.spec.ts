@@ -168,6 +168,86 @@ describe(StorageService.name, () => {
     );
   });
 
+  test('rejects missing project slugs before project lookups', async () => {
+    const service = new StorageService(
+      {
+        getOrThrow: (key: string) => {
+          if (key === 's3.bucket') return 'project-files';
+          if (key === 's3.publicBaseUrl') return 'https://cdn.example.test';
+          throw new Error(`Unexpected config key ${key}`);
+        },
+      } as never,
+      {
+        project: {
+          findUnique: () => {
+            throw new Error('Project lookup should not run');
+          },
+        },
+      } as unknown as PrismaService,
+      s3Client('https://internal-s3.example.test'),
+      s3Client('https://s3.example.test'),
+    );
+
+    let caught: unknown;
+    try {
+      await service.prepareProjectUpload(
+        {
+          fileName: 'icon.png',
+          projectSlug: ' ',
+          sizeBytes: 1024,
+          uploadKind: 'project-icon',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project is required');
+  });
+
+  test('rejects non-image project image uploads before project lookups', async () => {
+    const service = new StorageService(
+      {
+        getOrThrow: (key: string) => {
+          if (key === 's3.bucket') return 'project-files';
+          if (key === 's3.publicBaseUrl') return 'https://cdn.example.test';
+          throw new Error(`Unexpected config key ${key}`);
+        },
+      } as never,
+      {
+        project: {
+          findUnique: () => {
+            throw new Error('Project lookup should not run');
+          },
+        },
+      } as unknown as PrismaService,
+      s3Client('https://internal-s3.example.test'),
+      s3Client('https://s3.example.test'),
+    );
+
+    let caught: unknown;
+    try {
+      await service.prepareProjectUpload(
+        {
+          contentType: 'application/javascript',
+          fileName: 'icon.js',
+          projectSlug: 'cool-project',
+          sizeBytes: 1024,
+          uploadKind: 'project-icon',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Image uploads must be PNG, JPEG, GIF, or WebP',
+    );
+  });
+
   test('rejects unsupported upload kinds', async () => {
     let caught: unknown;
 
