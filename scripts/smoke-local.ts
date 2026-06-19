@@ -10,6 +10,7 @@ const databaseUrl =
   process.env.SMOKE_DATABASE_URL ??
   process.env.DATABASE_URL ??
   'postgresql://moddery:moddery@localhost:5433/moddery?schema=public';
+const seedFixtures = process.env.SMOKE_SEED_FIXTURES === 'true';
 
 interface ReadinessResult {
   checks: {
@@ -353,6 +354,7 @@ interface ThreadSearchResult {
 async function main(): Promise<void> {
   await checkReadiness();
   await checkWeb();
+  await seedSmokeFixturesIfRequested();
   await checkProjectSearch();
   await Promise.all([
     checkProjectType('MOD'),
@@ -362,6 +364,83 @@ async function main(): Promise<void> {
   await checkCreatorFlow();
 
   console.log('Local smoke checks passed');
+}
+
+async function seedSmokeFixturesIfRequested(): Promise<void> {
+  if (!seedFixtures) return;
+
+  const suffix = `${Date.now().toString(36)}${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const username = `smoke_seed_${suffix}`;
+  const auth = await registerSmokeUser({
+    email: `${username}@example.test`,
+    password: `password-${suffix}`,
+    username,
+  });
+  await promoteSmokeUserToAdmin(username);
+
+  for (const kind of ['MOD', 'PLUGIN', 'MODPACK']) {
+    await seedSmokeProject({
+      kind,
+      suffix,
+      token: auth.accessToken,
+    });
+  }
+}
+
+async function seedSmokeProject(options: {
+  kind: string;
+  suffix: string;
+  token: string;
+}): Promise<void> {
+  const slug = `smoke-fixture-${options.kind.toLowerCase()}-${options.suffix}`;
+  const title = `Smoke ${options.kind} Fixture ${options.suffix}`;
+  const createPayload = await readGraphql<CreateProjectResponse>(
+    {
+      query: `
+        mutation SmokeSeedProject($input: CreateProjectInput!) {
+          createProject(input: $input) {
+            kind
+            slug
+            status
+            title
+          }
+        }
+      `,
+      variables: {
+        input: {
+          categories: ['utility'],
+          description: `Smoke fixture ${options.kind} project for stack verification.`,
+          gameVersions: ['1.21.6'],
+          kind: options.kind,
+          loaders: ['fabric'],
+          slug,
+          summary: `Smoke fixture ${options.kind} project.`,
+          title,
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(createPayload, `GraphQL seed ${options.kind} project`);
+  assertProject(required(createPayload.data?.createProject, 'seed project'), {
+    kind: options.kind,
+    slug,
+    title,
+  });
+
+  const approved = await approveSmokeProject(slug, options.token);
+  assertProject(approved, {
+    kind: options.kind,
+    slug,
+    title,
+  });
+  if (approved.status !== 'APPROVED') {
+    throw new Error(
+      `Expected seed project ${slug} to be approved, received ${approved.status}`,
+    );
+  }
 }
 
 async function checkReadiness(): Promise<void> {
