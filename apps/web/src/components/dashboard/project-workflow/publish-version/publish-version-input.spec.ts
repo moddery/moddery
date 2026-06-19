@@ -31,6 +31,48 @@ describe(assertCreateVersionInput.name, () => {
       assertCreateVersionInput(input);
     }).toThrow('Version file size must be a positive integer');
   });
+
+  test('requires a primary file before submitting', () => {
+    const input = baseInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = { ...file, primary: false };
+
+    expect(() => {
+      assertCreateVersionInput(input);
+    }).toThrow('A primary version file is required');
+  });
+
+  test('rejects oversized file lists before submitting', () => {
+    const input = baseInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files = Array.from({ length: 9 }, (_, index) => ({
+      ...file,
+      fileName: `example-${index.toString()}.jar`,
+    }));
+
+    expect(() => {
+      assertCreateVersionInput(input);
+    }).toThrow('A version can include at most 8 files');
+  });
+
+  test('rejects oversized file hash lists before submitting', () => {
+    const input = baseInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      hashes: Array.from({ length: 9 }, (_, index) => ({
+        algorithm: 'SHA256',
+        value: index.toString().padStart(64, 'a'),
+      })),
+    };
+
+    expect(() => {
+      assertCreateVersionInput(input);
+    }).toThrow('A version file can include at most 8 hashes');
+  });
 });
 
 function baseInput(): CreateVersionInput {

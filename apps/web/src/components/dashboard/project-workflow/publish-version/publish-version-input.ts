@@ -1,8 +1,9 @@
 import { type CreateVersionInput } from '../../../../lib/dashboard.ts';
 
-export function assertCreateVersionInput(input: CreateVersionInput): void {
-  const file = input.files[0];
+const MAX_VERSION_FILES = 8;
+const MAX_FILE_HASHES = 8;
 
+export function assertCreateVersionInput(input: CreateVersionInput): void {
   if (input.projectSlug.trim().length === 0) {
     throw new Error('Choose a project before publishing a version');
   }
@@ -15,19 +16,33 @@ export function assertCreateVersionInput(input: CreateVersionInput): void {
     throw new Error('Version number is required');
   }
 
-  if (file === undefined) {
+  if (input.files.length === 0) {
     throw new Error('Version file metadata is required');
   }
 
-  if (file.fileName.trim().length === 0) {
-    throw new Error('Version file name is required');
+  if (input.files.length > MAX_VERSION_FILES) {
+    throw new Error('A version can include at most 8 files');
   }
 
-  if (file.url.trim().length === 0) {
-    throw new Error('Version file URL is required');
+  if (!input.files.some((file) => file.primary)) {
+    throw new Error('A primary version file is required');
   }
 
-  if (!Number.isSafeInteger(file.sizeBytes) || file.sizeBytes <= 0) {
-    throw new Error('Version file size must be a positive integer');
+  for (const file of input.files) {
+    if (file.fileName.trim().length === 0) {
+      throw new Error('Version file name is required');
+    }
+
+    if (file.url.trim().length === 0) {
+      throw new Error('Version file URL is required');
+    }
+
+    if (!Number.isSafeInteger(file.sizeBytes) || file.sizeBytes <= 0) {
+      throw new Error('Version file size must be a positive integer');
+    }
+
+    if (file.hashes.length > MAX_FILE_HASHES) {
+      throw new Error('A version file can include at most 8 hashes');
+    }
   }
 }

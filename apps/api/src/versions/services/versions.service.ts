@@ -28,6 +28,9 @@ import {
   versionSelect,
 } from './version-read-model.js';
 
+const MAX_VERSION_FILES = 8;
+const MAX_FILE_HASHES = 8;
+
 @Injectable()
 export class VersionsService {
   constructor(
@@ -377,7 +380,7 @@ async function createVersionFiles(
   versionId: string,
   files: CreateVersionInput['files'],
 ): Promise<void> {
-  for (const file of files.slice(0, 8)) {
+  for (const file of files) {
     const created = await tx.versionFile.create({
       data: {
         bucket: 'external',
@@ -391,7 +394,7 @@ async function createVersionFiles(
       select: { id: true },
     });
 
-    for (const hash of file.hashes?.slice(0, 8) ?? []) {
+    for (const hash of file.hashes ?? []) {
       const algorithm = hashAlgorithm(hash.algorithm);
       if (algorithm === null) continue;
 
@@ -421,11 +424,15 @@ function validateVersionFiles(files: CreateVersionInput['files']): void {
     throw new BadRequestException('At least one version file is required');
   }
 
+  if (files.length > MAX_VERSION_FILES) {
+    throw new BadRequestException('A version can include at most 8 files');
+  }
+
   if (!files.some((file) => file.primary)) {
     throw new BadRequestException('A primary version file is required');
   }
 
-  for (const file of files.slice(0, 8)) {
+  for (const file of files) {
     if (file.fileName.trim().length === 0) {
       throw new BadRequestException('Version file name is required');
     }
@@ -436,6 +443,12 @@ function validateVersionFiles(files: CreateVersionInput['files']): void {
 
     if (!Number.isSafeInteger(file.sizeBytes) || file.sizeBytes <= 0) {
       throw new BadRequestException('Version file size must be positive');
+    }
+
+    if ((file.hashes?.length ?? 0) > MAX_FILE_HASHES) {
+      throw new BadRequestException(
+        'A version file can include at most 8 hashes',
+      );
     }
   }
 }

@@ -2,10 +2,13 @@ import { Field, InputType, Int } from '@nestjs/graphql';
 import { VERSION_CHANNELS, type VersionChannel } from '@moddery/shared';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Min,
@@ -15,10 +18,12 @@ import {
 @InputType()
 export class CreateVersionFileHashInput {
   @Field(() => String)
+  @IsNotEmpty()
   @IsString()
   algorithm!: string;
 
   @Field(() => String)
+  @IsNotEmpty()
   @IsString()
   value!: string;
 }
@@ -26,10 +31,12 @@ export class CreateVersionFileHashInput {
 @InputType()
 export class CreateVersionFileInput {
   @Field(() => String)
+  @IsNotEmpty()
   @IsString()
   fileName!: string;
 
   @Field(() => [CreateVersionFileHashInput], { nullable: true })
+  @ArrayMaxSize(8)
   @IsArray()
   @IsOptional()
   @Type(() => CreateVersionFileHashInput)
@@ -42,10 +49,11 @@ export class CreateVersionFileInput {
 
   @Field(() => Int)
   @IsInt()
-  @Min(0)
+  @Min(1)
   sizeBytes!: number;
 
   @Field(() => String)
+  @IsNotEmpty()
   @IsString()
   url!: string;
 }
@@ -62,6 +70,8 @@ export class CreateVersionInput {
   channel!: VersionChannel;
 
   @Field(() => [CreateVersionFileInput])
+  @ArrayMaxSize(8)
+  @ArrayMinSize(1)
   @IsArray()
   @Type(() => CreateVersionFileInput)
   @ValidateNested({ each: true })
@@ -80,14 +90,17 @@ export class CreateVersionInput {
   loaders?: string[];
 
   @Field(() => String)
+  @IsNotEmpty()
   @IsString()
   name!: string;
 
   @Field(() => String)
+  @IsNotEmpty()
   @IsString()
   projectSlug!: string;
 
   @Field(() => String)
+  @IsNotEmpty()
   @IsString()
   versionNumber!: string;
 }

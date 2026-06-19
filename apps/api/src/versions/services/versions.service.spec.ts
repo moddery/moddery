@@ -481,6 +481,83 @@ describe(VersionsService.name, () => {
       'A primary version file is required',
     );
   });
+
+  test('rejects oversized version file lists before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files = Array.from({ length: 9 }, (_, index) => ({
+      ...file,
+      fileName: `example-${index.toString()}.jar`,
+    }));
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'A version can include at most 8 files',
+    );
+  });
+
+  test('rejects oversized version file hash lists before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      hashes: Array.from({ length: 9 }, (_, index) => ({
+        algorithm: 'sha256',
+        value: index.toString().padStart(64, 'a'),
+      })),
+    };
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'A version file can include at most 8 hashes',
+    );
+  });
 });
 
 function validCreateVersionInput() {
