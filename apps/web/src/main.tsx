@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
 import { apolloClient } from './apollo.js';
+import { AppErrorBoundary } from './app/AppErrorBoundary.tsx';
 
 const queryClient = new QueryClient();
 
@@ -14,7 +15,9 @@ createRoot(document.getElementById('root')!).render(
     <ApolloProvider client={apolloClient}>
       <QueryClientProvider client={queryClient}>
         <MotionConfig reducedMotion="user">
-          <App />
+          <AppErrorBoundary>
+            <App />
+          </AppErrorBoundary>
         </MotionConfig>
       </QueryClientProvider>
     </ApolloProvider>
