@@ -118,6 +118,13 @@ interface ProjectBySlugResponse {
   errors?: GraphqlError[];
 }
 
+interface ViewerDashboardResponse {
+  data?: {
+    viewer?: ViewerDashboardSummary | null;
+  };
+  errors?: GraphqlError[];
+}
+
 interface ProjectFollowResponse {
   data?: {
     followProject?: ProjectFollowState;
@@ -251,6 +258,21 @@ interface ProjectSummary {
   slug: string;
   status: string;
   title: string;
+}
+
+interface ViewerDashboardProject extends ProjectSummary {
+  viewerCapabilities: {
+    manageDetails: boolean;
+    manageMembers: boolean;
+    manageVersions: boolean;
+    viewAnalytics: boolean;
+  } | null;
+}
+
+interface ViewerDashboardSummary {
+  projectCount: number;
+  projects: ViewerDashboardProject[];
+  username: string;
 }
 
 interface ProjectUploadTarget {
@@ -670,6 +692,12 @@ async function checkCreatorFlow(): Promise<void> {
       `Expected created project to be queued, received ${createdProject.status}`,
     );
   }
+  await checkViewerDashboardProject({
+    expectedStatus: 'PENDING_REVIEW',
+    projectSlug: slug,
+    token: auth.accessToken,
+    username,
+  });
 
   const publicPayload = await readGraphql<ProjectBySlugResponse>({
     query: `
@@ -725,6 +753,12 @@ async function checkCreatorFlow(): Promise<void> {
     bodyIncludes: `${title} was approved.`,
     title: 'Project approved',
     token: auth.accessToken,
+  });
+  await checkViewerDashboardProject({
+    expectedStatus: 'APPROVED',
+    projectSlug: slug,
+    token: auth.accessToken,
+    username,
   });
 
   const approvedPublicPayload = await readGraphql<ProjectBySlugResponse>({
@@ -1386,6 +1420,81 @@ async function checkQueuedProjectReleaseGuards(options: {
     'Project must be approved before publishing versions',
     'queued project version',
   );
+}
+
+async function checkViewerDashboardProject(options: {
+  expectedStatus: string;
+  projectSlug: string;
+  token: string;
+  username: string;
+}): Promise<void> {
+  const payload = await readGraphql<ViewerDashboardResponse>(
+    {
+      query: `
+        query SmokeViewerDashboardProject {
+          viewer {
+            projectCount
+            projects {
+              kind
+              slug
+              status
+              title
+              viewerCapabilities {
+                manageDetails
+                manageMembers
+                manageVersions
+                viewAnalytics
+              }
+            }
+            username
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(payload, 'GraphQL viewer dashboard project');
+
+  const viewer = required(payload.data?.viewer, 'viewer dashboard');
+  if (viewer.username !== options.username) {
+    throw new Error(
+      `Expected dashboard for ${options.username}, received ${viewer.username}`,
+    );
+  }
+
+  const project = viewer.projects.find(
+    (item) => item.slug === options.projectSlug,
+  );
+  if (project === undefined) {
+    throw new Error(
+      `Viewer dashboard did not include managed project ${options.projectSlug}`,
+    );
+  }
+  if (project.status !== options.expectedStatus) {
+    throw new Error(
+      `Expected dashboard project ${options.projectSlug} status ${options.expectedStatus}, received ${project.status}`,
+    );
+  }
+  if (viewer.projectCount < viewer.projects.length) {
+    throw new Error(
+      `Viewer project count ${viewer.projectCount.toString()} was lower than returned projects ${viewer.projects.length.toString()}`,
+    );
+  }
+
+  const capabilities = required(
+    project.viewerCapabilities,
+    'viewer project capabilities',
+  );
+  if (
+    !capabilities.manageDetails ||
+    !capabilities.manageMembers ||
+    !capabilities.manageVersions ||
+    !capabilities.viewAnalytics
+  ) {
+    throw new Error(
+      `Project ${options.projectSlug} did not expose owner dashboard capabilities`,
+    );
+  }
 }
 
 async function checkExternalVersionFileUrlGuard(options: {
