@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { isGameVersionTag } from '@moddery/shared';
 import {
   HashAlgorithm,
@@ -38,6 +39,7 @@ const MAX_FILE_HASHES = 8;
 export class VersionsService {
   constructor(
     private readonly auditService: AuditService,
+    private readonly config: ConfigService,
     private readonly notificationsService: NotificationsService,
     private readonly prisma: PrismaService,
     private readonly versionDependenciesService: VersionDependenciesService,
@@ -84,7 +86,10 @@ export class VersionsService {
       );
     }
 
-    validateVersionFiles(input.files);
+    validateVersionFiles(
+      input.files,
+      this.config.getOrThrow<string>('s3.publicBaseUrl'),
+    );
     const versionNumber = input.versionNumber.trim();
     if (versionNumber.length === 0) {
       throw new BadRequestException('Version number is required');
@@ -649,7 +654,10 @@ async function createVersionFiles(
   }
 }
 
-function validateVersionFiles(files: CreateVersionInput['files']): void {
+function validateVersionFiles(
+  files: CreateVersionInput['files'],
+  publicBaseUrl: string,
+): void {
   if (files.length === 0) {
     throw new BadRequestException('At least one version file is required');
   }
@@ -667,8 +675,15 @@ function validateVersionFiles(files: CreateVersionInput['files']): void {
       throw new BadRequestException('Version file name is required');
     }
 
-    if (file.url.trim().length === 0) {
+    const url = file.url.trim();
+    if (url.length === 0) {
       throw new BadRequestException('Version file URL is required');
+    }
+
+    if (!isStorageObjectUrl(url, publicBaseUrl)) {
+      throw new BadRequestException(
+        'Version file URL must use project storage',
+      );
     }
 
     if (!Number.isSafeInteger(file.sizeBytes) || file.sizeBytes <= 0) {
@@ -680,6 +695,23 @@ function validateVersionFiles(files: CreateVersionInput['files']): void {
         'A version file can include at most 8 hashes',
       );
     }
+  }
+}
+
+function isStorageObjectUrl(url: string, publicBaseUrl: string): boolean {
+  const normalizedBase = publicBaseUrl.trim().replace(/\/+$/, '');
+  if (normalizedBase.length === 0) return false;
+
+  try {
+    const candidate = new URL(url);
+    const base = new URL(`${normalizedBase}/`);
+    return (
+      candidate.protocol === base.protocol &&
+      candidate.host === base.host &&
+      candidate.pathname.startsWith(base.pathname)
+    );
+  } catch {
+    return false;
   }
 }
 

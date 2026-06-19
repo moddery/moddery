@@ -25,11 +25,11 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-      target: deps
+      target: dev
     command:
       - /bin/sh
       - -c
-      - cd /app/apps/api && bun run prisma:generate && bun run prisma:migrate:deploy && bun run start:dev
+      - cd /app/apps/api && bun run prisma:migrate:deploy && bun run start:dev
     environment:
       NODE_ENV: development
     volumes:

@@ -11,6 +11,10 @@ COPY . .
 RUN bun run --filter @moddery/api prisma:generate
 RUN bun run --filter @moddery/api build
 
+FROM deps AS dev
+COPY apps/api/prisma ./apps/api/prisma
+RUN bun run --filter @moddery/api prisma:generate
+
 FROM oven/bun:1.1.42-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production

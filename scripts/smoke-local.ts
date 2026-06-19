@@ -760,6 +760,11 @@ async function checkCreatorFlow(): Promise<void> {
     title,
   });
 
+  await checkExternalVersionFileUrlGuard({
+    projectSlug: slug,
+    token: auth.accessToken,
+  });
+
   const uploadTarget = await prepareVersionUpload(slug, auth.accessToken);
   if (
     uploadTarget.bucket.length === 0 ||
@@ -1380,6 +1385,55 @@ async function checkQueuedProjectReleaseGuards(options: {
     versionPayload,
     'Project must be approved before publishing versions',
     'queued project version',
+  );
+}
+
+async function checkExternalVersionFileUrlGuard(options: {
+  projectSlug: string;
+  token: string;
+}): Promise<void> {
+  const versionPayload = await readGraphql<CreateVersionResponse>(
+    {
+      query: `
+        mutation SmokeCreateExternalFileVersion($input: CreateVersionInput!) {
+          createVersion(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          channel: 'RELEASE',
+          changelog: 'This release should reject external file URLs.',
+          files: [
+            {
+              fileName: 'external-smoke.jar',
+              hashes: [
+                {
+                  algorithm: 'SHA256',
+                  value:
+                    'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                },
+              ],
+              primary: true,
+              sizeBytes: 128,
+              url: 'https://downloads.example.test/external-smoke.jar',
+            },
+          ],
+          gameVersions: ['1.21.6'],
+          loaders: ['fabric'],
+          name: 'External URL Smoke Version',
+          projectSlug: options.projectSlug,
+          versionNumber: '0.0.0-external-url',
+        },
+      },
+    },
+    options.token,
+  );
+  assertGraphqlError(
+    versionPayload,
+    'Version file URL must use project storage',
+    'external version file URL',
   );
 }
 
