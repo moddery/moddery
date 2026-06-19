@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
+import { RequireCredentialScopes } from '../../auth/decorators/credential-scopes.decorator.js';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
@@ -81,6 +82,7 @@ export class CatalogResolver {
     };
   }
 
+  @RequireCredentialScopes('read:projects')
   @Query(() => [ProjectSummary])
   async viewerFollowedProjects(@CurrentUser() user: AuthenticatedUser) {
     const projects =
@@ -89,6 +91,7 @@ export class CatalogResolver {
     return projects.map(projectToGraphql);
   }
 
+  @RequireCredentialScopes('read:projects')
   @Query(() => ProjectSearchResult)
   async viewerFollowedProjectSearch(
     @CurrentUser() user: AuthenticatedUser,
@@ -175,6 +178,7 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => [ProjectMemberSummary])
   addProjectTeamMember(
     @Args('input') input: AddProjectTeamMemberInput,
@@ -183,6 +187,7 @@ export class CatalogResolver {
     return this.projectMembersService.addProjectTeamMember(input, user.id);
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectSummary)
   async addProjectGalleryImage(
     @Args('input') input: AddProjectGalleryImageInput,
@@ -193,6 +198,7 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectSummary)
   async removeProjectGalleryImage(
     @Args('input') input: RemoveProjectGalleryImageInput,
@@ -206,6 +212,7 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectSummary)
   async updateProjectGalleryImage(
     @Args('input') input: UpdateProjectGalleryImageInput,
@@ -219,6 +226,7 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectSummary)
   async createProject(
     @Args('input') input: CreateProjectInput,
@@ -229,6 +237,7 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectSummary)
   async updateProject(
     @Args('input') input: UpdateProjectInput,
@@ -281,6 +290,7 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => [ProjectMemberSummary])
   removeProjectTeamMember(
     @Args('input') input: RemoveProjectTeamMemberInput,
@@ -289,6 +299,7 @@ export class CatalogResolver {
     return this.projectMembersService.removeProjectTeamMember(input, user.id);
   }
 
+  @RequireCredentialScopes('read:projects')
   @Query(() => ProjectFollowState, { nullable: true })
   viewerProjectFollowState(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
@@ -300,6 +311,7 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectFollowState)
   followProject(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
@@ -308,6 +320,7 @@ export class CatalogResolver {
     return this.projectFollowsService.followProject(projectSlug, user.id);
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectFollowState)
   unfollowProject(
     @Args('projectSlug', { type: () => String }) projectSlug: string,

@@ -25,6 +25,7 @@ describe(AuthTokenService.name, () => {
     const verified = await service.verifyAccessToken(token);
 
     expect(verified).toEqual({
+      authMethod: 'session',
       id: 'user_123',
       role: 'USER',
       username: 'tester',
@@ -68,6 +69,7 @@ describe(AuthTokenService.name, () => {
     const verified = await service.verifyBearerToken(token);
 
     expect(verified).toEqual({
+      authMethod: 'session',
       id: 'user_123',
       role: 'USER',
       username: 'tester',
@@ -75,6 +77,53 @@ describe(AuthTokenService.name, () => {
     expect(updates[0]).toEqual({
       data: { lastUsedAt: expect.any(Date) },
       where: { id: 'session-a' },
+    });
+  });
+
+  test('verifies bearer tokens against active personal access tokens', async () => {
+    const config = new ConfigService({
+      app: {
+        jwtAccessTokenSecret:
+          'test-access-token-secret-at-least-thirty-two-chars',
+        jwtAccessTokenTtlSeconds: 900,
+      },
+    });
+    const updates: unknown[] = [];
+    const service = new AuthTokenService(config, new JwtService(), {
+      apiToken: {
+        findFirst: () =>
+          Promise.resolve({
+            id: 'token-a',
+            scopes: ['read:projects'],
+            user: {
+              id: 'user_123',
+              role: 'USER',
+              status: 'ACTIVE',
+              username: 'tester',
+            },
+          }),
+        update: (query: unknown) => {
+          updates.push(query);
+          return Promise.resolve({});
+        },
+      },
+      session: {
+        findFirst: () => Promise.resolve(null),
+      },
+    } as never);
+
+    const verified = await service.verifyBearerToken('mdy_pat_test');
+
+    expect(verified).toEqual({
+      authMethod: 'api_token',
+      credentialScopes: ['read:projects'],
+      id: 'user_123',
+      role: 'USER',
+      username: 'tester',
+    });
+    expect(updates[0]).toEqual({
+      data: { lastUsedAt: expect.any(Date) },
+      where: { id: 'token-a' },
     });
   });
 });

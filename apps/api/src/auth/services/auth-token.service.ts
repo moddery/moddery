@@ -4,8 +4,11 @@ import { JwtService } from '@nestjs/jwt';
 import { createHash } from 'node:crypto';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { type CredentialScope } from './credential-scopes.js';
 
 export interface AuthenticatedUser {
+  readonly authMethod?: 'api_token' | 'session';
+  readonly credentialScopes?: readonly CredentialScope[];
   readonly id: string;
   readonly role: string;
   readonly username: string;
@@ -57,6 +60,7 @@ export class AuthTokenService {
       );
 
       return {
+        authMethod: 'session',
         id: payload.sub,
         role: payload.role,
         username: payload.username,
@@ -128,6 +132,7 @@ export class AuthTokenService {
       });
 
       return {
+        authMethod: 'session',
         id: session.user.id,
         role: session.user.role,
         username: session.user.username,
@@ -160,6 +165,8 @@ export class AuthTokenService {
     });
 
     return {
+      authMethod: 'api_token',
+      credentialScopes: apiToken.scopes as CredentialScope[],
       id: apiToken.user.id,
       role: apiToken.user.role,
       username: apiToken.user.username,

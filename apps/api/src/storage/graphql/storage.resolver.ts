@@ -1,5 +1,6 @@
 import { Args, Mutation, Resolver } from '@nestjs/graphql';
 
+import { RequireCredentialScopes } from '../../auth/decorators/credential-scopes.decorator.js';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { PrepareProjectUploadInput } from '../dto/prepare-project-upload.input.js';
@@ -10,6 +11,7 @@ import { ProjectUploadTarget } from './project-upload.model.js';
 export class StorageResolver {
   constructor(private readonly storageService: StorageService) {}
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => ProjectUploadTarget)
   prepareProjectUpload(
     @Args('input') input: PrepareProjectUploadInput,

@@ -1,6 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
+import { RequireCredentialScopes } from '../../auth/decorators/credential-scopes.decorator.js';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
@@ -57,6 +58,7 @@ export class VersionsResolver {
     });
   }
 
+  @RequireCredentialScopes('read:projects')
   @Query(() => VersionSearchResult)
   async viewerProjectVersionSearch(
     @Args('projectSlug', { type: () => String }) projectSlug: string,
@@ -81,6 +83,7 @@ export class VersionsResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => VersionSummary)
   createVersion(
     @Args('input') input: CreateVersionInput,
@@ -89,6 +92,7 @@ export class VersionsResolver {
     return this.versionsService.createVersion(input, user.id);
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => VersionSummary)
   updateVersion(
     @Args('input') input: UpdateVersionInput,
@@ -97,6 +101,7 @@ export class VersionsResolver {
     return this.versionsService.updateVersion(input, user.id);
   }
 
+  @RequireCredentialScopes('write:projects')
   @Mutation(() => VersionSummary)
   updateVersionDependencies(
     @Args('input') input: UpdateVersionDependenciesInput,

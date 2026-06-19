@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -8,7 +9,12 @@ import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
-import { AuthTokenService } from '../services/auth-token.service.js';
+import { CREDENTIAL_SCOPES_KEY } from '../decorators/credential-scopes.decorator.js';
+import {
+  type AuthenticatedUser,
+  AuthTokenService,
+} from '../services/auth-token.service.js';
+import { type CredentialScope } from '../services/credential-scopes.js';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -45,7 +51,15 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Missing bearer token');
     }
 
-    request.user = await this.authTokenService.verifyBearerToken(token);
+    const user = await this.authTokenService.verifyBearerToken(token);
+    assertCredentialScopes(
+      user,
+      this.reflector.getAllAndOverride<CredentialScope[]>(
+        CREDENTIAL_SCOPES_KEY,
+        [context.getHandler(), context.getClass()],
+      ),
+    );
+    request.user = user;
 
     return true;
   }
@@ -68,5 +82,27 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     return token;
+  }
+}
+
+export function assertCredentialScopes(
+  user: AuthenticatedUser,
+  requiredScopes: readonly CredentialScope[] | undefined,
+): void {
+  if (user.authMethod !== 'api_token') {
+    return;
+  }
+
+  if (requiredScopes === undefined || requiredScopes.length === 0) {
+    throw new ForbiddenException(
+      'Personal access token is not allowed for this operation',
+    );
+  }
+
+  const grantedScopes = new Set(user.credentialScopes ?? []);
+  for (const scope of requiredScopes) {
+    if (!grantedScopes.has(scope)) {
+      throw new ForbiddenException(`Personal access token requires ${scope}`);
+    }
   }
 }
