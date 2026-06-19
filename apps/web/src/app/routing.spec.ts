@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import {
   collectionFromUrl,
   collectionPath,
+  dashboardPath,
   organizationFromUrl,
   organizationPath,
   profileFromUrl,
@@ -76,6 +77,13 @@ describe('routing helpers', () => {
         slug: 'tech packs',
       }),
     ).toBe('/collections/creator%20one/tech%20packs');
+  });
+
+  test('builds dashboard section paths', () => {
+    expect(dashboardPath()).toBe('/dashboard');
+    expect(dashboardPath('dashboard-messages')).toBe(
+      '/dashboard#dashboard-messages',
+    );
   });
 
   test('builds encoded project paths', () => {

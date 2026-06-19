@@ -1,6 +1,7 @@
 import { MessageCircle } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
+import { dashboardPath } from '../../../app/routing.ts';
 import {
   createUserDirectThread,
   hasAuthToken,
@@ -16,6 +17,7 @@ export function ProfileMessageForm({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [sentThreadId, setSentThreadId] = useState<string | null>(null);
 
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,14 +29,16 @@ export function ProfileMessageForm({
 
     setBusy(true);
     setMessage(null);
+    setSentThreadId(null);
 
     try {
-      await createUserDirectThread({
+      const threadId = await createUserDirectThread({
         body,
         username: profile.username,
       });
       setBody('');
       setMessage('Message sent.');
+      setSentThreadId(threadId);
       setOpen(false);
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : 'Message failed.');
@@ -79,7 +83,15 @@ export function ProfileMessageForm({
 
       {message && (
         <p className="w-full basis-full text-xs font-semibold text-muted">
-          {message}
+          {message}{' '}
+          {sentThreadId && (
+            <a
+              className="font-bold text-ink transition-colors hover:text-accent"
+              href={dashboardPath('dashboard-messages')}
+            >
+              View inbox
+            </a>
+          )}
         </p>
       )}
     </>

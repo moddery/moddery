@@ -89,6 +89,12 @@ export function projectPath(projectType: ProjectType, slug: string) {
   return `/${meta.path}?project=${encodeURIComponent(slug)}&type=${encodeURIComponent(meta.type)}`;
 }
 
+export function dashboardPath(sectionId?: string) {
+  return sectionId === undefined
+    ? '/dashboard'
+    : `/dashboard#${encodeURIComponent(sectionId)}`;
+}
+
 export function writeProfileToUrl(username: string) {
   const url = new URL(window.location.href);
   url.pathname = userPath(username);
