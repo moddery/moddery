@@ -94,6 +94,20 @@ interface RequestPasswordResetResponse {
   errors?: GraphqlError[];
 }
 
+interface CreateApiTokenResponse {
+  data?: {
+    createApiToken?: CreatedApiToken;
+  };
+  errors?: GraphqlError[];
+}
+
+interface RevokeApiTokenResponse {
+  data?: {
+    revokeApiToken?: ApiTokenSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface MailpitMessageList {
   messages?: MailpitMessageSummary[];
 }
@@ -332,6 +346,13 @@ interface VersionsForProjectResponse {
   errors?: GraphqlError[];
 }
 
+interface ViewerProjectVersionSearchResponse {
+  data?: {
+    viewerProjectVersionSearch?: VersionSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
 interface VersionSearchForProjectResponse {
   data?: {
     versionSearchForProject?: VersionSearchResult;
@@ -345,6 +366,18 @@ interface ProjectSummary {
   slug: string;
   status: string;
   title: string;
+}
+
+interface ApiTokenSummary {
+  id: string;
+  name: string;
+  revokedAt: string | null;
+  scopes: string[];
+}
+
+interface CreatedApiToken {
+  token: string;
+  tokenSummary: ApiTokenSummary;
 }
 
 interface GalleryImageSummary {
@@ -1359,6 +1392,11 @@ async function checkCreatorFlow(): Promise<void> {
     projectSlug: slug,
     versionNumber,
   });
+  await checkApiTokenFlow({
+    projectSlug: slug,
+    token: auth.accessToken,
+    versionNumber,
+  });
   await checkFileScanFlow({
     fileId: required(publicVersion.files[0], 'public version file').id,
     projectSlug: slug,
@@ -1456,6 +1494,169 @@ async function approveSmokeVersion(
   assertNoGraphqlErrors(payload, 'GraphQL approve version');
 
   return required(payload.data?.moderateVersion, 'approved version');
+}
+
+async function checkApiTokenFlow(options: {
+  projectSlug: string;
+  token: string;
+  versionNumber: string;
+}): Promise<void> {
+  const createPayload = await readGraphql<CreateApiTokenResponse>(
+    {
+      query: `
+        mutation SmokeCreateApiToken($input: CreateApiTokenInput!) {
+          createApiToken(input: $input) {
+            token
+            tokenSummary {
+              id
+              name
+              revokedAt
+              scopes
+            }
+          }
+        }
+      `,
+      variables: {
+        input: {
+          name: 'Smoke read-only token',
+          scopes: ['read:projects'],
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(createPayload, 'GraphQL create API token');
+
+  const createdToken = required(
+    createPayload.data?.createApiToken,
+    'created API token',
+  );
+  if (
+    createdToken.token.length === 0 ||
+    createdToken.tokenSummary.name !== 'Smoke read-only token' ||
+    createdToken.tokenSummary.revokedAt !== null ||
+    createdToken.tokenSummary.scopes.length !== 1 ||
+    createdToken.tokenSummary.scopes[0] !== 'read:projects'
+  ) {
+    throw new Error('Created API token did not match requested read scope');
+  }
+
+  const readPayload = await readGraphql<ViewerProjectVersionSearchResponse>(
+    {
+      query: `
+        query SmokeApiTokenReadProjectVersions($projectSlug: String!) {
+          viewerProjectVersionSearch(projectSlug: $projectSlug, limit: 10, offset: 0) {
+            totalHits
+            versions {
+              files {
+                fileName
+                id
+                primary
+                url
+              }
+              id
+              projectSlug
+              status
+              versionNumber
+            }
+          }
+        }
+      `,
+      variables: { projectSlug: options.projectSlug },
+    },
+    createdToken.token,
+  );
+  assertNoGraphqlErrors(readPayload, 'GraphQL API token project version read');
+  const versionSearch = required(
+    readPayload.data?.viewerProjectVersionSearch,
+    'API token project version search',
+  );
+  const version = versionSearch.versions.find(
+    (candidate) => candidate.versionNumber === options.versionNumber,
+  );
+  assertVersion(required(version, 'API token visible version'), {
+    projectSlug: options.projectSlug,
+    versionNumber: options.versionNumber,
+  });
+
+  const writePayload = await readGraphql<CreateProjectResponse>(
+    {
+      query: `
+        mutation SmokeApiTokenRejectedProjectWrite($input: CreateProjectInput!) {
+          createProject(input: $input) {
+            slug
+          }
+        }
+      `,
+      variables: {
+        input: {
+          categories: ['utility'],
+          description:
+            'This project should never be created by a read-only smoke token.',
+          gameVersions: ['1.21.6'],
+          kind: 'MOD',
+          loaders: ['fabric'],
+          slug: `${options.projectSlug}-api-token-write`,
+          summary: 'A rejected read-only API token write.',
+          title: 'Rejected API Token Write',
+        },
+      },
+    },
+    createdToken.token,
+  );
+  assertGraphqlError(
+    writePayload,
+    'Personal access token requires write:projects',
+    'read-only API token project write',
+  );
+
+  const revokePayload = await readGraphql<RevokeApiTokenResponse>(
+    {
+      query: `
+        mutation SmokeRevokeApiToken($tokenId: String!) {
+          revokeApiToken(tokenId: $tokenId) {
+            id
+            name
+            revokedAt
+            scopes
+          }
+        }
+      `,
+      variables: { tokenId: createdToken.tokenSummary.id },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(revokePayload, 'GraphQL revoke API token');
+  const revokedToken = required(
+    revokePayload.data?.revokeApiToken,
+    'revoked API token',
+  );
+  if (
+    revokedToken.id !== createdToken.tokenSummary.id ||
+    revokedToken.revokedAt === null
+  ) {
+    throw new Error('Revoked API token did not return revocation metadata');
+  }
+
+  const revokedReadPayload =
+    await readGraphql<ViewerProjectVersionSearchResponse>(
+      {
+        query: `
+          query SmokeRevokedApiTokenReadProjectVersions($projectSlug: String!) {
+            viewerProjectVersionSearch(projectSlug: $projectSlug, limit: 1, offset: 0) {
+              totalHits
+            }
+          }
+        `,
+        variables: { projectSlug: options.projectSlug },
+      },
+      createdToken.token,
+    );
+  assertGraphqlError(
+    revokedReadPayload,
+    'Invalid bearer token',
+    'revoked API token project version read',
+  );
 }
 
 async function checkReviewNotification(options: {
