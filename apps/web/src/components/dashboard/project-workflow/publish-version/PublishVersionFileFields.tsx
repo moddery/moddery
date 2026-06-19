@@ -74,21 +74,21 @@ export function PublishVersionFileFields({
       </div>
       <div className="grid gap-3 md:grid-cols-[1fr_2fr_10rem]">
         <DashboardField
-          disabled={disabled}
+          disabled={disabled || hasLocalFile}
           label="File name"
           value={fileName}
           onChange={onFileNameChange}
           required
         />
         <DashboardField
-          disabled={disabled}
+          disabled={disabled || hasLocalFile}
           label="File URL"
           value={fileUrl}
           onChange={onFileUrlChange}
           required={!hasLocalFile}
         />
         <DashboardField
-          disabled={disabled}
+          disabled={disabled || hasLocalFile}
           label="Size bytes"
           value={fileSize}
           onChange={onFileSizeChange}
@@ -97,13 +97,13 @@ export function PublishVersionFileFields({
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <DashboardField
-          disabled={disabled}
+          disabled={disabled || hasLocalFile}
           label="SHA-1"
           value={sha1}
           onChange={onSha1Change}
         />
         <DashboardField
-          disabled={disabled}
+          disabled={disabled || hasLocalFile}
           label="SHA-256"
           value={sha256}
           onChange={onSha256Change}

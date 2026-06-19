@@ -70,9 +70,21 @@ export function usePublishVersionFormState(
     onFileSizeChange: setFileSize,
     onFileUrlChange: setFileUrl,
     onLocalFileChange: (file: File | null) => {
-      const selection = localVersionFileSelection(file);
-      setFileName(selection.fileName);
-      setFileSize(selection.fileSize);
+      const patch = localVersionFilePatch(file);
+      setFileName(patch.fileName);
+      setFileSize(patch.fileSize);
+
+      if (patch.fileUrl !== undefined) {
+        setFileUrl(patch.fileUrl);
+      }
+
+      if (patch.sha1 !== undefined) {
+        setSha1(patch.sha1);
+      }
+
+      if (patch.sha256 !== undefined) {
+        setSha256(patch.sha256);
+      }
     },
     onGameVersionsChange: setGameVersions,
     onLoadersChange: setLoaders,
@@ -124,4 +136,27 @@ export function localVersionFileSelection(file: File | null) {
   }
 
   return { fileName: file.name, fileSize: String(file.size) };
+}
+
+interface LocalVersionFilePatch {
+  fileName: string;
+  fileSize: string;
+  fileUrl?: string;
+  sha1?: string;
+  sha256?: string;
+}
+
+export function localVersionFilePatch(
+  file: File | null,
+): LocalVersionFilePatch {
+  const selection = localVersionFileSelection(file);
+
+  return file === null
+    ? selection
+    : {
+        ...selection,
+        fileUrl: '',
+        sha1: '',
+        sha256: '',
+      };
 }
