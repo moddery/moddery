@@ -260,6 +260,86 @@ describe(ProjectMembersService.name, () => {
     expect(members[0]?.role).toBe('Owner');
   });
 
+  test('does not resend project invitations when updating existing members', async () => {
+    const auditEvents: unknown[] = [];
+    const notifications: unknown[] = [];
+    const service = createService(
+      {
+        project: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'project-a',
+              kind: 'MOD',
+              slug: 'iris',
+              teamId: 'team-a',
+              title: 'Iris',
+            }),
+          findUnique: () => Promise.resolve({ teamId: 'team-a' }),
+        },
+        teamMember: {
+          count: () => Promise.resolve(1),
+          findMany: () => Promise.resolve([projectMemberRow()]),
+          findUnique: () =>
+            Promise.resolve(
+              projectMemberRow({
+                isOwner: false,
+                permissions: ['MANAGE_DETAILS'],
+                role: 'Builder',
+                user: {
+                  avatarUrl: null,
+                  displayName: null,
+                  id: 'user-b',
+                  username: 'maintainer',
+                },
+              }),
+            ),
+          upsert: () =>
+            Promise.resolve(
+              projectMemberRow({
+                isOwner: false,
+                permissions: ['MANAGE_VERSIONS'],
+                role: 'Maintainer',
+                user: {
+                  avatarUrl: null,
+                  displayName: null,
+                  id: 'user-b',
+                  username: 'maintainer',
+                },
+              }),
+            ),
+        },
+        user: {
+          findFirst: () => Promise.resolve({ id: 'user-b' }),
+        },
+      } as unknown as PrismaService,
+      {
+        sendUserNotification: (input: unknown) => {
+          notifications.push(input);
+          return Promise.resolve({});
+        },
+      },
+      auditEvents,
+    );
+
+    await service.addProjectTeamMember(
+      {
+        permissions: ['MANAGE_VERSIONS'],
+        projectSlug: 'iris',
+        role: 'Maintainer',
+        username: 'maintainer',
+      },
+      'user-a',
+    );
+
+    expect(notifications).toEqual([]);
+    expect(auditEvents[0]).toEqual(
+      expect.objectContaining({
+        action: 'UPDATE',
+        targetUserId: 'user-b',
+      }),
+    );
+  });
+
   test('removes non-owner project team members for managers', async () => {
     const auditEvents: unknown[] = [];
     const deletes: unknown[] = [];

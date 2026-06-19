@@ -143,10 +143,12 @@ export class OrganizationManagementService {
       },
       targetUserId: user.id,
     });
-    await this.sendTeamInviteNotification({
-      organizationName: organization.name,
-      userId: user.id,
-    });
+    if (before === null && member.acceptedAt === null) {
+      await this.sendTeamInviteNotification({
+        organizationName: organization.name,
+        userId: user.id,
+      });
+    }
 
     return this.findViewerOrganization(organization.id, userId);
   }

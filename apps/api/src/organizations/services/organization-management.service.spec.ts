@@ -231,6 +231,85 @@ describe(OrganizationManagementService.name, () => {
     expect(organization.id).toBe('org-a');
   });
 
+  test('does not resend organization invitations when updating existing members', async () => {
+    const auditEvents: unknown[] = [];
+    const notifications: unknown[] = [];
+    const service = createService(
+      {
+        organization: {
+          findFirst: (query: { where?: { id?: string; team?: unknown } }) => {
+            if (query.where?.team !== undefined) {
+              return Promise.resolve({
+                id: 'org-a',
+                name: 'Iris Labs',
+                slug: 'iris-labs',
+                teamId: 'team-a',
+              });
+            }
+
+            return Promise.resolve(organizationRow());
+          },
+        },
+        teamMember: {
+          findUnique: () =>
+            Promise.resolve({
+              acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
+              isOwner: false,
+              permissions: ['MANAGE_DETAILS'],
+              role: 'Builder',
+              sortOrder: 0,
+              user: {
+                id: 'user-b',
+                username: 'builder',
+              },
+            }),
+          upsert: () =>
+            Promise.resolve({
+              acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
+              isOwner: false,
+              permissions: ['MANAGE_SETTINGS'],
+              role: 'Maintainer',
+              sortOrder: 0,
+              user: {
+                id: 'user-b',
+                username: 'builder',
+              },
+            }),
+        },
+        user: {
+          findFirst: () => Promise.resolve({ id: 'user-b' }),
+        },
+      } as unknown as PrismaService,
+      {
+        auditEvents,
+        notifications: {
+          sendUserNotification: (input: unknown) => {
+            notifications.push(input);
+            return Promise.resolve({});
+          },
+        },
+      },
+    );
+
+    await service.addOrganizationTeamMember(
+      {
+        organizationId: 'org-a',
+        permissions: ['MANAGE_SETTINGS'],
+        role: 'Maintainer',
+        username: 'builder',
+      },
+      'user-a',
+    );
+
+    expect(notifications).toEqual([]);
+    expect(auditEvents[0]).toEqual(
+      expect.objectContaining({
+        action: 'UPDATE',
+        targetUserId: 'user-b',
+      }),
+    );
+  });
+
   test('removes non-owner organization team members for member managers', async () => {
     const auditEvents: unknown[] = [];
     const deletes: unknown[] = [];

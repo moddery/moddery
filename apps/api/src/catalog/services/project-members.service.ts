@@ -159,10 +159,12 @@ export class ProjectMembersService {
       },
       targetUserId: user.id,
     });
-    await this.sendTeamInviteNotification({
-      targetName: project.title,
-      userId: user.id,
-    });
+    if (before === null && member.acceptedAt === null) {
+      await this.sendTeamInviteNotification({
+        targetName: project.title,
+        userId: user.id,
+      });
+    }
 
     return this.findProjectMembers(input.projectSlug);
   }
