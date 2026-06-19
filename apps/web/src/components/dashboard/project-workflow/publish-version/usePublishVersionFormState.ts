@@ -70,9 +70,9 @@ export function usePublishVersionFormState(
     onFileSizeChange: setFileSize,
     onFileUrlChange: setFileUrl,
     onLocalFileChange: (file: File | null) => {
-      if (file === null) return;
-      setFileName(file.name);
-      setFileSize(String(file.size));
+      const selection = localVersionFileSelection(file);
+      setFileName(selection.fileName);
+      setFileSize(selection.fileSize);
     },
     onGameVersionsChange: setGameVersions,
     onLoadersChange: setLoaders,
@@ -116,4 +116,12 @@ export function usePublishVersionFormState(
   }
 
   return { buildInput, fields, reset };
+}
+
+export function localVersionFileSelection(file: File | null) {
+  if (file === null) {
+    return { fileName: '', fileSize: '0' };
+  }
+
+  return { fileName: file.name, fileSize: String(file.size) };
 }
