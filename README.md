@@ -64,3 +64,9 @@ bun run seed:popular-projects
 ```
 
 `SEED_PROJECT_LIMIT` is applied per project type.
+
+Verify a running local stack:
+
+```sh
+bun run smoke:local
+```
