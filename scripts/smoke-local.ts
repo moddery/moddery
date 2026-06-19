@@ -88,6 +88,27 @@ interface CreateProjectReportResponse {
   errors?: GraphqlError[];
 }
 
+interface RecordProjectViewResponse {
+  data?: {
+    recordProjectView?: ProjectViewRecord;
+  };
+  errors?: GraphqlError[];
+}
+
+interface RecordDownloadResponse {
+  data?: {
+    recordDownload?: DownloadRecord;
+  };
+  errors?: GraphqlError[];
+}
+
+interface ProjectAnalyticsResponse {
+  data?: {
+    projectAnalytics?: ProjectAnalyticsSummary | null;
+  };
+  errors?: GraphqlError[];
+}
+
 interface VersionsForProjectResponse {
   data?: {
     versionsForProject?: VersionSummary[];
@@ -113,6 +134,7 @@ interface ProjectUploadTarget {
 interface VersionSummary {
   files: {
     fileName: string;
+    id: string;
     primary: boolean;
     url: string;
   }[];
@@ -148,6 +170,24 @@ interface ReportProjectTarget {
   kind: string;
   slug: string;
   title: string;
+}
+
+interface ProjectViewRecord {
+  projectSlug: string;
+}
+
+interface DownloadRecord {
+  fileId: string;
+  projectDownloads: number;
+  versionDownloads: number;
+}
+
+interface ProjectAnalyticsSummary {
+  downloadsLast30Days: number;
+  projectSlug: string;
+  totalDownloads: number;
+  totalViews: number;
+  viewsLast30Days: number;
 }
 
 interface ProjectSearchResponse {
@@ -350,6 +390,7 @@ async function checkCreatorFlow(): Promise<void> {
           createVersion(input: $input) {
             files {
               fileName
+              id
               primary
               url
             }
@@ -406,6 +447,7 @@ async function checkCreatorFlow(): Promise<void> {
         versionsForProject(projectSlug: $projectSlug) {
           files {
             fileName
+            id
             primary
             url
           }
@@ -429,6 +471,10 @@ async function checkCreatorFlow(): Promise<void> {
   assertVersion(publicVersion, {
     projectSlug: slug,
     versionNumber,
+  });
+  await checkAnalyticsFlow({
+    fileId: required(publicVersion.files[0], 'public version file').id,
+    projectSlug: slug,
   });
 
   await checkCollectionFlow({
@@ -615,6 +661,103 @@ async function prepareVersionUpload(
   assertNoGraphqlErrors(payload, 'GraphQL prepare project upload');
 
   return required(payload.data?.prepareProjectUpload, 'project upload target');
+}
+
+async function checkAnalyticsFlow(options: {
+  fileId: string;
+  projectSlug: string;
+}): Promise<void> {
+  const viewPayload = await readGraphql<RecordProjectViewResponse>({
+    query: `
+      mutation SmokeRecordProjectView($input: RecordProjectViewInput!) {
+        recordProjectView(input: $input) {
+          projectSlug
+        }
+      }
+    `,
+    variables: {
+      input: {
+        projectSlug: options.projectSlug,
+      },
+    },
+  });
+  assertNoGraphqlErrors(viewPayload, 'GraphQL record project view');
+
+  const viewRecord = required(
+    viewPayload.data?.recordProjectView,
+    'project view record',
+  );
+  if (viewRecord.projectSlug !== options.projectSlug) {
+    throw new Error(
+      `Project view mismatch: expected ${options.projectSlug}, received ${viewRecord.projectSlug}`,
+    );
+  }
+
+  const downloadPayload = await readGraphql<RecordDownloadResponse>({
+    query: `
+      mutation SmokeRecordDownload($input: RecordDownloadInput!) {
+        recordDownload(input: $input) {
+          fileId
+          projectDownloads
+          versionDownloads
+        }
+      }
+    `,
+    variables: {
+      input: {
+        fileId: options.fileId,
+      },
+    },
+  });
+  assertNoGraphqlErrors(downloadPayload, 'GraphQL record download');
+
+  const downloadRecord = required(
+    downloadPayload.data?.recordDownload,
+    'download record',
+  );
+  if (
+    downloadRecord.fileId !== options.fileId ||
+    downloadRecord.projectDownloads < 1 ||
+    downloadRecord.versionDownloads < 1
+  ) {
+    throw new Error(
+      `Download mismatch for ${options.fileId}: received project=${downloadRecord.projectDownloads.toString()} version=${downloadRecord.versionDownloads.toString()}`,
+    );
+  }
+
+  const analyticsPayload = await readGraphql<ProjectAnalyticsResponse>({
+    query: `
+      query SmokeProjectAnalytics($projectSlug: String!) {
+        projectAnalytics(projectSlug: $projectSlug) {
+          downloadsLast30Days
+          projectSlug
+          totalDownloads
+          totalViews
+          viewsLast30Days
+        }
+      }
+    `,
+    variables: {
+      projectSlug: options.projectSlug,
+    },
+  });
+  assertNoGraphqlErrors(analyticsPayload, 'GraphQL project analytics');
+
+  const analytics = required(
+    analyticsPayload.data?.projectAnalytics,
+    'project analytics',
+  );
+  if (
+    analytics.projectSlug !== options.projectSlug ||
+    analytics.downloadsLast30Days < 1 ||
+    analytics.totalDownloads < 1 ||
+    analytics.totalViews < 1 ||
+    analytics.viewsLast30Days < 1
+  ) {
+    throw new Error(
+      `Analytics mismatch for ${options.projectSlug}: views=${analytics.totalViews.toString()} downloads=${analytics.totalDownloads.toString()}`,
+    );
+  }
 }
 
 async function checkProjectReportFlow(options: {

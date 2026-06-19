@@ -73,6 +73,13 @@ describe(AnalyticsService.name, () => {
     expect(summary?.totalViews).toBe(13);
     expect(summary?.viewsLast30Days).toBe(7);
     expect(queries).toHaveLength(2);
+    expect(queries[1]).toMatchObject({
+      query_params: {
+        since: expect.stringMatching(
+          /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/u,
+        ),
+      },
+    });
   });
 
   test('records download events and increments counters', async () => {
@@ -150,6 +157,9 @@ describe(AnalyticsService.name, () => {
       values: [
         {
           event_type: 'download',
+          occurred_at: expect.stringMatching(
+            /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/u,
+          ),
           project_id: 'project-a',
           version_id: 'version-a',
         },
@@ -202,6 +212,9 @@ describe(AnalyticsService.name, () => {
       values: [
         {
           event_type: 'view',
+          occurred_at: expect.stringMatching(
+            /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/u,
+          ),
           project_id: 'project-a',
           version_id: null,
         },

@@ -85,7 +85,7 @@ export class AnalyticsService implements OnModuleInit {
         `,
         query_params: {
           projectId: project.id,
-          since: since.toISOString(),
+          since: clickHouseDateTime(since),
         },
       }),
     ]);
@@ -213,7 +213,7 @@ export class AnalyticsService implements OnModuleInit {
         {
           country_code: null,
           event_type: eventType,
-          occurred_at: new Date(),
+          occurred_at: clickHouseDateTime(new Date()),
           project_id: projectId,
           user_agent: null,
           version_id: versionId,
@@ -287,6 +287,10 @@ function addDays(date: Date, days: number): Date {
 
 function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function clickHouseDateTime(date: Date): string {
+  return date.toISOString().replace('T', ' ').replace('Z', '');
 }
 
 function startOfUtcDay(date: Date): Date {
