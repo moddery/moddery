@@ -7,6 +7,7 @@ import { type ProjectMetadataFieldsProps } from '../ProjectMetadataFields.types.
 export function ProjectTaxonomyFields({
   categories,
   categoryOptions,
+  disabled,
   gameVersionOptions,
   gameVersions,
   loaders,
@@ -19,6 +20,7 @@ export function ProjectTaxonomyFields({
   ProjectMetadataFieldsProps,
   | 'categories'
   | 'categoryOptions'
+  | 'disabled'
   | 'gameVersionOptions'
   | 'gameVersions'
   | 'loaders'
@@ -43,6 +45,7 @@ export function ProjectTaxonomyFields({
   return (
     <div className="grid gap-3">
       <TaxonomyCheckboxGroup
+        disabled={disabled}
         label="Loaders"
         options={SUPPORTED_LOADERS.map((loader) => ({
           label: enumLabel(loader),
@@ -52,6 +55,7 @@ export function ProjectTaxonomyFields({
         onChange={onLoadersChange}
       />
       <TaxonomyCheckboxGroup
+        disabled={disabled}
         label="Game versions"
         options={activeGameVersions.map((version) => ({
           label: version.version,
@@ -61,6 +65,7 @@ export function ProjectTaxonomyFields({
         onChange={onGameVersionsChange}
       />
       <TaxonomyCheckboxGroup
+        disabled={disabled}
         label="Categories"
         options={filteredCategories.map((category) => ({
           label: category.name,

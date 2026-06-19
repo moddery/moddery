@@ -11,10 +11,12 @@ export function ProjectMetadataFields({
   categoryOptions,
   color,
   description,
+  disabled,
   discordUrl,
   extraLinks,
   gameVersionOptions,
   gameVersions,
+  hasLocalIconFile,
   iconUrl,
   issuesUrl,
   licenseKey,
@@ -51,12 +53,15 @@ export function ProjectMetadataFields({
   return (
     <>
       <ProjectSelector
+        disabled={disabled}
         projectSlug={projectSlug}
         projects={projects}
         onProjectChange={onProjectChange}
       />
       <ProjectIdentityFields
         color={color}
+        disabled={disabled}
+        hasLocalIconFile={hasLocalIconFile}
         iconUrl={iconUrl}
         summary={summary}
         title={title}
@@ -68,6 +73,7 @@ export function ProjectMetadataFields({
       />
       <DashboardTextarea
         label="Description"
+        disabled={disabled}
         value={description}
         onChange={onDescriptionChange}
         required
@@ -75,6 +81,7 @@ export function ProjectMetadataFields({
       <ProjectTaxonomyFields
         categories={categories}
         categoryOptions={categoryOptions}
+        disabled={disabled}
         gameVersionOptions={gameVersionOptions}
         gameVersions={gameVersions}
         loaders={loaders}
@@ -85,6 +92,7 @@ export function ProjectMetadataFields({
         projects={projects}
       />
       <ProjectLinkFields
+        disabled={disabled}
         discordUrl={discordUrl}
         issuesUrl={issuesUrl}
         sourceUrl={sourceUrl}
@@ -95,6 +103,7 @@ export function ProjectMetadataFields({
         onWikiUrlChange={onWikiUrlChange}
       />
       <ProjectLicenseFields
+        disabled={disabled}
         licenseKey={licenseKey}
         licenseName={licenseName}
         licenseUrl={licenseUrl}
@@ -106,6 +115,7 @@ export function ProjectMetadataFields({
       />
       <DashboardTextarea
         label="Extra links"
+        disabled={disabled}
         value={extraLinks}
         onChange={onExtraLinksChange}
         placeholder="DONATION | Sponsor | https://example.test"

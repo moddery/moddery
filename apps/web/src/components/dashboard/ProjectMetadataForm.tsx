@@ -40,7 +40,15 @@ export function ProjectMetadataForm({
   const [localIconFile, setLocalIconFile] = useState<File | null>(null);
   const [updated, setUpdated] = useState<string | null>(null);
 
+  function changeLocalIconFile(file: File | null) {
+    setLocalIconFile(file);
+    if (shouldClearProjectMetadataIconUrl(file)) {
+      metadataForm.fields.onIconUrlChange('');
+    }
+  }
+
   function selectProject(slug: string) {
+    if (submitting) return;
     metadataForm.selectProject(slug);
     setLocalIconFile(null);
     setError(null);
@@ -94,8 +102,10 @@ export function ProjectMetadataForm({
         <ProjectMetadataFields
           {...metadataForm.fields}
           categoryOptions={categoriesQuery.data ?? []}
+          disabled={submitting}
           gameVersionOptions={gameVersionsQuery.data ?? []}
-          onIconFileChange={setLocalIconFile}
+          hasLocalIconFile={localIconFile !== null}
+          onIconFileChange={changeLocalIconFile}
           onProjectChange={selectProject}
         />
 
@@ -122,4 +132,8 @@ export function ProjectMetadataForm({
       </form>
     </section>
   );
+}
+
+export function shouldClearProjectMetadataIconUrl(file: File | null) {
+  return file !== null;
 }

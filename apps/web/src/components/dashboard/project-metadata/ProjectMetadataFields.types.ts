@@ -10,10 +10,12 @@ export interface ProjectMetadataFieldsProps {
   categoryOptions: CategoryTaxonomy[];
   color: string;
   description: string;
+  disabled?: boolean;
   discordUrl: string;
   extraLinks: string;
   gameVersionOptions: GameVersionTaxonomy[];
   gameVersions: string[];
+  hasLocalIconFile: boolean;
   iconUrl: string;
   issuesUrl: string;
   licenseKey: string;
