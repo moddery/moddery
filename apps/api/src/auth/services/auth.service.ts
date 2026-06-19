@@ -107,14 +107,25 @@ export class AuthService {
       return true;
     }
 
+    const now = new Date();
     const token = randomBytes(32).toString('base64url');
-    await this.prisma.passwordResetToken.create({
-      data: {
-        expiresAt: new Date(Date.now() + passwordResetTokenTtlMs),
-        tokenHash: hashSecret(token),
-        userId: user.id,
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.updateMany({
+        data: { usedAt: now },
+        where: {
+          expiresAt: { gt: now },
+          usedAt: null,
+          userId: user.id,
+        },
+      }),
+      this.prisma.passwordResetToken.create({
+        data: {
+          expiresAt: new Date(now.getTime() + passwordResetTokenTtlMs),
+          tokenHash: hashSecret(token),
+          userId: user.id,
+        },
+      }),
+    ]);
 
     await this.mailService.send({
       subject: 'Reset your Moddery password',

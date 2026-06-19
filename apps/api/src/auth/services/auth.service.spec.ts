@@ -440,10 +440,16 @@ describe(AuthService.name, () => {
       {} as AuthTokenService,
       fakeMailService(sent),
       {
+        $transaction: async (queries: Promise<unknown>[]) =>
+          Promise.all(queries),
         passwordResetToken: {
           create: (query: unknown) => {
             sent.push({ tokenCreate: query });
             return Promise.resolve({});
+          },
+          updateMany: (query: unknown) => {
+            sent.push({ tokenInvalidate: query });
+            return Promise.resolve({ count: 1 });
           },
         },
         user: {
@@ -462,8 +468,18 @@ describe(AuthService.name, () => {
     });
 
     expect(result).toBe(true);
-    expect(sent).toHaveLength(2);
+    expect(sent).toHaveLength(3);
     expect(sent[0]).toEqual({
+      tokenInvalidate: {
+        data: { usedAt: expect.any(Date) },
+        where: {
+          expiresAt: { gt: expect.any(Date) },
+          usedAt: null,
+          userId: 'user-a',
+        },
+      },
+    });
+    expect(sent[1]).toEqual({
       tokenCreate: {
         data: {
           expiresAt: expect.any(Date),
@@ -472,7 +488,7 @@ describe(AuthService.name, () => {
         },
       },
     });
-    expect(sent[1]).toEqual(
+    expect(sent[2]).toEqual(
       expect.objectContaining({
         subject: 'Reset your Moddery password',
         to: 'seed@example.test',
