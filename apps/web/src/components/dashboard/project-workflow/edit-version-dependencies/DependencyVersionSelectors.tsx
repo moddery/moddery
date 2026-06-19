@@ -1,5 +1,11 @@
+import { ExternalLink } from 'lucide-react';
+
 import { type ProjectVersion } from '../../../../lib/catalog.ts';
 import { type DashboardData } from '../../../../lib/dashboard.ts';
+import {
+  workflowProjectHref,
+  workflowVersionHref,
+} from '../version-route-links.ts';
 
 export function DependencyVersionSelectors({
   projectSlug,
@@ -16,8 +22,11 @@ export function DependencyVersionSelectors({
   onProjectChange: (slug: string) => void;
   onVersionChange: (version: ProjectVersion | null) => void;
 }) {
+  const selectedProject =
+    projects.find((project) => project.slug === projectSlug) ?? null;
+
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
       <label className="grid gap-1 text-sm font-bold text-ink">
         Project
         <select
@@ -55,6 +64,26 @@ export function DependencyVersionSelectors({
           )}
         </select>
       </label>
+      {selectedProject ? (
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={workflowProjectHref(selectedProject)}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            Open project
+          </a>
+          {selectedVersion ? (
+            <a
+              href={workflowVersionHref(selectedProject, selectedVersion)}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              Open version
+            </a>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
