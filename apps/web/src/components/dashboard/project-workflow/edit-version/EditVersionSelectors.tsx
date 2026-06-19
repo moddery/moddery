@@ -1,7 +1,9 @@
 import { ExternalLink } from 'lucide-react';
 
-import { type DashboardData } from '../../../../lib/dashboard.ts';
-import { type ProjectVersion } from '../../../../lib/catalog.ts';
+import {
+  type DashboardData,
+  type DashboardVersion,
+} from '../../../../lib/dashboard.ts';
 import {
   workflowProjectHref,
   workflowVersionHref,
@@ -17,10 +19,10 @@ export function EditVersionSelectors({
 }: {
   projectSlug: string;
   projects: DashboardData['projects'];
-  selectedVersion: ProjectVersion | null;
-  versions: ProjectVersion[];
+  selectedVersion: DashboardVersion | null;
+  versions: DashboardVersion[];
   onProjectChange: (slug: string) => void;
-  onVersionChange: (version: ProjectVersion | null) => void;
+  onVersionChange: (version: DashboardVersion | null) => void;
 }) {
   const selectedProject =
     projects.find((project) => project.slug === projectSlug) ?? null;

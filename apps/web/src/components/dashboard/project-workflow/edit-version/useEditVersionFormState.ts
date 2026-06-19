@@ -2,16 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import {
+  fetchManagedProjectVersions,
   type DashboardData,
+  type DashboardVersion,
   type UpdateVersionInput,
 } from '../../../../lib/dashboard.ts';
 import {
-  fetchProjectVersions,
-  type ProjectVersion,
-} from '../../../../lib/catalog.ts';
-import {
   type VersionChannel,
-  versionChannelFromProjectVersion,
+  versionChannelFromDashboardVersion,
   versionSortOrderFieldValue,
   versionSortOrderFromField,
 } from './versionChannel.ts';
@@ -19,10 +17,11 @@ import {
 export function useEditVersionFormState(projects: DashboardData['projects']) {
   const [projectSlug, setProjectSlug] = useState(projects[0]?.slug ?? '');
   const versionsQuery = useQuery({
-    queryFn: ({ signal }) => fetchProjectVersions(projectSlug, signal),
+    queryFn: ({ signal }) =>
+      fetchManagedProjectVersions(projectSlug, 1, 100, signal),
     queryKey: ['dashboard', 'versions', projectSlug],
   });
-  const versions = versionsQuery.data ?? [];
+  const versions = versionsQuery.data?.versions ?? [];
   const [versionId, setVersionId] = useState('');
   const selectedVersion =
     versions.find((version) => version.id === versionId) ?? versions[0] ?? null;
@@ -31,6 +30,8 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
   const [channel, setChannel] = useState<VersionChannel>('RELEASE');
   const [featured, setFeatured] = useState(false);
   const [sortOrder, setSortOrder] = useState('0');
+  const [status, setStatus] = useState('APPROVED');
+  const [requestedStatus, setRequestedStatus] = useState('');
   const [changelog, setChangelog] = useState('');
   const [loaders, setLoaders] = useState<string[]>([]);
   const [gameVersions, setGameVersions] = useState<string[]>([]);
@@ -47,17 +48,19 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     fillVersion(null);
   }
 
-  function selectVersion(version: ProjectVersion | null) {
+  function selectVersion(version: DashboardVersion | null) {
     setVersionId(version?.id ?? '');
     fillVersion(version);
   }
 
-  function fillVersion(version: ProjectVersion | null) {
+  function fillVersion(version: DashboardVersion | null) {
     setName(version?.name ?? '');
     setVersionNumber(version?.versionNumber ?? '');
-    setChannel(versionChannelFromProjectVersion(version));
+    setChannel(versionChannelFromDashboardVersion(version));
     setFeatured(version?.featured ?? false);
     setSortOrder(versionSortOrderFieldValue(version));
+    setStatus(version?.status ?? 'APPROVED');
+    setRequestedStatus(version?.requestedStatus ?? '');
     setChangelog(version?.changelog ?? '');
     setLoaders(version?.loaders ?? []);
     setGameVersions(version?.gameVersions ?? []);
@@ -70,7 +73,9 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     gameVersions,
     loaders,
     name,
+    requestedStatus,
     sortOrder,
+    status,
     versionNumber,
     onChannelChange: setChannel,
     onChangelogChange: setChangelog,
@@ -78,7 +83,9 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
     onGameVersionsChange: setGameVersions,
     onLoadersChange: setLoaders,
     onNameChange: setName,
+    onRequestedStatusChange: setRequestedStatus,
     onSortOrderChange: setSortOrder,
+    onStatusChange: setStatus,
     onVersionNumberChange: setVersionNumber,
   };
 
@@ -92,7 +99,9 @@ export function useEditVersionFormState(projects: DashboardData['projects']) {
       gameVersions,
       loaders,
       name,
+      requestedStatus: requestedStatus === '' ? null : requestedStatus,
       sortOrder: versionSortOrderFromField(sortOrder),
+      status,
       versionId: selectedVersion.id,
       versionNumber,
     };

@@ -1,6 +1,7 @@
 import { apolloClient } from '../../../apollo.js';
 import {
   CREATE_VERSION_MUTATION,
+  VIEWER_PROJECT_VERSION_SEARCH_QUERY,
   UPDATE_VERSION_MUTATION,
   UPDATE_VERSION_DEPENDENCIES_MUTATION,
   RECORD_FILE_SCAN_MUTATION,
@@ -11,6 +12,8 @@ import {
   type UpdateVersionMutationData,
   type UpdateVersionMutationVariables,
   type UpdateVersionDependenciesMutationData,
+  type ViewerProjectVersionSearchQueryData,
+  type ViewerProjectVersionSearchQueryVariables,
   type RecordFileScanMutationData,
   type RecordFileScanMutationVariables,
   type UpdateVersionDependenciesMutationVariables,
@@ -18,6 +21,7 @@ import {
 import {
   type CreateVersionInput,
   type DashboardVersion,
+  type DashboardVersionSearchResult,
   type UpdateVersionDependenciesInput,
   type UpdateVersionInput,
 } from '../types.js';
@@ -38,6 +42,29 @@ export async function createVersion(
   }
 
   return data.createVersion;
+}
+
+export async function fetchManagedProjectVersions(
+  projectSlug: string,
+  page = 1,
+  limit = 100,
+  signal?: AbortSignal,
+): Promise<DashboardVersionSearchResult> {
+  const { data } = await apolloClient.query<
+    ViewerProjectVersionSearchQueryData,
+    ViewerProjectVersionSearchQueryVariables
+  >({
+    context: { fetchOptions: { signal } },
+    fetchPolicy: 'network-only',
+    query: VIEWER_PROJECT_VERSION_SEARCH_QUERY,
+    variables: {
+      limit,
+      offset: Math.max(0, page - 1) * limit,
+      projectSlug,
+    },
+  });
+
+  return data.viewerProjectVersionSearch;
 }
 
 export async function updateVersion(

@@ -1,10 +1,16 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { isGameVersionTag } from '@moddery/shared';
-import { HashAlgorithm, Loader, type Prisma } from '@prisma/client';
+import {
+  HashAlgorithm,
+  Loader,
+  type Prisma,
+  VersionStatus,
+} from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type CreateVersionInput } from '../dto/create-version.input.js';
@@ -13,6 +19,7 @@ import { type UpdateVersionInput } from '../dto/update-version.input.js';
 import { VersionDependenciesService } from './version-dependencies.service.js';
 import { findManagedVersion } from './version-management.js';
 import {
+  type VersionSearchResultContract,
   type VersionSummaryContract,
   versionRowToContract,
   versionSelect,
@@ -87,6 +94,68 @@ export class VersionsService {
     });
 
     return versionRowToContract(version);
+  }
+
+  async findManagedProjectVersionSearch(
+    projectSlug: string,
+    userId: string,
+    {
+      limit = 50,
+      offset = 0,
+    }: {
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<VersionSearchResultContract> {
+    const project = await this.prisma.project.findUnique({
+      select: {
+        id: true,
+        team: {
+          select: {
+            members: {
+              select: { userId: true },
+              take: 1,
+              where: {
+                acceptedAt: { not: null },
+                userId,
+              },
+            },
+          },
+        },
+      },
+      where: { slug: projectSlug },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    if (project.team.members.length === 0) {
+      throw new ForbiddenException('Project membership required');
+    }
+
+    const where = { projectId: project.id };
+    const skip = clampInteger(offset, 0, 10_000);
+    const take = clampInteger(limit, 1, 100);
+    const [totalHits, versions] = await Promise.all([
+      this.prisma.version.count({ where }),
+      this.prisma.version.findMany({
+        orderBy: [
+          { sortOrder: 'asc' },
+          { publishedAt: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        select: versionSelect(),
+        skip,
+        take,
+        where,
+      }),
+    ]);
+
+    return {
+      totalHits,
+      versions: versions.map(versionRowToContract),
+    };
   }
 
   async updateVersion(
@@ -181,13 +250,32 @@ function versionUpdateData(
       ? {}
       : { featured: input.featured }),
     ...(input.name === undefined ? {} : { name: input.name?.trim() ?? '' }),
+    ...(input.requestedStatus === undefined
+      ? {}
+      : {
+          requestedStatus:
+            input.requestedStatus === null
+              ? null
+              : versionStatus(input.requestedStatus),
+        }),
     ...(input.sortOrder === undefined || input.sortOrder === null
       ? {}
       : { sortOrder: input.sortOrder }),
+    ...(input.status === undefined || input.status === null
+      ? {}
+      : { status: versionStatus(input.status) }),
     ...(input.versionNumber === undefined
       ? {}
       : { versionNumber: input.versionNumber?.trim() ?? '' }),
   };
+}
+
+function versionStatus(value: string): VersionStatus {
+  if (Object.values(VersionStatus).includes(value as VersionStatus)) {
+    return value as VersionStatus;
+  }
+
+  throw new BadRequestException('Unsupported version status');
 }
 
 async function createVersionFiles(
@@ -258,6 +346,11 @@ function uniqueNormalized(values: readonly string[]): string[] {
         .filter((value) => value.length > 0),
     ),
   ];
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function nullableTrim(value: string | null | undefined): string | null {

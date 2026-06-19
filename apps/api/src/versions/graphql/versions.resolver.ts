@@ -55,6 +55,19 @@ export class VersionsResolver {
     });
   }
 
+  @Query(() => VersionSearchResult)
+  async viewerProjectVersionSearch(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args() pagination?: PaginationArgs,
+  ): Promise<VersionSearchResult> {
+    return this.versionsService.findManagedProjectVersionSearch(
+      projectSlug,
+      user.id,
+      paginationOptions(pagination ?? {}),
+    );
+  }
+
   @Mutation(() => VersionSummary)
   createVersion(
     @Args('input') input: CreateVersionInput,

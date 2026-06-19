@@ -22,6 +22,7 @@ import {
   type DashboardProjectSearchResult,
   type DashboardProjectMember,
   type DashboardVersion,
+  type DashboardVersionSearchResult,
   type GameVersionTaxonomy,
   type LicenseTaxonomy,
   type ModerationReport,
@@ -289,6 +290,16 @@ export interface CreateVersionMutationData {
 
 export interface CreateVersionMutationVariables {
   input: CreateVersionInput;
+}
+
+export interface ViewerProjectVersionSearchQueryData {
+  viewerProjectVersionSearch: DashboardVersionSearchResult;
+}
+
+export interface ViewerProjectVersionSearchQueryVariables {
+  limit: number;
+  offset: number;
+  projectSlug: string;
 }
 
 export interface UpdateVersionMutationData {

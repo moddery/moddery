@@ -451,8 +451,15 @@ export interface DashboardVersion {
   loaders: string[];
   name: string;
   projectSlug: string;
+  requestedStatus: string | null;
   sortOrder: number;
+  status: string;
   versionNumber: string;
+}
+
+export interface DashboardVersionSearchResult {
+  totalHits: number;
+  versions: DashboardVersion[];
 }
 
 export interface DashboardVersionDependency {
@@ -489,7 +496,9 @@ export interface UpdateVersionInput {
   gameVersions: string[];
   loaders: string[];
   name: string;
+  requestedStatus: string | null;
   sortOrder: number;
+  status: string;
   versionId: string;
   versionNumber: string;
 }

@@ -88,7 +88,9 @@ describe(VersionsService.name, () => {
                   channel: 'BETA',
                   featured: false,
                   name: 'Updated',
+                  requestedStatus: null,
                   sortOrder: 3,
+                  status: 'ARCHIVED',
                   versionNumber: '1.0.1',
                 }),
               ),
@@ -125,7 +127,9 @@ describe(VersionsService.name, () => {
         gameVersions: ['1.21.6'],
         loaders: ['fabric'],
         name: 'Updated',
+        requestedStatus: null,
         sortOrder: 3,
+        status: 'ARCHIVED',
         versionId: 'version-a',
         versionNumber: '1.0.1',
       },
@@ -134,7 +138,9 @@ describe(VersionsService.name, () => {
 
     expect(operations[0]).toContain('"name":"Updated"');
     expect(operations[0]).toContain('"featured":false');
+    expect(operations[0]).toContain('"requestedStatus":null');
     expect(operations[0]).toContain('"sortOrder":3');
+    expect(operations[0]).toContain('"status":"ARCHIVED"');
     expect(operations).toContain(
       'versions-delete:{"where":{"versionId":"version-a"}}',
     );
@@ -142,6 +148,47 @@ describe(VersionsService.name, () => {
       'loaders-delete:{"where":{"versionId":"version-a"}}',
     );
     expect(version.versionNumber).toBe('1.0.1');
+  });
+
+  test('loads all managed project versions regardless of status', async () => {
+    const service = createVersionsService({
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+      version: {
+        count: (query: unknown) => {
+          expect(query).toEqual({ where: { projectId: 'project-a' } });
+          return Promise.resolve(2);
+        },
+        findMany: (query: unknown) => {
+          expect(query).toMatchObject({
+            skip: 5,
+            take: 5,
+            where: { projectId: 'project-a' },
+          });
+          return Promise.resolve([
+            versionRow({ status: 'ARCHIVED', versionNumber: '0.9.0' }),
+            versionRow({ status: 'DRAFT', versionNumber: '1.0.0' }),
+          ]);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findManagedProjectVersionSearch(
+      'example',
+      'user-a',
+      { limit: 5, offset: 5 },
+    );
+
+    expect(result.totalHits).toBe(2);
+    expect(result.versions.map((version) => version.status)).toEqual([
+      'ARCHIVED',
+      'DRAFT',
+    ]);
   });
 
   test('creates approved versions for accepted project members', async () => {
@@ -285,7 +332,9 @@ function versionRow(
       url: string;
     }[];
     name: string;
+    requestedStatus: string | null;
     sortOrder: number;
+    status: string;
     versionNumber: string;
   }> = {},
 ) {
@@ -314,9 +363,9 @@ function versionRow(
     name: overrides.name ?? 'Example',
     project: { slug: 'example' },
     publishedAt: new Date('2026-01-01T00:00:00.000Z'),
-    requestedStatus: null,
+    requestedStatus: overrides.requestedStatus ?? null,
     sortOrder: overrides.sortOrder ?? 7,
-    status: 'APPROVED',
+    status: overrides.status ?? 'APPROVED',
     updatedAt: new Date('2026-01-03T00:00:00.000Z'),
     versionNumber: overrides.versionNumber ?? '1.0.0',
   };

@@ -1,19 +1,25 @@
 import { type VersionChannel } from '@moddery/shared';
 
-import { type ProjectVersion } from '../../../../lib/catalog.ts';
+import { type DashboardVersion } from '../../../../lib/dashboard.ts';
 
 export { type VersionChannel };
 
-export function versionChannelFromProjectVersion(
-  version: Pick<ProjectVersion, 'versionType'> | null,
+export const versionStatusOptions = [
+  'DRAFT',
+  'PENDING_REVIEW',
+  'APPROVED',
+  'REJECTED',
+  'ARCHIVED',
+] as const;
+
+export function versionChannelFromDashboardVersion(
+  version: Pick<DashboardVersion, 'channel'> | null,
 ): VersionChannel {
-  if (version?.versionType === 'alpha') return 'ALPHA';
-  if (version?.versionType === 'beta') return 'BETA';
-  return 'RELEASE';
+  return version?.channel ?? 'RELEASE';
 }
 
 export function versionSortOrderFieldValue(
-  version: Pick<ProjectVersion, 'sortOrder'> | null,
+  version: Pick<DashboardVersion, 'sortOrder'> | null,
 ): string {
   return String(version?.sortOrder ?? 0);
 }

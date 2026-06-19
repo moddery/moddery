@@ -1,22 +1,26 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
-  versionChannelFromProjectVersion,
+  versionChannelFromDashboardVersion,
   versionSortOrderFieldValue,
   versionSortOrderFromField,
+  versionStatusOptions,
 } from './versionChannel.ts';
 
-describe(versionChannelFromProjectVersion.name, () => {
-  test('maps public version types into dashboard channels', () => {
-    expect(versionChannelFromProjectVersion({ versionType: 'alpha' })).toBe(
-      'ALPHA',
-    );
-    expect(versionChannelFromProjectVersion({ versionType: 'beta' })).toBe(
+describe(versionChannelFromDashboardVersion.name, () => {
+  test('loads dashboard channels with a release fallback', () => {
+    expect(versionChannelFromDashboardVersion({ channel: 'BETA' })).toBe(
       'BETA',
     );
-    expect(versionChannelFromProjectVersion({ versionType: 'release' })).toBe(
-      'RELEASE',
-    );
+    expect(versionChannelFromDashboardVersion(null)).toBe('RELEASE');
+  });
+});
+
+describe('versionStatusOptions', () => {
+  test('includes the editable lifecycle states', () => {
+    expect(versionStatusOptions).toContain('DRAFT');
+    expect(versionStatusOptions).toContain('APPROVED');
+    expect(versionStatusOptions).toContain('ARCHIVED');
   });
 });
 

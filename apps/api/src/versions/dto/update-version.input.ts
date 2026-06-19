@@ -1,5 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { type VersionChannel } from '@moddery/shared';
+import { type VersionChannel, type VersionStatus } from '@moddery/shared';
 
 @InputType()
 export class UpdateVersionInput {
@@ -21,8 +21,14 @@ export class UpdateVersionInput {
   @Field(() => String, { nullable: true })
   name?: string | null;
 
+  @Field(() => String, { nullable: true })
+  requestedStatus?: VersionStatus | null;
+
   @Field(() => Int, { nullable: true })
   sortOrder?: number | null;
+
+  @Field(() => String, { nullable: true })
+  status?: VersionStatus | null;
 
   @Field(() => String)
   versionId!: string;
