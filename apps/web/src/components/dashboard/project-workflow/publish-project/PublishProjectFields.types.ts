@@ -12,6 +12,7 @@ export interface PublishProjectFieldsProps {
   disabled?: boolean;
   gameVersionOptions: GameVersionTaxonomy[];
   gameVersions: string[];
+  hasLocalIconFile: boolean;
   iconUrl: string;
   kind: CreateProjectInput['kind'];
   loaders: string[];

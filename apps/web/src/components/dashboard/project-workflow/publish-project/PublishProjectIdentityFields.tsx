@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+
 import { DashboardField } from '../shared.tsx';
 import { type PublishProjectFieldsProps } from './PublishProjectFields.types.ts';
 
@@ -6,6 +8,7 @@ type IdentityFieldsProps = Pick<
   | 'color'
   | 'description'
   | 'disabled'
+  | 'hasLocalIconFile'
   | 'iconUrl'
   | 'slug'
   | 'summary'
@@ -23,6 +26,7 @@ export function PublishProjectIdentityFields({
   color,
   description,
   disabled,
+  hasLocalIconFile,
   iconUrl,
   slug,
   summary,
@@ -35,6 +39,15 @@ export function PublishProjectIdentityFields({
   onSummaryChange,
   onTitleChange,
 }: IdentityFieldsProps) {
+  const iconInputRef = useRef<HTMLInputElement>(null);
+
+  function clearLocalIcon() {
+    if (iconInputRef.current !== null) {
+      iconInputRef.current.value = '';
+    }
+    onIconFileChange(null);
+  }
+
   return (
     <>
       <div className="grid gap-3 md:grid-cols-2">
@@ -62,7 +75,7 @@ export function PublishProjectIdentityFields({
       />
       <div className="grid gap-3 md:grid-cols-2">
         <DashboardField
-          disabled={disabled}
+          disabled={disabled || hasLocalIconFile}
           label="Icon URL"
           value={iconUrl}
           onChange={onIconUrlChange}
@@ -70,6 +83,7 @@ export function PublishProjectIdentityFields({
         <label className="grid gap-1 text-sm font-bold text-ink">
           Local icon
           <input
+            ref={iconInputRef}
             disabled={disabled}
             type="file"
             accept="image/*"
@@ -79,6 +93,18 @@ export function PublishProjectIdentityFields({
             className="h-10 rounded-lg border border-line bg-control px-3 py-2 text-sm font-bold text-ink outline-none transition-colors file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1 file:text-xs file:font-bold file:text-white hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
+        {hasLocalIconFile && (
+          <div className="flex items-end">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={clearLocalIcon}
+              className="h-10 rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Clear icon
+            </button>
+          </div>
+        )}
       </div>
       <DashboardField
         disabled={disabled}

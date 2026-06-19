@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   projectCreationReviewMessage,
   publishProjectButtonLabel,
+  shouldClearProjectIconUrl,
 } from './PublishProjectForm.tsx';
 
 describe(projectCreationReviewMessage.name, () => {
@@ -23,5 +24,17 @@ describe(publishProjectButtonLabel.name, () => {
   test('describes idle and submitting states', () => {
     expect(publishProjectButtonLabel(false)).toBe('Publish project');
     expect(publishProjectButtonLabel(true)).toBe('Publishing...');
+  });
+});
+
+describe(shouldClearProjectIconUrl.name, () => {
+  test('clears manual icon URLs when a local icon is selected', () => {
+    expect(shouldClearProjectIconUrl(new File(['icon'], 'icon.png'))).toBe(
+      true,
+    );
+  });
+
+  test('keeps manual icon URLs when a local icon is cleared', () => {
+    expect(shouldClearProjectIconUrl(null)).toBe(false);
   });
 });

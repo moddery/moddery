@@ -9,6 +9,7 @@ export function PublishProjectFields(props: PublishProjectFieldsProps) {
         color={props.color}
         description={props.description}
         disabled={props.disabled}
+        hasLocalIconFile={props.hasLocalIconFile}
         iconUrl={props.iconUrl}
         slug={props.slug}
         summary={props.summary}

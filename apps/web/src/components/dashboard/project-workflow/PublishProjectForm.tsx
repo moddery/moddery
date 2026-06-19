@@ -32,6 +32,13 @@ export function PublishProjectForm({
   const [created, setCreated] = useState<DashboardProject | null>(null);
   const [localIconFile, setLocalIconFile] = useState<File | null>(null);
 
+  function changeLocalIconFile(file: File | null) {
+    setLocalIconFile(file);
+    if (shouldClearProjectIconUrl(file)) {
+      form.fields.onIconUrlChange('');
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -88,7 +95,8 @@ export function PublishProjectForm({
           categoryOptions={categoriesQuery.data ?? []}
           disabled={submitting}
           gameVersionOptions={gameVersionsQuery.data ?? []}
-          onIconFileChange={setLocalIconFile}
+          hasLocalIconFile={localIconFile !== null}
+          onIconFileChange={changeLocalIconFile}
         />
 
         {error && (
@@ -126,4 +134,8 @@ export function projectCreationReviewMessage(
 
 export function publishProjectButtonLabel(submitting: boolean) {
   return submitting ? 'Publishing...' : 'Publish project';
+}
+
+export function shouldClearProjectIconUrl(file: File | null) {
+  return file !== null;
 }
