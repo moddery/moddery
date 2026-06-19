@@ -25,6 +25,7 @@ import { ProjectLifecycleSection } from './sidebar/ProjectLifecycleSection.tsx';
 import { ProjectLicenseSection } from './sidebar/ProjectLicenseSection.tsx';
 import { ProjectLinksSection } from './sidebar/ProjectLinksSection.tsx';
 import { ProjectMembersSection } from './sidebar/ProjectMembersSection.tsx';
+import { ProjectModerationLockSection } from './sidebar/ProjectModerationLockSection.tsx';
 import { ProjectModerationNotes } from './sidebar/ProjectModerationNotes.tsx';
 import { ProjectOwnershipSection } from './sidebar/ProjectOwnershipSection.tsx';
 import { ProjectReportSection } from './sidebar/ProjectReportSection.tsx';
@@ -100,6 +101,8 @@ export function ProjectSidebar({
       {analytics && <ProjectAnalyticsSection analytics={analytics} />}
 
       <ProjectLifecycleSection project={project} />
+
+      <ProjectModerationLockSection project={project} />
 
       <ProjectLicenseSection project={project} onTagSearch={onTagSearch} />
 

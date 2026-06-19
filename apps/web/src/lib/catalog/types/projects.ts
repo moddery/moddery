@@ -31,6 +31,7 @@ export interface ProjectDetails {
     name: string;
     url: string | null;
   };
+  moderationLock: ProjectModerationLock | null;
   downloads: number;
   followers: number;
   categories: string[];
@@ -45,6 +46,17 @@ export interface ProjectDetails {
   donationUrls: { id: string; platform: string; url: string }[];
   externalLinks: { id: string; label: string; url: string }[];
   gallery: ProjectGalleryImage[];
+}
+
+export interface ProjectModerationLock {
+  createdAt: string;
+  expiresAt: string;
+  id: string;
+  moderator: {
+    displayName: string | null;
+    id: string;
+    username: string;
+  };
 }
 
 export interface ProjectGalleryImage {
@@ -96,6 +108,7 @@ export interface ProjectSummary {
     name: string;
     url: string | null;
   };
+  moderationLock: ProjectModerationLock | null;
   links: {
     kind: string;
     label: string | null;

@@ -29,6 +29,16 @@ const PROJECT_FIELDS_FRAGMENT = gql`
       name
       url
     }
+    moderationLock {
+      createdAt
+      expiresAt
+      id
+      moderator {
+        displayName
+        id
+        username
+      }
+    }
     links {
       kind
       label

@@ -74,6 +74,7 @@ function projectFixture(patch: Partial<ProjectDetails> = {}): ProjectDetails {
     issuesUrl: null,
     license: { id: 'mit', name: 'MIT', url: null },
     loaders: [],
+    moderationLock: null,
     organization: null,
     projectType: 'mod',
     published: '2026-01-01T00:00:00.000Z',

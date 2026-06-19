@@ -102,6 +102,7 @@ export function projectDetailsFromSummary(
     issuesUrl,
     license: project.license,
     loaders: mod.loaders,
+    moderationLock: project.moderationLock,
     organization: mod.organization ?? null,
     projectType: mod.projectType ?? 'mod',
     approvedAt: project.approvedAt,
