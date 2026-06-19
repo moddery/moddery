@@ -1,4 +1,4 @@
-FROM oven/bun:1.1.42-alpine AS deps
+FROM oven/bun:1.1.42 AS deps
 WORKDIR /app
 COPY package.json bun.lockb* ./
 COPY apps/api/package.json apps/api/package.json
@@ -13,7 +13,7 @@ RUN bun run --filter @moddery/api build
 
 FROM deps AS dev
 
-FROM oven/bun:1.1.42-alpine AS runtime
+FROM oven/bun:1.1.42 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
