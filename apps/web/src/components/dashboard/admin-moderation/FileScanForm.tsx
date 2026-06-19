@@ -55,6 +55,7 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
         className="mt-4 grid gap-3"
       >
         <FileScanSelectors
+          disabled={busy}
           fileId={form.fileId}
           files={form.files}
           projectSlug={form.projectSlug}
@@ -69,6 +70,7 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
         <FileScanSelectedFileSummary file={form.selectedFile} />
         <FileScanResultFields
           details={form.details}
+          disabled={busy}
           status={form.status}
           verdict={form.verdict}
           onDetailsChange={form.onDetailsChange}
@@ -81,7 +83,7 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
             disabled={busy || form.selectedFile === undefined}
             className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Record scan
+            {fileScanSubmitLabel(busy)}
           </button>
           {message && (
             <span className="text-sm font-semibold text-muted">{message}</span>
@@ -90,4 +92,8 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
       </form>
     </section>
   );
+}
+
+export function fileScanSubmitLabel(busy: boolean) {
+  return busy ? 'Recording...' : 'Record scan';
 }

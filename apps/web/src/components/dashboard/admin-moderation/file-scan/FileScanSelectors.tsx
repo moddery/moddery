@@ -5,6 +5,7 @@ import {
 } from '../../../../lib/catalog.ts';
 
 export function FileScanSelectors({
+  disabled,
   fileId,
   files,
   projectSlug,
@@ -16,6 +17,7 @@ export function FileScanSelectors({
   onProjectChange,
   onVersionChange,
 }: {
+  disabled?: boolean;
   fileId: string;
   files: ProjectFile[];
   projectSlug: string;
@@ -32,9 +34,10 @@ export function FileScanSelectors({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Project
         <select
+          disabled={disabled}
           value={projectSlug}
           onChange={(event) => onProjectChange(event.target.value)}
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           {projects.map((project) => (
             <option key={project.slug} value={project.slug}>
@@ -46,9 +49,10 @@ export function FileScanSelectors({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Version
         <select
+          disabled={disabled}
           value={selectedVersion?.id ?? versionId}
           onChange={(event) => onVersionChange(event.target.value)}
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           {versions.map((version) => (
             <option key={version.id} value={version.id}>
@@ -60,9 +64,10 @@ export function FileScanSelectors({
       <label className="grid gap-1 text-sm font-bold text-ink">
         File
         <select
+          disabled={disabled}
           value={fileId}
           onChange={(event) => onFileChange(event.target.value)}
-          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+          className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
           {files.map((file) => (
             <option key={file.id} value={file.id}>
