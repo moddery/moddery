@@ -4,7 +4,22 @@ import { CollectionSummary } from '../../collections/graphql/collection-summary.
 import { ProjectSummary } from '../../catalog/graphql/project-summary.model.js';
 
 @ObjectType()
+export class UserAuthAccountSummary {
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  provider!: string;
+}
+
+@ObjectType()
 export class UserProfile {
+  @Field(() => [UserAuthAccountSummary])
+  authAccounts!: UserAuthAccountSummary[];
+
   @Field(() => String, { nullable: true })
   avatarUrl!: string | null;
 

@@ -6,6 +6,11 @@ export const DASHBOARD_QUERY = gql`
 
   query Dashboard {
     viewer {
+      authAccounts {
+        createdAt
+        id
+        provider
+      }
       avatarUrl
       bio
       collectionCount

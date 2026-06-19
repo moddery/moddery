@@ -62,6 +62,11 @@ export interface UserProfileRow {
     projectFollows: number;
     teamMemberships: number;
   };
+  authAccounts?: {
+    createdAt: Date;
+    id: string;
+    provider: string;
+  }[];
   avatarUrl: string | null;
   bio: string | null;
   collections: UserCollectionRow[];
@@ -156,6 +161,14 @@ export function userProfileSelect({
             team: { project: { is: { status: 'APPROVED' as const } } },
           },
         },
+      },
+    },
+    authAccounts: {
+      orderBy: [{ createdAt: 'desc' as const }],
+      select: {
+        createdAt: true,
+        id: true,
+        provider: true,
       },
     },
     avatarUrl: true,
@@ -373,6 +386,13 @@ export function userProfileRowToContract(
   );
 
   return {
+    authAccounts: includePrivateAccountFields
+      ? (user.authAccounts ?? []).map((account) => ({
+          createdAt: account.createdAt,
+          id: account.id,
+          provider: account.provider,
+        }))
+      : [],
     avatarUrl: user.avatarUrl,
     bio: user.bio,
     collectionCount: user._count.collections,

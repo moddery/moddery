@@ -68,7 +68,7 @@ export function DashboardSections({
         dashboard={dashboard}
         onUpdated={onUpdated}
       />
-      <DashboardSecuritySection />
+      <DashboardSecuritySection dashboard={dashboard} />
       <DashboardContentSection dashboard={dashboard} onUpdated={onUpdated} />
       <DashboardProjectsSection dashboard={dashboard} onUpdated={onUpdated} />
       <DashboardCollectionsSection
@@ -118,10 +118,10 @@ function DashboardAccountSection({
   );
 }
 
-function DashboardSecuritySection() {
+function DashboardSecuritySection({ dashboard }: { dashboard: DashboardData }) {
   return (
     <section id="dashboard-security" className="scroll-mt-32">
-      <AccountSecurityPanels />
+      <AccountSecurityPanels dashboard={dashboard} />
     </section>
   );
 }

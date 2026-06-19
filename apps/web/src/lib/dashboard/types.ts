@@ -10,6 +10,7 @@ import {
 export * from './types/account.js';
 
 export interface DashboardData {
+  authAccounts: DashboardAuthAccount[];
   avatarUrl: string | null;
   bio: string | null;
   collectionCount: number;
@@ -29,6 +30,12 @@ export interface DashboardData {
   status: AccountStatus;
   twoFactorEnabled: boolean;
   username: string;
+}
+
+export interface DashboardAuthAccount {
+  createdAt: string;
+  id: string;
+  provider: string;
 }
 
 export interface AdminUserAccount {
