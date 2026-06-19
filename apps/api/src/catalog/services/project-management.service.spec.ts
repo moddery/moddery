@@ -246,6 +246,62 @@ describe(ProjectManagementService.name, () => {
     );
   });
 
+  test('rejects missing project selectors before update lookups', async () => {
+    const service = createProjectManagementService(
+      {
+        project: {
+          findFirst: () => {
+            throw new Error('Project lookup should not run');
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.updateProject({ projectSlug: ' ' }, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project is required');
+  });
+
+  test('rejects blank project identity updates before database writes', async () => {
+    const service = createProjectManagementService(
+      {
+        project: {
+          findFirst: () => {
+            throw new Error('Project lookup should not run');
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.updateProject(
+        {
+          projectSlug: 'example',
+          summary: ' ',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project summary is required');
+  });
+
   test('updates managed project metadata and reindexes search', async () => {
     const operations: string[] = [];
     const indexed: unknown[] = [];

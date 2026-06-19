@@ -130,6 +130,7 @@ export class ProjectManagementService {
     input: UpdateProjectInput,
     userId: string,
   ): Promise<ProjectSummaryContract> {
+    validateProjectUpdateIdentity(input);
     validateProjectMetadataLimits(input);
     const existing = await this.findManagedProject(input.projectSlug, userId);
 
@@ -174,7 +175,7 @@ export class ProjectManagementService {
     const project = await this.prisma.project.findFirst({
       select: { id: true },
       where: {
-        slug: projectSlug,
+        slug: projectSlug.trim(),
         team: {
           members: {
             some: {
@@ -215,6 +216,30 @@ function validateProjectIdentity(
   }
 
   if (input.description.trim().length === 0) {
+    throw new BadRequestException('Project description is required');
+  }
+}
+
+function validateProjectUpdateIdentity(input: UpdateProjectInput): void {
+  if (input.projectSlug.trim().length === 0) {
+    throw new BadRequestException('Project is required');
+  }
+
+  if (input.title !== undefined && (input.title?.trim() ?? '').length === 0) {
+    throw new BadRequestException('Project title is required');
+  }
+
+  if (
+    input.summary !== undefined &&
+    (input.summary?.trim() ?? '').length === 0
+  ) {
+    throw new BadRequestException('Project summary is required');
+  }
+
+  if (
+    input.description !== undefined &&
+    (input.description?.trim() ?? '').length === 0
+  ) {
     throw new BadRequestException('Project description is required');
   }
 }
