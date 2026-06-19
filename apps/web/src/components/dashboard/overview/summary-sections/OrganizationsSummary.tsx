@@ -1,5 +1,6 @@
 import { type DashboardData } from '../../../../lib/dashboard.ts';
 import { OrganizationRow } from '../../ContentManagementPanels.tsx';
+import { organizationSummaryTotal } from './organization-summary-total.ts';
 
 export function OrganizationsSummary({
   dashboard,
@@ -8,6 +9,8 @@ export function OrganizationsSummary({
   dashboard: DashboardData;
   onOpenOrganization?: (slug: string) => void;
 }) {
+  const total = organizationSummaryTotal(dashboard);
+
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
@@ -15,7 +18,7 @@ export function OrganizationsSummary({
           Organizations
         </h2>
         <span className="text-sm font-semibold text-muted">
-          {dashboard.organizations.length.toLocaleString('en-US')} total
+          {total.toLocaleString('en-US')} total
         </span>
       </div>
 
