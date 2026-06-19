@@ -142,13 +142,18 @@ export interface UserCollectionSearchResultContract {
 export function userProfileSelect({
   includePrivateAccountFields,
   includePrivateCollections,
+  includePrivateProjects,
 }: {
   includePrivateAccountFields: boolean;
   includePrivateCollections: boolean;
+  includePrivateProjects: boolean;
 }) {
   const collectionVisibilityFilter = includePrivateCollections
     ? undefined
     : { visibility: 'PUBLIC' as const };
+  const projectVisibilityFilter = includePrivateProjects
+    ? undefined
+    : { team: { project: { is: { status: 'APPROVED' as const } } } };
 
   return {
     _count: {
@@ -161,7 +166,7 @@ export function userProfileSelect({
         teamMemberships: {
           where: {
             acceptedAt: { not: null },
-            team: { project: { is: { status: 'APPROVED' as const } } },
+            ...projectVisibilityFilter,
           },
         },
       },
@@ -204,7 +209,7 @@ export function userProfileSelect({
       take: 8,
       where: {
         acceptedAt: { not: null },
-        team: { project: { is: { status: 'APPROVED' as const } } },
+        ...projectVisibilityFilter,
       },
     },
     twoFactorEnabled: includePrivateAccountFields,

@@ -16,6 +16,7 @@ export class UsersService {
       select: userProfileSelect({
         includePrivateAccountFields: true,
         includePrivateCollections: true,
+        includePrivateProjects: true,
       }),
       where: { id },
     });
@@ -30,6 +31,7 @@ export class UsersService {
       select: userProfileSelect({
         includePrivateAccountFields: false,
         includePrivateCollections: false,
+        includePrivateProjects: false,
       }),
       where: { username: { equals: username, mode: 'insensitive' } },
     });

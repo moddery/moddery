@@ -40,6 +40,7 @@ export class UserAdminService {
         select: userProfileSelect({
           includePrivateAccountFields: true,
           includePrivateCollections: true,
+          includePrivateProjects: true,
         }),
         skip,
         take,
@@ -94,6 +95,7 @@ export class UserAdminService {
       select: userProfileSelect({
         includePrivateAccountFields: true,
         includePrivateCollections: true,
+        includePrivateProjects: true,
       }),
       where: { id: input.userId },
     });

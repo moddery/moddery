@@ -37,6 +37,7 @@ export class UserDirectoryService {
         select: userProfileSelect({
           includePrivateAccountFields: false,
           includePrivateCollections: false,
+          includePrivateProjects: false,
         }),
         skip,
         take,

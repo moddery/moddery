@@ -3,7 +3,44 @@ import { describe, expect, test } from 'bun:test';
 import {
   projectViewerCapabilities,
   userProjectMembershipSelect,
+  userProfileSelect,
 } from './user-read-model.js';
+
+describe(userProfileSelect.name, () => {
+  test('includes every accepted project membership for private dashboard reads', () => {
+    const select = userProfileSelect({
+      includePrivateAccountFields: true,
+      includePrivateCollections: true,
+      includePrivateProjects: true,
+    });
+
+    expect(select._count.select.teamMemberships).toEqual({
+      where: { acceptedAt: { not: null } },
+    });
+    expect(select.teamMemberships.where).toEqual({
+      acceptedAt: { not: null },
+    });
+  });
+
+  test('keeps public profile project reads limited to approved projects', () => {
+    const select = userProfileSelect({
+      includePrivateAccountFields: false,
+      includePrivateCollections: false,
+      includePrivateProjects: false,
+    });
+
+    expect(select._count.select.teamMemberships).toEqual({
+      where: {
+        acceptedAt: { not: null },
+        team: { project: { is: { status: 'APPROVED' } } },
+      },
+    });
+    expect(select.teamMemberships.where).toEqual({
+      acceptedAt: { not: null },
+      team: { project: { is: { status: 'APPROVED' } } },
+    });
+  });
+});
 
 describe(projectViewerCapabilities.name, () => {
   test('grants every project capability to owners', () => {
