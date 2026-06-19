@@ -98,11 +98,22 @@ export interface CollectionProjectItemSearchResultContract {
   totalHits: number;
 }
 
-export function collectionSelect(projectTake: number) {
+const publicCollectionProjectWhere = {
+  project: { status: 'APPROVED' as const },
+};
+
+export function collectionSelect(
+  projectTake: number,
+  { publicProjectsOnly = false }: { publicProjectsOnly?: boolean } = {},
+) {
+  const projectWhere = publicProjectsOnly
+    ? publicCollectionProjectWhere
+    : undefined;
+
   return {
     _count: {
       select: {
-        projects: true,
+        projects: projectWhere === undefined ? true : { where: projectWhere },
       },
     },
     color: true,
@@ -123,6 +134,7 @@ export function collectionSelect(projectTake: number) {
       orderBy: [{ sortOrder: 'asc' as const }, { createdAt: 'desc' as const }],
       select: collectionProjectItemSelect(),
       take: projectTake,
+      ...(projectWhere === undefined ? {} : { where: projectWhere }),
     },
     slug: true,
     updatedAt: true,

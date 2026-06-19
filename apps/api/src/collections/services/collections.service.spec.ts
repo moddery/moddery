@@ -106,6 +106,7 @@ describe(CollectionsService.name, () => {
   });
 
   test('adds projects to collections owned by the current user', async () => {
+    const projectLookups: unknown[] = [];
     const upserts: unknown[] = [];
     const service = new CollectionsService({
       collection: {
@@ -129,7 +130,10 @@ describe(CollectionsService.name, () => {
         },
       },
       project: {
-        findUnique: () => Promise.resolve({ id: 'project-a' }),
+        findFirst: (query: unknown) => {
+          projectLookups.push(query);
+          return Promise.resolve({ id: 'project-a' });
+        },
       },
     } as unknown as PrismaService);
 
@@ -141,6 +145,10 @@ describe(CollectionsService.name, () => {
       'user-a',
     );
 
+    expect(projectLookups[0]).toEqual({
+      select: { id: true },
+      where: { slug: 'example', status: 'APPROVED' },
+    });
     expect(upserts[0]).toEqual(
       expect.objectContaining({
         create: expect.objectContaining({
@@ -152,6 +160,37 @@ describe(CollectionsService.name, () => {
       }),
     );
     expect(collection.id).toBe('collection-a');
+  });
+
+  test('rejects non-public projects when adding collection items', async () => {
+    const service = new CollectionsService({
+      collection: {
+        findFirst: () => Promise.resolve({ id: 'collection-a' }),
+      },
+      collectionProject: {
+        upsert: () => {
+          throw new Error('Collection item should not be created');
+        },
+      },
+      project: {
+        findFirst: () => Promise.resolve(null),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.addProjectToCollection(
+        {
+          collectionId: 'collection-a',
+          projectSlug: 'queued-project',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project not found');
   });
 
   test('removes projects from collections owned by the current user', async () => {

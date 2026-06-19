@@ -35,9 +35,9 @@ export class CollectionsService {
       throw new NotFoundException('Collection not found');
     }
 
-    const project = await this.prisma.project.findUnique({
+    const project = await this.prisma.project.findFirst({
       select: { id: true },
-      where: { slug: input.projectSlug },
+      where: { slug: input.projectSlug, status: 'APPROVED' },
     });
 
     if (project === null) {

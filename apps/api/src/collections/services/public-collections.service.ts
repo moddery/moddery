@@ -31,7 +31,7 @@ export class PublicCollectionsService {
       this.prisma.collection.count({ where }),
       this.prisma.collection.findMany({
         orderBy: [{ updatedAt: 'desc' }],
-        select: collectionSelect(6),
+        select: collectionSelect(6, { publicProjectsOnly: true }),
         skip,
         take,
         where,
@@ -56,7 +56,7 @@ export class PublicCollectionsService {
 
   async findPublicCollectionBySlug(ownerUsername: string, slug: string) {
     const collection = await this.prisma.collection.findFirst({
-      select: collectionSelect(100),
+      select: collectionSelect(100, { publicProjectsOnly: true }),
       where: publicCollectionSlugWhere(ownerUsername, slug),
     });
 
@@ -81,7 +81,7 @@ export class PublicCollectionsService {
       throw new NotFoundException('Collection not found');
     }
 
-    const where = { collectionId: collection.id };
+    const where = publicCollectionProjectWhere(collection.id);
     const skip = clampInteger(offset, 0, 10_000);
     const take = clampInteger(limit, 1, 100);
     const [totalHits, items] = await Promise.all([
@@ -100,6 +100,10 @@ export class PublicCollectionsService {
       totalHits,
     };
   }
+}
+
+function publicCollectionProjectWhere(collectionId: string) {
+  return { collectionId, project: { status: 'APPROVED' as const } };
 }
 
 function publicCollectionSlugWhere(

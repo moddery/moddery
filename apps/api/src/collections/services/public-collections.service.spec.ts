@@ -20,20 +20,30 @@ describe(PublicCollectionsService.name, () => {
       'example',
     );
 
-    expect(queries[0]).toEqual(
-      expect.objectContaining({
-        where: {
-          owner: {
-            username: {
-              equals: 'Creator',
-              mode: 'insensitive',
+    expect(queries[0]).toMatchObject({
+      select: expect.objectContaining({
+        _count: {
+          select: {
+            projects: {
+              where: { project: { status: 'APPROVED' } },
             },
           },
-          slug: 'example',
-          visibility: { in: ['PUBLIC', 'UNLISTED'] },
         },
+        projects: expect.objectContaining({
+          where: { project: { status: 'APPROVED' } },
+        }),
       }),
-    );
+      where: {
+        owner: {
+          username: {
+            equals: 'Creator',
+            mode: 'insensitive',
+          },
+        },
+        slug: 'example',
+        visibility: { in: ['PUBLIC', 'UNLISTED'] },
+      },
+    });
     expect(collection.projects).toHaveLength(1);
     expect(collection.projects[0]?.owner?.username).toBe('creator');
     expect(collection.projects[0]?.organization?.slug).toBe('example-org');
@@ -87,14 +97,22 @@ describe(PublicCollectionsService.name, () => {
       },
     });
     expect(queries[1]).toEqual({
-      count: { where: { collectionId: 'collection-a' } },
+      count: {
+        where: {
+          collectionId: 'collection-a',
+          project: { status: 'APPROVED' },
+        },
+      },
     });
     expect(queries[2]).toMatchObject({
       findMany: {
         orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
         skip: 8,
         take: 8,
-        where: { collectionId: 'collection-a' },
+        where: {
+          collectionId: 'collection-a',
+          project: { status: 'APPROVED' },
+        },
       },
     });
     expect(result.totalHits).toBe(13);
@@ -153,6 +171,18 @@ describe(PublicCollectionsService.name, () => {
     });
     expect(queries[1]).toMatchObject({
       findMany: {
+        select: expect.objectContaining({
+          _count: {
+            select: {
+              projects: {
+                where: { project: { status: 'APPROVED' } },
+              },
+            },
+          },
+          projects: expect.objectContaining({
+            where: { project: { status: 'APPROVED' } },
+          }),
+        }),
         skip: 24,
         take: 12,
       },

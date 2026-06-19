@@ -674,6 +674,10 @@ async function checkCreatorFlow(): Promise<void> {
     projectSlug: slug,
     token: auth.accessToken,
   });
+  await checkQueuedProjectCollectionGuard({
+    projectSlug: slug,
+    token: auth.accessToken,
+  });
   await checkQueuedProjectReleaseGuards({
     projectSlug: slug,
     token: auth.accessToken,
@@ -1053,6 +1057,66 @@ async function checkQueuedProjectReportGuard({
     reportPayload,
     'Project not found',
     'queued project report',
+  );
+}
+
+async function checkQueuedProjectCollectionGuard({
+  projectSlug,
+  token,
+}: {
+  projectSlug: string;
+  token: string;
+}): Promise<void> {
+  const collectionPayload = await readGraphql<CreateCollectionResponse>(
+    {
+      query: `
+        mutation SmokeCreateQueuedProjectCollection($input: CreateCollectionInput!) {
+          createCollection(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          name: `Queued Collection ${projectSlug}`,
+          slug: `queued-${projectSlug}`,
+          visibility: 'PUBLIC',
+        },
+      },
+    },
+    token,
+  );
+  assertNoGraphqlErrors(
+    collectionPayload,
+    'GraphQL create queued project collection',
+  );
+
+  const collectionId = required(
+    collectionPayload.data?.createCollection,
+    'queued project collection',
+  ).id;
+  const addPayload = await readGraphql<AddProjectToCollectionResponse>(
+    {
+      query: `
+        mutation SmokeAddQueuedProjectToCollection($input: AddProjectToCollectionInput!) {
+          addProjectToCollection(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          collectionId,
+          projectSlug,
+        },
+      },
+    },
+    token,
+  );
+  assertGraphqlError(
+    addPayload,
+    'Project not found',
+    'queued project collection save',
   );
 }
 
