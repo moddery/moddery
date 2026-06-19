@@ -26,11 +26,12 @@ export async function createVersionFiles(
     });
 
     for (const hash of file.hashes ?? []) {
-      const algorithm = hashAlgorithm(hash.algorithm);
-      if (algorithm === null) continue;
+      const algorithm = normalizeHashAlgorithm(hash.algorithm);
 
       const value = hash.value.trim().toLowerCase();
-      if (value.length === 0) continue;
+      if (value.length === 0) {
+        throw new BadRequestException('Version file hash value is required');
+      }
 
       await tx.fileHash.upsert({
         create: {
@@ -91,6 +92,14 @@ export function validateVersionFiles(
         'A version file can include at most 8 hashes',
       );
     }
+
+    for (const hash of file.hashes ?? []) {
+      normalizeHashAlgorithm(hash.algorithm);
+
+      if (hash.value.trim().length === 0) {
+        throw new BadRequestException('Version file hash value is required');
+      }
+    }
   }
 }
 
@@ -111,10 +120,10 @@ function isStorageObjectUrl(url: string, publicBaseUrl: string): boolean {
   }
 }
 
-function hashAlgorithm(value: string): HashAlgorithm | null {
+function normalizeHashAlgorithm(value: string): HashAlgorithm {
   const normalized = value.trim().toUpperCase();
   if (normalized === HashAlgorithm.SHA1) return HashAlgorithm.SHA1;
   if (normalized === HashAlgorithm.SHA256) return HashAlgorithm.SHA256;
   if (normalized === HashAlgorithm.SHA512) return HashAlgorithm.SHA512;
-  return null;
+  throw new BadRequestException('Unsupported version file hash algorithm');
 }

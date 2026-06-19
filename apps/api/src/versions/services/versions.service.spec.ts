@@ -993,6 +993,80 @@ describe(VersionsService.name, () => {
       'A version file can include at most 8 hashes',
     );
   });
+
+  test('rejects unsupported version file hash algorithms before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      hashes: [{ algorithm: 'md5', value: 'abc123' }],
+    };
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Unsupported version file hash algorithm',
+    );
+  });
+
+  test('rejects blank version file hash values before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      hashes: [{ algorithm: 'sha256', value: '   ' }],
+    };
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Version file hash value is required',
+    );
+  });
 });
 
 function validCreateVersionInput() {
