@@ -37,13 +37,6 @@ export function App() {
       <NavBar
         activeType={app.projectType}
         onTypeChange={app.changeProjectType}
-        onHome={app.openHome}
-        onDiscover={app.openDiscover}
-        onCollections={app.openCollections}
-        onUsers={app.openUsers}
-        onOrganizations={app.openOrganizations}
-        onPlatform={app.openPlatform}
-        onStatus={app.openStatus}
         onDashboard={app.openDashboard}
         isDiscoverActive={
           app.appView === 'discover' || Boolean(app.selectedProject)

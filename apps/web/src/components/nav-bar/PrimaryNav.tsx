@@ -4,17 +4,12 @@ interface PrimaryNavItem {
   active: boolean;
   href: string;
   label: string;
-  onClick: () => void;
 }
 
-function PrimaryNavLink({ active, href, label, onClick }: PrimaryNavItem) {
+function PrimaryNavLink({ active, href, label }: PrimaryNavItem) {
   return (
     <a
       href={href}
-      onClick={(event) => {
-        event.preventDefault();
-        onClick();
-      }}
       className={cn(
         'border-b px-2.5 py-1.5 text-sm font-semibold transition-colors hover:border-accent-icon hover:text-ink',
         active
