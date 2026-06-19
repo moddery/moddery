@@ -126,12 +126,16 @@ export class SearchService implements OnModuleInit {
     sort,
     tags = [],
   }: SearchProjectsParams): Promise<SearchProjectsResult> {
+    const normalizedTags = normalizeSearchTags(tags);
+    const size = clampInteger(limit, 1, 100);
+    const from = clampInteger(offset, 0, 10_000);
+
     const response = await this.client.search({
       body: {
         _source: false,
         query: {
           bool: {
-            filter: tags.map((tag) => ({ term: { tags: tag } })),
+            filter: normalizedTags.map((tag) => ({ term: { tags: tag } })),
             must: [
               search === undefined || search.trim().length === 0
                 ? { match_all: {} }
@@ -144,8 +148,8 @@ export class SearchService implements OnModuleInit {
             ],
           },
         },
-        from: offset,
-        size: limit,
+        from,
+        size,
         sort: sortForProjects(sort),
       },
       index: PROJECTS_INDEX,
@@ -171,6 +175,16 @@ function searchTotal(total: number | { value?: number } | undefined): number {
   if (typeof total === 'number') return total;
 
   return total?.value ?? 0;
+}
+
+function normalizeSearchTags(tags: readonly string[]): string[] {
+  return tags.map((tag) => tag.trim()).filter(Boolean);
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function projectIndexMapping() {

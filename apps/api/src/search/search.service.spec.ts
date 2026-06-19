@@ -201,4 +201,46 @@ describe(SearchService.name, () => {
       }),
     );
   });
+
+  test('normalizes project search pagination and tag filters', async () => {
+    const searches: unknown[] = [];
+    const client = {
+      search: (query: unknown) => {
+        searches.push(query);
+        return Promise.resolve({
+          body: {
+            hits: {
+              hits: [],
+              total: 0,
+            },
+          },
+        });
+      },
+    };
+    const service = new SearchService(client as never);
+
+    await service.searchProjects({
+      limit: 1_000,
+      offset: -4,
+      tags: [' kind:MOD ', '', '   ', 'loader:fabric'],
+    });
+
+    expect(searches[0]).toEqual(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          from: 0,
+          query: {
+            bool: {
+              filter: [
+                { term: { tags: 'kind:MOD' } },
+                { term: { tags: 'loader:fabric' } },
+              ],
+              must: [{ match_all: {} }],
+            },
+          },
+          size: 100,
+        }),
+      }),
+    );
+  });
 });

@@ -92,7 +92,7 @@ export function selectedLicensesToTags(selected: Set<string>): string[] {
 }
 
 export function selectedVersionsToTags(selected: Set<string>): string[] {
-  return [...selected].map((value) => `version:${value}`);
+  return [...selected].map((value) => `game-version:${value}`);
 }
 
 function uniqueCategories(

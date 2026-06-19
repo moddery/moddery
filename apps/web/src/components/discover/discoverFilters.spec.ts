@@ -3,7 +3,10 @@ import { describe, expect, test } from 'bun:test';
 import {
   buildLicenseOptions,
   buildTagOptions,
+  selectedCategoriesToTags,
   selectedLicensesToTags,
+  selectedLoadersToTags,
+  selectedVersionsToTags,
 } from './discoverFilters.js';
 
 describe(buildLicenseOptions.name, () => {
@@ -63,6 +66,20 @@ describe(selectedLicensesToTags.name, () => {
     expect(selectedLicensesToTags(new Set(['mit', 'apache-2.0']))).toEqual([
       'license:mit',
       'license:apache-2.0',
+    ]);
+  });
+});
+
+describe('selected filter tags', () => {
+  test('formats discover filters with the backend search tag prefixes', () => {
+    expect(selectedCategoriesToTags(new Set(['optimization']))).toEqual([
+      'category:optimization',
+    ]);
+    expect(selectedLoadersToTags(new Set(['fabric']))).toEqual([
+      'loader:fabric',
+    ]);
+    expect(selectedVersionsToTags(new Set(['1.21.6']))).toEqual([
+      'game-version:1.21.6',
     ]);
   });
 });
