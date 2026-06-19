@@ -2,6 +2,7 @@ import { ACCOUNT_ROLES, ACCOUNT_STATUSES } from '@moddery/shared';
 import { UserRound } from 'lucide-react';
 import { type ReactNode } from 'react';
 
+import { userPath } from '../../../../app/routing.ts';
 import { type AdminUserAccount } from '../../../../lib/dashboard.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 import { ReportActionButton } from '../shared.tsx';
@@ -41,9 +42,12 @@ export function AdminUserRow({
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate font-display text-base font-extrabold text-ink">
+            <a
+              href={adminUserHref(user)}
+              className="block truncate font-display text-base font-extrabold text-ink transition-colors hover:text-accent"
+            >
               {displayName}
-            </p>
+            </a>
             <p className="mt-1 truncate text-xs font-semibold text-muted">
               @{user.username}
               {user.email ? ` · ${user.email}` : ''}
@@ -108,6 +112,10 @@ export function AdminUserRow({
       </div>
     </article>
   );
+}
+
+export function adminUserHref(user: Pick<AdminUserAccount, 'username'>) {
+  return userPath(user.username);
 }
 
 function AccountBadge({
