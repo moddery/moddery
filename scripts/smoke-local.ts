@@ -284,6 +284,13 @@ interface VersionsForProjectResponse {
   errors?: GraphqlError[];
 }
 
+interface VersionSearchForProjectResponse {
+  data?: {
+    versionSearchForProject?: VersionSearchResult;
+  };
+  errors?: GraphqlError[];
+}
+
 interface ProjectSummary {
   gallery?: GalleryImageSummary[];
   kind: string;
@@ -336,6 +343,11 @@ interface VersionSummary {
   projectSlug: string;
   status: string;
   versionNumber: string;
+}
+
+interface VersionSearchResult {
+  totalHits: number;
+  versions: VersionSummary[];
 }
 
 interface VersionFileScan {
@@ -1106,6 +1118,10 @@ async function checkCreatorFlow(): Promise<void> {
     'public version',
   );
   assertVersion(publicVersion, {
+    projectSlug: slug,
+    versionNumber,
+  });
+  await checkPublicVersionSearchFlow({
     projectSlug: slug,
     versionNumber,
   });
@@ -2441,6 +2457,119 @@ async function verifyUploadedVersionFile(
 
   if (!actual.every((byte, index) => byte === expected[index])) {
     throw new Error('Version file bytes did not match uploaded content');
+  }
+}
+
+async function checkPublicVersionSearchFlow(options: {
+  projectSlug: string;
+  versionNumber: string;
+}): Promise<void> {
+  const query = `
+    query SmokeVersionSearchForProject(
+      $gameVersion: String
+      $loader: String
+      $projectSlug: String!
+      $search: String
+    ) {
+      versionSearchForProject(
+        gameVersion: $gameVersion
+        limit: 5
+        loader: $loader
+        offset: 0
+        projectSlug: $projectSlug
+        search: $search
+      ) {
+        totalHits
+        versions {
+          files {
+            fileName
+            id
+            primary
+            url
+          }
+          id
+          projectSlug
+          status
+          versionNumber
+        }
+      }
+    }
+  `;
+
+  const matchingPayload = await readGraphql<VersionSearchForProjectResponse>({
+    query,
+    variables: {
+      gameVersion: '1.21.6',
+      loader: 'fabric',
+      projectSlug: options.projectSlug,
+      search: options.versionNumber,
+    },
+  });
+  assertNoGraphqlErrors(
+    matchingPayload,
+    'GraphQL version search for matching public release',
+  );
+  const matchingResult = required(
+    matchingPayload.data?.versionSearchForProject,
+    'matching version search result',
+  );
+  const matchingVersion = required(
+    matchingResult.versions.find(
+      (version) => version.versionNumber === options.versionNumber,
+    ),
+    'matching version search item',
+  );
+  assertVersion(matchingVersion, options);
+
+  const incompatibleLoaderPayload =
+    await readGraphql<VersionSearchForProjectResponse>({
+      query,
+      variables: {
+        loader: 'forge',
+        projectSlug: options.projectSlug,
+      },
+    });
+  assertNoGraphqlErrors(
+    incompatibleLoaderPayload,
+    'GraphQL version search for incompatible loader',
+  );
+  assertEmptyVersionSearchResult(
+    required(
+      incompatibleLoaderPayload.data?.versionSearchForProject,
+      'incompatible loader version search result',
+    ),
+    'incompatible loader version search',
+  );
+
+  const missingSearchPayload =
+    await readGraphql<VersionSearchForProjectResponse>({
+      query,
+      variables: {
+        projectSlug: options.projectSlug,
+        search: `missing-${options.versionNumber}`,
+      },
+    });
+  assertNoGraphqlErrors(
+    missingSearchPayload,
+    'GraphQL version search for missing text',
+  );
+  assertEmptyVersionSearchResult(
+    required(
+      missingSearchPayload.data?.versionSearchForProject,
+      'missing text version search result',
+    ),
+    'missing text version search',
+  );
+}
+
+function assertEmptyVersionSearchResult(
+  result: VersionSearchResult,
+  label: string,
+): void {
+  if (result.totalHits !== 0 || result.versions.length !== 0) {
+    throw new Error(
+      `Expected ${label} to return no versions, received ${result.totalHits.toString()} hits`,
+    );
   }
 }
 
