@@ -541,14 +541,36 @@ async function checkReadiness(): Promise<void> {
 }
 
 async function checkWeb(): Promise<void> {
-  const response = await fetch(webUrl);
+  const routes = [
+    '/',
+    '/collections',
+    '/dashboard',
+    '/mods',
+    '/modpacks',
+    '/notifications',
+    '/organizations',
+    '/platform',
+    '/plugins',
+    '/status',
+    '/users',
+  ];
+
+  for (const route of routes) {
+    await checkWebRoute(route);
+  }
+}
+
+async function checkWebRoute(route: string): Promise<void> {
+  const response = await fetch(`${webUrl}${route}`);
   if (!response.ok) {
-    throw new Error(`Web returned ${response.status.toString()}`);
+    throw new Error(
+      `Web route ${route} returned ${response.status.toString()}`,
+    );
   }
 
   const body = await response.text();
   if (!body.includes('<html') || !body.includes('id="root"')) {
-    throw new Error('Web response did not look like the app shell');
+    throw new Error(`Web route ${route} did not look like the app shell`);
   }
 }
 
