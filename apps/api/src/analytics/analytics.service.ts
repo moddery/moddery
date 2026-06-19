@@ -114,7 +114,7 @@ export class AnalyticsService implements OnModuleInit {
         id: true,
         slug: true,
       },
-      where: { slug: projectSlug },
+      where: { slug: projectSlug, status: 'APPROVED' },
     });
 
     if (project === null) {
@@ -145,14 +145,23 @@ export class AnalyticsService implements OnModuleInit {
         version: {
           select: {
             id: true,
-            projectId: true,
+            project: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+            status: true,
           },
         },
       },
       where: { id: fileId },
     });
 
-    if (file === null) {
+    if (
+      file?.version.status !== 'APPROVED' ||
+      file.version.project.status !== 'APPROVED'
+    ) {
       throw new NotFoundException('File not found');
     }
 
@@ -160,7 +169,7 @@ export class AnalyticsService implements OnModuleInit {
       this.prisma.project.update({
         data: { downloads: { increment: 1 } },
         select: { downloads: true, id: true, slug: true },
-        where: { id: file.version.projectId },
+        where: { id: file.version.project.id },
       }),
       this.prisma.version.update({
         data: { downloads: { increment: 1 } },
@@ -169,14 +178,14 @@ export class AnalyticsService implements OnModuleInit {
       }),
       this.prisma.downloadEvent.create({
         data: {
-          projectId: file.version.projectId,
+          projectId: file.version.project.id,
           versionId: file.version.id,
         },
       }),
     ]);
     await this.recordAnalyticsEvent({
       eventType: 'download',
-      projectId: file.version.projectId,
+      projectId: file.version.project.id,
       versionId: file.version.id,
     });
     await Promise.all([

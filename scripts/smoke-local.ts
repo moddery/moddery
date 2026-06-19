@@ -662,6 +662,7 @@ async function checkCreatorFlow(): Promise<void> {
   if (publicPayload.data.projectBySlug !== null) {
     throw new Error('Queued project was visible before moderation approval');
   }
+  await checkQueuedProjectAnalyticsGuard(slug);
   await checkQueuedProjectReleaseGuards({
     projectSlug: slug,
     token: auth.accessToken,
@@ -793,6 +794,9 @@ async function checkCreatorFlow(): Promise<void> {
       `Created version should be queued, received ${createdVersion.status}`,
     );
   }
+  await checkQueuedVersionDownloadGuard(
+    required(createdVersion.files[0], 'queued version file').id,
+  );
 
   const approvedVersion = await approveSmokeVersion(
     createdVersion.id,
@@ -978,6 +982,52 @@ async function checkReviewNotification(options: {
   if (notification === undefined) {
     throw new Error(`Missing ${options.title} creator notification`);
   }
+}
+
+async function checkQueuedProjectAnalyticsGuard(
+  projectSlug: string,
+): Promise<void> {
+  const viewPayload = await readGraphql<RecordProjectViewResponse>({
+    query: `
+      mutation SmokeRecordQueuedProjectView($input: RecordProjectViewInput!) {
+        recordProjectView(input: $input) {
+          projectSlug
+        }
+      }
+    `,
+    variables: {
+      input: {
+        projectSlug,
+      },
+    },
+  });
+  assertGraphqlError(
+    viewPayload,
+    'Project not found',
+    'queued project view analytics',
+  );
+}
+
+async function checkQueuedVersionDownloadGuard(fileId: string): Promise<void> {
+  const downloadPayload = await readGraphql<RecordDownloadResponse>({
+    query: `
+      mutation SmokeRecordQueuedVersionDownload($input: RecordDownloadInput!) {
+        recordDownload(input: $input) {
+          fileId
+        }
+      }
+    `,
+    variables: {
+      input: {
+        fileId,
+      },
+    },
+  });
+  assertGraphqlError(
+    downloadPayload,
+    'File not found',
+    'queued version download analytics',
+  );
 }
 
 async function checkQueuedProjectReleaseGuards(options: {

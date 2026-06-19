@@ -123,7 +123,11 @@ describe(AnalyticsService.name, () => {
               id: 'file-a',
               version: {
                 id: 'version-a',
-                projectId: 'project-a',
+                project: {
+                  id: 'project-a',
+                  status: 'APPROVED',
+                },
+                status: 'APPROVED',
               },
             }),
         },
@@ -187,6 +191,44 @@ describe(AnalyticsService.name, () => {
     });
   });
 
+  test('rejects download analytics for non-public files', async () => {
+    const service = new AnalyticsService(
+      {
+        command: () => Promise.resolve(),
+      } as never,
+      {
+        $transaction: () => {
+          throw new Error('Download counters should not update');
+        },
+        versionFile: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'file-a',
+              version: {
+                id: 'version-a',
+                project: {
+                  id: 'project-a',
+                  status: 'APPROVED',
+                },
+                status: 'PENDING_REVIEW',
+              },
+            }),
+        },
+      } as unknown as PrismaService,
+      { delete: () => Promise.resolve() } as never,
+      { updateProjectDownloads: () => Promise.resolve() } as never,
+    );
+
+    let caught: unknown;
+    try {
+      await service.recordDownload('file-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'File not found');
+  });
+
   test('records project view events by slug', async () => {
     const creates: unknown[] = [];
     const inserts: unknown[] = [];
@@ -242,5 +284,48 @@ describe(AnalyticsService.name, () => {
         },
       ],
     });
+  });
+
+  test('looks up project views through public projects only', async () => {
+    const queries: unknown[] = [];
+    const service = new AnalyticsService(
+      {
+        command: () => Promise.resolve(),
+      } as never,
+      {
+        project: {
+          findUnique: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve(null);
+          },
+        },
+        projectViewEvent: {
+          create: () => {
+            throw new Error('Project view should not be recorded');
+          },
+        },
+      } as unknown as PrismaService,
+      { delete: () => Promise.resolve() } as never,
+      { updateProjectDownloads: () => Promise.resolve() } as never,
+    );
+
+    let caught: unknown;
+    try {
+      await service.recordProjectView('queued-project');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(queries[0]).toEqual({
+      select: {
+        id: true,
+        slug: true,
+      },
+      where: {
+        slug: 'queued-project',
+        status: 'APPROVED',
+      },
+    });
+    expect(caught).toHaveProperty('message', 'Project not found');
   });
 });
