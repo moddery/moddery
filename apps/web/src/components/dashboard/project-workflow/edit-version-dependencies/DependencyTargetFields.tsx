@@ -4,7 +4,12 @@ import { useId } from 'react';
 import { type DashboardData } from '../../../../lib/dashboard.ts';
 import { fetchProjectVersions } from '../../../../lib/catalog.ts';
 import { DashboardField } from '../shared.tsx';
-import { type DependencyDraft } from './useVersionDependencyFormState.ts';
+import {
+  dependencyExternalFilePatch,
+  dependencyProjectPatch,
+  dependencyVersionPatch,
+  type DependencyDraft,
+} from './useVersionDependencyFormState.ts';
 
 export function DependencyTargetFields({
   dependency,
@@ -22,8 +27,9 @@ export function DependencyTargetFields({
 }) {
   const projectListId = useId();
   const targetProjectSlug = dependency.targetProjectSlug.trim();
+  const hasExternalFileTarget = dependency.externalFileName.trim().length > 0;
   const versionsQuery = useQuery({
-    enabled: targetProjectSlug.length > 0,
+    enabled: targetProjectSlug.length > 0 && !hasExternalFileTarget,
     queryFn: ({ signal }) => fetchProjectVersions(targetProjectSlug, signal),
     queryKey: ['dashboard', 'dependency-target-versions', targetProjectSlug],
   });
@@ -40,14 +46,14 @@ export function DependencyTargetFields({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Target project slug
         <input
-          disabled={disabled}
+          disabled={disabled || hasExternalFileTarget}
           list={projectListId}
           value={dependency.targetProjectSlug}
           onChange={(event) =>
-            onUpdateDependency(dependency.key, {
-              targetProjectSlug: event.target.value,
-              targetVersionId: '',
-            })
+            onUpdateDependency(
+              dependency.key,
+              dependencyProjectPatch(event.target.value),
+            )
           }
           className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         />
@@ -66,14 +72,16 @@ export function DependencyTargetFields({
           value={dependency.targetVersionId}
           disabled={
             disabled ||
+            hasExternalFileTarget ||
             targetProjectSlug.length === 0 ||
             versionsQuery.isLoading ||
             versionsQuery.isError
           }
           onChange={(event) =>
-            onUpdateDependency(dependency.key, {
-              targetVersionId: event.target.value,
-            })
+            onUpdateDependency(
+              dependency.key,
+              dependencyVersionPatch(event.target.value),
+            )
           }
           className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -104,9 +112,7 @@ export function DependencyTargetFields({
         label="External file"
         value={dependency.externalFileName}
         onChange={(value) =>
-          onUpdateDependency(dependency.key, {
-            externalFileName: value,
-          })
+          onUpdateDependency(dependency.key, dependencyExternalFilePatch(value))
         }
       />
     </div>

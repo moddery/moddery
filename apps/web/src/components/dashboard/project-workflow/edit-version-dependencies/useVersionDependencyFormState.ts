@@ -20,6 +20,43 @@ export interface DependencyDraft {
   targetVersionId: string;
 }
 
+type DependencyDraftPatch = Partial<Omit<DependencyDraft, 'key'>>;
+
+export function dependencyExternalFilePatch(
+  externalFileName: string,
+): DependencyDraftPatch {
+  return externalFileName.trim().length === 0
+    ? { externalFileName }
+    : {
+        externalFileName,
+        targetProjectSlug: '',
+        targetVersionId: '',
+      };
+}
+
+export function dependencyProjectPatch(
+  targetProjectSlug: string,
+): DependencyDraftPatch {
+  return targetProjectSlug.trim().length === 0
+    ? { targetProjectSlug, targetVersionId: '' }
+    : {
+        externalFileName: '',
+        targetProjectSlug,
+        targetVersionId: '',
+      };
+}
+
+export function dependencyVersionPatch(
+  targetVersionId: string,
+): DependencyDraftPatch {
+  return targetVersionId.trim().length === 0
+    ? { targetVersionId }
+    : {
+        externalFileName: '',
+        targetVersionId,
+      };
+}
+
 export function useVersionDependencyFormState(
   projects: DashboardData['projects'],
 ) {
