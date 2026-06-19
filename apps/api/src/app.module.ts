@@ -1,13 +1,17 @@
 import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { GraphQLModule } from '@nestjs/graphql';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AuthModule } from './auth/auth.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { CollectionsModule } from './collections/collections.module.js';
+import { GqlThrottlerGuard } from './common/throttling/gql-throttler.guard.js';
 import { validateEnvironment } from './config/env.validation.js';
 import { DeveloperModule } from './developer/developer.module.js';
 import { HealthModule } from './health/health.module.js';
@@ -33,10 +37,22 @@ import { VersionsModule } from './versions/versions.module.js';
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       autoSchemaFile: true,
-      context: ({ req }: { req: unknown }) => ({ req }),
+      context: ({ req, res }: { req: unknown; res: unknown }) => ({
+        req,
+        res,
+      }),
       driver: ApolloDriver,
       path: '/graphql',
       sortSchema: true,
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          limit: config.getOrThrow<number>('app.rateLimitRequests'),
+          ttl: config.getOrThrow<number>('app.rateLimitTtlSeconds') * 1000,
+        },
+      ],
     }),
     AuthModule,
     AnalyticsModule,
@@ -57,6 +73,12 @@ import { VersionsModule } from './versions/versions.module.js';
     TeamsModule,
     UsersModule,
     VersionsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: GqlThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

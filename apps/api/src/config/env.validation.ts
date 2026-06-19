@@ -39,6 +39,8 @@ const envSchema = z.object({
     .enum(['development', 'test', 'production'])
     .default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
+  RATE_LIMIT_REQUESTS: z.coerce.number().int().positive().default(300),
+  RATE_LIMIT_TTL_SECONDS: z.coerce.number().int().positive().default(60),
   REDIS_URL: z.string().url(),
   S3_ACCESS_KEY_ID: z.string().min(1),
   S3_BUCKET: z.string().min(1),
@@ -63,6 +65,8 @@ export function validateEnvironment(): {
     jwtAccessTokenTtlSeconds: Environment['JWT_ACCESS_TOKEN_TTL_SECONDS'];
     nodeEnv: Environment['NODE_ENV'];
     port: Environment['PORT'];
+    rateLimitRequests: Environment['RATE_LIMIT_REQUESTS'];
+    rateLimitTtlSeconds: Environment['RATE_LIMIT_TTL_SECONDS'];
   };
   database: {
     url: Environment['DATABASE_URL'];
@@ -105,6 +109,8 @@ export function validateEnvironment(): {
       jwtAccessTokenTtlSeconds: env.JWT_ACCESS_TOKEN_TTL_SECONDS,
       nodeEnv: env.NODE_ENV,
       port: env.PORT,
+      rateLimitRequests: env.RATE_LIMIT_REQUESTS,
+      rateLimitTtlSeconds: env.RATE_LIMIT_TTL_SECONDS,
     },
     database: {
       url: env.DATABASE_URL,

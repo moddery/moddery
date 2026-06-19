@@ -1,4 +1,5 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser } from '../decorators/current-user.decorator.js';
 import { ConfirmEmailVerificationInput } from '../dto/confirm-email-verification.input.js';
@@ -36,6 +37,7 @@ export class AuthResolver {
   ) {}
 
   @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Mutation(() => AuthPayload)
   login(@Args('input') input: LoginInput, @Context('req') request: GqlRequest) {
     return this.authService.login(input, requestMetadata(request));
@@ -76,6 +78,7 @@ export class AuthResolver {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Mutation(() => AuthPayload)
   register(
     @Args('input') input: RegisterInput,
@@ -85,12 +88,14 @@ export class AuthResolver {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Mutation(() => Boolean)
   requestPasswordReset(@Args('input') input: RequestPasswordResetInput) {
     return this.authService.requestPasswordReset(input);
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Mutation(() => Boolean)
   confirmPasswordReset(@Args('input') input: ConfirmPasswordResetInput) {
     return this.authService.confirmPasswordReset(input);
@@ -102,6 +107,7 @@ export class AuthResolver {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Mutation(() => Boolean)
   confirmEmailVerification(
     @Args('input') input: ConfirmEmailVerificationInput,
