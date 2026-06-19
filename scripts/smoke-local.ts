@@ -167,6 +167,13 @@ interface CreateProjectReportResponse {
   errors?: GraphqlError[];
 }
 
+interface CreateVersionReportResponse {
+  data?: {
+    createVersionReport?: ReportSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface RecordProjectViewResponse {
   data?: {
     recordProjectView?: ProjectViewRecord;
@@ -663,6 +670,10 @@ async function checkCreatorFlow(): Promise<void> {
     throw new Error('Queued project was visible before moderation approval');
   }
   await checkQueuedProjectAnalyticsGuard(slug);
+  await checkQueuedProjectReportGuard({
+    projectSlug: slug,
+    token: auth.accessToken,
+  });
   await checkQueuedProjectReleaseGuards({
     projectSlug: slug,
     token: auth.accessToken,
@@ -797,6 +808,10 @@ async function checkCreatorFlow(): Promise<void> {
   await checkQueuedVersionDownloadGuard(
     required(createdVersion.files[0], 'queued version file').id,
   );
+  await checkQueuedVersionReportGuard({
+    token: auth.accessToken,
+    versionId: createdVersion.id,
+  });
 
   const approvedVersion = await approveSmokeVersion(
     createdVersion.id,
@@ -1008,6 +1023,39 @@ async function checkQueuedProjectAnalyticsGuard(
   );
 }
 
+async function checkQueuedProjectReportGuard({
+  projectSlug,
+  token,
+}: {
+  projectSlug: string;
+  token: string;
+}): Promise<void> {
+  const reportPayload = await readGraphql<CreateProjectReportResponse>(
+    {
+      query: `
+        mutation SmokeReportQueuedProject($input: CreateProjectReportInput!) {
+          createProjectReport(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          body: 'Queued project should not be reportable',
+          projectSlug,
+          reason: 'BROKEN_OR_MISLEADING',
+        },
+      },
+    },
+    token,
+  );
+  assertGraphqlError(
+    reportPayload,
+    'Project not found',
+    'queued project report',
+  );
+}
+
 async function checkQueuedVersionDownloadGuard(fileId: string): Promise<void> {
   const downloadPayload = await readGraphql<RecordDownloadResponse>({
     query: `
@@ -1027,6 +1075,39 @@ async function checkQueuedVersionDownloadGuard(fileId: string): Promise<void> {
     downloadPayload,
     'File not found',
     'queued version download analytics',
+  );
+}
+
+async function checkQueuedVersionReportGuard({
+  token,
+  versionId,
+}: {
+  token: string;
+  versionId: string;
+}): Promise<void> {
+  const reportPayload = await readGraphql<CreateVersionReportResponse>(
+    {
+      query: `
+        mutation SmokeReportQueuedVersion($input: CreateVersionReportInput!) {
+          createVersionReport(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          body: 'Queued release should not be reportable',
+          reason: 'BROKEN_OR_MISLEADING',
+          versionId,
+        },
+      },
+    },
+    token,
+  );
+  assertGraphqlError(
+    reportPayload,
+    'Version not found',
+    'queued version report',
   );
 }
 

@@ -234,9 +234,13 @@ describe(ReportsService.name, () => {
 
   test('creates project reports against existing projects', async () => {
     const creates: unknown[] = [];
+    const lookups: unknown[] = [];
     const service = createReportsService({
       project: {
-        findUnique: () => Promise.resolve({ id: 'project-a' }),
+        findFirst: (query: unknown) => {
+          lookups.push(query);
+          return Promise.resolve({ id: 'project-a' });
+        },
       },
       report: {
         create: (query: unknown) => {
@@ -276,6 +280,10 @@ describe(ReportsService.name, () => {
       reporterId: 'user-a',
     });
 
+    expect(lookups[0]).toEqual({
+      select: { id: true },
+      where: { slug: 'iris', status: 'APPROVED' },
+    });
     expect(creates[0]).toEqual({
       data: {
         body: 'Broken file',
@@ -292,7 +300,7 @@ describe(ReportsService.name, () => {
   test('rejects invalid project report inputs before lookups', async () => {
     const service = createReportsService({
       project: {
-        findUnique: () => {
+        findFirst: () => {
           throw new Error('Project lookup should not run');
         },
       },
@@ -313,8 +321,36 @@ describe(ReportsService.name, () => {
     expect(caught).toHaveProperty('message', 'Report body is required');
   });
 
+  test('rejects project reports against non-public projects', async () => {
+    const service = createReportsService({
+      project: {
+        findFirst: () => Promise.resolve(null),
+      },
+      report: {
+        create: () => {
+          throw new Error('Report creation should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createProjectReport({
+        body: 'Broken file',
+        projectSlug: 'queued-project',
+        reason: 'BROKEN_OR_MISLEADING',
+        reporterId: 'user-a',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project not found');
+  });
+
   test('creates version reports against existing versions', async () => {
     const creates: unknown[] = [];
+    const lookups: unknown[] = [];
     const service = createReportsService({
       report: {
         create: (query: unknown) => {
@@ -351,7 +387,10 @@ describe(ReportsService.name, () => {
         },
       },
       version: {
-        findUnique: () => Promise.resolve({ id: 'version-a' }),
+        findFirst: (query: unknown) => {
+          lookups.push(query);
+          return Promise.resolve({ id: 'version-a' });
+        },
       },
     } as unknown as PrismaService);
 
@@ -362,6 +401,14 @@ describe(ReportsService.name, () => {
       versionId: 'version-a',
     });
 
+    expect(lookups[0]).toEqual({
+      select: { id: true },
+      where: {
+        id: 'version-a',
+        project: { status: 'APPROVED' },
+        status: 'APPROVED',
+      },
+    });
     expect(creates[0]).toEqual({
       data: {
         body: 'Version crashes on launch',
@@ -378,7 +425,7 @@ describe(ReportsService.name, () => {
   test('rejects invalid version report targets before lookups', async () => {
     const service = createReportsService({
       version: {
-        findUnique: () => {
+        findFirst: () => {
           throw new Error('Version lookup should not run');
         },
       },
@@ -397,6 +444,33 @@ describe(ReportsService.name, () => {
     }
 
     expect(caught).toHaveProperty('message', 'Version is required');
+  });
+
+  test('rejects version reports against non-public versions', async () => {
+    const service = createReportsService({
+      report: {
+        create: () => {
+          throw new Error('Report creation should not run');
+        },
+      },
+      version: {
+        findFirst: () => Promise.resolve(null),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createVersionReport({
+        body: 'Version crashes on launch',
+        reason: 'BROKEN_OR_MISLEADING',
+        reporterId: 'user-a',
+        versionId: 'queued-version',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Version not found');
   });
 
   test('creates user reports against existing users', async () => {

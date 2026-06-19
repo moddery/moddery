@@ -101,9 +101,9 @@ export class ReportsService {
   }) {
     const text = requiredReportBody(body);
     const slug = requiredText(projectSlug, 'Project is required');
-    const project = await this.prisma.project.findUnique({
+    const project = await this.prisma.project.findFirst({
       select: { id: true },
-      where: { slug },
+      where: { slug, status: 'APPROVED' },
     });
 
     if (project === null) {
@@ -134,9 +134,13 @@ export class ReportsService {
   }) {
     const text = requiredReportBody(body);
     const id = requiredText(versionId, 'Version is required');
-    const version = await this.prisma.version.findUnique({
+    const version = await this.prisma.version.findFirst({
       select: { id: true },
-      where: { id },
+      where: {
+        id,
+        project: { status: 'APPROVED' },
+        status: 'APPROVED',
+      },
     });
 
     if (version === null) {
