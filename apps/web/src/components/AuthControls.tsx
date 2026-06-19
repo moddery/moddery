@@ -13,6 +13,7 @@ import {
   REQUEST_PASSWORD_RESET_MUTATION,
 } from './auth-controls/graphql.ts';
 import { SignedInControls } from './auth-controls/SignedInControls.tsx';
+import { isRejectedAuthSessionError } from './auth-controls/session-errors.ts';
 import {
   type AuthMode,
   type AuthMutationData,
@@ -43,7 +44,9 @@ export function AuthControls({
   const [resetToken, setResetToken] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const { data } = useQuery<MeQueryData>(ME_QUERY, { skip: token === null });
+  const { data, error: meError } = useQuery<MeQueryData>(ME_QUERY, {
+    skip: token === null,
+  });
   const notificationsQuery = useQuery<NotificationsQueryData>(
     NOTIFICATIONS_QUERY,
     {
@@ -72,12 +75,23 @@ export function AuthControls({
     setOpen(true);
   }, [authPromptKey, token]);
 
+  useEffect(() => {
+    if (token === null || !isRejectedAuthSessionError(meError)) return;
+    void clearStoredToken();
+  }, [meError, token]);
+
   async function saveToken(accessToken: string): Promise<void> {
     localStorage.setItem(authTokenStorageKey, accessToken);
     setToken(accessToken);
     setOpen(false);
     setError(null);
     await apolloClient.resetStore();
+  }
+
+  async function clearStoredToken(): Promise<void> {
+    localStorage.removeItem(authTokenStorageKey);
+    setToken(null);
+    await apolloClient.clearStore();
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -138,9 +152,7 @@ export function AuthControls({
   }
 
   async function logout(): Promise<void> {
-    localStorage.removeItem(authTokenStorageKey);
-    setToken(null);
-    await apolloClient.clearStore();
+    await clearStoredToken();
   }
 
   if (token !== null) {
