@@ -401,6 +401,50 @@ describe(ProjectManagementService.name, () => {
     );
   });
 
+  test('removes non-approved managed project updates from search', async () => {
+    const deleted: string[] = [];
+    const service = createProjectManagementService(
+      {
+        $transaction: (callback: (transaction: unknown) => unknown) =>
+          callback({
+            project: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  projectRow({
+                    status: 'REJECTED',
+                    title: 'Rejected Project',
+                  }),
+                ),
+              update: () => Promise.resolve({}),
+            },
+          }),
+        project: {
+          findFirst: () => Promise.resolve({ id: 'project-a' }),
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: (projectId: string) => {
+          deleted.push(projectId);
+          return Promise.resolve();
+        },
+        indexProjects: () => {
+          throw new Error('Rejected project updates should not be indexed');
+        },
+      },
+    );
+
+    const project = await service.updateProject(
+      {
+        projectSlug: 'example',
+        summary: 'Updated rejected summary',
+      },
+      'user-a',
+    );
+
+    expect(project.status).toBe('REJECTED');
+    expect(deleted).toEqual(['project-a']);
+  });
+
   test('updates managed project license and extra links', async () => {
     const operations: unknown[] = [];
     const tx = {

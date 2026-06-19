@@ -165,7 +165,13 @@ export class ProjectManagementService {
     });
 
     const contract = projectRowToContract(project);
-    await this.searchService.indexProjects([projectContractToSearch(contract)]);
+    if (contract.status === 'APPROVED') {
+      await this.searchService.indexProjects([
+        projectContractToSearch(contract),
+      ]);
+    } else {
+      await this.searchService.deleteProject(contract.id);
+    }
     await this.invalidateProjectBySlugCache(contract.slug);
 
     return contract;
