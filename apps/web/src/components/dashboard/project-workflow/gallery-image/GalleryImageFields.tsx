@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+
 import { type DashboardProject } from '../../../../lib/dashboard.ts';
 import { DashboardField } from '../shared.tsx';
 
@@ -40,6 +42,15 @@ export function GalleryImageFields({
   onSortOrderChange: (value: string) => void;
   onTitleChange: (value: string) => void;
 }) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  function clearLocalImage() {
+    if (imageInputRef.current !== null) {
+      imageInputRef.current.value = '';
+    }
+    onLocalFileChange(null);
+  }
+
   return (
     <>
       <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
@@ -75,6 +86,7 @@ export function GalleryImageFields({
         <label className="grid gap-1 text-sm font-bold text-ink">
           Local image
           <input
+            ref={imageInputRef}
             disabled={disabled}
             type="file"
             accept="image/*"
@@ -84,6 +96,18 @@ export function GalleryImageFields({
             className="h-10 rounded-lg border border-line bg-control px-3 py-2 text-sm font-bold text-ink outline-none transition-colors file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1 file:text-xs file:font-bold file:text-white hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           />
         </label>
+        {hasLocalFile && (
+          <div className="flex items-end">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={clearLocalImage}
+              className="h-10 rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Clear image
+            </button>
+          </div>
+        )}
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <label className="flex items-end gap-2 text-sm font-bold text-ink">
@@ -98,14 +122,14 @@ export function GalleryImageFields({
         </label>
       </div>
       <DashboardField
-        disabled={disabled}
+        disabled={disabled || hasLocalFile}
         label="Raw image URL"
         value={rawUrl}
         onChange={onRawUrlChange}
         required={!hasLocalFile}
       />
       <DashboardField
-        disabled={disabled}
+        disabled={disabled || hasLocalFile}
         label="Display image URL"
         value={displayUrl}
         onChange={onDisplayUrlChange}

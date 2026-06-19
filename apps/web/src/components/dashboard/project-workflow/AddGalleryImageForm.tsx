@@ -30,6 +30,17 @@ export function AddGalleryImageForm({
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
 
+  function changeLocalFile(file: File | null) {
+    setLocalFile(file);
+    if (shouldClearGalleryImageUrls(file)) {
+      setRawUrl('');
+      setDisplayUrl('');
+    }
+    if (file !== null && title.trim().length === 0) {
+      setTitle(file.name);
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -104,12 +115,7 @@ export function AddGalleryImageForm({
           onDescriptionChange={setDescription}
           onDisplayUrlChange={setDisplayUrl}
           onFeaturedChange={setFeatured}
-          onLocalFileChange={(file) => {
-            setLocalFile(file);
-            if (file !== null && title.trim().length === 0) {
-              setTitle(file.name);
-            }
-          }}
+          onLocalFileChange={changeLocalFile}
           onProjectSlugChange={(slug) => {
             setProjectSlug(slug);
             setCreated(null);
@@ -154,4 +160,8 @@ export function AddGalleryImageForm({
 
 export function addGalleryImageButtonLabel(submitting: boolean) {
   return submitting ? 'Adding...' : 'Add gallery image';
+}
+
+export function shouldClearGalleryImageUrls(file: File | null) {
+  return file !== null;
 }
