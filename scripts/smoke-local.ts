@@ -528,6 +528,11 @@ async function checkCreatorFlow(): Promise<void> {
     throw new Error('Version upload target was incomplete');
   }
 
+  const versionBytes = smokeVersionBytes(suffix);
+  const versionHash = sha256Hex(versionBytes);
+  await uploadVersionFile(uploadTarget, versionBytes);
+  await verifyUploadedVersionFile(uploadTarget.objectUrl, versionBytes);
+
   const versionNumber = `1.0.${suffix}`;
   const versionPayload = await readGraphql<CreateVersionResponse>(
     {
@@ -557,8 +562,7 @@ async function checkCreatorFlow(): Promise<void> {
               hashes: [
                 {
                   algorithm: 'SHA256',
-                  value:
-                    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                  value: versionHash,
                 },
               ],
               primary: true,
@@ -1166,6 +1170,60 @@ async function prepareVersionUpload(
   assertNoGraphqlErrors(payload, 'GraphQL prepare project upload');
 
   return required(payload.data?.prepareProjectUpload, 'project upload target');
+}
+
+function smokeVersionBytes(suffix: string): Uint8Array {
+  const content = `smoke release artifact ${suffix}\n`;
+  const bytes = new Uint8Array(128);
+  bytes.set(new TextEncoder().encode(content));
+  return bytes;
+}
+
+function sha256Hex(bytes: Uint8Array): string {
+  return new Bun.CryptoHasher('sha256').update(bytes).digest('hex');
+}
+
+async function uploadVersionFile(
+  target: ProjectUploadTarget,
+  bytes: Uint8Array,
+): Promise<void> {
+  const response = await fetch(target.uploadUrl, {
+    body: bytes,
+    headers: {
+      'content-length': bytes.byteLength.toString(),
+      'content-type': 'application/java-archive',
+    },
+    method: target.method,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Version file upload returned ${response.status.toString()}`,
+    );
+  }
+}
+
+async function verifyUploadedVersionFile(
+  objectUrl: string,
+  expected: Uint8Array,
+): Promise<void> {
+  const response = await fetch(objectUrl);
+  if (!response.ok) {
+    throw new Error(
+      `Version file download returned ${response.status.toString()}`,
+    );
+  }
+
+  const actual = new Uint8Array(await response.arrayBuffer());
+  if (actual.byteLength !== expected.byteLength) {
+    throw new Error(
+      `Version file size mismatch: expected ${expected.byteLength.toString()}, received ${actual.byteLength.toString()}`,
+    );
+  }
+
+  if (!actual.every((byte, index) => byte === expected[index])) {
+    throw new Error('Version file bytes did not match uploaded content');
+  }
 }
 
 async function checkAnalyticsFlow(options: {
