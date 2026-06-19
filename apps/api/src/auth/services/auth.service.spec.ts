@@ -136,6 +136,7 @@ describe(AuthService.name, () => {
   });
 
   test('stores request metadata when creating login sessions', async () => {
+    const userQueries: unknown[] = [];
     const sessions: unknown[] = [];
     const service = new AuthService(
       {
@@ -156,15 +157,17 @@ describe(AuthService.name, () => {
           },
         },
         user: {
-          findFirst: () =>
-            Promise.resolve({
+          findFirst: (query: unknown) => {
+            userQueries.push(query);
+            return Promise.resolve({
               id: 'user-a',
               passwordCredential: {
                 passwordHash: passwordHashFixture,
               },
               role: 'USER',
               username: 'seed',
-            }),
+            });
+          },
         },
       } as unknown as PrismaService,
     );
@@ -181,6 +184,16 @@ describe(AuthService.name, () => {
     );
 
     expect(payload.accessToken).toBe('session-token');
+    expect(userQueries[0]).toEqual({
+      include: { passwordCredential: true, totpSecret: true },
+      where: {
+        OR: [
+          { username: { equals: 'seed', mode: 'insensitive' } },
+          { email: { equals: 'seed', mode: 'insensitive' } },
+        ],
+        status: 'ACTIVE',
+      },
+    });
     expect(sessions[0]).toEqual({
       data: {
         expiresAt: expect.any(Date),

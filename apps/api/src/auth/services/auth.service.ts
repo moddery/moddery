@@ -35,6 +35,7 @@ export class AuthService {
           { username: { equals: identifier, mode: 'insensitive' } },
           { email: { equals: identifier, mode: 'insensitive' } },
         ],
+        status: 'ACTIVE',
       },
     });
 
