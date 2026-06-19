@@ -155,6 +155,10 @@ export function collectionProjectOrderButtonLabel(submitting: boolean) {
 }
 
 export function parseSortOrder(value: string): number {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : 0;
+  const trimmed = value.trim();
+  if (!/^-?\d+$/.test(trimmed)) {
+    throw new Error('Collection order must be an integer');
+  }
+
+  return Number.parseInt(trimmed, 10);
 }
