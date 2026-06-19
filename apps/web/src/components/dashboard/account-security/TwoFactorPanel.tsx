@@ -1,5 +1,5 @@
 import { ShieldCheck } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   disableTwoFactor,
@@ -8,6 +8,12 @@ import {
   type TwoFactorSetup,
 } from '../../../lib/dashboard.ts';
 import { DashboardField } from './shared.tsx';
+
+type TwoFactorBusyAction = 'disable' | 'enable' | 'setup';
+
+interface PreventableSubmitEvent {
+  preventDefault: () => void;
+}
 
 export function TwoFactorPanel({
   enabled,
@@ -18,28 +24,37 @@ export function TwoFactorPanel({
 }) {
   const [setup, setSetup] = useState<TwoFactorSetup | null>(null);
   const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<TwoFactorBusyAction | null>(
+    null,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [locallyEnabled, setLocallyEnabled] = useState(enabled);
+  const busy = busyAction !== null;
+
+  useEffect(() => {
+    setLocallyEnabled(enabled);
+  }, [enabled]);
 
   async function startSetup() {
-    setBusy(true);
+    setBusyAction('setup');
     setMessage(null);
 
     try {
       setSetup(await setupTwoFactor());
+      setMessage('Authenticator setup generated.');
     } catch (caught) {
       setMessage(
         caught instanceof Error ? caught.message : 'Two-factor setup failed',
       );
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: PreventableSubmitEvent) {
     event.preventDefault();
-    setBusy(true);
+    const action = locallyEnabled ? 'disable' : 'enable';
+    setBusyAction(action);
     setMessage(null);
 
     try {
@@ -47,12 +62,12 @@ export function TwoFactorPanel({
         await disableTwoFactor(code);
         setLocallyEnabled(false);
         setSetup(null);
-        setMessage('Two-factor authentication disabled.');
+        setMessage(twoFactorActionMessage('disable'));
       } else {
         await enableTwoFactor(code);
         setLocallyEnabled(true);
         setSetup(null);
-        setMessage('Two-factor authentication enabled.');
+        setMessage(twoFactorActionMessage('enable'));
       }
       setCode('');
       await onUpdated();
@@ -61,7 +76,7 @@ export function TwoFactorPanel({
         caught instanceof Error ? caught.message : 'Two-factor update failed',
       );
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }
 
@@ -103,7 +118,7 @@ export function TwoFactorPanel({
           onClick={() => void startSetup()}
           className="mt-4 h-10 rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Set up 2FA
+          {busyAction === 'setup' ? 'Generating setup...' : 'Set up 2FA'}
         </button>
       )}
 
@@ -113,6 +128,7 @@ export function TwoFactorPanel({
           className="mt-4 grid gap-3"
         >
           <DashboardField
+            disabled={busy}
             label="Authenticator code"
             value={code}
             onChange={setCode}
@@ -125,7 +141,7 @@ export function TwoFactorPanel({
               disabled={busy}
               className="h-10 rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {locallyEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+              {twoFactorSubmitLabel(locallyEnabled, busyAction)}
             </button>
           </div>
         </form>
@@ -136,4 +152,25 @@ export function TwoFactorPanel({
       )}
     </section>
   );
+}
+
+export function twoFactorActionMessage(action: 'disable' | 'enable') {
+  return action === 'enable'
+    ? 'Two-factor authentication enabled.'
+    : 'Two-factor authentication disabled.';
+}
+
+export function twoFactorSubmitLabel(
+  locallyEnabled: boolean,
+  busyAction: TwoFactorBusyAction | null,
+) {
+  if (busyAction === 'enable') {
+    return 'Enabling 2FA...';
+  }
+
+  if (busyAction === 'disable') {
+    return 'Disabling 2FA...';
+  }
+
+  return locallyEnabled ? 'Disable 2FA' : 'Enable 2FA';
 }
