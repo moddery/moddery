@@ -16,6 +16,9 @@ export class ProjectGalleryImage {
   featured!: boolean;
 
   @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
   rawUrl!: string;
 
   @Field(() => Int)

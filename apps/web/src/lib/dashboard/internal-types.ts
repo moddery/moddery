@@ -30,11 +30,13 @@ import {
   type ModerationReportState,
   type PrepareProjectUploadInput,
   type ProjectUploadTarget,
+  type RemoveProjectGalleryImageInput,
   type RemoveOrganizationTeamMemberInput,
   type RemoveProjectTeamMemberInput,
   type ReportThread,
   type UpdateCollectionInput,
   type UpdateOrganizationInput,
+  type UpdateProjectGalleryImageInput,
   type UpdateProjectInput,
   type UpdateVersionDependenciesInput,
   type UpdateVersionInput,
@@ -156,6 +158,14 @@ export interface AddProjectGalleryImageMutationData {
   addProjectGalleryImage: DashboardProject;
 }
 
+export interface RemoveProjectGalleryImageMutationData {
+  removeProjectGalleryImage: DashboardProject;
+}
+
+export interface UpdateProjectGalleryImageMutationData {
+  updateProjectGalleryImage: DashboardProject;
+}
+
 export interface AddProjectTeamMemberMutationData {
   addProjectTeamMember: DashboardProjectMember[];
 }
@@ -166,6 +176,14 @@ export interface RemoveProjectTeamMemberMutationData {
 
 export interface AddProjectGalleryImageMutationVariables {
   input: AddProjectGalleryImageInput;
+}
+
+export interface RemoveProjectGalleryImageMutationVariables {
+  input: RemoveProjectGalleryImageInput;
+}
+
+export interface UpdateProjectGalleryImageMutationVariables {
+  input: UpdateProjectGalleryImageInput;
 }
 
 export interface AddProjectTeamMemberMutationVariables {

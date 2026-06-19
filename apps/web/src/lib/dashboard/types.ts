@@ -251,6 +251,7 @@ export interface DashboardGalleryImage {
   description: string | null;
   displayUrl: string;
   featured: boolean;
+  id: string;
   rawUrl: string;
   sortOrder: number;
   title: string | null;
@@ -389,6 +390,20 @@ export interface AddProjectGalleryImageInput {
   projectSlug: string;
   rawUrl: string;
   sortOrder: number | null;
+  title: string | null;
+}
+
+export interface RemoveProjectGalleryImageInput {
+  imageId: string;
+}
+
+export interface UpdateProjectGalleryImageInput {
+  description: string | null;
+  displayUrl: string;
+  featured: boolean;
+  imageId: string;
+  rawUrl: string;
+  sortOrder: number;
   title: string | null;
 }
 

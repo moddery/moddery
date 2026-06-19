@@ -15,6 +15,7 @@ export const DASHBOARD_PROJECT_FIELDS = gql`
       description
       displayUrl
       featured
+      id
       rawUrl
       sortOrder
       title

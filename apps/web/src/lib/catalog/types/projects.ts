@@ -121,6 +121,7 @@ export interface ProjectSummary {
     description: string | null;
     displayUrl: string;
     featured: boolean;
+    id: string;
     rawUrl: string;
     sortOrder: number;
     title: string | null;

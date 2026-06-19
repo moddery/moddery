@@ -223,6 +223,7 @@ export interface ProjectGalleryImageContract {
   readonly description?: string | null;
   readonly displayUrl: string;
   readonly featured: boolean;
+  readonly id: string;
   readonly rawUrl: string;
   readonly sortOrder: number;
   readonly title?: string | null;

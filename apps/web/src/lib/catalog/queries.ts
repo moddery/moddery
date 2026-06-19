@@ -15,6 +15,7 @@ const PROJECT_FIELDS_FRAGMENT = gql`
       description
       displayUrl
       featured
+      id
       rawUrl
       sortOrder
       title

@@ -4,6 +4,8 @@ import { type ProjectSummaryContract } from '@moddery/shared';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { type AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.input.js';
+import { type RemoveProjectGalleryImageInput } from '../dto/remove-project-gallery-image.input.js';
+import { type UpdateProjectGalleryImageInput } from '../dto/update-project-gallery-image.input.js';
 import {
   projectBySlugCacheKey,
   projectRowToContract,
@@ -35,14 +37,41 @@ export class ProjectGalleryService {
       },
     });
 
-    const updated = await this.prisma.project.findUniqueOrThrow({
-      select: projectSelect(),
-      where: { id: project.id },
-    });
-    const contract = projectRowToContract(updated);
-    await this.redis.delete(projectBySlugCacheKey(contract.slug));
+    return this.reloadProject(project.id);
+  }
 
-    return contract;
+  async removeProjectGalleryImage(
+    input: RemoveProjectGalleryImageInput,
+    userId: string,
+  ): Promise<ProjectSummaryContract> {
+    const image = await this.findManagedGalleryImage(input.imageId, userId);
+
+    await this.prisma.projectGalleryImage.delete({
+      where: { id: image.id },
+    });
+
+    return this.reloadProject(image.projectId);
+  }
+
+  async updateProjectGalleryImage(
+    input: UpdateProjectGalleryImageInput,
+    userId: string,
+  ): Promise<ProjectSummaryContract> {
+    const image = await this.findManagedGalleryImage(input.imageId, userId);
+
+    await this.prisma.projectGalleryImage.update({
+      data: {
+        description: nullableTrim(input.description),
+        displayUrl: input.displayUrl.trim(),
+        featured: input.featured,
+        rawUrl: input.rawUrl.trim(),
+        sortOrder: input.sortOrder,
+        title: nullableTrim(input.title),
+      },
+      where: { id: image.id },
+    });
+
+    return this.reloadProject(image.projectId);
   }
 
   private async findManagedProject(projectSlug: string, userId: string) {
@@ -66,6 +95,47 @@ export class ProjectGalleryService {
     }
 
     return project;
+  }
+
+  private async findManagedGalleryImage(imageId: string, userId: string) {
+    const image = await this.prisma.projectGalleryImage.findFirst({
+      select: {
+        id: true,
+        projectId: true,
+      },
+      where: {
+        id: imageId,
+        project: {
+          team: {
+            members: {
+              some: {
+                acceptedAt: { not: null },
+                userId,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (image === null) {
+      throw new NotFoundException('Gallery image not found');
+    }
+
+    return image;
+  }
+
+  private async reloadProject(
+    projectId: string,
+  ): Promise<ProjectSummaryContract> {
+    const updated = await this.prisma.project.findUniqueOrThrow({
+      select: projectSelect(),
+      where: { id: projectId },
+    });
+    const contract = projectRowToContract(updated);
+    await this.redis.delete(projectBySlugCacheKey(contract.slug));
+
+    return contract;
   }
 }
 

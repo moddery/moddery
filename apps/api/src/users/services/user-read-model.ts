@@ -14,6 +14,7 @@ export interface UserProjectRow {
     description: string | null;
     displayUrl: string;
     featured: boolean;
+    id: string;
     rawUrl: string;
     sortOrder: number;
     title: string | null;
@@ -290,6 +291,7 @@ function projectSelect() {
         description: true,
         displayUrl: true,
         featured: true,
+        id: true,
         rawUrl: true,
         sortOrder: true,
         title: true,

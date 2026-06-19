@@ -6,6 +6,7 @@ import {
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
 import { GalleryImageFields } from './gallery-image/GalleryImageFields.tsx';
+import { GalleryImageManager } from './gallery-image/GalleryImageManager.tsx';
 import { GalleryPreview } from './gallery-image/GalleryPreview.tsx';
 import { nullableText } from './shared.tsx';
 
@@ -119,7 +120,10 @@ export function AddGalleryImageForm({
         />
 
         {project && project.gallery.length > 0 && (
-          <GalleryPreview images={project.gallery} />
+          <>
+            <GalleryPreview images={project.gallery} />
+            <GalleryImageManager images={project.gallery} onChanged={onAdded} />
+          </>
         )}
 
         {error && (

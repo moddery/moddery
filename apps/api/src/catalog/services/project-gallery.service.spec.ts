@@ -24,6 +24,7 @@ describe(ProjectGalleryService.name, () => {
                   description: 'Preview',
                   displayUrl: 'https://example.test/display.png',
                   featured: true,
+                  id: 'image-a',
                   rawUrl: 'https://example.test/raw.png',
                   sortOrder: 1,
                   title: 'Screenshot',
@@ -66,6 +67,95 @@ describe(ProjectGalleryService.name, () => {
       },
     });
     expect(project.gallery[0]?.title).toBe('Screenshot');
+    expect(project.gallery[0]?.id).toBe('image-a');
+  });
+
+  test('updates managed gallery images', async () => {
+    const updates: unknown[] = [];
+    const service = createProjectGalleryService({
+      project: {
+        findUniqueOrThrow: () =>
+          Promise.resolve(
+            projectRow({
+              gallery: [
+                {
+                  createdAt: new Date('2026-01-02T00:00:00.000Z'),
+                  description: 'Updated preview',
+                  displayUrl: 'https://example.test/display-2.png',
+                  featured: false,
+                  id: 'image-a',
+                  rawUrl: 'https://example.test/raw-2.png',
+                  sortOrder: 2,
+                  title: 'Updated screenshot',
+                },
+              ],
+              title: 'Example',
+            }),
+          ),
+      },
+      projectGalleryImage: {
+        findFirst: () =>
+          Promise.resolve({ id: 'image-a', projectId: 'project-a' }),
+        update: (query: unknown) => {
+          updates.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    const project = await service.updateProjectGalleryImage(
+      {
+        description: ' Updated preview ',
+        displayUrl: ' https://example.test/display-2.png ',
+        featured: false,
+        imageId: 'image-a',
+        rawUrl: ' https://example.test/raw-2.png ',
+        sortOrder: 2,
+        title: ' Updated screenshot ',
+      },
+      'user-a',
+    );
+
+    expect(updates[0]).toEqual({
+      data: {
+        description: 'Updated preview',
+        displayUrl: 'https://example.test/display-2.png',
+        featured: false,
+        rawUrl: 'https://example.test/raw-2.png',
+        sortOrder: 2,
+        title: 'Updated screenshot',
+      },
+      where: { id: 'image-a' },
+    });
+    expect(project.gallery[0]?.displayUrl).toBe(
+      'https://example.test/display-2.png',
+    );
+  });
+
+  test('removes managed gallery images', async () => {
+    const deletes: unknown[] = [];
+    const service = createProjectGalleryService({
+      project: {
+        findUniqueOrThrow: () =>
+          Promise.resolve(projectRow({ gallery: [], title: 'Example' })),
+      },
+      projectGalleryImage: {
+        delete: (query: unknown) => {
+          deletes.push(query);
+          return Promise.resolve({});
+        },
+        findFirst: () =>
+          Promise.resolve({ id: 'image-a', projectId: 'project-a' }),
+      },
+    } as unknown as PrismaService);
+
+    const project = await service.removeProjectGalleryImage(
+      { imageId: 'image-a' },
+      'user-a',
+    );
+
+    expect(deletes[0]).toEqual({ where: { id: 'image-a' } });
+    expect(project.gallery).toEqual([]);
   });
 });
 
@@ -82,6 +172,7 @@ function projectRow({
     description: string | null;
     displayUrl: string;
     featured: boolean;
+    id: string;
     rawUrl: string;
     sortOrder: number;
     title: string | null;

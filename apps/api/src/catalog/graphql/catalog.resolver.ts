@@ -13,7 +13,9 @@ import { AddProjectGalleryImageInput } from '../dto/add-project-gallery-image.in
 import { CatalogQueryInput } from '../dto/catalog-query.input.js';
 import { CreateProjectInput } from '../dto/create-project.input.js';
 import { ModerateProjectInput } from '../dto/moderate-project.input.js';
+import { RemoveProjectGalleryImageInput } from '../dto/remove-project-gallery-image.input.js';
 import { RemoveProjectTeamMemberInput } from '../dto/remove-project-team-member.input.js';
+import { UpdateProjectGalleryImageInput } from '../dto/update-project-gallery-image.input.js';
 import { UpdateProjectInput } from '../dto/update-project.input.js';
 import { CatalogService } from '../services/catalog.service.js';
 import { ProjectFollowsService } from '../services/project-follows.service.js';
@@ -188,6 +190,32 @@ export class CatalogResolver {
   ) {
     return projectToGraphql(
       await this.projectGalleryService.addProjectGalleryImage(input, user.id),
+    );
+  }
+
+  @Mutation(() => ProjectSummary)
+  async removeProjectGalleryImage(
+    @Args('input') input: RemoveProjectGalleryImageInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return projectToGraphql(
+      await this.projectGalleryService.removeProjectGalleryImage(
+        input,
+        user.id,
+      ),
+    );
+  }
+
+  @Mutation(() => ProjectSummary)
+  async updateProjectGalleryImage(
+    @Args('input') input: UpdateProjectGalleryImageInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return projectToGraphql(
+      await this.projectGalleryService.updateProjectGalleryImage(
+        input,
+        user.id,
+      ),
     );
   }
 

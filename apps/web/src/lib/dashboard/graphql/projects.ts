@@ -24,6 +24,26 @@ export const ADD_PROJECT_GALLERY_IMAGE_MUTATION = gql`
   }
 `;
 
+export const REMOVE_PROJECT_GALLERY_IMAGE_MUTATION = gql`
+  ${DASHBOARD_PROJECT_FIELDS}
+
+  mutation RemoveProjectGalleryImage($input: RemoveProjectGalleryImageInput!) {
+    removeProjectGalleryImage(input: $input) {
+      ...DashboardProjectFields
+    }
+  }
+`;
+
+export const UPDATE_PROJECT_GALLERY_IMAGE_MUTATION = gql`
+  ${DASHBOARD_PROJECT_FIELDS}
+
+  mutation UpdateProjectGalleryImage($input: UpdateProjectGalleryImageInput!) {
+    updateProjectGalleryImage(input: $input) {
+      ...DashboardProjectFields
+    }
+  }
+`;
+
 export const ADD_PROJECT_TEAM_MEMBER_MUTATION = gql`
   ${DASHBOARD_PROJECT_MEMBER_FIELDS}
 
