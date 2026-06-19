@@ -3,6 +3,7 @@ import { KeyRound } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
 import {
+  type ApiTokenSummary,
   createApiToken,
   fetchViewerApiTokenSearch,
   revokeApiToken,
@@ -19,7 +20,8 @@ export function ApiTokensPanel() {
   const [scopes, setScopes] = useState('read:projects');
   const [expiresInDays, setExpiresInDays] = useState('90');
   const [createdToken, setCreatedToken] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [revokingTokenId, setRevokingTokenId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [showRevoked, setShowRevoked] = useState(false);
@@ -34,7 +36,7 @@ export function ApiTokensPanel() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
+    setCreating(true);
     setMessage(null);
     setCreatedToken(null);
 
@@ -46,6 +48,7 @@ export function ApiTokensPanel() {
         scopes: splitList(scopes),
       });
       setCreatedToken(created.token);
+      setMessage(apiTokenActionMessage('create', created.tokenSummary));
       setName('');
       setPage(1);
       await tokensQuery.refetch();
@@ -54,17 +57,22 @@ export function ApiTokensPanel() {
         caught instanceof Error ? caught.message : 'API token creation failed',
       );
     } finally {
-      setBusy(false);
+      setCreating(false);
     }
   }
 
   async function revoke(tokenId: string) {
-    setBusy(true);
+    setRevokingTokenId(tokenId);
     setMessage(null);
+    setCreatedToken(null);
 
     try {
-      await revokeApiToken(tokenId);
+      const token = await revokeApiToken(tokenId);
+      setMessage(apiTokenActionMessage('revoke', token));
       await tokensQuery.refetch();
+      if (tokens.length === 1 && page > 1) {
+        setPage((current) => current - 1);
+      }
     } catch (caught) {
       setMessage(
         caught instanceof Error
@@ -72,7 +80,7 @@ export function ApiTokensPanel() {
           : 'API token revocation failed',
       );
     } finally {
-      setBusy(false);
+      setRevokingTokenId(null);
     }
   }
 
@@ -91,7 +99,7 @@ export function ApiTokensPanel() {
       </div>
 
       <ApiTokenCreateForm
-        busy={busy}
+        busy={creating}
         expiresInDays={expiresInDays}
         message={message}
         name={name}
@@ -105,7 +113,7 @@ export function ApiTokensPanel() {
       {createdToken && <ApiTokenCreatedNotice token={createdToken} />}
 
       <ApiTokenList
-        busy={busy || tokensQuery.isFetching}
+        busyTokenId={revokingTokenId}
         error={
           tokensQuery.error instanceof Error ? tokensQuery.error.message : null
         }
@@ -123,4 +131,13 @@ export function ApiTokensPanel() {
       />
     </section>
   );
+}
+
+export function apiTokenActionMessage(
+  action: 'create' | 'revoke',
+  token: Pick<ApiTokenSummary, 'name'>,
+) {
+  return action === 'create'
+    ? `Created token ${token.name}.`
+    : `Revoked token ${token.name}.`;
 }

@@ -27,17 +27,20 @@ export function ApiTokenCreateForm({
     <form onSubmit={onSubmit} className="mt-4 grid gap-3">
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
         <DashboardField
+          disabled={busy}
           label="Token name"
           value={name}
           onChange={onNameChange}
           required
         />
         <DashboardField
+          disabled={busy}
           label="Scopes"
           value={scopes}
           onChange={onScopesChange}
         />
         <DashboardField
+          disabled={busy}
           label="Expires in days"
           value={expiresInDays}
           onChange={onExpiresInDaysChange}

@@ -3,7 +3,7 @@ import { timeAgo } from '../../../../lib/format.ts';
 import { Pagination } from '../../../Pagination.tsx';
 
 export function ApiTokenList({
-  busy,
+  busyTokenId,
   error,
   onPage,
   onRevoke,
@@ -14,7 +14,7 @@ export function ApiTokenList({
   totalHits,
   totalPages,
 }: {
-  busy: boolean;
+  busyTokenId: string | null;
   error: string | null;
   onPage: (page: number) => void;
   onRevoke: (tokenId: string) => Promise<void>;
@@ -87,11 +87,11 @@ export function ApiTokenList({
           ) : (
             <button
               type="button"
-              disabled={busy}
+              disabled={busyTokenId === token.id}
               onClick={() => void onRevoke(token.id)}
               className="inline-flex h-9 items-center justify-center rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Revoke
+              {busyTokenId === token.id ? 'Revoking...' : 'Revoke'}
             </button>
           )}
         </div>
