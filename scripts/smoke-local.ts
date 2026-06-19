@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { createHmac } from 'node:crypto';
 
 const apiUrl = trimTrailingSlash(
   process.env.SMOKE_API_URL ?? 'http://localhost:13001',
@@ -90,6 +91,20 @@ interface ConfirmPasswordResetResponse {
 interface RequestPasswordResetResponse {
   data?: {
     requestPasswordReset?: boolean;
+  };
+  errors?: GraphqlError[];
+}
+
+interface SetupTwoFactorResponse {
+  data?: {
+    setupTwoFactor?: TwoFactorSetup;
+  };
+  errors?: GraphqlError[];
+}
+
+interface EnableTwoFactorResponse {
+  data?: {
+    enableTwoFactor?: boolean;
   };
   errors?: GraphqlError[];
 }
@@ -406,6 +421,11 @@ interface ApiTokenSummary {
 interface CreatedApiToken {
   token: string;
   tokenSummary: ApiTokenSummary;
+}
+
+interface TwoFactorSetup {
+  otpAuthUrl: string;
+  secret: string;
 }
 
 interface GalleryImageSummary {
@@ -839,6 +859,7 @@ async function registerSmokeUser(input: {
 async function loginSmokeUser(input: {
   identifier: string;
   password: string;
+  twoFactorCode?: string;
   username: string;
 }): Promise<AuthPayload> {
   const loginPayload = await readGraphql<LoginResponse>({
@@ -856,6 +877,7 @@ async function loginSmokeUser(input: {
       input: {
         identifier: input.identifier,
         password: input.password,
+        twoFactorCode: input.twoFactorCode,
       },
     },
   });
@@ -1092,6 +1114,83 @@ async function checkPasswordResetFlow(options: {
   });
 }
 
+async function checkTwoFactorFlow(options: {
+  password: string;
+  token: string;
+  username: string;
+}): Promise<AuthPayload> {
+  const setupPayload = await readGraphql<SetupTwoFactorResponse>(
+    {
+      query: `
+        mutation SmokeSetupTwoFactor {
+          setupTwoFactor {
+            otpAuthUrl
+            secret
+          }
+        }
+      `,
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(setupPayload, 'GraphQL setup two-factor');
+
+  const setup = required(setupPayload.data?.setupTwoFactor, 'two-factor setup');
+  if (
+    setup.secret.length === 0 ||
+    !setup.otpAuthUrl.includes(`secret=${setup.secret}`)
+  ) {
+    throw new Error('Two-factor setup did not return usable secret metadata');
+  }
+
+  const enablePayload = await readGraphql<EnableTwoFactorResponse>(
+    {
+      query: `
+        mutation SmokeEnableTwoFactor($input: VerifyTwoFactorInput!) {
+          enableTwoFactor(input: $input)
+        }
+      `,
+      variables: {
+        input: {
+          code: currentTotpCode(setup.secret),
+        },
+      },
+    },
+    options.token,
+  );
+  assertNoGraphqlErrors(enablePayload, 'GraphQL enable two-factor');
+  if (enablePayload.data?.enableTwoFactor !== true) {
+    throw new Error('Two-factor enable did not return true');
+  }
+
+  const rejectedLoginPayload = await readGraphql<LoginResponse>({
+    query: `
+      mutation SmokeRejectedTwoFactorLogin($input: LoginInput!) {
+        login(input: $input) {
+          accessToken
+        }
+      }
+    `,
+    variables: {
+      input: {
+        identifier: options.username,
+        password: options.password,
+      },
+    },
+  });
+  assertGraphqlError(
+    rejectedLoginPayload,
+    'Invalid two-factor code',
+    'two-factor login without code',
+  );
+
+  return loginSmokeUser({
+    identifier: options.username,
+    password: options.password,
+    twoFactorCode: currentTotpCode(setup.secret),
+    username: options.username,
+  });
+}
+
 async function promoteSmokeUserToAdmin(username: string): Promise<void> {
   const prisma = new PrismaClient({
     datasources: {
@@ -1144,6 +1243,11 @@ async function checkCreatorFlow(): Promise<void> {
   auth = await checkPasswordResetFlow({
     email,
     oldPassword: password,
+    username,
+  });
+  auth = await checkTwoFactorFlow({
+    password: `${password}-reset`,
+    token: auth.accessToken,
     username,
   });
 
@@ -4196,6 +4300,46 @@ function required<T>(value: T | null | undefined, name: string): T {
   }
 
   return value;
+}
+
+function currentTotpCode(secret: string): string {
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
+  const digest = createHmac('sha1', base32Decode(secret))
+    .update(counterBuffer)
+    .digest();
+  const offset = byteAt(digest, digest.length - 1) & 0x0f;
+  const binary =
+    ((byteAt(digest, offset) & 0x7f) << 24) |
+    ((byteAt(digest, offset + 1) & 0xff) << 16) |
+    ((byteAt(digest, offset + 2) & 0xff) << 8) |
+    (byteAt(digest, offset + 3) & 0xff);
+
+  return (binary % 1_000_000).toString().padStart(6, '0');
+}
+
+function base32Decode(value: string): Buffer {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let accumulator = 0;
+  const bytes: number[] = [];
+
+  for (const character of value.toUpperCase().replace(/=+$/g, '')) {
+    const index = alphabet.indexOf(character);
+    if (index === -1) continue;
+    accumulator = (accumulator << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((accumulator >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+
+  return Buffer.from(bytes);
+}
+
+function byteAt(buffer: Buffer, index: number): number {
+  return buffer[index] ?? 0;
 }
 
 async function readJson<T>(url: string, name: string): Promise<T> {
