@@ -227,6 +227,107 @@ describe(AuthService.name, () => {
     });
   });
 
+  test('starts email verification when registering a new account', async () => {
+    const sent: unknown[] = [];
+    const sessions: unknown[] = [];
+    const service = new AuthService(
+      {
+        accessTokenTtlSeconds: () => 900,
+        hashToken: (token: string) => `hash:${token}`,
+        signSessionAccessToken: () => Promise.resolve('session-token'),
+      } as unknown as AuthTokenService,
+      fakeMailService(sent),
+      {
+        emailVerificationToken: {
+          create: (query: unknown) => {
+            sent.push({ tokenCreate: query });
+            return Promise.resolve({});
+          },
+          findFirst: (query: unknown) => {
+            sent.push({ tokenFind: query });
+            return Promise.resolve(null);
+          },
+        },
+        session: {
+          create: (query: unknown) => {
+            sessions.push(query);
+            return Promise.resolve({ id: 'session-a' });
+          },
+          update: (query: unknown) => {
+            sessions.push(query);
+            return Promise.resolve({});
+          },
+        },
+        user: {
+          create: (query: unknown) => {
+            sent.push({ userCreate: query });
+            return Promise.resolve({
+              email: 'new@example.test',
+              id: 'user-new',
+              role: 'USER',
+              username: 'newuser',
+            });
+          },
+          findFirst: () => Promise.resolve(null),
+        },
+      } as unknown as PrismaService,
+    );
+
+    const payload = await service.register(
+      {
+        email: 'New@Example.Test',
+        password: 'correct-password',
+        username: 'newuser',
+      },
+      {
+        ipAddress: '203.0.113.42',
+        userAgent: 'Registration Browser',
+      },
+    );
+
+    expect(payload.accessToken).toBe('session-token');
+    expect(sent[0]).toEqual({
+      userCreate: {
+        data: {
+          displayName: undefined,
+          email: 'new@example.test',
+          passwordCredential: {
+            create: { passwordHash: expect.any(String) },
+          },
+          username: 'newuser',
+        },
+      },
+    });
+    expect(sent[1]).toEqual({
+      tokenFind: {
+        select: { id: true },
+        where: {
+          email: 'new@example.test',
+          expiresAt: { gt: expect.any(Date) },
+          usedAt: null,
+          userId: 'user-new',
+        },
+      },
+    });
+    expect(sent[2]).toEqual({
+      tokenCreate: {
+        data: {
+          email: 'new@example.test',
+          expiresAt: expect.any(Date),
+          tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+          userId: 'user-new',
+        },
+      },
+    });
+    expect(sent[3]).toEqual(
+      expect.objectContaining({
+        subject: 'Verify your Moddery email',
+        to: 'new@example.test',
+      }),
+    );
+    expect(sessions).toHaveLength(2);
+  });
+
   test('rejects enabled two-factor login without a valid code', async () => {
     const service = new AuthService(
       {

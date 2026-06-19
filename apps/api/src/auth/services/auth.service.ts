@@ -303,44 +303,60 @@ export class AuthService {
       return true;
     }
 
+    await this.issueEmailVerification({
+      email: user.email,
+      userId: user.id,
+      username: user.username,
+    });
+
+    return true;
+  }
+
+  private async issueEmailVerification({
+    email,
+    userId,
+    username,
+  }: {
+    email: string;
+    userId: string;
+    username: string;
+  }): Promise<void> {
     const now = new Date();
     const pendingToken = await this.prisma.emailVerificationToken.findFirst({
       select: { id: true },
       where: {
-        email: user.email,
+        email,
         expiresAt: { gt: now },
         usedAt: null,
-        userId: user.id,
+        userId,
       },
     });
 
     if (pendingToken !== null) {
-      return true;
+      return;
     }
 
     const token = randomBytes(32).toString('base64url');
     await this.prisma.emailVerificationToken.create({
       data: {
-        email: user.email,
+        email,
         expiresAt: new Date(now.getTime() + emailVerificationTokenTtlMs),
         tokenHash: hashSecret(token),
-        userId: user.id,
+        userId,
       },
     });
 
     await this.mailService.send({
       subject: 'Verify your Moddery email',
       text: [
-        `Verify the email address for ${user.username}.`,
+        `Verify the email address for ${username}.`,
         '',
         `Verification token: ${token}`,
         '',
         'This token expires in 24 hours. If you did not request this, you can ignore this email.',
       ].join('\n'),
-      to: user.email,
+      to: email,
     });
-
-    return true;
   }
 
   async confirmEmailVerification(
@@ -418,6 +434,11 @@ export class AuthService {
         },
         username,
       },
+    });
+    await this.issueEmailVerification({
+      email,
+      userId: user.id,
+      username: user.username,
     });
 
     return this.createAuthPayload(
