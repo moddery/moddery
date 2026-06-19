@@ -4,6 +4,7 @@ import { TeamPermissionsField } from '../../TeamPermissionsField.tsx';
 import { DashboardField } from '../shared.tsx';
 
 interface OrganizationTeamFieldsProps {
+  disabled?: boolean;
   organizationId: string;
   organizations: DashboardOrganization[];
   permissions: string[];
@@ -16,6 +17,7 @@ interface OrganizationTeamFieldsProps {
 }
 
 export function OrganizationTeamFields({
+  disabled,
   organizationId,
   organizations,
   permissions,
@@ -32,9 +34,10 @@ export function OrganizationTeamFields({
         <label className="grid gap-1 text-sm font-bold text-ink">
           Organization
           <select
+            disabled={disabled}
             value={organizationId}
             onChange={(event) => setOrganizationId(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             {organizations.map((item) => (
               <option key={item.id} value={item.id}>
@@ -44,14 +47,21 @@ export function OrganizationTeamFields({
           </select>
         </label>
         <DashboardField
+          disabled={disabled}
           label="Username"
           value={username}
           onChange={setUsername}
           required
         />
-        <DashboardField label="Role" value={role} onChange={setRole} />
+        <DashboardField
+          disabled={disabled}
+          label="Role"
+          value={role}
+          onChange={setRole}
+        />
       </div>
       <TeamPermissionsField
+        disabled={disabled}
         options={organizationTeamPermissions}
         permissions={permissions}
         setPermissions={setPermissions}

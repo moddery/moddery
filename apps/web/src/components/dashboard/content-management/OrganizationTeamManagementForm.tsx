@@ -48,6 +48,7 @@ export function OrganizationTeamManagementForm({
         className="mt-4 grid gap-3"
       >
         <OrganizationTeamFields
+          disabled={state.submitting}
           organizationId={state.organizationId}
           organizations={organizations}
           permissions={state.permissions}
@@ -73,7 +74,7 @@ export function OrganizationTeamManagementForm({
             disabled={state.submitting}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {state.submitting ? 'Saving...' : 'Invite member'}
+            {organizationTeamInviteButtonLabel(state.submitting)}
           </button>
           <button
             type="button"
@@ -87,4 +88,8 @@ export function OrganizationTeamManagementForm({
       </form>
     </section>
   );
+}
+
+export function organizationTeamInviteButtonLabel(submitting: boolean) {
+  return submitting ? 'Saving...' : 'Invite member';
 }

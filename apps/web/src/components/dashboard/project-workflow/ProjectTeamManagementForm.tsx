@@ -77,6 +77,7 @@ export function ProjectTeamManagementForm({
         className="mt-4 grid gap-3"
       >
         <ProjectTeamFields
+          disabled={state.submitting}
           permissions={state.permissions}
           projectSlug={state.projectSlug}
           projects={projects}
@@ -100,7 +101,7 @@ export function ProjectTeamManagementForm({
             disabled={state.submitting}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {state.submitting ? 'Saving...' : 'Invite member'}
+            {projectTeamInviteButtonLabel(state.submitting)}
           </button>
           <button
             type="button"
@@ -131,4 +132,8 @@ export function ProjectTeamManagementForm({
       </form>
     </section>
   );
+}
+
+export function projectTeamInviteButtonLabel(submitting: boolean) {
+  return submitting ? 'Saving...' : 'Invite member';
 }
