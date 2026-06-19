@@ -24,6 +24,8 @@ export interface ReadinessResult {
   readonly status: 'not_ready' | 'ready';
 }
 
+const healthProbeTimeoutMs = 1_000;
+
 @Injectable()
 export class HealthService {
   constructor(
@@ -58,7 +60,7 @@ export class HealthService {
     const startedAt = performance.now();
 
     try {
-      await probe();
+      await withTimeout(probe(), healthProbeTimeoutMs);
       return { durationMs: elapsedMs(startedAt), name, status: 'up' };
     } catch {
       return { durationMs: elapsedMs(startedAt), name, status: 'down' };
@@ -68,4 +70,24 @@ export class HealthService {
 
 function elapsedMs(startedAt: number): number {
   return Math.max(0, Math.round(performance.now() - startedAt));
+}
+
+export async function withTimeout<TValue>(
+  promise: Promise<TValue>,
+  timeoutMs: number,
+): Promise<TValue> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new Error('Health probe timed out'));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeout !== undefined) {
+      clearTimeout(timeout);
+    }
+  }
 }

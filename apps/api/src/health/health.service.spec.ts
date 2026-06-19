@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { type HealthCheckResult, HealthService } from './health.service.js';
+import {
+  type HealthCheckResult,
+  HealthService,
+  withTimeout,
+} from './health.service.js';
 
 describe(HealthService.name, () => {
   test('reports ready when every dependency probe succeeds', async () => {
@@ -43,6 +47,24 @@ describe(HealthService.name, () => {
       ],
       status: 'not_ready',
     });
+  });
+});
+
+describe(withTimeout.name, () => {
+  test('resolves when the probe completes before the timeout', async () => {
+    expect(await withTimeout(Promise.resolve('ok'), 10)).toBe('ok');
+  });
+
+  test('rejects when the probe does not complete before the timeout', async () => {
+    let caught: unknown;
+    try {
+      await withTimeout(new Promise(() => undefined), 1);
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect(caught).toHaveProperty('message', 'Health probe timed out');
   });
 });
 
