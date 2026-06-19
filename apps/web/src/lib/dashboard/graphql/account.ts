@@ -148,6 +148,27 @@ export const REVOKE_SESSION_MUTATION = gql`
   }
 `;
 
+export const SETUP_TWO_FACTOR_MUTATION = gql`
+  mutation SetupTwoFactor {
+    setupTwoFactor {
+      otpAuthUrl
+      secret
+    }
+  }
+`;
+
+export const ENABLE_TWO_FACTOR_MUTATION = gql`
+  mutation EnableTwoFactor($input: VerifyTwoFactorInput!) {
+    enableTwoFactor(input: $input)
+  }
+`;
+
+export const DISABLE_TWO_FACTOR_MUTATION = gql`
+  mutation DisableTwoFactor($input: VerifyTwoFactorInput!) {
+    disableTwoFactor(input: $input)
+  }
+`;
+
 const OAUTH_CLIENT_FIELDS = gql`
   fragment OAuthClientFields on OAuthClientSummary {
     clientId

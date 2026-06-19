@@ -1,8 +1,11 @@
 import { apolloClient } from '../../../../apollo.js';
 import {
   CREATE_API_TOKEN_MUTATION,
+  DISABLE_TWO_FACTOR_MUTATION,
+  ENABLE_TWO_FACTOR_MUTATION,
   REVOKE_API_TOKEN_MUTATION,
   REVOKE_SESSION_MUTATION,
+  SETUP_TWO_FACTOR_MUTATION,
   VIEWER_API_TOKEN_SEARCH_QUERY,
   VIEWER_API_TOKENS_QUERY,
   VIEWER_SESSION_SEARCH_QUERY,
@@ -15,6 +18,9 @@ import {
   type RevokeApiTokenMutationVariables,
   type RevokeSessionMutationData,
   type RevokeSessionMutationVariables,
+  type SetupTwoFactorMutationData,
+  type TwoFactorMutationData,
+  type TwoFactorMutationVariables,
   type ViewerApiTokenSearchQueryData,
   type ViewerApiTokenSearchQueryVariables,
   type ViewerApiTokensQueryData,
@@ -29,6 +35,7 @@ import {
   type CreatedApiToken,
   type SessionSearchResult,
   type SessionSummary,
+  type TwoFactorSetup,
 } from '../../types.js';
 
 export async function fetchViewerApiTokens(
@@ -165,4 +172,48 @@ export async function revokeApiToken(
   }
 
   return data.revokeApiToken;
+}
+
+export async function setupTwoFactor(): Promise<TwoFactorSetup> {
+  const { data } = await apolloClient.mutate<SetupTwoFactorMutationData>({
+    mutation: SETUP_TWO_FACTOR_MUTATION,
+  });
+
+  if (!data?.setupTwoFactor) {
+    throw new Error('Two-factor setup did not return from the API');
+  }
+
+  return data.setupTwoFactor;
+}
+
+export async function enableTwoFactor(code: string): Promise<boolean> {
+  const { data } = await apolloClient.mutate<
+    TwoFactorMutationData,
+    TwoFactorMutationVariables
+  >({
+    mutation: ENABLE_TWO_FACTOR_MUTATION,
+    variables: { input: { code } },
+  });
+
+  if (data?.enableTwoFactor !== true) {
+    throw new Error('Two-factor enable failed');
+  }
+
+  return data.enableTwoFactor;
+}
+
+export async function disableTwoFactor(code: string): Promise<boolean> {
+  const { data } = await apolloClient.mutate<
+    TwoFactorMutationData,
+    TwoFactorMutationVariables
+  >({
+    mutation: DISABLE_TWO_FACTOR_MUTATION,
+    variables: { input: { code } },
+  });
+
+  if (data?.disableTwoFactor !== true) {
+    throw new Error('Two-factor disable failed');
+  }
+
+  return data.disableTwoFactor;
 }

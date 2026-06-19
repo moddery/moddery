@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { hash } from 'bcryptjs';
+import { createHmac } from 'node:crypto';
 
 import { type PrismaService } from '../../prisma/prisma.service.js';
 import { type AuthTokenService } from './auth-token.service.js';
@@ -196,6 +197,191 @@ describe(AuthService.name, () => {
     });
   });
 
+  test('rejects enabled two-factor login without a valid code', async () => {
+    const service = new AuthService(
+      {
+        accessTokenTtlSeconds: () => 900,
+        hashToken: (token: string) => `hash:${token}`,
+        signSessionAccessToken: () => Promise.resolve('session-token'),
+      } as unknown as AuthTokenService,
+      fakeMailService(),
+      {
+        user: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'user-a',
+              passwordCredential: {
+                passwordHash: passwordHashFixture,
+              },
+              role: 'USER',
+              totpSecret: {
+                confirmedAt: new Date('2026-01-01T00:00:00.000Z'),
+                secret: totpSecretFixture,
+              },
+              twoFactorEnabled: true,
+              username: 'seed',
+            }),
+        },
+      } as unknown as PrismaService,
+    );
+
+    try {
+      await service.login({
+        identifier: 'seed',
+        password: 'correct-password',
+      });
+      throw new Error('Expected two-factor login to fail');
+    } catch (caught) {
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toContain('Invalid two-factor code');
+    }
+  });
+
+  test('accepts enabled two-factor login with a valid code', async () => {
+    const sessions: unknown[] = [];
+    const service = new AuthService(
+      {
+        accessTokenTtlSeconds: () => 900,
+        hashToken: (token: string) => `hash:${token}`,
+        signSessionAccessToken: () => Promise.resolve('session-token'),
+      } as unknown as AuthTokenService,
+      fakeMailService(),
+      {
+        session: {
+          create: (query: unknown) => {
+            sessions.push(query);
+            return Promise.resolve({ id: 'session-a' });
+          },
+          update: (query: unknown) => {
+            sessions.push(query);
+            return Promise.resolve({});
+          },
+        },
+        user: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'user-a',
+              passwordCredential: {
+                passwordHash: passwordHashFixture,
+              },
+              role: 'USER',
+              totpSecret: {
+                confirmedAt: new Date('2026-01-01T00:00:00.000Z'),
+                secret: totpSecretFixture,
+              },
+              twoFactorEnabled: true,
+              username: 'seed',
+            }),
+        },
+      } as unknown as PrismaService,
+    );
+
+    const payload = await service.login({
+      identifier: 'seed',
+      password: 'correct-password',
+      twoFactorCode: currentTotpCode(totpSecretFixture),
+    });
+
+    expect(payload.accessToken).toBe('session-token');
+    expect(sessions).toHaveLength(2);
+  });
+
+  test('sets up two-factor authentication with a fresh secret', async () => {
+    const writes: unknown[] = [];
+    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
+      userTotpSecret: {
+        upsert: (query: unknown) => {
+          writes.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    const setup = await service.setupTwoFactor({
+      id: 'user-a',
+      role: 'USER',
+      username: 'seed',
+    });
+
+    expect(setup.secret).toMatch(/^[A-Z2-7]+$/);
+    expect(setup.otpAuthUrl).toContain('otpauth://totp/Moddery:seed');
+    expect(writes[0]).toEqual({
+      create: {
+        secret: setup.secret,
+        userId: 'user-a',
+      },
+      update: {
+        confirmedAt: null,
+        secret: setup.secret,
+      },
+      where: { userId: 'user-a' },
+    });
+  });
+
+  test('enables two-factor authentication with a valid code', async () => {
+    const operations: unknown[] = [];
+    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
+      $transaction: async (queries: Promise<unknown>[]) => {
+        operations.push(...(await Promise.all(queries)));
+        return Promise.resolve([]);
+      },
+      user: {
+        update: (query: unknown) => Promise.resolve({ query }),
+      },
+      userTotpSecret: {
+        findUnique: () => Promise.resolve({ secret: totpSecretFixture }),
+        update: (query: unknown) => Promise.resolve({ query }),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.enableTwoFactor(
+      'user-a',
+      currentTotpCode(totpSecretFixture),
+    );
+
+    expect(result).toBe(true);
+    expect(operations).toHaveLength(2);
+    expect(operations[1]).toEqual({
+      query: {
+        data: { twoFactorEnabled: true },
+        where: { id: 'user-a' },
+      },
+    });
+  });
+
+  test('disables two-factor authentication with a valid code', async () => {
+    const operations: unknown[] = [];
+    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
+      $transaction: async (queries: Promise<unknown>[]) => {
+        operations.push(...(await Promise.all(queries)));
+        return Promise.resolve([]);
+      },
+      user: {
+        update: (query: unknown) => Promise.resolve({ query }),
+      },
+      userTotpSecret: {
+        delete: (query: unknown) => Promise.resolve({ query }),
+        findUnique: () => Promise.resolve({ secret: totpSecretFixture }),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.disableTwoFactor(
+      'user-a',
+      currentTotpCode(totpSecretFixture),
+    );
+
+    expect(result).toBe(true);
+    expect(operations).toEqual([
+      { query: { where: { userId: 'user-a' } } },
+      {
+        query: {
+          data: { twoFactorEnabled: false },
+          where: { id: 'user-a' },
+        },
+      },
+    ]);
+  });
+
   test('requests password reset without revealing unknown accounts', async () => {
     const sent: unknown[] = [];
     const service = new AuthService(
@@ -387,6 +573,7 @@ describe(AuthService.name, () => {
 });
 
 const passwordHashFixture = await hash('correct-password', 4);
+const totpSecretFixture = 'JBSWY3DPEHPK3PXP';
 
 function sessionRow({ id }: { id: string }) {
   return {
@@ -406,4 +593,44 @@ function fakeMailService(sent: unknown[] = []) {
       return Promise.resolve();
     },
   } as never;
+}
+
+function currentTotpCode(secret: string): string {
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
+  const digest = createHmac('sha1', base32Decode(secret))
+    .update(counterBuffer)
+    .digest();
+  const offset = byteAt(digest, digest.length - 1) & 0x0f;
+  const binary =
+    ((byteAt(digest, offset) & 0x7f) << 24) |
+    ((byteAt(digest, offset + 1) & 0xff) << 16) |
+    ((byteAt(digest, offset + 2) & 0xff) << 8) |
+    (byteAt(digest, offset + 3) & 0xff);
+
+  return (binary % 1_000_000).toString().padStart(6, '0');
+}
+
+function base32Decode(value: string): Buffer {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0;
+  let accumulator = 0;
+  const bytes: number[] = [];
+
+  for (const character of value.toUpperCase().replace(/=+$/g, '')) {
+    const index = alphabet.indexOf(character);
+    if (index === -1) continue;
+    accumulator = (accumulator << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((accumulator >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+
+  return Buffer.from(bytes);
+}
+
+function byteAt(buffer: Buffer, index: number): number {
+  return buffer[index] ?? 0;
 }

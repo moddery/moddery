@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { compare, hash } from 'bcryptjs';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 
 import { MailService } from '../../mail/mail.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -29,7 +29,7 @@ export class AuthService {
   async login(input: LoginInput, metadata: AuthRequestMetadata = {}) {
     const identifier = input.identifier.trim();
     const user = await this.prisma.user.findFirst({
-      include: { passwordCredential: true },
+      include: { passwordCredential: true, totpSecret: true },
       where: {
         OR: [
           { username: { equals: identifier, mode: 'insensitive' } },
@@ -52,6 +52,21 @@ export class AuthService {
 
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.twoFactorEnabled) {
+      const totpSecret =
+        user.totpSecret?.confirmedAt === undefined ||
+        user.totpSecret.confirmedAt === null
+          ? null
+          : user.totpSecret.secret;
+
+      if (
+        totpSecret === null ||
+        !verifyTotp(input.twoFactorCode ?? '', totpSecret)
+      ) {
+        throw new UnauthorizedException('Invalid two-factor code');
+      }
     }
 
     return this.createAuthPayload(
@@ -104,6 +119,74 @@ export class AuthService {
       ].join('\n'),
       to: user.email,
     });
+
+    return true;
+  }
+
+  async setupTwoFactor(user: AuthenticatedUser) {
+    const secret = base32Encode(randomBytes(20));
+    await this.prisma.userTotpSecret.upsert({
+      create: {
+        secret,
+        userId: user.id,
+      },
+      update: {
+        confirmedAt: null,
+        secret,
+      },
+      where: { userId: user.id },
+    });
+
+    return {
+      otpAuthUrl: `otpauth://totp/Moddery:${encodeURIComponent(
+        user.username,
+      )}?secret=${secret}&issuer=Moddery&algorithm=SHA1&digits=6&period=30`,
+      secret,
+    };
+  }
+
+  async enableTwoFactor(userId: string, code: string): Promise<boolean> {
+    const totpSecret = await this.prisma.userTotpSecret.findUnique({
+      select: { secret: true },
+      where: { userId },
+    });
+
+    if (totpSecret === null || !verifyTotp(code, totpSecret.secret)) {
+      throw new UnauthorizedException('Invalid two-factor code');
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.userTotpSecret.update({
+        data: { confirmedAt: now },
+        where: { userId },
+      }),
+      this.prisma.user.update({
+        data: { twoFactorEnabled: true },
+        where: { id: userId },
+      }),
+    ]);
+
+    return true;
+  }
+
+  async disableTwoFactor(userId: string, code: string): Promise<boolean> {
+    const totpSecret = await this.prisma.userTotpSecret.findUnique({
+      select: { secret: true },
+      where: { userId },
+    });
+
+    if (totpSecret === null || !verifyTotp(code, totpSecret.secret)) {
+      throw new UnauthorizedException('Invalid two-factor code');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.userTotpSecret.delete({ where: { userId } }),
+      this.prisma.user.update({
+        data: { twoFactorEnabled: false },
+        where: { id: userId },
+      }),
+    ]);
 
     return true;
   }
@@ -408,6 +491,86 @@ function hashSecret(secret: string): string {
   return createHash('sha256').update(secret).digest('hex');
 }
 
+function verifyTotp(code: string, secret: string): boolean {
+  const normalized = code.trim();
+  if (!/^[0-9]{6}$/.test(normalized)) {
+    return false;
+  }
+
+  const counter = Math.floor(Date.now() / totpPeriodMs);
+  for (const offset of [-1, 0, 1]) {
+    if (totpCode(secret, counter + offset) === normalized) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function totpCode(secret: string, counter: number): string {
+  const counterBuffer = Buffer.alloc(8);
+  counterBuffer.writeBigUInt64BE(BigInt(counter));
+  const digest = createHmac('sha1', base32Decode(secret))
+    .update(counterBuffer)
+    .digest();
+  const offset = byteAt(digest, digest.length - 1) & 0x0f;
+  const binary =
+    ((byteAt(digest, offset) & 0x7f) << 24) |
+    ((byteAt(digest, offset + 1) & 0xff) << 16) |
+    ((byteAt(digest, offset + 2) & 0xff) << 8) |
+    (byteAt(digest, offset + 3) & 0xff);
+
+  return (binary % 1_000_000).toString().padStart(6, '0');
+}
+
+function base32Encode(bytes: Buffer): string {
+  let bits = 0;
+  let value = 0;
+  let output = '';
+
+  for (const byte of bytes) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += base32Character((value >>> (bits - 5)) & 31);
+      bits -= 5;
+    }
+  }
+
+  if (bits > 0) {
+    output += base32Character((value << (5 - bits)) & 31);
+  }
+
+  return output;
+}
+
+function base32Decode(value: string): Buffer {
+  let bits = 0;
+  let accumulator = 0;
+  const bytes: number[] = [];
+
+  for (const character of value.toUpperCase().replace(/=+$/g, '')) {
+    const index = base32Alphabet.indexOf(character);
+    if (index === -1) continue;
+    accumulator = (accumulator << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((accumulator >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+
+  return Buffer.from(bytes);
+}
+
+function byteAt(buffer: Buffer, index: number): number {
+  return buffer[index] ?? 0;
+}
+
+function base32Character(index: number): string {
+  return base32Alphabet[index] ?? '';
+}
+
 function sessionSelect() {
   return {
     createdAt: true,
@@ -429,3 +592,5 @@ function clampInteger(value: number, minimum: number, maximum: number): number {
 
 const passwordResetTokenTtlMs = 60 * 60 * 1000;
 const emailVerificationTokenTtlMs = 24 * 60 * 60 * 1000;
+const totpPeriodMs = 30 * 1000;
+const base32Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';

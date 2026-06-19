@@ -21,10 +21,12 @@ export function AuthPopover({
   onPasswordChange,
   onResetTokenChange,
   onSubmit,
+  onTwoFactorCodeChange,
   onUsernameChange,
   open,
   password,
   resetToken,
+  twoFactorCode,
   username,
 }: {
   busy: boolean;
@@ -42,10 +44,12 @@ export function AuthPopover({
   onPasswordChange: (value: string) => void;
   onResetTokenChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onTwoFactorCodeChange: (value: string) => void;
   onUsernameChange: (value: string) => void;
   open: boolean;
   password: string;
   resetToken: string;
+  twoFactorCode: string;
   username: string;
 }) {
   const submitLabel =
@@ -152,12 +156,24 @@ export function AuthPopover({
               )}
 
               {mode === 'login' && (
-                <input
-                  className={fieldInput}
-                  placeholder="Username or email"
-                  value={identifier}
-                  onChange={(event) => onIdentifierChange(event.target.value)}
-                />
+                <>
+                  <input
+                    className={fieldInput}
+                    placeholder="Username or email"
+                    value={identifier}
+                    onChange={(event) => onIdentifierChange(event.target.value)}
+                  />
+                  <input
+                    className={fieldInput}
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="2FA code"
+                    value={twoFactorCode}
+                    onChange={(event) =>
+                      onTwoFactorCodeChange(event.target.value)
+                    }
+                  />
+                </>
               )}
 
               {!mode.startsWith('reset') && (

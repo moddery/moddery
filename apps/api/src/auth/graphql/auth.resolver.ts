@@ -8,6 +8,7 @@ import { Public } from '../decorators/public.decorator.js';
 import { LoginInput } from '../dto/login.input.js';
 import { RegisterInput } from '../dto/register.input.js';
 import { RequestPasswordResetInput } from '../dto/request-password-reset.input.js';
+import { VerifyTwoFactorInput } from '../dto/verify-two-factor.input.js';
 import { ApiTokensService } from '../services/api-tokens.service.js';
 import { AuthService } from '../services/auth.service.js';
 import { type AuthenticatedUser } from '../services/auth-token.service.js';
@@ -24,6 +25,7 @@ import {
 import { AuthPayload } from './auth-payload.model.js';
 import { AuthUser } from './auth-user.model.js';
 import { SessionSearchResult, SessionSummary } from './session.model.js';
+import { TwoFactorSetup } from './two-factor-setup.model.js';
 
 @Resolver()
 export class AuthResolver {
@@ -37,6 +39,27 @@ export class AuthResolver {
   @Mutation(() => AuthPayload)
   login(@Args('input') input: LoginInput, @Context('req') request: GqlRequest) {
     return this.authService.login(input, requestMetadata(request));
+  }
+
+  @Mutation(() => TwoFactorSetup)
+  setupTwoFactor(@CurrentUser() user: AuthenticatedUser) {
+    return this.authService.setupTwoFactor(user);
+  }
+
+  @Mutation(() => Boolean)
+  enableTwoFactor(
+    @Args('input') input: VerifyTwoFactorInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authService.enableTwoFactor(user.id, input.code);
+  }
+
+  @Mutation(() => Boolean)
+  disableTwoFactor(
+    @Args('input') input: VerifyTwoFactorInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authService.disableTwoFactor(user.id, input.code);
   }
 
   @Query(() => AuthUser)

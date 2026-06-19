@@ -177,6 +177,7 @@ model User {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   authAccounts            UserAuthAccount[]
+  totpSecret              UserTotpSecret?
   apiTokens               ApiToken[]
   collections             Collection[]
   collectionItemsAdded    CollectionProject[]
@@ -291,6 +292,16 @@ model UserAuthAccount {
   @@unique([provider, providerId])
   @@index([userId])
   @@map("user_auth_accounts")
+}
+
+model UserTotpSecret {
+  userId      String    @id
+  secret      String
+  confirmedAt DateTime?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_totp_secrets")
 }
 
 model Session {

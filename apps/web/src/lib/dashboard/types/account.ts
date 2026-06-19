@@ -34,6 +34,11 @@ export interface CreatedApiToken {
   tokenSummary: ApiTokenSummary;
 }
 
+export interface TwoFactorSetup {
+  otpAuthUrl: string;
+  secret: string;
+}
+
 export interface OAuthClientRedirectUri {
   createdAt: string;
   id: string;

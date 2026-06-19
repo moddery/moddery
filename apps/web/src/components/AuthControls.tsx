@@ -36,6 +36,7 @@ export function AuthControls({
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -93,13 +94,20 @@ export function AuthControls({
         setNewPassword('');
         setPassword('');
         setResetToken('');
+        setTwoFactorCode('');
         return;
       }
 
       const result =
         mode === 'login'
           ? await login({
-              variables: { input: { identifier, password } },
+              variables: {
+                input: {
+                  identifier,
+                  password,
+                  twoFactorCode: twoFactorCode.trim() || null,
+                },
+              },
             })
           : await register({
               variables: { input: { email, password, username } },
@@ -172,10 +180,12 @@ export function AuthControls({
       onPasswordChange={setPassword}
       onResetTokenChange={setResetToken}
       onSubmit={(event) => void submit(event)}
+      onTwoFactorCodeChange={setTwoFactorCode}
       onUsernameChange={setUsername}
       open={open}
       password={password}
       resetToken={resetToken}
+      twoFactorCode={twoFactorCode}
       username={username}
     />
   );

@@ -12,6 +12,7 @@ import {
   type SessionSummary,
   type TeamInvitationSearchResult,
   type TeamInvitationSummary,
+  type TwoFactorSetup,
 } from '../types.js';
 
 export interface ViewerDirectThreadsQueryData {
@@ -111,6 +112,21 @@ export interface RevokeSessionMutationData {
 
 export interface RevokeSessionMutationVariables {
   sessionId: string;
+}
+
+export interface SetupTwoFactorMutationData {
+  setupTwoFactor: TwoFactorSetup;
+}
+
+export interface TwoFactorMutationData {
+  disableTwoFactor?: boolean;
+  enableTwoFactor?: boolean;
+}
+
+export interface TwoFactorMutationVariables {
+  input: {
+    code: string;
+  };
 }
 
 export interface ViewerOAuthClientsQueryData {
