@@ -447,6 +447,81 @@ describe(OrganizationManagementService.name, () => {
     );
   });
 
+  test('does not update organization owners', async () => {
+    const auditEvents: unknown[] = [];
+    const notifications: unknown[] = [];
+    const service = createService(
+      {
+        organization: {
+          findFirst: (query: { where?: { team?: unknown } }) => {
+            if (query.where?.team !== undefined) {
+              return Promise.resolve({
+                id: 'org-a',
+                name: 'Iris Labs',
+                slug: 'iris-labs',
+                teamId: 'team-a',
+              });
+            }
+
+            return Promise.resolve(organizationRow());
+          },
+        },
+        teamMember: {
+          findUnique: () =>
+            Promise.resolve({
+              acceptedAt: new Date('2026-01-01T00:00:00.000Z'),
+              isOwner: true,
+              permissions: ['MANAGE_DETAILS'],
+              role: 'Owner',
+              sortOrder: 0,
+              user: {
+                id: 'user-a',
+                username: 'seed',
+              },
+            }),
+          upsert: () => {
+            throw new Error('Owner membership should not be updated');
+          },
+        },
+        user: {
+          findFirst: () => Promise.resolve({ id: 'user-a' }),
+        },
+      } as unknown as PrismaService,
+      {
+        auditEvents,
+        notifications: {
+          sendUserNotification: (input: unknown) => {
+            notifications.push(input);
+            return Promise.resolve({});
+          },
+        },
+      },
+    );
+
+    let error: unknown;
+
+    try {
+      await service.addOrganizationTeamMember(
+        {
+          organizationId: 'org-a',
+          permissions: ['MANAGE_SETTINGS'],
+          role: 'Maintainer',
+          username: 'seed',
+        },
+        'user-b',
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe(
+      'Organization owner cannot be updated',
+    );
+    expect(auditEvents).toEqual([]);
+    expect(notifications).toEqual([]);
+  });
+
   test('updates owned organization metadata', async () => {
     const updates: unknown[] = [];
     const service = createService({

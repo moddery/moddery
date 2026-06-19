@@ -124,6 +124,11 @@ export class ProjectMembersService {
         },
       },
     });
+
+    if (before?.isOwner) {
+      throw new ForbiddenException('Project owner cannot be updated');
+    }
+
     const member = await this.prisma.teamMember.upsert({
       create: {
         acceptedAt: null,

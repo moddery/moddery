@@ -340,6 +340,62 @@ describe(ProjectMembersService.name, () => {
     );
   });
 
+  test('does not update project owners', async () => {
+    const auditEvents: unknown[] = [];
+    const notifications: unknown[] = [];
+    const service = createService(
+      {
+        project: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'project-a',
+              kind: 'MOD',
+              slug: 'iris',
+              teamId: 'team-a',
+              title: 'Iris',
+            }),
+        },
+        teamMember: {
+          findUnique: () => Promise.resolve(projectMemberRow()),
+          upsert: () => {
+            throw new Error('Owner membership should not be updated');
+          },
+        },
+        user: {
+          findFirst: () => Promise.resolve({ id: 'user-a' }),
+        },
+      } as unknown as PrismaService,
+      {
+        sendUserNotification: (input: unknown) => {
+          notifications.push(input);
+          return Promise.resolve({});
+        },
+      },
+      auditEvents,
+    );
+
+    let error: unknown;
+
+    try {
+      await service.addProjectTeamMember(
+        {
+          permissions: ['MANAGE_VERSIONS'],
+          projectSlug: 'iris',
+          role: 'Maintainer',
+          username: 'seed',
+        },
+        'user-b',
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe('Project owner cannot be updated');
+    expect(auditEvents).toEqual([]);
+    expect(notifications).toEqual([]);
+  });
+
   test('removes non-owner project team members for managers', async () => {
     const auditEvents: unknown[] = [];
     const deletes: unknown[] = [];

@@ -107,6 +107,11 @@ export class OrganizationManagementService {
         },
       },
     });
+
+    if (before?.isOwner) {
+      throw new ForbiddenException('Organization owner cannot be updated');
+    }
+
     const member = await this.prisma.teamMember.upsert({
       create: {
         acceptedAt: null,
