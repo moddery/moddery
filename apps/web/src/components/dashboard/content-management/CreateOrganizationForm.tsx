@@ -76,12 +76,14 @@ export function CreateOrganizationForm({
       >
         <div className="grid gap-3 md:grid-cols-2">
           <DashboardField
+            disabled={submitting}
             label="Name"
             value={name}
             onChange={setName}
             required
           />
           <DashboardField
+            disabled={submitting}
             label="Slug"
             value={slug}
             onChange={setSlug}
@@ -90,16 +92,23 @@ export function CreateOrganizationForm({
         </div>
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
           <DashboardField
+            disabled={submitting}
             label="Description"
             value={description}
             onChange={setDescription}
           />
           <DashboardField
+            disabled={submitting}
             label="Icon URL"
             value={iconUrl}
             onChange={setIconUrl}
           />
-          <DashboardField label="Color" value={color} onChange={setColor} />
+          <DashboardField
+            disabled={submitting}
+            label="Color"
+            value={color}
+            onChange={setColor}
+          />
         </div>
 
         {error && (
@@ -114,7 +123,7 @@ export function CreateOrganizationForm({
             disabled={submitting}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Creating...' : 'Create organization'}
+            {createOrganizationButtonLabel(submitting)}
           </button>
         </div>
       </form>
@@ -137,4 +146,8 @@ export function CreateOrganizationForm({
       )}
     </section>
   );
+}
+
+export function createOrganizationButtonLabel(submitting: boolean) {
+  return submitting ? 'Creating...' : 'Create organization';
 }

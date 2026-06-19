@@ -79,9 +79,10 @@ export function EditOrganizationForm({
         <label className="grid gap-1 text-sm font-bold text-ink">
           Organization
           <select
+            disabled={submitting}
             value={organizationId}
             onChange={(event) => setOrganizationId(event.target.value)}
-            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent"
+            className="h-10 rounded-lg border border-line bg-control px-3 text-sm font-bold text-ink outline-none transition-colors hover:border-line-strong focus-visible:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             {organizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
@@ -90,21 +91,40 @@ export function EditOrganizationForm({
             ))}
           </select>
         </label>
-        <DashboardField label="Name" value={name} onChange={setName} required />
-        <DashboardField label="Slug" value={slug} onChange={setSlug} required />
+        <DashboardField
+          disabled={submitting}
+          label="Name"
+          value={name}
+          onChange={setName}
+          required
+        />
+        <DashboardField
+          disabled={submitting}
+          label="Slug"
+          value={slug}
+          onChange={setSlug}
+          required
+        />
       </div>
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
         <DashboardField
+          disabled={submitting}
           label="Description"
           value={description}
           onChange={setDescription}
         />
         <DashboardField
+          disabled={submitting}
           label="Icon URL"
           value={iconUrl}
           onChange={setIconUrl}
         />
-        <DashboardField label="Color" value={color} onChange={setColor} />
+        <DashboardField
+          disabled={submitting}
+          label="Color"
+          value={color}
+          onChange={setColor}
+        />
       </div>
 
       {error && (
@@ -119,9 +139,13 @@ export function EditOrganizationForm({
           disabled={submitting}
           className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {submitting ? 'Saving...' : 'Save organization'}
+          {editOrganizationButtonLabel(submitting)}
         </button>
       </div>
     </form>
   );
+}
+
+export function editOrganizationButtonLabel(submitting: boolean) {
+  return submitting ? 'Saving...' : 'Save organization';
 }
