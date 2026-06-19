@@ -91,9 +91,9 @@ async function createVersionDependency(
   const targetProject =
     targetProjectSlug === null
       ? null
-      : await tx.project.findUnique({
+      : await tx.project.findFirst({
           select: { id: true },
-          where: { slug: targetProjectSlug },
+          where: { slug: targetProjectSlug, status: 'APPROVED' },
         });
 
   if (targetProjectSlug !== null && targetProject === null) {
@@ -101,9 +101,13 @@ async function createVersionDependency(
   }
 
   if (targetVersionId !== null) {
-    const targetVersion = await tx.version.findUnique({
+    const targetVersion = await tx.version.findFirst({
       select: { id: true },
-      where: { id: targetVersionId },
+      where: {
+        id: targetVersionId,
+        project: { status: 'APPROVED' },
+        status: 'APPROVED',
+      },
     });
 
     if (targetVersion === null) {

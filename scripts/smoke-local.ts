@@ -141,6 +141,13 @@ interface CreateVersionResponse {
   errors?: GraphqlError[];
 }
 
+interface UpdateVersionDependenciesResponse {
+  data?: {
+    updateVersionDependencies?: VersionSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface RecordFileScanResponse {
   data?: {
     recordFileScan?: VersionSummary;
@@ -835,6 +842,10 @@ async function checkCreatorFlow(): Promise<void> {
     token: auth.accessToken,
     versionId: createdVersion.id,
   });
+  await checkQueuedVersionDependencyGuard({
+    token: auth.accessToken,
+    versionId: createdVersion.id,
+  });
 
   const approvedVersion = await approveSmokeVersion(
     createdVersion.id,
@@ -1255,6 +1266,44 @@ async function checkQueuedVersionReportGuard({
     reportPayload,
     'Version not found',
     'queued version report',
+  );
+}
+
+async function checkQueuedVersionDependencyGuard({
+  token,
+  versionId,
+}: {
+  token: string;
+  versionId: string;
+}): Promise<void> {
+  const dependencyPayload =
+    await readGraphql<UpdateVersionDependenciesResponse>(
+      {
+        query: `
+          mutation SmokeQueuedVersionDependency($input: UpdateVersionDependenciesInput!) {
+            updateVersionDependencies(input: $input) {
+              id
+            }
+          }
+        `,
+        variables: {
+          input: {
+            dependencies: [
+              {
+                dependencyKind: 'REQUIRED',
+                targetVersionId: versionId,
+              },
+            ],
+            versionId,
+          },
+        },
+      },
+      token,
+    );
+  assertGraphqlError(
+    dependencyPayload,
+    'Dependency version not found',
+    'queued version dependency',
   );
 }
 

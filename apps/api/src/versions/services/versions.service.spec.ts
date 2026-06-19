@@ -36,7 +36,10 @@ describe(VersionsService.name, () => {
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           project: {
-            findUnique: () => Promise.resolve({ id: 'project-b' }),
+            findFirst: (query: unknown) => {
+              operations.push(`project-find:${JSON.stringify(query)}`);
+              return Promise.resolve({ id: 'project-b' });
+            },
             update: (query: unknown) => {
               operations.push(`project-update:${JSON.stringify(query)}`);
               return Promise.resolve({});
@@ -93,9 +96,104 @@ describe(VersionsService.name, () => {
     );
 
     expect(operations[0]).toBe('delete:{"where":{"versionId":"version-a"}}');
-    expect(operations[1]).toContain('"targetProjectId":"project-b"');
-    expect(operations[2]).toContain('"where":{"id":"project-a"}');
+    expect(operations[1]).toBe(
+      'project-find:{"select":{"id":true},"where":{"slug":"library","status":"APPROVED"}}',
+    );
+    expect(operations[2]).toContain('"targetProjectId":"project-b"');
+    expect(operations[3]).toContain('"where":{"id":"project-a"}');
     expect(version.dependencies[0]?.targetProject?.slug).toBe('library');
+  });
+
+  test('rejects non-public dependency projects', async () => {
+    const service = createVersionsService({
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          project: {
+            findFirst: () => Promise.resolve(null),
+          },
+          versionDependency: {
+            create: () => {
+              throw new Error('Dependency should not be created');
+            },
+            deleteMany: () => Promise.resolve({}),
+          },
+        }),
+      version: {
+        findFirst: () => Promise.resolve(managedVersion()),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateVersionDependencies(
+        {
+          dependencies: [
+            {
+              dependencyKind: 'REQUIRED',
+              targetProjectSlug: 'queued-library',
+            },
+          ],
+          versionId: 'version-a',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Dependency project not found');
+  });
+
+  test('rejects non-public dependency versions', async () => {
+    const versionLookups: unknown[] = [];
+    const service = createVersionsService({
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          version: {
+            findFirst: (query: unknown) => {
+              versionLookups.push(query);
+              return Promise.resolve(null);
+            },
+          },
+          versionDependency: {
+            create: () => {
+              throw new Error('Dependency should not be created');
+            },
+            deleteMany: () => Promise.resolve({}),
+          },
+        }),
+      version: {
+        findFirst: () => Promise.resolve(managedVersion()),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateVersionDependencies(
+        {
+          dependencies: [
+            {
+              dependencyKind: 'REQUIRED',
+              targetVersionId: 'queued-version',
+            },
+          ],
+          versionId: 'version-a',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(versionLookups[0]).toEqual({
+      select: { id: true },
+      where: {
+        id: 'queued-version',
+        project: { status: 'APPROVED' },
+        status: 'APPROVED',
+      },
+    });
+    expect(caught).toHaveProperty('message', 'Dependency version not found');
   });
 
   test('rejects version dependencies with multiple targets', async () => {
@@ -104,7 +202,7 @@ describe(VersionsService.name, () => {
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           project: {
-            findUnique: () => {
+            findFirst: () => {
               throw new Error('Dependency project lookup should not run');
             },
           },
