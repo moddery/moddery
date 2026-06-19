@@ -8,6 +8,8 @@ import {
 } from '../../../../lib/dashboard.ts';
 import { DashboardField, nullableText } from '../shared.tsx';
 
+type GalleryImageBusyAction = 'remove' | 'save';
+
 export function GalleryImageManager({
   images,
   onChanged,
@@ -46,13 +48,18 @@ function GalleryImageManagerRow({
   const [rawUrl, setRawUrl] = useState(image.rawUrl);
   const [sortOrder, setSortOrder] = useState(String(image.sortOrder));
   const [title, setTitle] = useState(image.title ?? '');
-  const [submitting, setSubmitting] = useState(false);
+  const [busyAction, setBusyAction] = useState<GalleryImageBusyAction | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const submitting = busyAction !== null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitting(true);
+    setBusyAction('save');
     setError(null);
+    setMessage(null);
 
     try {
       await updateProjectGalleryImage({
@@ -64,6 +71,7 @@ function GalleryImageManagerRow({
         sortOrder: parseSortOrder(sortOrder),
         title: nullableText(title),
       });
+      setMessage(galleryImageActionMessage());
       await onChanged();
     } catch (caught) {
       setError(
@@ -72,13 +80,14 @@ function GalleryImageManagerRow({
           : 'Gallery image update failed',
       );
     } finally {
-      setSubmitting(false);
+      setBusyAction(null);
     }
   }
 
   async function remove() {
-    setSubmitting(true);
+    setBusyAction('remove');
     setError(null);
+    setMessage(null);
 
     try {
       await removeProjectGalleryImage({ imageId: image.id });
@@ -90,7 +99,7 @@ function GalleryImageManagerRow({
           : 'Gallery image removal failed',
       );
     } finally {
-      setSubmitting(false);
+      setBusyAction(null);
     }
   }
 
@@ -107,8 +116,14 @@ function GalleryImageManagerRow({
         />
         <div className="grid gap-3">
           <div className="grid gap-3 md:grid-cols-[1fr_8rem]">
-            <DashboardField label="Title" value={title} onChange={setTitle} />
             <DashboardField
+              disabled={submitting}
+              label="Title"
+              value={title}
+              onChange={setTitle}
+            />
+            <DashboardField
+              disabled={submitting}
               label="Sort order"
               value={sortOrder}
               onChange={setSortOrder}
@@ -116,10 +131,11 @@ function GalleryImageManagerRow({
           </div>
           <label className="flex items-center gap-2 text-sm font-bold text-ink">
             <input
+              disabled={submitting}
               type="checkbox"
               checked={featured}
               onChange={(event) => setFeatured(event.target.checked)}
-              className="size-4 accent-accent"
+              className="size-4 accent-accent disabled:cursor-not-allowed"
             />
             Featured
           </label>
@@ -128,12 +144,14 @@ function GalleryImageManagerRow({
 
       <div className="grid gap-3 md:grid-cols-2">
         <DashboardField
+          disabled={submitting}
           label="Raw image URL"
           value={rawUrl}
           onChange={setRawUrl}
           required
         />
         <DashboardField
+          disabled={submitting}
           label="Display image URL"
           value={displayUrl}
           onChange={setDisplayUrl}
@@ -144,12 +162,18 @@ function GalleryImageManagerRow({
       <label className="grid gap-1 text-sm font-bold text-ink">
         Description
         <textarea
+          disabled={submitting}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          className="min-h-20 rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+          className="min-h-20 rounded-lg border border-line bg-control px-3 py-2 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         />
       </label>
 
+      {message && (
+        <p className="rounded-lg bg-control px-3 py-2 text-sm font-bold text-ink">
+          {message}
+        </p>
+      )}
       {error && (
         <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
           {error}
@@ -162,7 +186,7 @@ function GalleryImageManagerRow({
           disabled={submitting}
           className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {submitting ? 'Saving...' : 'Save image'}
+          {galleryImageSaveButtonLabel(busyAction)}
         </button>
         <button
           type="button"
@@ -171,7 +195,7 @@ function GalleryImageManagerRow({
           className="inline-flex h-9 items-center gap-2 rounded-lg bg-control px-3 text-sm font-bold text-accent-icon transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Trash2 className="size-4" />
-          Remove
+          {galleryImageRemoveButtonLabel(busyAction)}
         </button>
       </div>
     </form>
@@ -181,4 +205,20 @@ function GalleryImageManagerRow({
 function parseSortOrder(value: string): number {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function galleryImageActionMessage() {
+  return 'Image saved.';
+}
+
+export function galleryImageSaveButtonLabel(
+  busyAction: GalleryImageBusyAction | null,
+) {
+  return busyAction === 'save' ? 'Saving...' : 'Save image';
+}
+
+export function galleryImageRemoveButtonLabel(
+  busyAction: GalleryImageBusyAction | null,
+) {
+  return busyAction === 'remove' ? 'Removing...' : 'Remove';
 }

@@ -92,6 +92,7 @@ export function AddGalleryImageForm({
       >
         <GalleryImageFields
           description={description}
+          disabled={submitting}
           displayUrl={displayUrl}
           featured={featured}
           hasLocalFile={localFile !== null}
@@ -143,10 +144,14 @@ export function AddGalleryImageForm({
             disabled={submitting}
             className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? 'Adding...' : 'Add gallery image'}
+            {addGalleryImageButtonLabel(submitting)}
           </button>
         </div>
       </form>
     </section>
   );
+}
+
+export function addGalleryImageButtonLabel(submitting: boolean) {
+  return submitting ? 'Adding...' : 'Add gallery image';
 }
