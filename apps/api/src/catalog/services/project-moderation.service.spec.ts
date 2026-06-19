@@ -131,6 +131,7 @@ describe(ProjectModerationService.name, () => {
           findUnique: () =>
             Promise.resolve({
               id: 'project-a',
+              kind: 'MOD',
               requestedStatus: 'APPROVED',
               slug: 'example',
               status: 'PENDING_REVIEW',
@@ -180,6 +181,7 @@ describe(ProjectModerationService.name, () => {
       actorId: 'moderator-a',
       after: {
         id: 'project-a',
+        projectKind: 'MOD',
         requestedStatus: null,
         slug: 'example',
         status: 'APPROVED',
@@ -187,6 +189,7 @@ describe(ProjectModerationService.name, () => {
       },
       before: {
         id: 'project-a',
+        projectKind: 'MOD',
         requestedStatus: 'APPROVED',
         slug: 'example',
         status: 'PENDING_REVIEW',

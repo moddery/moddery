@@ -87,6 +87,7 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
         moderationAction
         projectAfter {
           id
+          projectKind
           requestedStatus
           slug
           status
@@ -94,6 +95,7 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
         }
         projectBefore {
           id
+          projectKind
           requestedStatus
           slug
           status
@@ -104,6 +106,7 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
           id
           kind
           name
+          projectKind
           slug
         }
         targetUser {

@@ -163,6 +163,7 @@ describe(AuditService.name, () => {
                   id: 'project-a',
                   kind: 'PROJECT',
                   name: 'Example',
+                  projectKind: 'MOD',
                   slug: 'example',
                 },
               },
@@ -185,6 +186,7 @@ describe(AuditService.name, () => {
       resource: {
         kind: 'PROJECT',
         name: 'Example',
+        projectKind: 'MOD',
       },
       teamMemberAction: 'UPDATE',
       teamMemberAfter: {

@@ -188,6 +188,7 @@ export class ProjectModerationService {
       actorId: moderatorId,
       after: {
         id: updated.id,
+        projectKind: updated.kind,
         requestedStatus: updated.requestedStatus,
         slug: updated.slug,
         status: updated.status,
@@ -195,6 +196,7 @@ export class ProjectModerationService {
       },
       before: {
         id: project.id,
+        projectKind: project.kind,
         requestedStatus: project.requestedStatus,
         slug: project.slug,
         status: project.status,
@@ -222,6 +224,7 @@ export class ProjectModerationService {
 function moderationProjectAuditSelect() {
   return {
     id: true,
+    kind: true,
     requestedStatus: true,
     slug: true,
     status: true,

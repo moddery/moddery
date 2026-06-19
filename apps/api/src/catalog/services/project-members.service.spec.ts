@@ -141,6 +141,7 @@ describe(ProjectMembersService.name, () => {
           findFirst: () =>
             Promise.resolve({
               id: 'project-a',
+              kind: 'MOD',
               slug: 'iris',
               teamId: 'team-a',
               title: 'Iris',
@@ -231,6 +232,7 @@ describe(ProjectMembersService.name, () => {
         id: 'project-a',
         kind: 'PROJECT',
         name: 'Iris',
+        projectKind: 'MOD',
         slug: 'iris',
       },
       targetUserId: 'user-b',
@@ -247,6 +249,7 @@ describe(ProjectMembersService.name, () => {
           findFirst: () =>
             Promise.resolve({
               id: 'project-a',
+              kind: 'MOD',
               slug: 'iris',
               teamId: 'team-a',
               title: 'Iris',
@@ -306,6 +309,7 @@ describe(ProjectMembersService.name, () => {
         id: 'project-a',
         kind: 'PROJECT',
         name: 'Iris',
+        projectKind: 'MOD',
         slug: 'iris',
       },
       targetUserId: 'user-b',

@@ -86,11 +86,13 @@ export interface AuditResourceSnapshot {
   id: string;
   kind: 'ORGANIZATION' | 'PROJECT';
   name: string;
+  projectKind: ProjectKind | null;
   slug: string;
 }
 
 export interface ProjectAuditSnapshot {
   id: string;
+  projectKind: ProjectKind | null;
   requestedStatus: string | null;
   slug: string;
   status: string;

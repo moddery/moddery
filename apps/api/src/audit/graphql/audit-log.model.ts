@@ -27,6 +27,9 @@ export class ProjectAuditSnapshot {
   id!: string;
 
   @Field(() => String, { nullable: true })
+  projectKind!: string | null;
+
+  @Field(() => String, { nullable: true })
   requestedStatus!: string | null;
 
   @Field(() => String)
@@ -49,6 +52,9 @@ export class AuditResourceSnapshot {
 
   @Field(() => String)
   name!: string;
+
+  @Field(() => String, { nullable: true })
+  projectKind!: string | null;
 
   @Field(() => String)
   slug!: string;

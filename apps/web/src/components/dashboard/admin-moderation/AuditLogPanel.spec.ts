@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { auditResourceHref, auditUserHref } from './AuditLogPanel.tsx';
+import {
+  auditResourceHref,
+  auditUserHref,
+  projectAuditSnapshotHref,
+} from './AuditLogPanel.tsx';
 
 describe(auditUserHref.name, () => {
   test('links audit users to encoded profile paths', () => {
@@ -17,9 +21,22 @@ describe(auditResourceHref.name, () => {
         id: 'org-a',
         kind: 'ORGANIZATION',
         name: 'Build Team',
+        projectKind: null,
         slug: 'build team',
       }),
     ).toBe('/organizations/build%20team');
+  });
+
+  test('links project audit resources when project kind route data is present', () => {
+    expect(
+      auditResourceHref({
+        id: 'project-a',
+        kind: 'PROJECT',
+        name: 'Required Lib',
+        projectKind: 'MOD',
+        slug: 'required-lib',
+      }),
+    ).toBe('/mods?project=required-lib&type=mod');
   });
 
   test('does not link project resources without project kind route data', () => {
@@ -28,8 +45,20 @@ describe(auditResourceHref.name, () => {
         id: 'project-a',
         kind: 'PROJECT',
         name: 'Required Lib',
+        projectKind: null,
         slug: 'required-lib',
       }),
     ).toBeNull();
+  });
+});
+
+describe(projectAuditSnapshotHref.name, () => {
+  test('links project moderation snapshots to public project routes', () => {
+    expect(
+      projectAuditSnapshotHref({
+        projectKind: 'PLUGIN',
+        slug: 'server-tools',
+      }),
+    ).toBe('/plugins?project=server-tools&type=plugin');
   });
 });

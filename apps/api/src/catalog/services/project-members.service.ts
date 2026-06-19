@@ -154,6 +154,7 @@ export class ProjectMembersService {
         id: project.id,
         kind: 'PROJECT',
         name: project.title,
+        projectKind: project.kind,
         slug: project.slug,
       },
       targetUserId: user.id,
@@ -203,6 +204,7 @@ export class ProjectMembersService {
         id: project.id,
         kind: 'PROJECT',
         name: project.title,
+        projectKind: project.kind,
         slug: input.projectSlug,
       },
       targetUserId: member.user.id,
@@ -218,6 +220,7 @@ export class ProjectMembersService {
     const project = await this.prisma.project.findFirst({
       select: {
         id: true,
+        kind: true,
         slug: true,
         teamId: true,
         title: true,

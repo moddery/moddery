@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { organizationPath, userPath } from '../../../app/routing.ts';
+import {
+  organizationPath,
+  projectPath,
+  userPath,
+} from '../../../app/routing.ts';
 import {
   fetchAdminAuditLogSearch,
   type AdminAuditLog,
@@ -10,6 +14,7 @@ import {
 } from '../../../lib/dashboard.ts';
 import { timeAgo } from '../../../lib/format.ts';
 import { enumLabel } from '../../../lib/labels.ts';
+import { projectTypeFromKind } from '../../../lib/projectTypes.ts';
 import { Pagination } from '../../Pagination.tsx';
 import { ReportActionButton } from './shared.tsx';
 
@@ -186,24 +191,35 @@ function ProjectAuditSnapshot({
 }: {
   label: string;
   snapshot: {
+    projectKind: NonNullable<AdminAuditLog['projectAfter']>['projectKind'];
     requestedStatus: string | null;
     slug: string;
     status: string;
     title: string;
   } | null;
 }) {
+  const href = snapshot ? projectAuditSnapshotHref(snapshot) : null;
+
   return (
     <div className="rounded-md border border-line bg-surface px-3 py-2">
       <dt className="text-xs font-bold uppercase text-faint">{label}</dt>
       <dd className="mt-1 font-semibold text-ink">
-        {snapshot
-          ? `${snapshot.title} / ${snapshot.status}${snapshot.requestedStatus ? ` -> ${snapshot.requestedStatus}` : ''}`
-          : 'Unavailable'}
+        {snapshot && href !== null ? (
+          <a
+            className="text-ink transition-colors hover:text-accent"
+            href={href}
+          >
+            {snapshot.title} / {snapshot.status}
+            {snapshot.requestedStatus ? ` -> ${snapshot.requestedStatus}` : ''}
+          </a>
+        ) : snapshot ? (
+          `${snapshot.title} / ${snapshot.status}${snapshot.requestedStatus ? ` -> ${snapshot.requestedStatus}` : ''}`
+        ) : (
+          'Unavailable'
+        )}
       </dd>
-      {snapshot && (
-        <dd className="mt-1 text-xs font-semibold text-muted">
-          /projects/{snapshot.slug}
-        </dd>
+      {href !== null && (
+        <dd className="mt-1 text-xs font-semibold text-muted">{href}</dd>
       )}
     </div>
   );
@@ -333,7 +349,29 @@ export function auditUserHref(user: Pick<AdminAuditUser, 'username'>) {
 }
 
 export function auditResourceHref(resource: AuditResourceSnapshot | null) {
-  return resource?.kind === 'ORGANIZATION'
-    ? organizationPath(resource.slug)
-    : null;
+  if (resource?.kind === 'ORGANIZATION') {
+    return organizationPath(resource.slug);
+  }
+
+  if (resource?.kind === 'PROJECT' && resource.projectKind !== null) {
+    return projectPath(
+      projectTypeFromKind(resource.projectKind),
+      resource.slug,
+    );
+  }
+
+  return null;
+}
+
+export function projectAuditSnapshotHref(
+  snapshot: Pick<
+    NonNullable<AdminAuditLog['projectAfter']>,
+    'projectKind' | 'slug'
+  >,
+) {
+  if (snapshot.projectKind === null) {
+    return null;
+  }
+
+  return projectPath(projectTypeFromKind(snapshot.projectKind), snapshot.slug);
 }

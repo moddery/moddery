@@ -121,6 +121,7 @@ export interface UserAccountAuditSnapshot extends Prisma.InputJsonObject {
 
 export interface ProjectAuditSnapshot extends Prisma.InputJsonObject {
   id: string;
+  projectKind: string | null;
   requestedStatus: string | null;
   slug: string;
   status: string;
@@ -131,6 +132,7 @@ export interface AuditResourceSnapshot extends Prisma.InputJsonObject {
   id: string;
   kind: 'ORGANIZATION' | 'PROJECT';
   name: string;
+  projectKind: string | null;
   slug: string;
 }
 
@@ -318,6 +320,8 @@ function projectSnapshot(
       value.requestedStatus === null)
     ? {
         id: value.id,
+        projectKind:
+          typeof value.projectKind === 'string' ? value.projectKind : null,
         requestedStatus: value.requestedStatus,
         slug: value.slug,
         status: value.status,
@@ -355,6 +359,10 @@ function resourceSnapshot(
     id: value.id,
     kind,
     name: value.name,
+    projectKind:
+      kind === 'PROJECT' && typeof value.projectKind === 'string'
+        ? value.projectKind
+        : null,
     slug: value.slug,
   };
 }
