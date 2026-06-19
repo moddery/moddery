@@ -101,6 +101,9 @@ export function useAppShellState() {
     discover.setSelectedLoaders(
       tag.kind === 'loader' ? new Set([tag.value]) : new Set(),
     );
+    discover.setSelectedLicenses(
+      tag.kind === 'license' ? new Set([tag.value]) : new Set(),
+    );
     discover.setSelectedCategories(
       tag.kind === 'category' ? new Set([tag.value]) : new Set(),
     );

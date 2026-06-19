@@ -12,6 +12,7 @@ import {
 export type Layout = 'list' | 'grid';
 export type SearchTag =
   | { kind: 'category'; projectType?: ProjectType; value: string }
+  | { kind: 'license'; projectType?: ProjectType; value: string }
   | { kind: 'loader'; projectType?: ProjectType; value: string }
   | { kind: 'version'; projectType?: ProjectType; value: string };
 

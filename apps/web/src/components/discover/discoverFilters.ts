@@ -1,6 +1,9 @@
 import { isProjectCategoryTag } from '@moddery/shared';
 
-import { type CategoryFilterTag } from '../../lib/catalog.ts';
+import {
+  type CategoryFilterTag,
+  type PlatformLicense,
+} from '../../lib/catalog.ts';
 import { type FacetOption, type TagFacetOption } from '../FilterSidebar.tsx';
 
 export function buildOptions(
@@ -33,6 +36,30 @@ export function buildCategoryOptions(
   return [...options.values()];
 }
 
+export function buildLicenseOptions(
+  licenses: PlatformLicense[],
+  selected: Set<string>,
+): FacetOption[] {
+  const options = new Map<string, FacetOption>(
+    licenses.map((license) => [
+      license.key,
+      {
+        description: license.url,
+        label: license.name,
+        value: license.key,
+      },
+    ]),
+  );
+
+  for (const value of selected) {
+    if (!options.has(value)) options.set(value, { value });
+  }
+
+  return [...options.values()].sort((a, b) =>
+    (a.label ?? a.value).localeCompare(b.label ?? b.value),
+  );
+}
+
 export function buildTagOptions({
   categories,
 }: {
@@ -58,6 +85,10 @@ export function selectedCategoriesToTags(selected: Set<string>): string[] {
 
 export function selectedLoadersToTags(selected: Set<string>): string[] {
   return [...selected].map((value) => `loader:${value}`);
+}
+
+export function selectedLicensesToTags(selected: Set<string>): string[] {
+  return [...selected].map((value) => `license:${value}`);
 }
 
 export function selectedVersionsToTags(selected: Set<string>): string[] {

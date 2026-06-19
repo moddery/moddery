@@ -12,6 +12,7 @@ export function DiscoverPage({
   error,
   hasActiveFilters,
   layout,
+  licenseOptions,
   loaderOptions,
   loading,
   meta,
@@ -23,6 +24,7 @@ export function DiscoverPage({
   page,
   query,
   selectedCategories,
+  selectedLicenses,
   selectedLoaders,
   selectedTags,
   selectedVersions,
@@ -34,6 +36,7 @@ export function DiscoverPage({
   sort,
   tagOptions,
   toggleCategory,
+  toggleLicense,
   toggleLoader,
   toggleTag,
   toggleVersion,
@@ -53,14 +56,17 @@ export function DiscoverPage({
             tagOptions={tagOptions}
             versionOptions={versionOptions}
             loaderOptions={loaderOptions}
+            licenseOptions={licenseOptions}
             categoryOptions={categoryOptions}
             selectedTags={selectedTags}
             selectedVersions={selectedVersions}
             selectedLoaders={selectedLoaders}
+            selectedLicenses={selectedLicenses}
             selectedCategories={selectedCategories}
             onToggleTag={toggleTag}
             onToggleVersion={toggleVersion}
             onToggleLoader={toggleLoader}
+            onToggleLicense={toggleLicense}
             onToggleCategory={toggleCategory}
             onClearAll={clearAll}
             hasActiveFilters={hasActiveFilters}
@@ -88,12 +94,15 @@ export function DiscoverPage({
             clearAll={clearAll}
             hasActiveFilters={hasActiveFilters}
             loaderOptions={loaderOptions}
+            licenseOptions={licenseOptions}
             query={query}
             selectedCategories={selectedCategories}
+            selectedLicenses={selectedLicenses}
             selectedLoaders={selectedLoaders}
             selectedVersions={selectedVersions}
             setQuery={setQuery}
             toggleCategory={toggleCategory}
+            toggleLicense={toggleLicense}
             toggleLoader={toggleLoader}
             toggleVersion={toggleVersion}
             versionOptions={versionOptions}

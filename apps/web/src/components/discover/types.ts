@@ -13,6 +13,7 @@ export interface DiscoverPageProps {
   error: string | null;
   hasActiveFilters: boolean;
   layout: Layout;
+  licenseOptions: FacetOption[];
   loaderOptions: FacetOption[];
   loading: boolean;
   meta: ProjectTypeMeta;
@@ -25,6 +26,7 @@ export interface DiscoverPageProps {
   query: string;
   setQuery: (query: string) => void;
   selectedCategories: Set<string>;
+  selectedLicenses: Set<string>;
   selectedLoaders: Set<string>;
   selectedTags: Set<string>;
   selectedVersions: Set<string>;
@@ -35,6 +37,7 @@ export interface DiscoverPageProps {
   sort: SortKey;
   tagOptions: TagFacetOption[];
   toggleCategory: (value: string) => void;
+  toggleLicense: (value: string) => void;
   toggleLoader: (value: string) => void;
   toggleTag: (tag: TagFacetOption) => void;
   toggleVersion: (value: string) => void;

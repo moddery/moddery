@@ -5,6 +5,7 @@ import {
   fetchProjectDetails,
   fetchProjectVersions,
   fetchProjectVersionSearch,
+  searchProjects,
 } from './catalog.js';
 
 describe(fetchProjectDetails.name, () => {
@@ -205,6 +206,55 @@ describe(fetchProjectVersionSearch.name, () => {
     expect(result.totalHits).toBe(7);
     expect(result.versions[0]?.files[0]?.filename).toBe('example.jar');
     expect(result.versions[0]?.loaders).toEqual(['fabric']);
+  });
+});
+
+describe(searchProjects.name, () => {
+  afterEach(() => {
+    spyOn(apolloClient, 'query').mockRestore();
+  });
+
+  test('sends license filters and follows sorting as project search tags', async () => {
+    const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
+      data: {
+        projectSearch: {
+          projects: [],
+          totalHits: 0,
+        },
+      },
+    } as never);
+
+    await searchProjects({
+      categories: ['optimization'],
+      licenses: ['MIT'],
+      limit: 20,
+      loaders: ['fabric'],
+      page: 2,
+      projectType: 'mod',
+      query: '  sodium  ',
+      sort: 'follows',
+      versions: ['1.21.6'],
+    });
+
+    const queryOptions = querySpy.mock.calls[0]?.[0] as
+      | { variables: unknown }
+      | undefined;
+
+    expect(queryOptions?.variables).toEqual({
+      query: {
+        limit: 20,
+        offset: 20,
+        search: 'sodium',
+        sort: 'follows',
+        tags: [
+          'kind:MOD',
+          'category:optimization',
+          'license:mit',
+          'loader:fabric',
+          'game-version:1.21.6',
+        ],
+      },
+    });
   });
 });
 

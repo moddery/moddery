@@ -23,6 +23,7 @@ export async function searchProjects({
   limit,
   versions,
   loaders,
+  licenses = [],
   categories,
   signal,
 }: SearchProjectsParams): Promise<SearchProjectsResult> {
@@ -42,6 +43,7 @@ export async function searchProjects({
         sort: sortToApiSort(sort),
         tags: projectSearchTags({
           categories,
+          licenses,
           loaders,
           projectType,
           versions,
@@ -78,6 +80,7 @@ export async function fetchFilterTags(
       (category) =>
         category.projectKind === null || category.projectKind === projectKind,
     ),
+    licenses: data.platformMetadata.licenses,
     loaders: data.platformMetadata.loaders,
     versions: data.platformMetadata.gameVersions,
   };
@@ -101,6 +104,7 @@ export async function fetchPlatformMetadata(
 
 function sortToApiSort(sort: SortKey): string {
   if (sort === 'downloads') return 'downloads';
+  if (sort === 'follows') return 'follows';
   if (sort === 'updated') return 'updated';
   if (sort === 'name') return 'name';
   return 'relevance';

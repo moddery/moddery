@@ -66,6 +66,7 @@ export function useDiscoverState({
 
     writeDiscoverUrlState({
       categories: filters.selectedCategoryValues,
+      licenses: filters.selectedLicenseValues,
       loaders: filters.selectedLoaderValues,
       page,
       projectType,
@@ -76,6 +77,7 @@ export function useDiscoverState({
     });
   }, [
     filters.selectedCategoryValues,
+    filters.selectedLicenseValues,
     filters.selectedLoaderValues,
     filters.selectedVersionValues,
     page,
@@ -97,6 +99,7 @@ export function useDiscoverState({
         limit: pageSize,
         versions: filters.selectedVersionValues,
         loaders: filters.selectedLoaderValues,
+        licenses: filters.selectedLicenseValues,
         categories: filters.selectedCategoryValues,
         signal,
       }),
@@ -110,6 +113,7 @@ export function useDiscoverState({
       pageSize,
       filters.selectedVersionValues,
       filters.selectedLoaderValues,
+      filters.selectedLicenseValues,
       filters.selectedCategoryValues,
     ],
   });
@@ -138,6 +142,7 @@ export function useDiscoverState({
     applyUrlState,
     activeFilterCount: filters.activeFilterCount,
     categoryOptions: filters.categoryOptions,
+    licenseOptions: filters.licenseOptions,
     clearAll,
     error,
     hasActiveFilters,
@@ -154,12 +159,14 @@ export function useDiscoverState({
     setQuery,
     setSelectedCategories: filters.setSelectedCategories,
     setSelectedLoaders: filters.setSelectedLoaders,
+    setSelectedLicenses: filters.setSelectedLicenses,
     setSelectedVersions: filters.setSelectedVersions,
     setSort,
     setView,
     query,
     selectedCategories: filters.selectedCategories,
     selectedLoaders: filters.selectedLoaders,
+    selectedLicenses: filters.selectedLicenses,
     selectedTags: filters.selectedTags,
     selectedVersions: filters.selectedVersions,
     sort,
@@ -169,6 +176,9 @@ export function useDiscoverState({
     },
     toggleLoader: (value: string) => {
       filters.toggleLoader(value, resetPage);
+    },
+    toggleLicense: (value: string) => {
+      filters.toggleLicense(value, resetPage);
     },
     toggleTag: (tag: TagFacetOption) => {
       filters.toggleTag(tag, resetPage);

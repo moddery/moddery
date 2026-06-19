@@ -246,6 +246,7 @@ export function projectSearchTags(project: ProjectSummaryContract): string[] {
     `kind:${project.kind}`,
     ...project.categories.map((category) => `category:${category}`),
     ...project.gameVersions.map((gameVersion) => `game-version:${gameVersion}`),
+    ...licenseSearchTags(project.license.id),
     ...project.loaders.map((loader) => `loader:${loader.toLowerCase()}`),
   ];
 }
@@ -261,6 +262,7 @@ export function projectContractToSearch(project: ProjectSummaryContract) {
     iconUrl: project.iconUrl ?? null,
     id: project.id,
     kind: project.kind,
+    licenseKey: normalizedLicenseKey(project.license.id),
     loaders: project.loaders.map((loader) => loader.toLowerCase()),
     slug: project.slug,
     summary: project.summary,
@@ -269,6 +271,16 @@ export function projectContractToSearch(project: ProjectSummaryContract) {
     titleSort: project.title.toLowerCase(),
     updatedAt: project.updatedAt,
   };
+}
+
+function licenseSearchTags(licenseKey: string): string[] {
+  const normalized = normalizedLicenseKey(licenseKey);
+  return normalized === null ? [] : [`license:${normalized}`];
+}
+
+function normalizedLicenseKey(licenseKey: string): string | null {
+  const normalized = licenseKey.trim().toLowerCase();
+  return normalized === '' || normalized === 'unknown' ? null : normalized;
 }
 
 function projectLinksToContract(project: ProjectRow) {

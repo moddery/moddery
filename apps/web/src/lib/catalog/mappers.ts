@@ -177,10 +177,12 @@ export function memberFromSummary(member: ProjectMemberSummary): ProjectMember {
 export function projectSearchTags({
   categories,
   loaders,
+  licenses,
   projectType,
   versions,
 }: {
   categories: string[];
+  licenses: string[];
   loaders: string[];
   projectType: ProjectType;
   versions: string[];
@@ -188,6 +190,7 @@ export function projectSearchTags({
   return [
     `kind:${projectKindFromType(projectType)}`,
     ...categories.map((category) => `category:${category}`),
+    ...licenses.map((license) => `license:${license.trim().toLowerCase()}`),
     ...loaders.map((loader) => `loader:${loader}`),
     ...versions.map((version) => `game-version:${version}`),
   ];

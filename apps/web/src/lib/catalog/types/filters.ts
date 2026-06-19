@@ -13,6 +13,7 @@ export interface FilterTags {
   versions: string[];
   loaders: string[];
   categories: CategoryFilterTag[];
+  licenses: PlatformLicense[];
 }
 
 export interface CategoryFilterTag {
@@ -31,6 +32,7 @@ export interface SearchProjectsParams {
   versions: string[];
   loaders: string[];
   categories: string[];
+  licenses?: string[];
   signal?: AbortSignal;
 }
 

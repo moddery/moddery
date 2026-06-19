@@ -17,6 +17,7 @@ export function readDiscoverUrlState(): DiscoverUrlState {
   return {
     filters: {
       categories: params.getAll('category'),
+      licenses: params.getAll('license'),
       loaders: params.getAll('loader'),
       versions: params.getAll('version'),
     },
@@ -30,6 +31,7 @@ export function readDiscoverUrlState(): DiscoverUrlState {
 export function writeDiscoverUrlState({
   categories,
   loaders,
+  licenses,
   page,
   projectType,
   query,
@@ -39,6 +41,7 @@ export function writeDiscoverUrlState({
 }: {
   categories: string[];
   loaders: string[];
+  licenses: string[];
   page: number;
   projectType: ProjectType;
   query: string;
@@ -57,6 +60,7 @@ export function writeDiscoverUrlState({
   setOptionalParam(url, 'page', page === 1 ? '' : String(page));
   setListParam(url, 'version', versions);
   setListParam(url, 'loader', loaders);
+  setListParam(url, 'license', licenses);
   setListParam(url, 'category', categories);
 
   window.history.replaceState(null, '', url);

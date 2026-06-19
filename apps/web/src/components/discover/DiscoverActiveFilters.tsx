@@ -9,12 +9,15 @@ type DiscoverActiveFiltersProps = Pick<
   | 'clearAll'
   | 'hasActiveFilters'
   | 'loaderOptions'
+  | 'licenseOptions'
   | 'query'
   | 'selectedCategories'
+  | 'selectedLicenses'
   | 'selectedLoaders'
   | 'selectedVersions'
   | 'setQuery'
   | 'toggleCategory'
+  | 'toggleLicense'
   | 'toggleLoader'
   | 'toggleVersion'
   | 'versionOptions'
@@ -25,12 +28,15 @@ export function DiscoverActiveFilters({
   clearAll,
   hasActiveFilters,
   loaderOptions,
+  licenseOptions,
   query,
   selectedCategories,
+  selectedLicenses,
   selectedLoaders,
   selectedVersions,
   setQuery,
   toggleCategory,
+  toggleLicense,
   toggleLoader,
   toggleVersion,
   versionOptions,
@@ -39,6 +45,7 @@ export function DiscoverActiveFilters({
 
   const categoryLabels = labelMap(categoryOptions);
   const loaderLabels = labelMap(loaderOptions);
+  const licenseLabels = labelMap(licenseOptions);
   const versionLabels = labelMap(versionOptions);
 
   return (
@@ -62,6 +69,13 @@ export function DiscoverActiveFilters({
           key={`loader:${value}`}
           label={loaderLabels.get(value) ?? loaderLabel(value)}
           onRemove={() => toggleLoader(value)}
+        />
+      ))}
+      {[...selectedLicenses].sort().map((value) => (
+        <FilterChip
+          key={`license:${value}`}
+          label={licenseLabels.get(value) ?? value}
+          onRemove={() => toggleLicense(value)}
         />
       ))}
       {[...selectedVersions].sort().map((value) => (

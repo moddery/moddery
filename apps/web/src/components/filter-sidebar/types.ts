@@ -13,6 +13,12 @@ export type TagFacetOption =
     }
   | {
       description?: string | null;
+      kind: 'license';
+      label?: string;
+      value: string;
+    }
+  | {
+      description?: string | null;
       kind: 'loader';
       label?: string;
       value: string;

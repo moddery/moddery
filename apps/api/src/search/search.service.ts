@@ -130,6 +130,7 @@ function projectIndexMapping() {
       gameVersions: { type: 'keyword' },
       iconUrl: { type: 'keyword', index: false },
       kind: { type: 'keyword' },
+      licenseKey: { type: 'keyword' },
       loaders: { type: 'keyword' },
       slug: { type: 'keyword' },
       summary: { type: 'text' },
@@ -143,6 +144,7 @@ function projectIndexMapping() {
 
 function sortForProjects(sort: string | undefined) {
   if (sort === 'downloads') return [{ downloads: { order: 'desc' as const } }];
+  if (sort === 'follows') return [{ followers: { order: 'desc' as const } }];
   if (sort === 'name') return [{ titleSort: { order: 'asc' as const } }];
   if (sort === 'updated' || sort === 'newest') {
     return [{ updatedAt: { order: 'desc' as const } }];

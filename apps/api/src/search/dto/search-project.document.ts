@@ -8,6 +8,7 @@ export interface SearchProjectDocument {
   readonly iconUrl: string | null;
   readonly id: string;
   readonly kind: string;
+  readonly licenseKey: string | null;
   readonly loaders: readonly string[];
   readonly slug: string;
   readonly summary: string;

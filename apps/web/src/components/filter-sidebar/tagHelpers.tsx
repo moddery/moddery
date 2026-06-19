@@ -12,6 +12,7 @@ export function tagLabel(tag: TagFacetOption): string {
   if (tag.label) return tag.label;
   if (tag.kind === 'category') return categoryLabel(tag.value);
   if (tag.kind === 'loader') return loaderLabel(tag.value);
+  if (tag.kind === 'license') return tag.value;
   return tag.value;
 }
 

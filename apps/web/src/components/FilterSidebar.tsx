@@ -1,6 +1,7 @@
 import { cn } from '../lib/cn.ts';
 import { CategoryPanel } from './filter-sidebar/CategoryPanel.tsx';
 import { GameVersionPanel } from './filter-sidebar/GameVersionPanel.tsx';
+import { LicensePanel } from './filter-sidebar/LicensePanel.tsx';
 import { LoaderPanel } from './filter-sidebar/LoaderPanel.tsx';
 import { TagsPanel } from './filter-sidebar/TagsPanel.tsx';
 import {
@@ -12,14 +13,17 @@ interface FilterSidebarProps {
   tagOptions: TagFacetOption[];
   versionOptions: FacetOption[];
   loaderOptions: FacetOption[];
+  licenseOptions: FacetOption[];
   categoryOptions: FacetOption[];
   selectedTags: Set<string>;
   selectedVersions: Set<string>;
   selectedLoaders: Set<string>;
+  selectedLicenses: Set<string>;
   selectedCategories: Set<string>;
   onToggleTag: (tag: TagFacetOption) => void;
   onToggleVersion: (value: string) => void;
   onToggleLoader: (value: string) => void;
+  onToggleLicense: (value: string) => void;
   onToggleCategory: (value: string) => void;
   onClearAll: () => void;
   hasActiveFilters: boolean;
@@ -32,14 +36,17 @@ export function FilterSidebar({
   tagOptions,
   versionOptions,
   loaderOptions,
+  licenseOptions,
   categoryOptions,
   selectedTags,
   selectedVersions,
   selectedLoaders,
+  selectedLicenses,
   selectedCategories,
   onToggleTag,
   onToggleVersion,
   onToggleLoader,
+  onToggleLicense,
   onToggleCategory,
   onClearAll,
   hasActiveFilters,
@@ -81,6 +88,11 @@ export function FilterSidebar({
         options={loaderOptions}
         selected={selectedLoaders}
         onToggle={onToggleLoader}
+      />
+      <LicensePanel
+        options={licenseOptions}
+        selected={selectedLicenses}
+        onToggle={onToggleLicense}
       />
       <CategoryPanel
         options={categoryOptions}

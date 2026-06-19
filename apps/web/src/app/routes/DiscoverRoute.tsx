@@ -24,6 +24,7 @@ export function DiscoverRoute({ app }: DiscoverRouteProps) {
       error={app.discover.error}
       hasActiveFilters={app.discover.hasActiveFilters}
       layout={app.discover.layout}
+      licenseOptions={app.discover.licenseOptions}
       loaderOptions={app.discover.loaderOptions}
       loading={app.discover.loading}
       meta={projectTypeMeta(app.projectType)}
@@ -35,6 +36,7 @@ export function DiscoverRoute({ app }: DiscoverRouteProps) {
       page={app.discover.page}
       query={app.discover.query}
       selectedCategories={app.discover.selectedCategories}
+      selectedLicenses={app.discover.selectedLicenses}
       selectedLoaders={app.discover.selectedLoaders}
       selectedTags={app.discover.selectedTags}
       selectedVersions={app.discover.selectedVersions}
@@ -55,6 +57,7 @@ export function DiscoverRoute({ app }: DiscoverRouteProps) {
       sort={app.discover.sort}
       tagOptions={app.discover.tagOptions}
       toggleCategory={app.discover.toggleCategory}
+      toggleLicense={app.discover.toggleLicense}
       toggleLoader={app.discover.toggleLoader}
       toggleTag={app.discover.toggleTag}
       toggleVersion={app.discover.toggleVersion}
