@@ -8,7 +8,10 @@ function createVersionsService(
   prisma: PrismaService,
   auditEvents: unknown[] = [],
   notifications: unknown[] = [],
+  searchEvents: unknown[] = [],
 ) {
+  const prismaWithProjectDefaults = withDefaultProjectReload(prisma);
+
   return new VersionsService(
     {
       recordVersionModeration: (event: unknown) => {
@@ -28,65 +31,94 @@ function createVersionsService(
         return Promise.resolve({});
       },
     } as never,
-    prisma,
-    new VersionDependenciesService(prisma),
+    prismaWithProjectDefaults,
+    new VersionDependenciesService(prismaWithProjectDefaults),
     { delete: () => Promise.resolve() } as never,
-    { updateProjectUpdatedAt: () => Promise.resolve() } as never,
+    {
+      deleteProject: (projectId: string) => {
+        searchEvents.push({ projectId, type: 'delete' });
+        return Promise.resolve();
+      },
+      indexProjects: (projects: unknown[]) => {
+        searchEvents.push({ projects, type: 'index' });
+        return Promise.resolve();
+      },
+    } as never,
   );
+}
+
+function withDefaultProjectReload(prisma: PrismaService): PrismaService {
+  const source = prisma as unknown as {
+    project?: Record<string, unknown>;
+  };
+
+  return {
+    ...(prisma as object),
+    project: {
+      findUniqueOrThrow: () => Promise.resolve(projectRow()),
+      ...(source.project ?? {}),
+    },
+  } as unknown as PrismaService;
 }
 
 describe(VersionsService.name, () => {
   test('replaces version dependencies for accepted project members', async () => {
     const operations: string[] = [];
-    const service = createVersionsService({
-      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
-        callback({
-          project: {
-            findFirst: (query: unknown) => {
-              operations.push(`project-find:${JSON.stringify(query)}`);
-              return Promise.resolve({ id: 'project-b' });
+    const searchEvents: unknown[] = [];
+    const service = createVersionsService(
+      {
+        $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            project: {
+              findFirst: (query: unknown) => {
+                operations.push(`project-find:${JSON.stringify(query)}`);
+                return Promise.resolve({ id: 'project-b' });
+              },
+              update: (query: unknown) => {
+                operations.push(`project-update:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
             },
-            update: (query: unknown) => {
-              operations.push(`project-update:${JSON.stringify(query)}`);
-              return Promise.resolve({});
-            },
-          },
-          version: {
-            findUniqueOrThrow: () =>
-              Promise.resolve(
-                versionRow({
-                  dependencies: [
-                    {
-                      dependencyKind: 'REQUIRED',
-                      externalFileName: null,
-                      id: 'dependency-a',
-                      targetProject: {
-                        id: 'project-b',
-                        kind: 'MOD',
-                        slug: 'library',
-                        title: 'Library',
+            version: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  versionRow({
+                    dependencies: [
+                      {
+                        dependencyKind: 'REQUIRED',
+                        externalFileName: null,
+                        id: 'dependency-a',
+                        targetProject: {
+                          id: 'project-b',
+                          kind: 'MOD',
+                          slug: 'library',
+                          title: 'Library',
+                        },
+                        targetVersion: null,
                       },
-                      targetVersion: null,
-                    },
-                  ],
-                }),
-              ),
-          },
-          versionDependency: {
-            create: (query: unknown) => {
-              operations.push(`create:${JSON.stringify(query)}`);
-              return Promise.resolve({});
+                    ],
+                  }),
+                ),
             },
-            deleteMany: (query: unknown) => {
-              operations.push(`delete:${JSON.stringify(query)}`);
-              return Promise.resolve({});
+            versionDependency: {
+              create: (query: unknown) => {
+                operations.push(`create:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
+              deleteMany: (query: unknown) => {
+                operations.push(`delete:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
             },
-          },
-        }),
-      version: {
-        findFirst: () => Promise.resolve(managedVersion()),
-      },
-    } as unknown as PrismaService);
+          }),
+        version: {
+          findFirst: () => Promise.resolve(managedVersion()),
+        },
+      } as unknown as PrismaService,
+      [],
+      [],
+      searchEvents,
+    );
 
     const version = await service.updateVersionDependencies(
       {
@@ -108,6 +140,18 @@ describe(VersionsService.name, () => {
     expect(operations[2]).toContain('"targetProjectId":"project-b"');
     expect(operations[3]).toContain('"where":{"id":"project-a"}');
     expect(version.dependencies[0]?.targetProject?.slug).toBe('library');
+    expect(searchEvents).toEqual([
+      {
+        projects: [
+          expect.objectContaining({
+            id: 'project-a',
+            slug: 'example',
+            title: 'Example Project',
+          }),
+        ],
+        type: 'index',
+      },
+    ]);
   });
 
   test('rejects non-public dependency projects', async () => {
@@ -252,56 +296,62 @@ describe(VersionsService.name, () => {
 
   test('updates versions for accepted project members', async () => {
     const operations: string[] = [];
-    const service = createVersionsService({
-      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
-        callback({
-          gameVersion: {
-            upsert: () => Promise.resolve({ id: 'game-version-a' }),
-          },
-          project: {
-            update: (query: unknown) => {
-              operations.push(`project-update:${JSON.stringify(query)}`);
-              return Promise.resolve({});
+    const searchEvents: unknown[] = [];
+    const service = createVersionsService(
+      {
+        $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            gameVersion: {
+              upsert: () => Promise.resolve({ id: 'game-version-a' }),
             },
-          },
-          version: {
-            findUniqueOrThrow: () =>
-              Promise.resolve(
-                versionRow({
-                  changelog: 'Updated notes',
-                  channel: 'BETA',
-                  featured: false,
-                  name: 'Updated',
-                  requestedStatus: null,
-                  sortOrder: 3,
-                  status: 'APPROVED',
-                  versionNumber: '1.0.1',
-                }),
-              ),
-            update: (query: unknown) => {
-              operations.push(`version-update:${JSON.stringify(query)}`);
-              return Promise.resolve({});
+            project: {
+              update: (query: unknown) => {
+                operations.push(`project-update:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
             },
-          },
-          versionGameVersion: {
-            create: () => Promise.resolve({}),
-            deleteMany: (query: unknown) => {
-              operations.push(`versions-delete:${JSON.stringify(query)}`);
-              return Promise.resolve({});
+            version: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  versionRow({
+                    changelog: 'Updated notes',
+                    channel: 'BETA',
+                    featured: false,
+                    name: 'Updated',
+                    requestedStatus: null,
+                    sortOrder: 3,
+                    status: 'APPROVED',
+                    versionNumber: '1.0.1',
+                  }),
+                ),
+              update: (query: unknown) => {
+                operations.push(`version-update:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
             },
-          },
-          versionLoader: {
-            create: () => Promise.resolve({}),
-            deleteMany: (query: unknown) => {
-              operations.push(`loaders-delete:${JSON.stringify(query)}`);
-              return Promise.resolve({});
+            versionGameVersion: {
+              create: () => Promise.resolve({}),
+              deleteMany: (query: unknown) => {
+                operations.push(`versions-delete:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
             },
-          },
-        }),
-      version: {
-        findFirst: () => Promise.resolve(managedVersion()),
-      },
-    } as unknown as PrismaService);
+            versionLoader: {
+              create: () => Promise.resolve({}),
+              deleteMany: (query: unknown) => {
+                operations.push(`loaders-delete:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
+            },
+          }),
+        version: {
+          findFirst: () => Promise.resolve(managedVersion()),
+        },
+      } as unknown as PrismaService,
+      [],
+      [],
+      searchEvents,
+    );
 
     const version = await service.updateVersion(
       {
@@ -332,6 +382,17 @@ describe(VersionsService.name, () => {
     expect(
       operations.some((operation) => operation.includes('project-update')),
     ).toBeTrue();
+    expect(searchEvents).toEqual([
+      {
+        projects: [
+          expect.objectContaining({
+            id: 'project-a',
+            slug: 'example',
+          }),
+        ],
+        type: 'index',
+      },
+    ]);
     expect(version.versionNumber).toBe('1.0.1');
   });
 
@@ -407,70 +468,76 @@ describe(VersionsService.name, () => {
 
   test('creates queued versions for accepted project members', async () => {
     const transactionSteps: string[] = [];
-    const service = createVersionsService({
-      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
-        callback({
-          project: {
-            update: () => Promise.resolve({}),
-          },
-          gameVersion: {
-            upsert: () => Promise.resolve({ id: 'game-version-a' }),
-          },
-          version: {
-            findUnique: () => Promise.resolve(null),
-            create: (query: unknown) => {
-              transactionSteps.push(`version:${JSON.stringify(query)}`);
-              return Promise.resolve({ id: 'version-a' });
+    const searchEvents: unknown[] = [];
+    const service = createVersionsService(
+      {
+        $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            project: {
+              update: () => Promise.resolve({}),
             },
-            findUniqueOrThrow: () =>
-              Promise.resolve(
-                versionRow({
-                  changelog: 'Notes',
-                  files: [
-                    {
-                      fileName: 'example.jar',
-                      hashes: [{ algorithm: 'SHA256', value: 'abc123' }],
-                      id: 'file-a',
-                      isPrimary: true,
-                      scans: [],
-                      sizeBytes: 123n,
-                      url: 'https://cdn.example.test/root/example.jar',
-                    },
-                  ],
-                }),
-              ),
-          },
-          versionFile: {
-            create: () => {
-              transactionSteps.push('file');
-              return Promise.resolve({ id: 'file-a' });
+            gameVersion: {
+              upsert: () => Promise.resolve({ id: 'game-version-a' }),
             },
-          },
-          fileHash: {
-            upsert: () => {
-              transactionSteps.push('hash');
-              return Promise.resolve({});
+            version: {
+              findUnique: () => Promise.resolve(null),
+              create: (query: unknown) => {
+                transactionSteps.push(`version:${JSON.stringify(query)}`);
+                return Promise.resolve({ id: 'version-a' });
+              },
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  versionRow({
+                    changelog: 'Notes',
+                    files: [
+                      {
+                        fileName: 'example.jar',
+                        hashes: [{ algorithm: 'SHA256', value: 'abc123' }],
+                        id: 'file-a',
+                        isPrimary: true,
+                        scans: [],
+                        sizeBytes: 123n,
+                        url: 'https://cdn.example.test/root/example.jar',
+                      },
+                    ],
+                  }),
+                ),
             },
-          },
-          versionGameVersion: {
-            create: () => Promise.resolve({}),
-            deleteMany: () => Promise.resolve({}),
-          },
-          versionLoader: {
-            create: () => Promise.resolve({}),
-            deleteMany: () => Promise.resolve({}),
-          },
-        }),
-      project: {
-        findUnique: () =>
-          Promise.resolve({
-            id: 'project-a',
-            slug: 'example',
-            status: 'APPROVED',
-            team: { members: [{ userId: 'user-a' }] },
+            versionFile: {
+              create: () => {
+                transactionSteps.push('file');
+                return Promise.resolve({ id: 'file-a' });
+              },
+            },
+            fileHash: {
+              upsert: () => {
+                transactionSteps.push('hash');
+                return Promise.resolve({});
+              },
+            },
+            versionGameVersion: {
+              create: () => Promise.resolve({}),
+              deleteMany: () => Promise.resolve({}),
+            },
+            versionLoader: {
+              create: () => Promise.resolve({}),
+              deleteMany: () => Promise.resolve({}),
+            },
           }),
-      },
-    } as unknown as PrismaService);
+        project: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'project-a',
+              slug: 'example',
+              status: 'APPROVED',
+              team: { members: [{ userId: 'user-a' }] },
+            }),
+        },
+      } as unknown as PrismaService,
+      [],
+      [],
+      searchEvents,
+    );
 
     const version = await service.createVersion(
       {
@@ -501,6 +568,17 @@ describe(VersionsService.name, () => {
     expect(version.files[0]?.hashes[0]?.value).toBe('abc123');
     expect(version.files[0]?.sizeBytes).toBe('123');
     expect(version.projectSlug).toBe('example');
+    expect(searchEvents).toEqual([
+      {
+        projects: [
+          expect.objectContaining({
+            id: 'project-a',
+            slug: 'example',
+          }),
+        ],
+        type: 'index',
+      },
+    ]);
   });
 
   test('loads versions awaiting moderation', async () => {
@@ -549,6 +627,7 @@ describe(VersionsService.name, () => {
     const auditEvents: unknown[] = [];
     const notifications: unknown[] = [];
     const operations: string[] = [];
+    const searchEvents: unknown[] = [];
     const service = createVersionsService(
       {
         $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
@@ -589,6 +668,7 @@ describe(VersionsService.name, () => {
       } as unknown as PrismaService,
       auditEvents,
       notifications,
+      searchEvents,
     );
 
     const version = await service.moderateVersion(
@@ -632,6 +712,17 @@ describe(VersionsService.name, () => {
         title: 'Release approved',
         type: 'moderation',
         userId: 'user-author',
+      },
+    ]);
+    expect(searchEvents).toEqual([
+      {
+        projects: [
+          expect.objectContaining({
+            id: 'project-a',
+            slug: 'example',
+          }),
+        ],
+        type: 'index',
       },
     ]);
     expect(version.status).toBe('APPROVED');
@@ -964,5 +1055,56 @@ function versionRow(
     status: overrides.status ?? 'APPROVED',
     updatedAt: new Date('2026-01-03T00:00:00.000Z'),
     versionNumber: overrides.versionNumber ?? '1.0.0',
+  };
+}
+
+function projectRow(
+  overrides: Partial<{
+    status: string;
+    updatedAt: Date;
+  }> = {},
+) {
+  return {
+    approvedAt: new Date('2026-01-01T00:00:00.000Z'),
+    archivedAt: null,
+    categories: [{ category: { slug: 'optimization' } }],
+    color: '#66ccff',
+    description: 'A useful project for testing release search sync.',
+    discordUrl: null,
+    downloads: 12,
+    followers: 5,
+    gallery: [],
+    gameVersions: [{ gameVersion: { version: '1.21.6' } }],
+    iconUrl: null,
+    id: 'project-a',
+    issuesUrl: null,
+    kind: 'MOD',
+    license: { key: 'mit', name: 'MIT', url: null },
+    links: [],
+    loaders: [{ loader: 'FABRIC' }],
+    moderationLock: null,
+    organization: null,
+    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+    queuedAt: null,
+    requestedStatus: null,
+    slug: 'example',
+    sourceUrl: null,
+    status: overrides.status ?? 'APPROVED',
+    summary: 'Project summary',
+    team: {
+      members: [
+        {
+          user: {
+            avatarUrl: null,
+            displayName: 'Project Owner',
+            id: 'user-a',
+            username: 'owner',
+          },
+        },
+      ],
+    },
+    title: 'Example Project',
+    updatedAt: overrides.updatedAt ?? new Date('2026-01-03T00:00:00.000Z'),
+    wikiUrl: null,
   };
 }

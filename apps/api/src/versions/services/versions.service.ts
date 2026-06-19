@@ -18,7 +18,12 @@ import { NotificationsService } from '../../notifications/services/notifications
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { SearchService } from '../../search/search.service.js';
-import { projectBySlugCacheKey } from '../../catalog/services/project-read-model.js';
+import {
+  projectBySlugCacheKey,
+  projectContractToSearch,
+  projectRowToContract,
+  projectSelect,
+} from '../../catalog/services/project-read-model.js';
 import { type CreateVersionInput } from '../dto/create-version.input.js';
 import { type ModerateVersionInput } from '../dto/moderate-version.input.js';
 import { type UpdateVersionDependenciesInput } from '../dto/update-version-dependencies.input.js';
@@ -145,7 +150,6 @@ export class VersionsService {
     await this.refreshProjectAfterVersionChange({
       projectId: project.id,
       projectSlug: project.slug,
-      updatedAt: touchedAt,
     });
 
     return versionRowToContract(version);
@@ -232,7 +236,6 @@ export class VersionsService {
     await this.refreshProjectAfterVersionChange({
       projectId: version.project.id,
       projectSlug: version.project.slug,
-      updatedAt: touchedAt,
     });
     await this.auditService.recordVersionModeration({
       action,
@@ -373,7 +376,6 @@ export class VersionsService {
     await this.refreshProjectAfterVersionChange({
       projectId: version.project.id,
       projectSlug: version.project.slug,
-      updatedAt: touchedAt,
     });
 
     return versionRowToContract(updated);
@@ -391,7 +393,6 @@ export class VersionsService {
     await this.refreshProjectAfterVersionChange({
       projectId: version.projectId,
       projectSlug: version.projectSlug,
-      updatedAt: version.projectUpdatedAt,
     });
 
     return version.summary;
@@ -400,15 +401,21 @@ export class VersionsService {
   private async refreshProjectAfterVersionChange({
     projectId,
     projectSlug,
-    updatedAt,
   }: {
     projectId: string;
     projectSlug: string;
-    updatedAt: Date;
   }): Promise<void> {
+    const project = await this.prisma.project.findUniqueOrThrow({
+      select: projectSelect(),
+      where: { id: projectId },
+    });
+    const contract = projectRowToContract(project);
+
     await Promise.all([
       this.redis.delete(projectBySlugCacheKey(projectSlug)),
-      this.search.updateProjectUpdatedAt(projectId, updatedAt.toISOString()),
+      contract.status === 'APPROVED'
+        ? this.search.indexProjects([projectContractToSearch(contract)])
+        : this.search.deleteProject(projectId),
     ]);
   }
 }
