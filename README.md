@@ -62,3 +62,5 @@ Seed local catalog data:
 ```sh
 bun run seed:popular-projects
 ```
+
+`SEED_PROJECT_LIMIT` is applied per project type.

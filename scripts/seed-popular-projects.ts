@@ -25,6 +25,13 @@ const versionsPerProject = requiredPositiveIntegerEnv(
   'SEED_VERSIONS_PER_PROJECT',
 );
 const projectsIndex = 'projects';
+const seedProjectTypes = [
+  'mod',
+  'plugin',
+  'modpack',
+  'resourcepack',
+  'shader',
+] as const;
 
 interface SearchResponse {
   hits: SearchHit[];
@@ -185,7 +192,7 @@ async function upsertSeedOrganization(ownerId: string) {
         color: '#1d9bf0',
         description: 'Local development organization for seeded catalog data.',
         name: 'Moddery Seed',
-        ownerId,
+        owner: { connect: { id: ownerId } },
       },
       where: { id: existing.id },
     });
@@ -196,7 +203,7 @@ async function upsertSeedOrganization(ownerId: string) {
       color: '#1d9bf0',
       description: 'Local development organization for seeded catalog data.',
       name: 'Moddery Seed',
-      ownerId,
+      owner: { connect: { id: ownerId } },
       slug: 'moddery-seed',
       team: {
         create: {
@@ -501,13 +508,13 @@ async function createProject(
       iconUrl: project.icon_url,
       id: project.project_id,
       kind,
-      licenseId,
-      organizationId,
+      license: { connect: { id: licenseId } },
+      organization: { connect: { id: organizationId } },
       publishedAt: parseDate(project.date_created),
       slug: project.slug,
       status: ProjectStatus.APPROVED,
       summary: project.description,
-      teamId: team.id,
+      team: { connect: { id: team.id } },
       title: project.title,
       updatedAt: parseDate(project.date_modified),
     },
@@ -527,8 +534,8 @@ function updateProject(
       downloads: project.downloads,
       iconUrl: project.icon_url,
       kind,
-      licenseId,
-      organizationId,
+      license: { connect: { id: licenseId } },
+      organization: { connect: { id: organizationId } },
       publishedAt: parseDate(project.date_created),
       status: ProjectStatus.APPROVED,
       summary: project.description,
@@ -540,21 +547,37 @@ function updateProject(
 }
 
 async function fetchPopularProjects(): Promise<SearchHit[]> {
-  const params = new URLSearchParams({
-    facets: JSON.stringify([['project_type:mod']]),
-    index: 'downloads',
-    limit: String(limit),
-  });
-  const response = await fetch(`${sourceBaseUrl}/search?${params.toString()}`, {
-    headers: { Accept: 'application/json' },
-  });
+  const projects = new Map<string, SearchHit>();
 
-  if (!response.ok) {
-    throw new Error(`Seed source returned ${response.status.toString()}`);
+  for (const projectType of seedProjectTypes) {
+    const params = new URLSearchParams({
+      facets: JSON.stringify([[`project_type:${projectType}`]]),
+      index: 'downloads',
+      limit: String(limit),
+    });
+    const response = await fetch(
+      `${sourceBaseUrl}/search?${params.toString()}`,
+      {
+        headers: { Accept: 'application/json' },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Seed source returned ${response.status.toString()} for ${projectType}`,
+      );
+    }
+
+    const data = (await response.json()) as SearchResponse;
+    for (const project of data.hits) {
+      projects.set(project.project_id, {
+        ...project,
+        project_type: projectType,
+      });
+    }
   }
 
-  const data = (await response.json()) as SearchResponse;
-  return data.hits;
+  return [...projects.values()];
 }
 
 async function fetchProjectDetail(projectId: string): Promise<ProjectDetail> {
