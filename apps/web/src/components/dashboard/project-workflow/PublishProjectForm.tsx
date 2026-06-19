@@ -9,6 +9,7 @@ import {
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
 import { PublishProjectFields } from './publish-project/PublishProjectFields.tsx';
+import { assertCreateProjectInput } from './publish-project/publish-project-input.ts';
 import { usePublishProjectFormState } from './publish-project/usePublishProjectFormState.ts';
 
 export function PublishProjectForm({
@@ -35,7 +36,10 @@ export function PublishProjectForm({
     setError(null);
 
     try {
-      const createdProject = await createProject(form.buildInput());
+      const input = form.buildInput();
+      assertCreateProjectInput(input);
+
+      const createdProject = await createProject(input);
       if (localIconFile !== null) {
         const target = await uploadProjectFile({
           file: localIconFile,
