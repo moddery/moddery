@@ -911,6 +911,47 @@ describe(VersionsService.name, () => {
     );
   });
 
+  test('rejects multiple primary version files before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files = [
+      file,
+      {
+        ...file,
+        fileName: 'example-server.jar',
+        url: 'https://cdn.example.test/root/example-server.jar',
+      },
+    ];
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Only one primary version file is allowed',
+    );
+  });
+
   test('rejects version files outside project storage before opening a transaction', async () => {
     const service = createVersionsService({
       $transaction: () => {
@@ -945,6 +986,47 @@ describe(VersionsService.name, () => {
     expect(caught).toHaveProperty(
       'message',
       'Version file URL must use project storage',
+    );
+  });
+
+  test('rejects duplicate version file names before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files = [
+      { ...file, primary: true },
+      {
+        ...file,
+        primary: false,
+        url: 'https://cdn.example.test/root/example-copy.jar',
+      },
+    ];
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Version file names must be unique',
     );
   });
 
@@ -1022,6 +1104,46 @@ describe(VersionsService.name, () => {
     expect(caught).toHaveProperty(
       'message',
       'A version file can include at most 8 hashes',
+    );
+  });
+
+  test('rejects duplicate version file hash algorithms before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      hashes: [
+        { algorithm: 'sha256', value: 'a'.repeat(64) },
+        { algorithm: 'SHA256', value: 'b'.repeat(64) },
+      ],
+    };
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Version file hash algorithms must be unique',
     );
   });
 

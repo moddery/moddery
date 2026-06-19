@@ -63,14 +63,26 @@ export function validateVersionFiles(
     throw new BadRequestException('A version can include at most 8 files');
   }
 
-  if (!files.some((file) => file.primary)) {
+  const primaryFiles = files.filter((file) => file.primary);
+  if (primaryFiles.length === 0) {
     throw new BadRequestException('A primary version file is required');
   }
 
+  if (primaryFiles.length > 1) {
+    throw new BadRequestException('Only one primary version file is allowed');
+  }
+
+  const fileNames = new Set<string>();
   for (const file of files) {
-    if (file.fileName.trim().length === 0) {
+    const fileName = file.fileName.trim();
+    if (fileName.length === 0) {
       throw new BadRequestException('Version file name is required');
     }
+
+    if (fileNames.has(fileName)) {
+      throw new BadRequestException('Version file names must be unique');
+    }
+    fileNames.add(fileName);
 
     const url = file.url.trim();
     if (url.length === 0) {
@@ -93,8 +105,15 @@ export function validateVersionFiles(
       );
     }
 
+    const hashAlgorithms = new Set<HashAlgorithm>();
     for (const hash of file.hashes ?? []) {
-      normalizeHashAlgorithm(hash.algorithm);
+      const algorithm = normalizeHashAlgorithm(hash.algorithm);
+      if (hashAlgorithms.has(algorithm)) {
+        throw new BadRequestException(
+          'Version file hash algorithms must be unique',
+        );
+      }
+      hashAlgorithms.add(algorithm);
 
       if (hash.value.trim().length === 0) {
         throw new BadRequestException('Version file hash value is required');
