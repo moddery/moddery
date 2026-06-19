@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import {
+  type DashboardProject,
   fetchModerationProjectSearch,
   lockProjectForModeration,
   moderateProject,
@@ -34,11 +35,13 @@ export function useProjectModerationQueueState() {
     setMessage(null);
 
     try {
-      await moderateProject({
+      const project = await moderateProject({
         action,
         projectSlug,
         reason: nullableText(reason),
       });
+      setMessage(projectModerationActionMessage(action, project));
+      setReason('');
       await projectsQuery.refetch();
       if (projects.length === 1 && page > 1) {
         setPage((current) => current - 1);
@@ -57,11 +60,13 @@ export function useProjectModerationQueueState() {
     setMessage(null);
 
     try {
+      let project: DashboardProject;
       if (action === 'lock') {
-        await lockProjectForModeration(projectSlug);
+        project = await lockProjectForModeration(projectSlug);
       } else {
-        await releaseProjectModerationLock(projectSlug);
+        project = await releaseProjectModerationLock(projectSlug);
       }
+      setMessage(projectModerationLockMessage(action, project));
       await projectsQuery.refetch();
     } catch (caught) {
       setMessage(
@@ -86,4 +91,33 @@ export function useProjectModerationQueueState() {
     totalPages,
     updateLock,
   };
+}
+
+export function projectModerationActionMessage(
+  action: string,
+  project: Pick<DashboardProject, 'slug' | 'title'>,
+) {
+  const projectLabel = project.title.trim() || project.slug;
+
+  switch (action) {
+    case 'APPROVE':
+      return `Approved ${projectLabel}.`;
+    case 'REJECT':
+      return `Rejected ${projectLabel}.`;
+    case 'ARCHIVE':
+      return `Archived ${projectLabel}.`;
+    case 'RESTORE':
+      return `Restored ${projectLabel}.`;
+    default:
+      return `Updated ${projectLabel}.`;
+  }
+}
+
+export function projectModerationLockMessage(
+  action: 'lock' | 'release',
+  project: Pick<DashboardProject, 'slug'>,
+) {
+  return action === 'lock'
+    ? `Locked ${project.slug} for review.`
+    : `Released review lock for ${project.slug}.`;
 }
