@@ -546,13 +546,19 @@ async function checkWeb(): Promise<void> {
     '/collections',
     '/dashboard',
     '/mods',
+    '/mods?project=smoke-route&type=mod',
     '/modpacks',
+    '/modpacks?project=smoke-route-pack&type=modpack',
     '/notifications',
     '/organizations',
+    '/organizations/smoke-route-org',
     '/platform',
     '/plugins',
+    '/plugins?project=smoke-route-plugin&type=plugin',
     '/status',
     '/users',
+    '/users/smoke-route-user',
+    '/collections/smoke-route-user/smoke-route-collection',
   ];
 
   for (const route of routes) {
