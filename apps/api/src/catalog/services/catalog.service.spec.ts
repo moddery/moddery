@@ -57,6 +57,36 @@ describe(CatalogService.name, () => {
     expect(second?.title).toBe('Cached Project');
   });
 
+  test('does not return non-approved projects from public slug lookup', async () => {
+    const redisState = fakeRedisState();
+    redisState.cache.set('catalog:project-by-slug:example', {
+      status: 'PENDING_REVIEW',
+      title: 'Private Project',
+    });
+    const queries: unknown[] = [];
+    const service = new CatalogService(
+      {
+        project: {
+          findUnique: (query: unknown) => {
+            queries.push(query);
+            return Promise.resolve(null);
+          },
+        },
+      } as unknown as PrismaService,
+      { searchProjects: () => Promise.resolve({ ids: [], total: 0 }) } as never,
+      redisState.redis as never,
+    );
+
+    const project = await service.findProjectBySlug('example');
+
+    expect(project).toBeUndefined();
+    expect(queries[0]).toEqual(
+      expect.objectContaining({
+        where: { slug: 'example', status: 'APPROVED' },
+      }),
+    );
+  });
+
   test('searches projects through OpenSearch tags before hydrating rows', async () => {
     const queries: unknown[] = [];
     const searchQueries: unknown[] = [];
@@ -120,6 +150,7 @@ function projectRow({
     description: string | null;
     displayUrl: string;
     featured: boolean;
+    id: string;
     rawUrl: string;
     sortOrder: number;
     title: string | null;

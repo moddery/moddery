@@ -76,11 +76,11 @@ export class CatalogService {
     const cacheKey = projectBySlugCacheKey(slug);
     const cached = await this.redis.getJson<ProjectSummaryContract>(cacheKey);
 
-    if (cached !== undefined) return cached;
+    if (cached?.status === 'APPROVED') return cached;
 
     const project = await this.prisma.project.findUnique({
       select: projectSelect(),
-      where: { slug },
+      where: { slug, status: 'APPROVED' },
     });
 
     if (project !== null) {

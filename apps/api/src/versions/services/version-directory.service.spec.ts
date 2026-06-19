@@ -51,7 +51,7 @@ describe(VersionDirectoryService.name, () => {
       expect.objectContaining({
         count: {
           where: {
-            project: { slug: 'example' },
+            project: { slug: 'example', status: 'APPROVED' },
             status: 'APPROVED',
           },
         },
@@ -63,7 +63,7 @@ describe(VersionDirectoryService.name, () => {
           skip: 0,
           take: 100,
           where: {
-            project: { slug: 'example' },
+            project: { slug: 'example', status: 'APPROVED' },
             status: 'APPROVED',
           },
         }),
@@ -169,7 +169,7 @@ describe(VersionDirectoryService.name, () => {
           },
         },
       ],
-      project: { slug: 'example' },
+      project: { slug: 'example', status: 'APPROVED' },
       status: 'APPROVED',
     };
 

@@ -73,7 +73,7 @@ export class ProjectMembersService {
       select: {
         teamId: true,
       },
-      where: { slug: projectSlug },
+      where: { slug: projectSlug, status: 'APPROVED' },
     });
 
     if (project === null) {

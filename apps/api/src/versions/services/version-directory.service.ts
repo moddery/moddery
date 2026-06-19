@@ -113,7 +113,7 @@ function versionSearchWhere(
             some: { loader: loaderFilter },
           },
         }),
-    project: { slug: projectSlug },
+    project: { slug: projectSlug, status: 'APPROVED' },
     ...(normalizedSearch === null
       ? {}
       : {

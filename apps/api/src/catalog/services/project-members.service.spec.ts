@@ -47,7 +47,7 @@ describe(ProjectMembersService.name, () => {
     expect(queries[0]).toEqual(
       expect.objectContaining({
         project: expect.objectContaining({
-          where: { slug: 'iris' },
+          where: { slug: 'iris', status: 'APPROVED' },
         }),
       }),
     );
@@ -129,6 +129,26 @@ describe(ProjectMembersService.name, () => {
     expect(result.totalHits).toBe(7);
     expect(result.members[0]?.role).toBe('Maintainer');
     expect(result.members[0]?.accepted).toBe(false);
+  });
+
+  test('does not expose team members for non-public projects', async () => {
+    const service = createService({
+      project: {
+        findUnique: () => Promise.resolve(null),
+      },
+      teamMember: {
+        count: () => {
+          throw new Error('Team member count should not run');
+        },
+        findMany: () => {
+          throw new Error('Team member lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findProjectMemberSearch('draft-project');
+
+    expect(result).toEqual({ members: [], totalHits: 0 });
   });
 
   test('adds project team members for managers', async () => {
