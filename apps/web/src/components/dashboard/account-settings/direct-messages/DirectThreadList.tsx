@@ -3,6 +3,7 @@ import { Pagination } from '../../../Pagination.tsx';
 import { DirectThreadRow } from './DirectThreadRow.tsx';
 
 export function DirectThreadList({
+  busyThreadId,
   loading,
   messageBodyByThread,
   onMessageChange,
@@ -14,6 +15,7 @@ export function DirectThreadList({
   totalPages,
   viewerId,
 }: {
+  busyThreadId: string | null;
   loading: boolean;
   messageBodyByThread: Record<string, string>;
   onMessageChange: (threadId: string, value: string) => void;
@@ -51,6 +53,7 @@ export function DirectThreadList({
       {threads.map((thread) => (
         <DirectThreadRow
           key={thread.id}
+          busy={busyThreadId === thread.id}
           thread={thread}
           value={messageBodyByThread[thread.id] ?? ''}
           viewerId={viewerId}

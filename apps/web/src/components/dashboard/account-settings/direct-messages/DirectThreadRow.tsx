@@ -3,6 +3,7 @@ import { type DirectThread } from '../../../../lib/dashboard/types.ts';
 import { timeAgo } from '../../../../lib/format.ts';
 
 export function DirectThreadRow({
+  busy,
   onChange,
   onRead,
   onReply,
@@ -10,6 +11,7 @@ export function DirectThreadRow({
   value,
   viewerId,
 }: {
+  busy: boolean;
   onChange: (value: string) => void;
   onRead: () => void;
   onReply: () => void;
@@ -24,7 +26,12 @@ export function DirectThreadRow({
 
   return (
     <article className="rounded-lg border border-line bg-surface p-4">
-      <ThreadHeader thread={thread} viewerId={viewerId} onRead={onRead} />
+      <ThreadHeader
+        busy={busy}
+        thread={thread}
+        viewerId={viewerId}
+        onRead={onRead}
+      />
       <ThreadMessages messages={messages} />
       <div className="mt-3 flex gap-2">
         <input
@@ -35,10 +42,11 @@ export function DirectThreadRow({
         />
         <button
           type="button"
+          disabled={busy}
           onClick={onReply}
-          className="rounded-lg border border-line px-4 text-sm font-extrabold text-ink transition-colors hover:bg-control-hover"
+          className="rounded-lg border border-line px-4 text-sm font-extrabold text-ink transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Reply
+          {busy ? 'Working...' : 'Reply'}
         </button>
       </div>
     </article>
@@ -46,10 +54,12 @@ export function DirectThreadRow({
 }
 
 function ThreadHeader({
+  busy,
   onRead,
   thread,
   viewerId,
 }: {
+  busy: boolean;
   onRead: () => void;
   thread: DirectThread;
   viewerId: string;
@@ -86,8 +96,9 @@ function ThreadHeader({
             </span>
             <button
               type="button"
+              disabled={busy}
               onClick={onRead}
-              className="rounded-full border border-line px-2 py-1 text-ink transition-colors hover:bg-control-hover"
+              className="rounded-full border border-line px-2 py-1 text-ink transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               Mark read
             </button>

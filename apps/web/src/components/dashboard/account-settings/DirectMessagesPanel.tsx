@@ -8,6 +8,7 @@ import {
   fetchViewerDirectThreads,
   markDirectThreadRead,
 } from '../../../lib/dashboard/actions/account.ts';
+import { type DirectThread } from '../../../lib/dashboard/types.ts';
 import { DirectMessageComposer } from './direct-messages/DirectMessageComposer.tsx';
 import { DirectThreadList } from './direct-messages/DirectThreadList.tsx';
 
@@ -15,6 +16,8 @@ const pageSize = 20;
 
 export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
   const [body, setBody] = useState('');
+  const [composerSubmitting, setComposerSubmitting] = useState(false);
+  const [busyThreadId, setBusyThreadId] = useState<string | null>(null);
   const [messageBodyByThread, setMessageBodyByThread] = useState<
     Record<string, string>
   >({});
@@ -29,14 +32,22 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
   async function startThread(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus(null);
+    setComposerSubmitting(true);
+
     try {
-      await createDirectThread({ body, username });
+      const thread = await createDirectThread({
+        body: body.trim(),
+        username: username.trim(),
+      });
       setBody('');
       setUsername('');
       setPage(1);
+      setStatus(directMessageStatusMessage('create', thread));
       await threadsQuery.refetch();
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : 'Message failed');
+    } finally {
+      setComposerSubmitting(false);
     }
   }
 
@@ -47,24 +58,34 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
     }
 
     setStatus(null);
+    setBusyThreadId(threadId);
+
     try {
-      await createDirectThreadMessage({ body, threadId });
+      const thread = await createDirectThreadMessage({ body, threadId });
       setMessageBodyByThread((current) => ({ ...current, [threadId]: '' }));
+      setStatus(directMessageStatusMessage('reply', thread));
       await threadsQuery.refetch();
     } catch (caught) {
       setStatus(caught instanceof Error ? caught.message : 'Message failed');
+    } finally {
+      setBusyThreadId(null);
     }
   }
 
   async function markThreadRead(threadId: string) {
     setStatus(null);
+    setBusyThreadId(threadId);
+
     try {
-      await markDirectThreadRead(threadId);
+      const thread = await markDirectThreadRead(threadId);
+      setStatus(directMessageStatusMessage('read', thread));
       await threadsQuery.refetch();
     } catch (caught) {
       setStatus(
         caught instanceof Error ? caught.message : 'Read update failed',
       );
+    } finally {
+      setBusyThreadId(null);
     }
   }
 
@@ -95,6 +116,7 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
 
       <DirectMessageComposer
         body={body}
+        submitting={composerSubmitting}
         username={username}
         onBodyChange={setBody}
         onSubmit={startThread}
@@ -102,6 +124,7 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
       />
 
       <DirectThreadList
+        busyThreadId={busyThreadId}
         loading={threadsQuery.isLoading}
         messageBodyByThread={messageBodyByThread}
         page={page}
@@ -120,4 +143,18 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
       />
     </section>
   );
+}
+
+export function directMessageStatusMessage(
+  action: 'create' | 'read' | 'reply',
+  thread: Pick<DirectThread, 'subject'>,
+) {
+  switch (action) {
+    case 'create':
+      return `Started ${thread.subject}.`;
+    case 'reply':
+      return `Replied to ${thread.subject}.`;
+    case 'read':
+      return `Marked ${thread.subject} as read.`;
+  }
 }

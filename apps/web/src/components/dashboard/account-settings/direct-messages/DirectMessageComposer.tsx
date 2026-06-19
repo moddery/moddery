@@ -7,18 +7,21 @@ export function DirectMessageComposer({
   onBodyChange,
   onSubmit,
   onUsernameChange,
+  submitting,
   username,
 }: {
   body: string;
   onBodyChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onUsernameChange: (value: string) => void;
+  submitting: boolean;
   username: string;
 }) {
   return (
     <form onSubmit={onSubmit} className="mt-4 grid gap-3 md:grid-cols-3">
       <DashboardField
         required
+        disabled={submitting}
         label="Username"
         placeholder="handle"
         value={username}
@@ -29,13 +32,17 @@ export function DirectMessageComposer({
         <div className="flex gap-2">
           <input
             required
+            disabled={submitting}
             value={body}
             placeholder="Write a message"
             onChange={(event) => onBodyChange(event.target.value)}
-            className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover"
+            className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-control px-3 text-sm font-medium text-ink outline-none transition-colors placeholder:text-faint hover:border-line-strong focus-visible:border-accent focus-visible:bg-control-hover disabled:cursor-not-allowed disabled:opacity-60"
           />
-          <button className="rounded-lg bg-accent px-4 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong">
-            Send
+          <button
+            disabled={submitting}
+            className="rounded-lg bg-accent px-4 text-sm font-extrabold text-accent-ink transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? 'Sending...' : 'Send'}
           </button>
         </div>
       </label>
