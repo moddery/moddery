@@ -5,6 +5,10 @@ import {
   createCollection,
   type CreateCollectionInput,
 } from '../../../lib/dashboard.ts';
+import {
+  assertCollectionInput,
+  normalizeCreateCollectionInput,
+} from './collection-input.ts';
 import { DashboardField } from './shared.tsx';
 
 export function CreateCollectionForm({
@@ -26,16 +30,17 @@ export function CreateCollectionForm({
     setSubmitting(true);
     setError(null);
 
-    const input: CreateCollectionInput = {
-      color: color.trim() || null,
-      description: description.trim() || null,
-      iconUrl: iconUrl.trim() || null,
+    const input: CreateCollectionInput = normalizeCreateCollectionInput({
+      color,
+      description,
+      iconUrl,
       name,
       slug,
       visibility,
-    };
+    });
 
     try {
+      assertCollectionInput(input);
       await createCollection(input);
       setName('');
       setSlug('');

@@ -43,6 +43,68 @@ describe(CollectionsService.name, () => {
     expect(collection.projectCount).toBe(1);
   });
 
+  test('normalizes collection slugs before creating collections', async () => {
+    const createCalls: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        create: (query: unknown) => {
+          createCalls.push(query);
+          return Promise.resolve(collectionRow());
+        },
+      },
+    } as unknown as PrismaService);
+
+    await service.createCollection(
+      {
+        color: null,
+        description: null,
+        iconUrl: null,
+        name: ' Example List ',
+        slug: ' Example List! ',
+        visibility: 'PUBLIC',
+      },
+      'user-a',
+    );
+
+    expect(createCalls[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Example List',
+          slug: 'example-list',
+        }),
+      }),
+    );
+  });
+
+  test('rejects invalid collection identity before creating collections', async () => {
+    const service = new CollectionsService({
+      collection: {
+        create: () => {
+          throw new Error('Collection create should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.createCollection(
+        {
+          color: null,
+          description: null,
+          iconUrl: null,
+          name: ' ',
+          slug: 'example',
+          visibility: 'PUBLIC',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Collection name is required');
+  });
+
   test('adds projects to collections owned by the current user', async () => {
     const upserts: unknown[] = [];
     const service = new CollectionsService({
@@ -185,6 +247,39 @@ describe(CollectionsService.name, () => {
       where: { id: 'collection-a' },
     });
     expect(collection.name).toBe('Updated');
+  });
+
+  test('rejects invalid collection updates before lookups', async () => {
+    const service = new CollectionsService({
+      collection: {
+        findFirst: () => {
+          throw new Error('Collection lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateCollection(
+        {
+          collectionId: 'collection-a',
+          color: null,
+          description: null,
+          iconUrl: null,
+          name: 'Updated',
+          slug: '!!',
+          visibility: 'PUBLIC',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Collection slug must be at least 3 characters',
+    );
   });
 
   test('updates collection project ordering for owned collections', async () => {

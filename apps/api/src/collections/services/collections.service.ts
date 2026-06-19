@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type AddProjectToCollectionInput } from '../dto/add-project-to-collection.input.js';
@@ -64,6 +68,7 @@ export class CollectionsService {
   }
 
   async createCollection(input: CreateCollectionInput, ownerId: string) {
+    const normalized = normalizeCreateCollectionInput(input);
     const color = input.color?.trim() ?? '';
     const description = input.description?.trim() ?? '';
     const iconUrl = input.iconUrl?.trim() ?? '';
@@ -72,9 +77,9 @@ export class CollectionsService {
         color: color.length === 0 ? null : color,
         description: description.length === 0 ? null : description,
         iconUrl: iconUrl.length === 0 ? null : iconUrl,
-        name: input.name.trim(),
+        name: normalized.name,
         ownerId,
-        slug: input.slug.trim(),
+        slug: normalized.slug,
         visibility: input.visibility,
       },
       select: collectionSelect(6),
@@ -121,6 +126,8 @@ export class CollectionsService {
   }
 
   async updateCollection(input: UpdateCollectionInput, ownerId: string) {
+    validateCollectionId(input.collectionId);
+    const normalized = normalizeUpdateCollectionInput(input);
     const collection = await this.prisma.collection.findFirst({
       select: { id: true },
       where: {
@@ -143,8 +150,8 @@ export class CollectionsService {
             : nullableTrim(input.description),
         iconUrl:
           input.iconUrl === undefined ? undefined : nullableTrim(input.iconUrl),
-        name: input.name == null ? undefined : input.name.trim(),
-        slug: input.slug == null ? undefined : input.slug.trim(),
+        name: normalized.name,
+        slug: normalized.slug,
         visibility: input.visibility ?? undefined,
       },
       where: { id: collection.id },
@@ -211,4 +218,65 @@ export class CollectionsService {
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed;
+}
+
+function normalizeCreateCollectionInput(input: CreateCollectionInput): {
+  name: string;
+  slug: string;
+} {
+  const name = requiredCollectionName(input.name);
+  const slug = normalizeCollectionSlug(input.slug);
+
+  if (slug.length < 3) {
+    throw new BadRequestException(
+      'Collection slug must be at least 3 characters',
+    );
+  }
+
+  return { name, slug };
+}
+
+function normalizeUpdateCollectionInput(input: UpdateCollectionInput): {
+  name?: string;
+  slug?: string;
+} {
+  const name =
+    input.name === undefined || input.name === null
+      ? undefined
+      : requiredCollectionName(input.name);
+  const slug =
+    input.slug === undefined || input.slug === null
+      ? undefined
+      : normalizeCollectionSlug(input.slug);
+
+  if (slug !== undefined && slug.length < 3) {
+    throw new BadRequestException(
+      'Collection slug must be at least 3 characters',
+    );
+  }
+
+  return { name, slug };
+}
+
+function requiredCollectionName(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new BadRequestException('Collection name is required');
+  }
+  return trimmed;
+}
+
+function normalizeCollectionSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+}
+
+function validateCollectionId(value: string): void {
+  if (value.trim().length === 0) {
+    throw new BadRequestException('Collection is required');
+  }
 }

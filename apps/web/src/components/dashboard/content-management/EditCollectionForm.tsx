@@ -6,6 +6,10 @@ import {
   type DashboardCollection,
   type UpdateCollectionInput,
 } from '../../../lib/dashboard.ts';
+import {
+  assertUpdateCollectionInput,
+  normalizeUpdateCollectionInput,
+} from './collection-input.ts';
 import { DashboardField } from './shared.tsx';
 
 export function EditCollectionForm({
@@ -51,17 +55,18 @@ export function EditCollectionForm({
     setSubmitting(true);
     setError(null);
 
-    const input: UpdateCollectionInput = {
+    const input: UpdateCollectionInput = normalizeUpdateCollectionInput({
       collectionId,
-      color: color.trim() || null,
-      description: description.trim() || null,
-      iconUrl: iconUrl.trim() || null,
+      color,
+      description,
+      iconUrl,
       name,
       slug,
       visibility,
-    };
+    });
 
     try {
+      assertUpdateCollectionInput(input);
       await updateCollection(input);
       await onUpdated();
     } catch (caught) {
