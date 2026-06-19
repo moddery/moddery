@@ -22,13 +22,13 @@ import {
 
 @Injectable()
 export class AuthService {
-  private readonly auditService: AuditService;
+  private readonly auditService: SecurityAuditRecorder;
 
   constructor(
     private readonly authTokenService: AuthTokenService,
     private readonly mailService: MailService,
     private readonly prisma: PrismaService,
-    @Optional() auditService?: AuditService,
+    @Optional() auditService?: SecurityAuditRecorder,
   ) {
     this.auditService = auditService ?? noopAuditService;
   }
@@ -541,9 +541,13 @@ export class AuthService {
   }
 }
 
+interface SecurityAuditRecorder {
+  recordSecurityEvent: AuditService['recordSecurityEvent'];
+}
+
 const noopAuditService = {
   recordSecurityEvent: () => Promise.resolve(),
-} as unknown as AuditService;
+} satisfies SecurityAuditRecorder;
 
 export interface AuthRequestMetadata {
   readonly ipAddress?: string | null;

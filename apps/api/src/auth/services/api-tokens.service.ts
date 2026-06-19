@@ -18,12 +18,12 @@ const tokenPrefix = 'mdy_pat';
 
 @Injectable()
 export class ApiTokensService {
-  private readonly auditService: AuditService;
+  private readonly auditService: SecurityAuditRecorder;
 
   constructor(
     private readonly authTokenService: AuthTokenService,
     private readonly prisma: PrismaService,
-    @Optional() auditService?: AuditService,
+    @Optional() auditService?: SecurityAuditRecorder,
   ) {
     this.auditService = auditService ?? noopAuditService;
   }
@@ -156,9 +156,13 @@ export class ApiTokensService {
   }
 }
 
+interface SecurityAuditRecorder {
+  recordSecurityEvent: AuditService['recordSecurityEvent'];
+}
+
 const noopAuditService = {
   recordSecurityEvent: () => Promise.resolve(),
-} as unknown as AuditService;
+} satisfies SecurityAuditRecorder;
 
 function apiTokenSelect() {
   return {
