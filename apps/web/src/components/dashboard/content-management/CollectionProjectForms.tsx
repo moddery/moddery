@@ -8,14 +8,17 @@ import {
   ProjectRelationOperationForm,
   type ProjectRelationAction,
 } from './project-relations/ProjectRelationOperationForm.tsx';
+import { relationCollectionHref } from './project-relations/relation-route-links.ts';
 
 export function CollectionProjectForms({
   collections,
   onChanged,
+  ownerUsername,
   projects,
 }: {
   collections: DashboardCollection[];
   onChanged: () => Promise<void>;
+  ownerUsername: string;
   projects: DashboardData['projects'];
 }) {
   const addAction: ProjectRelationAction = {
@@ -28,6 +31,22 @@ export function CollectionProjectForms({
     pendingLabel: 'Removing...',
     run: removeProjectFromCollection,
   };
+  const getCollectionLink = (collectionId: string) => {
+    const collection = collections.find(
+      (candidate) => candidate.id === collectionId,
+    );
+    const href =
+      collection === undefined
+        ? null
+        : relationCollectionHref(collection, ownerUsername);
+
+    return href === null
+      ? null
+      : {
+          href,
+          label: 'Open collection',
+        };
+  };
 
   return (
     <>
@@ -36,6 +55,7 @@ export function CollectionProjectForms({
         containerLabel="Collection"
         containers={collections}
         failureLabel="Collection update failed"
+        getContainerLink={getCollectionLink}
         projects={projects}
         onChanged={onChanged}
       />
@@ -44,6 +64,7 @@ export function CollectionProjectForms({
         containerLabel="Collection"
         containers={collections}
         failureLabel="Collection update failed"
+        getContainerLink={getCollectionLink}
         projects={projects}
         onChanged={onChanged}
       />

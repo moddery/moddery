@@ -9,10 +9,12 @@ import { EditCollectionForm } from './EditCollectionForm.tsx';
 export function CollectionManagement({
   collections,
   onChanged,
+  ownerUsername,
   projects,
 }: {
   collections: DashboardCollection[];
   onChanged: () => Promise<void>;
+  ownerUsername: string;
   projects: DashboardData['projects'];
 }) {
   return (
@@ -36,6 +38,7 @@ export function CollectionManagement({
         <>
           <CollectionProjectForms
             collections={collections}
+            ownerUsername={ownerUsername}
             projects={projects}
             onChanged={onChanged}
           />

@@ -162,6 +162,7 @@ export function DashboardPage({
       <section id="dashboard-collections" className="scroll-mt-32">
         <CollectionManagement
           collections={dashboard.collections}
+          ownerUsername={dashboard.username}
           projects={dashboard.projects}
           onChanged={refreshDashboard}
         />

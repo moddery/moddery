@@ -8,6 +8,7 @@ import {
   ProjectRelationOperationForm,
   type ProjectRelationAction,
 } from './project-relations/ProjectRelationOperationForm.tsx';
+import { relationOrganizationHref } from './project-relations/relation-route-links.ts';
 
 export function OrganizationProjectForms({
   onChanged,
@@ -28,6 +29,18 @@ export function OrganizationProjectForms({
     pendingLabel: 'Removing...',
     run: removeProjectFromOrganization,
   };
+  const getOrganizationLink = (organizationId: string) => {
+    const organization = organizations.find(
+      (candidate) => candidate.id === organizationId,
+    );
+
+    return organization === undefined
+      ? null
+      : {
+          href: relationOrganizationHref(organization),
+          label: 'Open organization',
+        };
+  };
 
   return (
     <>
@@ -36,6 +49,7 @@ export function OrganizationProjectForms({
         containerLabel="Organization"
         containers={organizations}
         failureLabel="Organization update failed"
+        getContainerLink={getOrganizationLink}
         projects={projects}
         onChanged={onChanged}
       />
@@ -44,6 +58,7 @@ export function OrganizationProjectForms({
         containerLabel="Organization"
         containers={organizations}
         failureLabel="Organization update failed"
+        getContainerLink={getOrganizationLink}
         projects={projects}
         onChanged={onChanged}
       />

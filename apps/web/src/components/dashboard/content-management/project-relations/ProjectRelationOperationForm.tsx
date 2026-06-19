@@ -1,6 +1,8 @@
 import { type FormEvent, useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 
 import { type DashboardData } from '../../../../lib/dashboard.ts';
+import { relationProjectHref } from './relation-route-links.ts';
 
 export type ProjectRelationAction = {
   idleLabel: string;
@@ -13,11 +15,17 @@ export type ProjectRelationContainer = {
   name: string;
 };
 
+export type ProjectRelationLink = {
+  href: string;
+  label: string;
+};
+
 interface ProjectRelationOperationFormProps {
   action: ProjectRelationAction;
   containerLabel: string;
   containers: ProjectRelationContainer[];
   failureLabel: string;
+  getContainerLink?: (containerId: string) => ProjectRelationLink | null;
   onChanged: () => Promise<void>;
   projects: DashboardData['projects'];
 }
@@ -27,6 +35,7 @@ export function ProjectRelationOperationForm({
   containerLabel,
   containers,
   failureLabel,
+  getContainerLink,
   onChanged,
   projects,
 }: ProjectRelationOperationFormProps) {
@@ -34,6 +43,16 @@ export function ProjectRelationOperationForm({
   const [projectSlug, setProjectSlug] = useState(projects[0]?.slug ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedProject =
+    projects.find((project) => project.slug === projectSlug) ?? null;
+  const containerLink = getContainerLink?.(containerId) ?? null;
+  const projectLink =
+    selectedProject === null
+      ? null
+      : {
+          href: relationProjectHref(selectedProject),
+          label: 'Open project',
+        };
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,7 +74,7 @@ export function ProjectRelationOperationForm({
       onSubmit={(event) => void submit(event)}
       className="mt-5 grid gap-3 border-t border-line pt-5"
     >
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
         <label className="grid gap-1 text-sm font-bold text-ink">
           {containerLabel}
           <select
@@ -84,6 +103,10 @@ export function ProjectRelationOperationForm({
             ))}
           </select>
         </label>
+        <div className="flex flex-wrap gap-2">
+          {containerLink ? <RelationLinkButton link={containerLink} /> : null}
+          {projectLink ? <RelationLinkButton link={projectLink} /> : null}
+        </div>
       </div>
 
       {error && (
@@ -102,5 +125,17 @@ export function ProjectRelationOperationForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function RelationLinkButton({ link }: { link: ProjectRelationLink }) {
+  return (
+    <a
+      href={link.href}
+      className="inline-flex h-10 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-bold text-ink transition-colors hover:border-line-strong hover:bg-control"
+    >
+      <ExternalLink className="h-4 w-4" aria-hidden="true" />
+      {link.label}
+    </a>
   );
 }
