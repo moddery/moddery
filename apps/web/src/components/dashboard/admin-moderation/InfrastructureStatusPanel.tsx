@@ -72,7 +72,7 @@ function InfrastructureStatusGrid({
         return (
           <ServiceStatusCard
             key={service}
-            check={check ?? { name: service, status: 'down' }}
+            check={check ?? { durationMs: null, name: service, status: 'down' }}
           />
         );
       })}
@@ -89,15 +89,22 @@ function ServiceStatusCard({ check }: { check: HealthCheckResult }) {
         <p className="font-display text-base font-extrabold text-ink">
           {serviceLabels[check.name]}
         </p>
-        <span
-          className={
-            up
-              ? 'rounded-md bg-accent-soft px-2 py-1 text-xs font-bold uppercase text-accent'
-              : 'rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted'
-          }
-        >
-          {check.status}
-        </span>
+        <div className="flex items-center gap-2">
+          {check.durationMs !== null && (
+            <span className="text-xs font-bold text-muted tabular-nums">
+              {check.durationMs.toLocaleString('en-US')} ms
+            </span>
+          )}
+          <span
+            className={
+              up
+                ? 'rounded-md bg-accent-soft px-2 py-1 text-xs font-bold uppercase text-accent'
+                : 'rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted'
+            }
+          >
+            {check.status}
+          </span>
+        </div>
       </div>
     </div>
   );

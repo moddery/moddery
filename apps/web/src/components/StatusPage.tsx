@@ -112,7 +112,9 @@ function StatusSummary({ readiness }: { readiness: ReadinessResult }) {
           return (
             <ServiceStatusRow
               key={service}
-              check={check ?? { name: service, status: 'down' }}
+              check={
+                check ?? { durationMs: null, name: service, status: 'down' }
+              }
             />
           );
         })}
@@ -134,14 +136,21 @@ function ServiceStatusRow({ check }: { check: HealthCheckResult }) {
           {serviceDescriptions[check.name]}
         </p>
       </div>
-      <span
-        className={
-          up
-            ? 'rounded-md bg-accent-soft px-2 py-1 text-xs font-bold uppercase text-accent'
-            : 'rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted'
-        }
-      >
-        {check.status}
+      <span className="inline-flex items-center gap-2">
+        {check.durationMs !== null && (
+          <span className="text-xs font-bold text-muted tabular-nums">
+            {check.durationMs.toLocaleString('en-US')} ms
+          </span>
+        )}
+        <span
+          className={
+            up
+              ? 'rounded-md bg-accent-soft px-2 py-1 text-xs font-bold uppercase text-accent'
+              : 'rounded-md bg-control px-2 py-1 text-xs font-bold uppercase text-muted'
+          }
+        >
+          {check.status}
+        </span>
       </span>
     </div>
   );

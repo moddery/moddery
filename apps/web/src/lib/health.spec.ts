@@ -18,8 +18,8 @@ describe(fetchReadiness.name, () => {
         new Response(
           JSON.stringify({
             checks: [
-              { name: 'database', status: 'up' },
-              { name: 'redis', status: 'up' },
+              { durationMs: 4, name: 'database', status: 'up' },
+              { durationMs: 2, name: 'redis', status: 'up' },
             ],
             status: 'ready',
           }),
@@ -33,8 +33,8 @@ describe(fetchReadiness.name, () => {
     expect(calls[0]).toBe('http://localhost:3000/health/ready');
     expect(readiness.status).toBe('ready');
     expect(readiness.checks).toEqual([
-      { name: 'database', status: 'up' },
-      { name: 'redis', status: 'up' },
+      { durationMs: 4, name: 'database', status: 'up' },
+      { durationMs: 2, name: 'redis', status: 'up' },
     ]);
   });
 
@@ -46,8 +46,8 @@ describe(fetchReadiness.name, () => {
             error: 'Service Unavailable',
             message: {
               checks: [
-                { name: 'search', status: 'down' },
-                { name: 'analytics', status: 'up' },
+                { durationMs: 60, name: 'search', status: 'down' },
+                { durationMs: 7, name: 'analytics', status: 'up' },
               ],
               status: 'not_ready',
             },
@@ -62,8 +62,8 @@ describe(fetchReadiness.name, () => {
 
     expect(readiness).toEqual({
       checks: [
-        { name: 'search', status: 'down' },
-        { name: 'analytics', status: 'up' },
+        { durationMs: 60, name: 'search', status: 'down' },
+        { durationMs: 7, name: 'analytics', status: 'up' },
       ],
       status: 'not_ready',
     });

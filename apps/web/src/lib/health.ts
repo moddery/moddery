@@ -1,6 +1,7 @@
 import { graphqlUri } from '../apollo.ts';
 
 export interface HealthCheckResult {
+  durationMs: number | null;
   name: 'analytics' | 'database' | 'redis' | 'search';
   status: 'down' | 'up';
 }
@@ -56,7 +57,15 @@ function isHealthCheck(value: unknown): value is HealthCheckResult {
   return (
     isRecord(value) &&
     isHealthCheckName(value.name) &&
+    isHealthCheckDuration(value.durationMs) &&
     (value.status === 'up' || value.status === 'down')
+  );
+}
+
+function isHealthCheckDuration(value: unknown): value is number | null {
+  return (
+    value === null ||
+    (typeof value === 'number' && Number.isFinite(value) && value >= 0)
   );
 }
 

@@ -15,8 +15,8 @@ describe(HealthController.name, () => {
     const controller = new HealthController(
       healthService({
         checks: [
-          { name: 'database', status: 'up' },
-          { name: 'redis', status: 'up' },
+          { durationMs: 4, name: 'database', status: 'up' },
+          { durationMs: 2, name: 'redis', status: 'up' },
         ],
         status: 'ready',
       }),
@@ -24,8 +24,8 @@ describe(HealthController.name, () => {
 
     await expectReady(controller, {
       checks: [
-        { name: 'database', status: 'up' },
-        { name: 'redis', status: 'up' },
+        { durationMs: 4, name: 'database', status: 'up' },
+        { durationMs: 2, name: 'redis', status: 'up' },
       ],
       status: 'ready',
     });
@@ -34,7 +34,7 @@ describe(HealthController.name, () => {
   test('rejects readiness when dependencies are down', async () => {
     const controller = new HealthController(
       healthService({
-        checks: [{ name: 'search', status: 'down' }],
+        checks: [{ durationMs: 10, name: 'search', status: 'down' }],
         status: 'not_ready',
       }),
     );

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { HealthService } from './health.service.js';
+import { type HealthCheckResult, HealthService } from './health.service.js';
 
 describe(HealthService.name, () => {
   test('reports ready when every dependency probe succeeds', async () => {
@@ -44,7 +44,19 @@ describe(HealthService.name, () => {
 
 async function expectReadiness(
   service: HealthService,
-  expected: Awaited<ReturnType<HealthService['readiness']>>,
+  expected: {
+    checks: Pick<HealthCheckResult, 'name' | 'status'>[];
+    status: 'not_ready' | 'ready';
+  },
 ): Promise<void> {
-  expect(await service.readiness()).toEqual(expected);
+  const readiness = await service.readiness();
+
+  expect(readiness.status).toBe(expected.status);
+  expect(
+    readiness.checks.map(({ name, status }) => ({ name, status })),
+  ).toEqual(expected.checks);
+
+  for (const check of readiness.checks) {
+    expect(check.durationMs).toBeGreaterThanOrEqual(0);
+  }
 }

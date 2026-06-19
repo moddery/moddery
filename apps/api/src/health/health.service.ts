@@ -8,6 +8,7 @@ import { SearchService } from '../search/search.service.js';
 export type HealthCheckName = 'analytics' | 'database' | 'redis' | 'search';
 
 export interface HealthCheckResult {
+  readonly durationMs: number;
   readonly name: HealthCheckName;
   readonly status: 'down' | 'up';
 }
@@ -46,11 +47,17 @@ export class HealthService {
     name: HealthCheckName,
     probe: () => Promise<unknown>,
   ): Promise<HealthCheckResult> {
+    const startedAt = performance.now();
+
     try {
       await probe();
-      return { name, status: 'up' };
+      return { durationMs: elapsedMs(startedAt), name, status: 'up' };
     } catch {
-      return { name, status: 'down' };
+      return { durationMs: elapsedMs(startedAt), name, status: 'down' };
     }
   }
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.max(0, Math.round(performance.now() - startedAt));
 }
