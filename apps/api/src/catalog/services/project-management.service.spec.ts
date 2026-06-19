@@ -70,6 +70,9 @@ describe(ProjectManagementService.name, () => {
         license: {
           upsert: () => Promise.resolve({ id: 'license-unknown' }),
         },
+        project: {
+          findUnique: () => Promise.resolve(null),
+        },
       } as unknown as PrismaService,
       {
         indexProjects: (projects: unknown[]) => {
@@ -107,6 +110,67 @@ describe(ProjectManagementService.name, () => {
         id: 'project-a',
         title: 'Created Project',
       }),
+    );
+  });
+
+  test('rejects duplicate project slugs before creating teams', async () => {
+    const service = createProjectManagementService(
+      {
+        $transaction: () => {
+          throw new Error('Project transaction should not run');
+        },
+        project: {
+          findUnique: () => Promise.resolve({ id: 'project-existing' }),
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.createProject(validCreateProjectInput(), 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project slug already exists');
+  });
+
+  test('rejects incomplete project identity before database writes', async () => {
+    const service = createProjectManagementService(
+      {
+        project: {
+          findUnique: () => {
+            throw new Error('Project lookup should not run');
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        indexProjects: () => Promise.resolve(),
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.createProject(
+        {
+          ...validCreateProjectInput(),
+          description: '   ',
+          slug: '!!',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Project slug must be at least 3 characters',
     );
   });
 
@@ -329,6 +393,21 @@ describe(ProjectManagementService.name, () => {
     });
   });
 });
+
+function validCreateProjectInput() {
+  return {
+    categories: ['utility'],
+    color: '#1d9bf0',
+    description: 'Created body',
+    gameVersions: ['1.21.6'],
+    iconUrl: 'https://example.test/icon.png',
+    kind: 'MOD' as const,
+    loaders: ['fabric'],
+    slug: 'created-project',
+    summary: 'Created summary',
+    title: 'Created Project',
+  };
+}
 
 function projectRow({
   gallery = [],

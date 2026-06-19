@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { type ProjectSummaryContract } from '@moddery/shared';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -36,6 +40,17 @@ export class ProjectManagementService {
     ownerId: string,
   ): Promise<ProjectSummaryContract> {
     const slug = normalizeSlug(input.slug);
+    validateProjectIdentity(input, slug);
+
+    const existingProject = await this.prisma.project.findUnique({
+      select: { id: true },
+      where: { slug },
+    });
+
+    if (existingProject !== null) {
+      throw new BadRequestException('Project slug already exists');
+    }
+
     const now = new Date();
     const license = await this.prisma.license.upsert({
       create: {
@@ -175,5 +190,26 @@ export class ProjectManagementService {
 
   private invalidateProjectBySlugCache(slug: string): Promise<void> {
     return this.redis.delete(projectBySlugCacheKey(slug));
+  }
+}
+
+function validateProjectIdentity(
+  input: CreateProjectInput,
+  slug: string,
+): void {
+  if (slug.length < 3) {
+    throw new BadRequestException('Project slug must be at least 3 characters');
+  }
+
+  if (input.title.trim().length === 0) {
+    throw new BadRequestException('Project title is required');
+  }
+
+  if (input.summary.trim().length === 0) {
+    throw new BadRequestException('Project summary is required');
+  }
+
+  if (input.description.trim().length === 0) {
+    throw new BadRequestException('Project description is required');
   }
 }
