@@ -678,6 +678,29 @@ describe(AuthService.name, () => {
     });
   });
 
+  test('rejects missing password reset tokens before writes', async () => {
+    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
+      $transaction: () => {
+        throw new Error('Password reset transaction should not run');
+      },
+      passwordResetToken: {
+        findFirst: () => Promise.resolve(null),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.confirmPasswordReset({
+        newPassword: 'new-correct-password',
+        token: 'missing-reset-token',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Invalid password reset token');
+  });
+
   test('revokes viewer sessions and records an audit event', async () => {
     const auditEvents: unknown[] = [];
     const updates: unknown[] = [];
@@ -865,6 +888,31 @@ describe(AuthService.name, () => {
       action: 'EMAIL_VERIFICATION_CONFIRMED',
       targetUserId: 'user-a',
     });
+  });
+
+  test('rejects missing email verification tokens before writes', async () => {
+    const service = new AuthService({} as AuthTokenService, fakeMailService(), {
+      $transaction: () => {
+        throw new Error('Email verification transaction should not run');
+      },
+      emailVerificationToken: {
+        findFirst: () => Promise.resolve(null),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.confirmEmailVerification({
+        token: 'missing-verification-token',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Invalid email verification token',
+    );
   });
 });
 

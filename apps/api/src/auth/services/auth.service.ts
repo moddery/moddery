@@ -229,7 +229,11 @@ export class AuthService {
       where: { tokenHash },
     });
 
-    if (resetToken?.usedAt !== null) {
+    if (resetToken === null) {
+      throw new UnauthorizedException('Invalid password reset token');
+    }
+
+    if (resetToken.usedAt !== null) {
       throw new UnauthorizedException('Invalid password reset token');
     }
 
@@ -378,7 +382,11 @@ export class AuthService {
         where: { tokenHash },
       });
 
-    if (verificationToken?.usedAt !== null) {
+    if (verificationToken === null) {
+      throw new UnauthorizedException('Invalid email verification token');
+    }
+
+    if (verificationToken.usedAt !== null) {
       throw new UnauthorizedException('Invalid email verification token');
     }
 
