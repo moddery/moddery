@@ -396,7 +396,10 @@ describe(ProjectManagementService.name, () => {
         $transaction: (callback: (transaction: typeof tx) => unknown) =>
           callback(tx),
         project: {
-          findFirst: () => Promise.resolve({ id: 'project-a' }),
+          findFirst: (query: unknown) => {
+            operations.push(`project-find:${JSON.stringify(query)}`);
+            return Promise.resolve({ id: 'project-a' });
+          },
         },
       } as unknown as PrismaService,
       {
@@ -429,9 +432,13 @@ describe(ProjectManagementService.name, () => {
     expect(project.owner?.username).toBe('creator');
     expect(project.organization?.slug).toBe('example-org');
     expect(operations[0]).toContain(
+      '"OR":[{"isOwner":true},{"permissions":{"has":"MANAGE_DETAILS"}}]',
+    );
+    expect(operations[0]).toContain('"slug":"example"');
+    expect(operations[1]).toContain(
       '"iconUrl":"https://example.test/icon.png"',
     );
-    expect(operations[0]).toContain('"color":"#f97316"');
+    expect(operations[1]).toContain('"color":"#f97316"');
     expect(operations).toContain(
       'categories-delete:{"where":{"projectId":"project-a"}}',
     );

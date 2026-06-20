@@ -212,6 +212,13 @@ interface CreateProjectResponse {
   errors?: GraphqlError[];
 }
 
+interface UpdateProjectResponse {
+  data?: {
+    updateProject?: ProjectSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface AddProjectGalleryImageResponse {
   data?: {
     addProjectGalleryImage?: ProjectSummary;
@@ -546,6 +553,12 @@ interface AuditLogSummary {
   action: string;
   actor: {
     username: string;
+  } | null;
+  deniedAction: string | null;
+  deniedResource: {
+    id: string | null;
+    kind: string;
+    slug: string | null;
   } | null;
   moderationAction: string | null;
   projectAfter: {
@@ -1557,6 +1570,10 @@ async function checkCreatorFlow(): Promise<void> {
     projectTitle: title,
     token: auth.accessToken,
   });
+  await checkProjectDetailsPermissionGuard({
+    peerToken: peerAuth.accessToken,
+    projectSlug: slug,
+  });
 
   const approvedPublicPayload = await readGraphql<ProjectBySlugResponse>({
     query: `
@@ -2496,6 +2513,39 @@ async function checkQueuedProjectFollowGuard({
     unfollowPayload,
     'Project not found',
     'queued project unfollow',
+  );
+}
+
+async function checkProjectDetailsPermissionGuard({
+  peerToken,
+  projectSlug,
+}: {
+  peerToken: string;
+  projectSlug: string;
+}): Promise<void> {
+  const updatePayload = await readGraphql<UpdateProjectResponse>(
+    {
+      query: `
+        mutation SmokeDeniedProjectUpdate($input: UpdateProjectInput!) {
+          updateProject(input: $input) {
+            slug
+          }
+        }
+      `,
+      variables: {
+        input: {
+          projectSlug,
+          summary: 'This limited teammate should not be able to edit details.',
+        },
+      },
+    },
+    peerToken,
+  );
+
+  assertGraphqlError(
+    updatePayload,
+    'Project not found',
+    'limited project detail update',
   );
 }
 
@@ -4348,6 +4398,17 @@ async function checkAuditLogFlow(options: {
       ])
     );
   });
+  assertAuditLogEvent(auditLogs, 'project update denial audit log', (log) => {
+    return (
+      log.action === 'SECURITY_EVENT' &&
+      log.securityAction === 'PERMISSION_DENIED' &&
+      log.deniedAction === 'PROJECT_UPDATE' &&
+      log.actor?.username === options.peerUsername &&
+      log.targetUser?.username === options.peerUsername &&
+      log.deniedResource?.kind === 'PROJECT' &&
+      log.deniedResource.slug === options.projectSlug
+    );
+  });
 }
 
 async function readAdminAuditLogs(token: string): Promise<AuditLogSummary[]> {
@@ -4366,6 +4427,12 @@ async function readAdminAuditLogs(token: string): Promise<AuditLogSummary[]> {
                 action
                 actor {
                   username
+                }
+                deniedAction
+                deniedResource {
+                  id
+                  kind
+                  slug
                 }
                 moderationAction
                 projectAfter {

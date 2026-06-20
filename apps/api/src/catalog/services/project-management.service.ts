@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { type ProjectSummaryContract } from '@moddery/shared';
+import { TeamPermission } from '@prisma/client';
 
 import { AuditService } from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -191,6 +192,10 @@ export class ProjectManagementService {
           members: {
             some: {
               acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: TeamPermission.MANAGE_DETAILS } },
+              ],
               userId,
             },
           },
