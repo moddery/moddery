@@ -861,8 +861,10 @@ async function checkReadiness(): Promise<void> {
 }
 
 async function checkWeb(): Promise<void> {
+  const rootHtml = await checkWebRoute('/');
+  await checkWebEntrypoints(rootHtml);
+
   const routes = [
-    '/',
     '/collections',
     '/dashboard',
     '/mods',
@@ -886,7 +888,7 @@ async function checkWeb(): Promise<void> {
   }
 }
 
-async function checkWebRoute(route: string): Promise<void> {
+async function checkWebRoute(route: string): Promise<string> {
   const response = await fetch(`${webUrl}${route}`);
   if (!response.ok) {
     throw new Error(
@@ -898,6 +900,41 @@ async function checkWebRoute(route: string): Promise<void> {
   if (!body.includes('<html') || !body.includes('id="root"')) {
     throw new Error(`Web route ${route} did not look like the app shell`);
   }
+
+  return body;
+}
+
+async function checkWebEntrypoints(html: string): Promise<void> {
+  const localEntrypoints = webEntrypointPaths(html);
+  if (localEntrypoints.length === 0) {
+    throw new Error('Web shell did not reference any local entrypoints');
+  }
+
+  await Promise.all(
+    localEntrypoints.map(async (entrypoint) => {
+      const response = await fetch(`${webUrl}${entrypoint}`);
+      if (!response.ok) {
+        throw new Error(
+          `Web entrypoint ${entrypoint} returned ${response.status.toString()}`,
+        );
+      }
+    }),
+  );
+}
+
+function webEntrypointPaths(html: string): string[] {
+  const paths = new Set<string>();
+  const attributePattern = /\s(?:href|src)="([^"]+)"/g;
+
+  for (const match of html.matchAll(attributePattern)) {
+    const value = match[1];
+    if (value === undefined) continue;
+    if (!value.startsWith('/')) continue;
+    if (value.startsWith('//')) continue;
+    paths.add(value);
+  }
+
+  return [...paths].sort();
 }
 
 async function checkProjectSearch(): Promise<void> {
