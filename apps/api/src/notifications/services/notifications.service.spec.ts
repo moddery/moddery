@@ -177,15 +177,16 @@ describe(NotificationsService.name, () => {
 
   test('marks viewer notifications as read by id and user', async () => {
     const updates: unknown[] = [];
+    const reads: unknown[] = [];
     const service = createNotificationsService({
       notification: {
-        update: (query: unknown) => {
+        findFirst: (query: unknown) => {
+          reads.push(query);
+          return Promise.resolve(notificationRow({ state: 'READ' }));
+        },
+        updateMany: (query: unknown) => {
           updates.push(query);
-          return Promise.resolve({
-            id: 'notification-a',
-            readAt: new Date('2026-01-01T00:00:00.000Z'),
-            state: 'READ',
-          });
+          return Promise.resolve({ count: 1 });
         },
       },
     } as unknown as PrismaService);
@@ -201,7 +202,38 @@ describe(NotificationsService.name, () => {
         },
       }),
     );
+    expect(reads[0]).toEqual(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          deliveries: expect.objectContaining({ take: 5 }),
+        }),
+        where: {
+          id: 'notification-a',
+          userId: 'user-a',
+        },
+      }),
+    );
     expect(result.state).toBe('READ');
+  });
+
+  test('rejects stale notification reads before reloading', async () => {
+    const service = createNotificationsService({
+      notification: {
+        findFirst: () => {
+          throw new Error('Notification reload should not run');
+        },
+        updateMany: () => Promise.resolve({ count: 0 }),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.markRead('user-a', 'missing-notification');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Notification not found');
   });
 
   test('marks all unread viewer notifications as read', async () => {
@@ -229,3 +261,17 @@ describe(NotificationsService.name, () => {
     expect(count).toBe(3);
   });
 });
+
+function notificationRow({ state = 'PENDING' }: { state?: string } = {}) {
+  return {
+    actionUrl: '/dashboard',
+    body: 'Ready for review',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    deliveries: [],
+    id: 'notification-a',
+    readAt: state === 'READ' ? new Date('2026-01-01T00:00:00.000Z') : null,
+    state,
+    title: 'Project update',
+    type: 'project',
+  };
+}

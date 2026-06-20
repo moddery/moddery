@@ -254,6 +254,15 @@ interface NotificationSearchResponse {
   errors?: GraphqlError[];
 }
 
+interface MarkNotificationReadResponse {
+  data?: {
+    markNotificationRead?: {
+      id: string;
+    };
+  };
+  errors?: GraphqlError[];
+}
+
 interface ProjectBySlugResponse {
   data?: {
     projectBySlug?: ProjectSummary | null;
@@ -2209,6 +2218,25 @@ async function checkReviewNotification(options: {
   if (notification === undefined) {
     throw new Error(`Missing ${options.title} creator notification`);
   }
+
+  const missingReadPayload = await readGraphql<MarkNotificationReadResponse>(
+    {
+      query: `
+        mutation SmokeMarkMissingNotificationRead($id: String!) {
+          markNotificationRead(id: $id) {
+            id
+          }
+        }
+      `,
+      variables: { id: `missing-${Date.now().toString(36)}` },
+    },
+    options.token,
+  );
+  assertGraphqlError(
+    missingReadPayload,
+    'Notification not found',
+    'missing notification read',
+  );
 }
 
 async function checkProjectGalleryFlow(options: {

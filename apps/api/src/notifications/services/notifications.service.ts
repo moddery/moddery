@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { type SendNotificationInput } from '../graphql/send-notification.input.js';
@@ -85,8 +85,8 @@ export class NotificationsService {
     });
   }
 
-  markRead(userId: string, notificationId: string) {
-    return this.prisma.notification.update({
+  async markRead(userId: string, notificationId: string) {
+    const update = await this.prisma.notification.updateMany({
       data: {
         readAt: new Date(),
         state: 'READ',
@@ -96,6 +96,22 @@ export class NotificationsService {
         userId,
       },
     });
+    if (update.count === 0) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    const notification = await this.prisma.notification.findFirst({
+      select: notificationSelect(),
+      where: {
+        id: notificationId,
+        userId,
+      },
+    });
+    if (notification === null) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    return notification;
   }
 
   async markAllRead(userId: string) {
