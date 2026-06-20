@@ -241,6 +241,7 @@ async function indexProject(
     return loader === null ? [] : [loader.toLowerCase()];
   });
   const categories = project.categories.filter(isProjectCategoryTag);
+  const licenseKey = normalizedLicenseKey(detail.license.id || project.license);
   const updatedAt = parseDate(project.date_modified).toISOString();
 
   await searchClient.index({
@@ -253,6 +254,7 @@ async function indexProject(
       iconUrl: project.icon_url,
       id: projectId,
       kind,
+      licenseKey,
       loaders,
       slug: project.slug,
       summary: project.description,
@@ -260,6 +262,7 @@ async function indexProject(
         `kind:${kind}`,
         ...categories.map((category) => `category:${category}`),
         ...project.versions.map((version) => `game-version:${version}`),
+        ...(licenseKey === null ? [] : [`license:${licenseKey}`]),
         ...loaders.map((loader) => `loader:${loader}`),
       ],
       title: project.title,
@@ -301,6 +304,7 @@ function projectIndexMapping() {
       gameVersions: { type: 'keyword' },
       iconUrl: { type: 'keyword', index: false },
       kind: { type: 'keyword' },
+      licenseKey: { type: 'keyword' },
       loaders: { type: 'keyword' },
       slug: { type: 'keyword' },
       summary: { type: 'text' },
@@ -774,6 +778,10 @@ async function upsertGameVersions(
   projectId: string,
   versions: string[],
 ): Promise<void> {
+  await prisma.projectGameVersion.deleteMany({
+    where: { projectId },
+  });
+
   for (const version of versions) {
     const gameVersion = await prisma.gameVersion.upsert({
       create: { version },
@@ -801,6 +809,10 @@ async function upsertLoaders(
   projectId: string,
   categories: string[],
 ): Promise<void> {
+  await prisma.projectLoader.deleteMany({
+    where: { projectId },
+  });
+
   for (const category of categories) {
     const loader = mapLoader(category);
     if (loader === null) continue;
@@ -923,6 +935,11 @@ function mapHashAlgorithm(algorithm: string): HashAlgorithm | null {
   if (algorithm === 'sha256') return HashAlgorithm.SHA256;
   if (algorithm === 'sha512') return HashAlgorithm.SHA512;
   return null;
+}
+
+function normalizedLicenseKey(licenseKey: string): string | null {
+  const normalized = licenseKey.trim().toLowerCase();
+  return normalized === '' || normalized === 'unknown' ? null : normalized;
 }
 
 function parseDate(value: string): Date {
