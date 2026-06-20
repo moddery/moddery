@@ -432,8 +432,11 @@ interface VersionSearchForProjectResponse {
 }
 
 interface ProjectSummary {
+  categories?: string[];
+  gameVersions?: string[];
   gallery?: GalleryImageSummary[];
   kind: string;
+  loaders?: string[];
   slug: string;
   status: string;
   title: string;
@@ -752,6 +755,7 @@ async function main(): Promise<void> {
     checkProjectType('PLUGIN'),
     checkProjectType('MODPACK'),
   ]);
+  await checkProjectTagFilters();
   await checkCreatorFlow();
 
   console.log('Local smoke checks passed');
@@ -957,6 +961,40 @@ async function checkProjectType(kind: string): Promise<void> {
   if (mismatched !== undefined) {
     throw new Error(
       `Expected ${kind} project search, received ${mismatched.kind} ${mismatched.slug}`,
+    );
+  }
+}
+
+async function checkProjectTagFilters(): Promise<void> {
+  const expected = {
+    category: 'utility',
+    gameVersion: '1.21.6',
+    loader: 'FABRIC',
+    loaderTag: 'fabric',
+  };
+  const search = await projectSearch({
+    tags: [
+      `category:${expected.category}`,
+      `game-version:${expected.gameVersion}`,
+      `loader:${expected.loaderTag}`,
+    ],
+  });
+
+  if (search.totalHits < 1 || search.projects.length < 1) {
+    throw new Error(
+      'Project search returned no utility fabric 1.21.6 projects',
+    );
+  }
+
+  const mismatched = search.projects.find(
+    (project) =>
+      !project.categories?.includes(expected.category) ||
+      !project.gameVersions?.includes(expected.gameVersion) ||
+      !project.loaders?.includes(expected.loader),
+  );
+  if (mismatched !== undefined) {
+    throw new Error(
+      `Project tag search returned mismatched project ${mismatched.slug}`,
     );
   }
 }
@@ -4414,7 +4452,10 @@ async function projectSearch(query: {
         projectSearch(query: $query) {
           totalHits
           projects {
+            categories
+            gameVersions
             kind
+            loaders
             slug
             title
           }
