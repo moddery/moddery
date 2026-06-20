@@ -1598,6 +1598,7 @@ async function checkCreatorFlow(): Promise<void> {
     },
   );
   await checkProjectGalleryFlow({
+    peerToken: peerAuth.accessToken,
     projectSlug: slug,
     projectTitle: title,
     token: auth.accessToken,
@@ -2203,6 +2204,7 @@ async function checkReviewNotification(options: {
 }
 
 async function checkProjectGalleryFlow(options: {
+  peerToken: string;
   projectSlug: string;
   projectTitle: string;
   token: string;
@@ -2294,6 +2296,32 @@ async function checkProjectGalleryFlow(options: {
     sortOrder: 7,
     title: 'Smoke gallery image',
   });
+
+  const deniedPayload = await readGraphql<AddProjectGalleryImageResponse>(
+    {
+      query: `
+        mutation SmokeDeniedProjectGalleryImage($input: AddProjectGalleryImageInput!) {
+          addProjectGalleryImage(input: $input) {
+            slug
+          }
+        }
+      `,
+      variables: {
+        input: {
+          displayUrl: galleryUrl,
+          featured: false,
+          projectSlug: options.projectSlug,
+          rawUrl: galleryUrl,
+        },
+      },
+    },
+    options.peerToken,
+  );
+  assertGraphqlError(
+    deniedPayload,
+    'Project not found',
+    'limited project gallery update',
+  );
 }
 
 async function checkApprovedProjectFilterSearch(options: {

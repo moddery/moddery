@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { type ProjectSummaryContract } from '@moddery/shared';
+import { TeamPermission } from '@prisma/client';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
@@ -91,6 +92,10 @@ export class ProjectGalleryService {
           members: {
             some: {
               acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: TeamPermission.MANAGE_DETAILS } },
+              ],
               userId,
             },
           },
@@ -118,6 +123,10 @@ export class ProjectGalleryService {
             members: {
               some: {
                 acceptedAt: { not: null },
+                OR: [
+                  { isOwner: true },
+                  { permissions: { has: TeamPermission.MANAGE_DETAILS } },
+                ],
                 userId,
               },
             },

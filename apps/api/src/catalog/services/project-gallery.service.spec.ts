@@ -12,9 +12,13 @@ function createProjectGalleryService(prisma: PrismaService) {
 describe(ProjectGalleryService.name, () => {
   test('adds gallery images to managed projects', async () => {
     const creates: unknown[] = [];
+    const lookups: unknown[] = [];
     const service = createProjectGalleryService({
       project: {
-        findFirst: () => Promise.resolve({ id: 'project-a' }),
+        findFirst: (query: unknown) => {
+          lookups.push(query);
+          return Promise.resolve({ id: 'project-a' });
+        },
         findUniqueOrThrow: () =>
           Promise.resolve(
             projectRow({
@@ -66,6 +70,21 @@ describe(ProjectGalleryService.name, () => {
         title: 'Screenshot',
       },
     });
+    expect(lookups[0]).toMatchObject({
+      where: {
+        team: {
+          members: {
+            some: {
+              OR: [
+                { isOwner: true },
+                { permissions: { has: 'MANAGE_DETAILS' } },
+              ],
+              userId: 'user-a',
+            },
+          },
+        },
+      },
+    });
     expect(project.gallery[0]?.title).toBe('Screenshot');
     expect(project.gallery[0]?.id).toBe('image-a');
   });
@@ -101,6 +120,7 @@ describe(ProjectGalleryService.name, () => {
   });
 
   test('updates managed gallery images', async () => {
+    const lookups: unknown[] = [];
     const updates: unknown[] = [];
     const service = createProjectGalleryService({
       project: {
@@ -124,8 +144,10 @@ describe(ProjectGalleryService.name, () => {
           ),
       },
       projectGalleryImage: {
-        findFirst: () =>
-          Promise.resolve({ id: 'image-a', projectId: 'project-a' }),
+        findFirst: (query: unknown) => {
+          lookups.push(query);
+          return Promise.resolve({ id: 'image-a', projectId: 'project-a' });
+        },
         update: (query: unknown) => {
           updates.push(query);
           return Promise.resolve({});
@@ -156,6 +178,23 @@ describe(ProjectGalleryService.name, () => {
         title: 'Updated screenshot',
       },
       where: { id: 'image-a' },
+    });
+    expect(lookups[0]).toMatchObject({
+      where: {
+        project: {
+          team: {
+            members: {
+              some: {
+                OR: [
+                  { isOwner: true },
+                  { permissions: { has: 'MANAGE_DETAILS' } },
+                ],
+                userId: 'user-a',
+              },
+            },
+          },
+        },
+      },
     });
     expect(project.gallery[0]?.displayUrl).toBe(
       'https://example.test/display-2.png',
