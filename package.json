@@ -25,7 +25,7 @@
     "seed:popular-projects": "bun run scripts/seed-popular-projects.ts",
     "smoke:local": "bun run scripts/smoke-local.ts",
     "test": "bun run --filter './packages/*' test && bun run --filter './apps/*' test",
-    "typecheck": "bun run --filter './packages/*' typecheck && bun run --filter './apps/*' typecheck"
+    "typecheck": "bun run --filter './packages/*' typecheck && bun run --filter './apps/*' typecheck && bunx tsc -p scripts/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",

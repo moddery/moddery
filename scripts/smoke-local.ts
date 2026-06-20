@@ -699,6 +699,10 @@ interface ProjectSearchResponse {
   errors?: GraphqlError[];
 }
 
+type ProjectSearchResult = NonNullable<
+  NonNullable<ProjectSearchResponse['data']>['projectSearch']
+>;
+
 interface FriendshipSummary {
   direction: string;
   state: string;
@@ -4445,7 +4449,7 @@ function assertAuditLogEvent(
 async function projectSearch(query: {
   search?: string;
   tags?: string[];
-}): Promise<NonNullable<ProjectSearchResponse['data']>['projectSearch']> {
+}): Promise<ProjectSearchResult> {
   const payload = await readGraphql<ProjectSearchResponse>({
     query: `
       query SmokeProjectSearch($query: CatalogQueryInput) {
