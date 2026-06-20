@@ -57,6 +57,10 @@ export class OrganizationManagementService {
           members: {
             some: {
               acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: TeamPermission.MANAGE_SETTINGS } },
+              ],
               userId,
             },
           },
@@ -188,6 +192,10 @@ export class OrganizationManagementService {
           members: {
             some: {
               acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: TeamPermission.MANAGE_SETTINGS } },
+              ],
               userId: ownerId,
             },
           },

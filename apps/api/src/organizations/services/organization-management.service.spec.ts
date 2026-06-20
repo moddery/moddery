@@ -24,6 +24,7 @@ function createService(
 
 describe(OrganizationManagementService.name, () => {
   test('adds managed projects to owned organizations', async () => {
+    const projectLookups: unknown[] = [];
     const updates: unknown[] = [];
     const service = createService({
       organization: {
@@ -38,7 +39,10 @@ describe(OrganizationManagementService.name, () => {
         },
       },
       project: {
-        findFirst: () => Promise.resolve({ id: 'project-a' }),
+        findFirst: (query: unknown) => {
+          projectLookups.push(query);
+          return Promise.resolve({ id: 'project-a' });
+        },
         update: (query: unknown) => {
           updates.push(query);
           return Promise.resolve({});
@@ -54,6 +58,24 @@ describe(OrganizationManagementService.name, () => {
       'user-a',
     );
 
+    expect(projectLookups[0]).toEqual({
+      select: { id: true },
+      where: {
+        slug: 'sodium',
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: 'MANAGE_SETTINGS' } },
+              ],
+              userId: 'user-a',
+            },
+          },
+        },
+      },
+    });
     expect(updates[0]).toEqual({
       data: { organizationId: 'org-a' },
       where: { id: 'project-a' },
@@ -62,6 +84,7 @@ describe(OrganizationManagementService.name, () => {
   });
 
   test('removes managed projects from owned organizations', async () => {
+    const projectLookups: unknown[] = [];
     const updates: unknown[] = [];
     const service = createService({
       organization: {
@@ -76,7 +99,10 @@ describe(OrganizationManagementService.name, () => {
         },
       },
       project: {
-        findFirst: () => Promise.resolve({ id: 'project-a' }),
+        findFirst: (query: unknown) => {
+          projectLookups.push(query);
+          return Promise.resolve({ id: 'project-a' });
+        },
         update: (query: unknown) => {
           updates.push(query);
           return Promise.resolve({});
@@ -92,6 +118,25 @@ describe(OrganizationManagementService.name, () => {
       'user-a',
     );
 
+    expect(projectLookups[0]).toEqual({
+      select: { id: true },
+      where: {
+        organizationId: 'org-a',
+        slug: 'sodium',
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: 'MANAGE_SETTINGS' } },
+              ],
+              userId: 'user-a',
+            },
+          },
+        },
+      },
+    });
     expect(updates[0]).toEqual({
       data: { organizationId: null },
       where: { id: 'project-a' },

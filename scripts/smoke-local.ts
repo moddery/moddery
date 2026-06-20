@@ -1779,6 +1779,7 @@ async function checkCreatorFlow(): Promise<void> {
     projectSlug: slug,
   });
   await checkOrganizationFlow({
+    peerToken: peerAuth.accessToken,
     projectSlug: slug,
     projectTitle: title,
     token: auth.accessToken,
@@ -4074,6 +4075,7 @@ function assertVersionFileScan(version: VersionSummary, fileId: string): void {
 }
 
 async function checkOrganizationFlow(options: {
+  peerToken: string;
   projectSlug: string;
   projectTitle: string;
   token: string;
@@ -4126,6 +4128,70 @@ async function checkOrganizationFlow(options: {
     ownerUsername: options.username,
     slug: organizationSlug,
   });
+
+  const peerOrganizationSlug = `smoke-peer-org-${options.projectSlug}`;
+  const peerCreatePayload = await readGraphql<CreateOrganizationResponse>(
+    {
+      query: `
+        mutation SmokeCreatePeerOrganization($input: CreateOrganizationInput!) {
+          createOrganization(input: $input) {
+            id
+            memberCount
+            name
+            owner {
+              username
+            }
+            projectCount
+            projects {
+              kind
+              slug
+              status
+              title
+            }
+            slug
+          }
+        }
+      `,
+      variables: {
+        input: {
+          color: '#0f766e',
+          description: 'A smoke-test limited collaborator organization.',
+          name: `Smoke Peer Org ${options.projectSlug}`,
+          slug: peerOrganizationSlug,
+        },
+      },
+    },
+    options.peerToken,
+  );
+  assertNoGraphqlErrors(peerCreatePayload, 'GraphQL create peer organization');
+
+  const peerOrganization = required(
+    peerCreatePayload.data?.createOrganization,
+    'peer organization',
+  );
+  const peerAddPayload = await readGraphql<AddProjectToOrganizationResponse>(
+    {
+      query: `
+        mutation SmokeLimitedAddProjectToOrganization($input: AddProjectToOrganizationInput!) {
+          addProjectToOrganization(input: $input) {
+            id
+          }
+        }
+      `,
+      variables: {
+        input: {
+          organizationId: peerOrganization.id,
+          projectSlug: options.projectSlug,
+        },
+      },
+    },
+    options.peerToken,
+  );
+  assertGraphqlError(
+    peerAddPayload,
+    'Project not found',
+    'limited organization project link',
+  );
 
   const addPayload = await readGraphql<AddProjectToOrganizationResponse>(
     {
