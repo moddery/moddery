@@ -8,6 +8,7 @@ function createProjectModerationService(
   searchService: unknown,
   auditEvents: unknown[] = [],
   notifications: unknown[] = [],
+  cacheDeletes: string[] = [],
 ) {
   return new ProjectModerationService(
     {
@@ -24,13 +25,16 @@ function createProjectModerationService(
     } as never,
     prisma,
     searchService as never,
-    fakeRedis(),
+    fakeRedis(cacheDeletes),
   );
 }
 
-function fakeRedis() {
+function fakeRedis(cacheDeletes: string[]) {
   return {
-    delete: () => Promise.resolve(),
+    delete: (key: string) => {
+      cacheDeletes.push(key);
+      return Promise.resolve();
+    },
   } as never;
 }
 
@@ -268,6 +272,185 @@ describe(ProjectModerationService.name, () => {
 
     expect(project.status).toBe('REJECTED');
     expect(deleted).toEqual(['project-a']);
+  });
+
+  test('archives projects by removing public search records and cached slugs', async () => {
+    const cacheDeletes: string[] = [];
+    const deleted: string[] = [];
+    const notifications: unknown[] = [];
+    const transactionSteps: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            moderationAction: {
+              create: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+            project: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  projectRow({ status: 'ARCHIVED', title: 'Archived' }),
+                ),
+              update: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+          }),
+        project: {
+          findUnique: () =>
+            Promise.resolve(
+              moderationProjectAuditRow({
+                requestedStatus: null,
+                status: 'APPROVED',
+                title: 'Public Project',
+              }),
+            ),
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: (projectId: string) => {
+          deleted.push(projectId);
+          return Promise.resolve();
+        },
+        indexProjects: () => {
+          throw new Error('Archived projects should not be indexed');
+        },
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+      [],
+      notifications,
+      cacheDeletes,
+    );
+
+    const project = await service.moderateProject(
+      {
+        action: 'archive',
+        projectSlug: 'example',
+        reason: 'Security issue',
+      },
+      'moderator-a',
+    );
+
+    expect(transactionSteps[0]).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          archivedAt: expect.any(Date),
+          requestedStatus: null,
+          status: 'ARCHIVED',
+        }),
+        where: { id: 'project-a' },
+      }),
+    );
+    expect(deleted).toEqual(['project-a']);
+    expect(cacheDeletes).toEqual(['catalog:project-by-slug:example']);
+    expect(notifications).toEqual([
+      {
+        actionUrl: '/dashboard#dashboard-projects',
+        body: 'Public Project was archived. Reason: Security issue',
+        title: 'Project archived',
+        type: 'moderation',
+        userId: 'user-owner',
+      },
+    ]);
+    expect(project.status).toBe('ARCHIVED');
+  });
+
+  test('restores projects by indexing them and clearing cached slugs', async () => {
+    const cacheDeletes: string[] = [];
+    const indexed: unknown[] = [];
+    const notifications: unknown[] = [];
+    const transactionSteps: unknown[] = [];
+    const service = createProjectModerationService(
+      {
+        $transaction: (callback: (tx: unknown) => Promise<unknown>) =>
+          callback({
+            moderationAction: {
+              create: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+            project: {
+              findUniqueOrThrow: () =>
+                Promise.resolve(
+                  projectRow({ status: 'APPROVED', title: 'Restored' }),
+                ),
+              update: (query: unknown) => {
+                transactionSteps.push(query);
+                return Promise.resolve({});
+              },
+            },
+          }),
+        project: {
+          findUnique: () =>
+            Promise.resolve(
+              moderationProjectAuditRow({
+                requestedStatus: null,
+                status: 'ARCHIVED',
+                title: 'Archived Project',
+              }),
+            ),
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: () => {
+          throw new Error(
+            'Restored projects should not be deleted from search',
+          );
+        },
+        indexProjects: (projects: unknown[]) => {
+          indexed.push(projects);
+          return Promise.resolve();
+        },
+        searchProjects: () => Promise.resolve({ ids: [], total: 0 }),
+      },
+      [],
+      notifications,
+      cacheDeletes,
+    );
+
+    const project = await service.moderateProject(
+      {
+        action: 'restore',
+        projectSlug: 'example',
+        reason: null,
+      },
+      'moderator-a',
+    );
+
+    expect(transactionSteps[0]).toEqual(
+      expect.objectContaining({
+        data: {
+          archivedAt: null,
+          requestedStatus: null,
+          status: 'APPROVED',
+        },
+        where: { id: 'project-a' },
+      }),
+    );
+    expect(indexed).toHaveLength(1);
+    expect(indexed[0]).toEqual([
+      expect.objectContaining({
+        id: 'project-a',
+        slug: 'example',
+        title: 'Restored',
+      }),
+    ]);
+    expect(cacheDeletes).toEqual(['catalog:project-by-slug:example']);
+    expect(notifications).toEqual([
+      {
+        actionUrl: '/dashboard#dashboard-projects',
+        body: 'Archived Project was restored.',
+        title: 'Project restored',
+        type: 'moderation',
+        userId: 'user-owner',
+      },
+    ]);
+    expect(project.status).toBe('APPROVED');
   });
 
   test('loads project moderation actions newest first with pagination', async () => {
