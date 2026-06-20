@@ -1,12 +1,13 @@
-import { afterEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
-import { apolloClient } from '../apollo.js';
+import { apolloClient, authTokenStorageKey } from '../apollo.js';
 import {
   fetchFilterTags,
   fetchProjectDetails,
   fetchProjectMembers,
   fetchProjectVersions,
   fetchProjectVersionSearch,
+  fetchViewerProjectFollowState,
   searchProjects,
 } from './catalog.js';
 
@@ -238,6 +239,76 @@ describe(fetchProjectMembers.name, () => {
     expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
   });
 });
+
+describe(fetchViewerProjectFollowState.name, () => {
+  beforeEach(() => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: new MemoryStorage(),
+    });
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(authTokenStorageKey);
+    Reflect.deleteProperty(globalThis, 'localStorage');
+    spyOn(apolloClient, 'query').mockRestore();
+  });
+
+  test('passes abort signals to the authenticated follow-state request', async () => {
+    const signal = new AbortController().signal;
+    localStorage.setItem(authTokenStorageKey, 'token-a');
+    const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
+      data: {
+        viewerProjectFollowState: {
+          followers: 12,
+          following: true,
+          projectSlug: 'example',
+        },
+      },
+    } as never);
+
+    const followState = await fetchViewerProjectFollowState('example', signal);
+
+    const queryOptions = querySpy.mock.calls[0]?.[0] as
+      | { context?: { fetchOptions?: { signal?: AbortSignal } } }
+      | undefined;
+
+    expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
+    expect(followState).toEqual({
+      followers: 12,
+      following: true,
+      projectSlug: 'example',
+    });
+  });
+});
+
+class MemoryStorage implements Storage {
+  private readonly values = new Map<string, string>();
+
+  get length(): number {
+    return this.values.size;
+  }
+
+  clear(): void {
+    this.values.clear();
+  }
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  key(index: number): string | null {
+    return [...this.values.keys()][index] ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.values.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}
 
 describe(searchProjects.name, () => {
   afterEach(() => {

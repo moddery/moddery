@@ -64,6 +64,7 @@ export async function fetchViewerProjectFollowState(
     ProjectFollowStateQueryData,
     ProjectMembersQueryVariables
   >({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: VIEWER_PROJECT_FOLLOW_STATE_QUERY,
     variables: { projectSlug: slug },
