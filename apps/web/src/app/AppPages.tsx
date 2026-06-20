@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 
 import { DiscoverRoute } from './routes/DiscoverRoute.tsx';
 import { type useAppShellState } from './useAppShellState.ts';
+import { AuthRequiredPage } from './AuthRequiredPage.tsx';
 import { PageLoading } from './PageLoading.tsx';
 
 const CollectionDetailPage = lazy(() =>
@@ -116,16 +117,28 @@ export function AppPages({ app, onRequestAuth }: AppPagesProps) {
           />
         )
       ) : app.appView === 'dashboard' ? (
-        <DashboardPage
-          onHome={app.openHome}
-          onOpenCollection={app.openCollection}
-          onOpenOrganization={app.openOrganization}
-          onOpenProject={app.openProject}
-          onOpenProjectReference={app.openProjectReference}
-          onTagSearch={app.searchByTag}
-        />
+        <AuthRequiredPage
+          title="Sign in to open your dashboard"
+          description="Manage your projects, releases, teams, collections, account settings, and moderation work from one private workspace."
+          onRequestAuth={onRequestAuth}
+        >
+          <DashboardPage
+            onHome={app.openHome}
+            onOpenCollection={app.openCollection}
+            onOpenOrganization={app.openOrganization}
+            onOpenProject={app.openProject}
+            onOpenProjectReference={app.openProjectReference}
+            onTagSearch={app.searchByTag}
+          />
+        </AuthRequiredPage>
       ) : app.appView === 'notifications' ? (
-        <NotificationsPage />
+        <AuthRequiredPage
+          title="Sign in to view notifications"
+          description="Notifications include project review updates, team invitations, direct messages, and account events."
+          onRequestAuth={onRequestAuth}
+        >
+          <NotificationsPage />
+        </AuthRequiredPage>
       ) : app.appView === 'platform' ? (
         <PlatformPage />
       ) : app.appView === 'status' ? (

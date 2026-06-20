@@ -51,7 +51,7 @@ export function App() {
           !homePage &&
           (app.appView === 'discover' || Boolean(app.selectedProject))
         }
-        showDashboardButton={!homePage}
+        showDashboardButton
         showPrimaryNav={!homePage}
         extraActions={
           homePage ? (
