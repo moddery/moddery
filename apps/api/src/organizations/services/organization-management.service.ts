@@ -247,7 +247,17 @@ export class OrganizationManagementService {
       throw new ForbiddenException('Organization owner cannot be removed');
     }
 
-    await this.prisma.teamMember.delete({ where: { id: member.id } });
+    const deletion = await this.prisma.teamMember.deleteMany({
+      where: {
+        id: member.id,
+        isOwner: false,
+        teamId: organization.teamId,
+      },
+    });
+    if (deletion.count === 0) {
+      throw new NotFoundException('Team member not found');
+    }
+
     await this.auditService.recordTeamMembershipChange({
       action: 'REMOVE',
       actorId: userId,

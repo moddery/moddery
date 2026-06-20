@@ -375,9 +375,9 @@ describe(OrganizationManagementService.name, () => {
           },
         },
         teamMember: {
-          delete: (query: unknown) => {
+          deleteMany: (query: unknown) => {
             deletes.push(query);
-            return Promise.resolve({});
+            return Promise.resolve({ count: 1 });
           },
           findFirst: () =>
             Promise.resolve({
@@ -405,7 +405,13 @@ describe(OrganizationManagementService.name, () => {
       'user-a',
     );
 
-    expect(deletes[0]).toEqual({ where: { id: 'member-b' } });
+    expect(deletes[0]).toEqual({
+      where: {
+        id: 'member-b',
+        isOwner: false,
+        teamId: 'team-a',
+      },
+    });
     expect(auditEvents[0]).toEqual({
       action: 'REMOVE',
       actorId: 'user-a',
@@ -427,6 +433,61 @@ describe(OrganizationManagementService.name, () => {
       targetUserId: 'user-b',
     });
     expect(organization.id).toBe('org-a');
+  });
+
+  test('rejects stale organization team member removals before auditing', async () => {
+    const auditEvents: unknown[] = [];
+    const service = createService(
+      {
+        organization: {
+          findFirst: (query: { where?: { id?: string; team?: unknown } }) => {
+            if (query.where?.team !== undefined) {
+              return Promise.resolve({
+                id: 'org-a',
+                name: 'Iris Labs',
+                slug: 'iris-labs',
+                teamId: 'team-a',
+              });
+            }
+
+            return Promise.resolve(organizationRow());
+          },
+        },
+        teamMember: {
+          deleteMany: () => Promise.resolve({ count: 0 }),
+          findFirst: () =>
+            Promise.resolve({
+              acceptedAt: null,
+              id: 'member-b',
+              isOwner: false,
+              permissions: ['MANAGE_DETAILS'],
+              role: 'Maintainer',
+              sortOrder: 0,
+              user: {
+                id: 'user-b',
+                username: 'builder',
+              },
+            }),
+        },
+      } as unknown as PrismaService,
+      { auditEvents },
+    );
+
+    let caught: unknown;
+    try {
+      await service.removeOrganizationTeamMember(
+        {
+          organizationId: 'org-a',
+          username: 'builder',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Team member not found');
+    expect(auditEvents).toEqual([]);
   });
 
   test('rejects invalid organization team member inputs before lookups', async () => {

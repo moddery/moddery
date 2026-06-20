@@ -414,9 +414,9 @@ describe(ProjectMembersService.name, () => {
         },
         teamMember: {
           count: () => Promise.resolve(1),
-          delete: (query: unknown) => {
+          deleteMany: (query: unknown) => {
             deletes.push(query);
-            return Promise.resolve({});
+            return Promise.resolve({ count: 1 });
           },
           findMany: () => Promise.resolve([projectMemberRow()]),
           findFirst: () =>
@@ -449,7 +449,13 @@ describe(ProjectMembersService.name, () => {
       'user-a',
     );
 
-    expect(deletes[0]).toEqual({ where: { id: 'member-b' } });
+    expect(deletes[0]).toEqual({
+      where: {
+        id: 'member-b',
+        isOwner: false,
+        teamId: 'team-a',
+      },
+    });
     expect(auditEvents[0]).toEqual({
       action: 'REMOVE',
       actorId: 'user-a',
@@ -471,6 +477,58 @@ describe(ProjectMembersService.name, () => {
       targetUserId: 'user-b',
     });
     expect(members[0]?.owner).toBe(true);
+  });
+
+  test('rejects stale project team member removals before auditing', async () => {
+    const auditEvents: unknown[] = [];
+    const service = createService(
+      {
+        project: {
+          findFirst: () =>
+            Promise.resolve({
+              id: 'project-a',
+              kind: 'MOD',
+              slug: 'iris',
+              teamId: 'team-a',
+              title: 'Iris',
+            }),
+        },
+        teamMember: {
+          deleteMany: () => Promise.resolve({ count: 0 }),
+          findFirst: () =>
+            Promise.resolve({
+              id: 'member-b',
+              ...projectMemberRow({
+                isOwner: false,
+                user: {
+                  avatarUrl: null,
+                  displayName: null,
+                  id: 'user-b',
+                  username: 'maintainer',
+                },
+              }),
+            }),
+        },
+      } as unknown as PrismaService,
+      {},
+      auditEvents,
+    );
+
+    let caught: unknown;
+    try {
+      await service.removeProjectTeamMember(
+        {
+          projectSlug: 'iris',
+          username: 'maintainer',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Team member not found');
+    expect(auditEvents).toEqual([]);
   });
 });
 
