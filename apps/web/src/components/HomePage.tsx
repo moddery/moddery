@@ -7,6 +7,7 @@ import {
 } from '../lib/catalog.ts';
 import { type Mod, type ProjectType } from '../types.ts';
 import { type SearchTag } from './ModCard.tsx';
+import { HomeBrowseSection } from './home/HomeBrowseSection.tsx';
 import { HomeCollectionSection } from './home/HomeCollectionSection.tsx';
 import { HomeProjectSection } from './home/HomeProjectSection.tsx';
 
@@ -57,6 +58,7 @@ export function HomePage({
       </section>
 
       <div className="grid gap-10 pt-8">
+        <HomeBrowseSection onTagSearch={onTagSearch} />
         <HomeProjectSection
           title="Popular mods"
           subtitle="The projects players are downloading most."

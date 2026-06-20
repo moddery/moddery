@@ -138,6 +138,21 @@ export function useDiscoverState({
     setPage(1);
   };
 
+  const updateQuery = (value: string) => {
+    setQuery(value);
+    resetPage();
+  };
+
+  const updateSort = (value: SortKey) => {
+    setSort(value);
+    resetPage();
+  };
+
+  const updateView = (value: string) => {
+    setView(value);
+    resetPage();
+  };
+
   return {
     applyUrlState,
     activeFilterCount: filters.activeFilterCount,
@@ -156,13 +171,13 @@ export function useDiscoverState({
     setLayout: filters.setLayout,
     setMobileFiltersOpen: filters.setMobileFiltersOpen,
     setPage,
-    setQuery,
+    setQuery: updateQuery,
     setSelectedCategories: filters.setSelectedCategories,
     setSelectedLoaders: filters.setSelectedLoaders,
     setSelectedLicenses: filters.setSelectedLicenses,
     setSelectedVersions: filters.setSelectedVersions,
-    setSort,
-    setView,
+    setSort: updateSort,
+    setView: updateView,
     query,
     selectedCategories: filters.selectedCategories,
     selectedLoaders: filters.selectedLoaders,
