@@ -195,6 +195,7 @@ describe(CollectionsService.name, () => {
 
   test('removes projects from collections owned by the current user', async () => {
     const deletes: unknown[] = [];
+    const itemLookups: unknown[] = [];
     const service = new CollectionsService({
       collection: {
         findFirst: (query: { select?: unknown; where?: { id?: string } }) => {
@@ -210,13 +211,17 @@ describe(CollectionsService.name, () => {
         },
       },
       collectionProject: {
+        findFirst: (query: unknown) => {
+          itemLookups.push(query);
+          return Promise.resolve({
+            collectionId: 'collection-a',
+            projectId: 'project-a',
+          });
+        },
         delete: (query: unknown) => {
           deletes.push(query);
           return Promise.resolve({});
         },
-      },
-      project: {
-        findUnique: () => Promise.resolve({ id: 'project-a' }),
       },
     } as unknown as PrismaService);
 
@@ -228,6 +233,16 @@ describe(CollectionsService.name, () => {
       'user-a',
     );
 
+    expect(itemLookups[0]).toEqual({
+      select: {
+        collectionId: true,
+        projectId: true,
+      },
+      where: {
+        collectionId: 'collection-a',
+        project: { slug: 'example' },
+      },
+    });
     expect(deletes[0]).toEqual({
       where: {
         collectionId_projectId: {
@@ -237,6 +252,35 @@ describe(CollectionsService.name, () => {
       },
     });
     expect(collection.id).toBe('collection-a');
+  });
+
+  test('rejects missing collection items before removing them', async () => {
+    const service = new CollectionsService({
+      collection: {
+        findFirst: () => Promise.resolve({ id: 'collection-a' }),
+      },
+      collectionProject: {
+        delete: () => {
+          throw new Error('Collection item delete should not run');
+        },
+        findFirst: () => Promise.resolve(null),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.removeProjectFromCollection(
+        {
+          collectionId: 'collection-a',
+          projectSlug: 'missing',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Collection item not found');
   });
 
   test('updates owned collection metadata', async () => {
@@ -322,6 +366,7 @@ describe(CollectionsService.name, () => {
   });
 
   test('updates collection project ordering for owned collections', async () => {
+    const itemLookups: unknown[] = [];
     const updates: unknown[] = [];
     const service = new CollectionsService({
       collection: {
@@ -338,13 +383,17 @@ describe(CollectionsService.name, () => {
         },
       },
       collectionProject: {
+        findFirst: (query: unknown) => {
+          itemLookups.push(query);
+          return Promise.resolve({
+            collectionId: 'collection-a',
+            projectId: 'project-a',
+          });
+        },
         update: (query: unknown) => {
           updates.push(query);
           return Promise.resolve({});
         },
-      },
-      project: {
-        findUnique: () => Promise.resolve({ id: 'project-a' }),
       },
     } as unknown as PrismaService);
 
@@ -357,6 +406,16 @@ describe(CollectionsService.name, () => {
       'user-a',
     );
 
+    expect(itemLookups[0]).toEqual({
+      select: {
+        collectionId: true,
+        projectId: true,
+      },
+      where: {
+        collectionId: 'collection-a',
+        project: { slug: 'example' },
+      },
+    });
     expect(updates[0]).toEqual({
       data: { sortOrder: 4 },
       where: {
@@ -367,6 +426,61 @@ describe(CollectionsService.name, () => {
       },
     });
     expect(collection.id).toBe('collection-a');
+  });
+
+  test('rejects missing collection items before reordering them', async () => {
+    const service = new CollectionsService({
+      collection: {
+        findFirst: () => Promise.resolve({ id: 'collection-a' }),
+      },
+      collectionProject: {
+        findFirst: () => Promise.resolve(null),
+        update: () => {
+          throw new Error('Collection item update should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.updateCollectionProject(
+        {
+          collectionId: 'collection-a',
+          projectSlug: 'missing',
+          sortOrder: 1,
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Collection item not found');
+  });
+
+  test('rejects blank collection item targets before lookups', async () => {
+    const service = new CollectionsService({
+      collection: {
+        findFirst: () => {
+          throw new Error('Collection lookup should not run');
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.addProjectToCollection(
+        {
+          collectionId: 'collection-a',
+          projectSlug: ' ',
+        },
+        'user-a',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project is required');
   });
 });
 

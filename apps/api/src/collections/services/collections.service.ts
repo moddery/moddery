@@ -23,10 +23,15 @@ export class CollectionsService {
     input: AddProjectToCollectionInput,
     userId: string,
   ) {
+    const collectionId = requiredText(
+      input.collectionId,
+      'Collection is required',
+    );
+    const projectSlug = requiredText(input.projectSlug, 'Project is required');
     const collection = await this.prisma.collection.findFirst({
       select: { id: true },
       where: {
-        id: input.collectionId,
+        id: collectionId,
         ownerId: userId,
       },
     });
@@ -37,7 +42,7 @@ export class CollectionsService {
 
     const project = await this.prisma.project.findFirst({
       select: { id: true },
-      where: { slug: input.projectSlug, status: 'APPROVED' },
+      where: { slug: projectSlug, status: 'APPROVED' },
     });
 
     if (project === null) {
@@ -92,10 +97,15 @@ export class CollectionsService {
     input: RemoveProjectFromCollectionInput,
     ownerId: string,
   ) {
+    const collectionId = requiredText(
+      input.collectionId,
+      'Collection is required',
+    );
+    const projectSlug = requiredText(input.projectSlug, 'Project is required');
     const collection = await this.prisma.collection.findFirst({
       select: { id: true },
       where: {
-        id: input.collectionId,
+        id: collectionId,
         ownerId,
       },
     });
@@ -104,20 +114,26 @@ export class CollectionsService {
       throw new NotFoundException('Collection not found');
     }
 
-    const project = await this.prisma.project.findUnique({
-      select: { id: true },
-      where: { slug: input.projectSlug },
+    const item = await this.prisma.collectionProject.findFirst({
+      select: {
+        collectionId: true,
+        projectId: true,
+      },
+      where: {
+        collectionId: collection.id,
+        project: { slug: projectSlug },
+      },
     });
 
-    if (project === null) {
-      throw new NotFoundException('Project not found');
+    if (item === null) {
+      throw new NotFoundException('Collection item not found');
     }
 
     await this.prisma.collectionProject.delete({
       where: {
         collectionId_projectId: {
-          collectionId: collection.id,
-          projectId: project.id,
+          collectionId: item.collectionId,
+          projectId: item.projectId,
         },
       },
     });
@@ -164,10 +180,15 @@ export class CollectionsService {
     input: UpdateCollectionProjectInput,
     ownerId: string,
   ) {
+    const collectionId = requiredText(
+      input.collectionId,
+      'Collection is required',
+    );
+    const projectSlug = requiredText(input.projectSlug, 'Project is required');
     const collection = await this.prisma.collection.findFirst({
       select: { id: true },
       where: {
-        id: input.collectionId,
+        id: collectionId,
         ownerId,
       },
     });
@@ -176,21 +197,27 @@ export class CollectionsService {
       throw new NotFoundException('Collection not found');
     }
 
-    const project = await this.prisma.project.findUnique({
-      select: { id: true },
-      where: { slug: input.projectSlug },
+    const item = await this.prisma.collectionProject.findFirst({
+      select: {
+        collectionId: true,
+        projectId: true,
+      },
+      where: {
+        collectionId: collection.id,
+        project: { slug: projectSlug },
+      },
     });
 
-    if (project === null) {
-      throw new NotFoundException('Project not found');
+    if (item === null) {
+      throw new NotFoundException('Collection item not found');
     }
 
     await this.prisma.collectionProject.update({
       data: { sortOrder: input.sortOrder },
       where: {
         collectionId_projectId: {
-          collectionId: collection.id,
-          projectId: project.id,
+          collectionId: item.collectionId,
+          projectId: item.projectId,
         },
       },
     });
@@ -218,6 +245,15 @@ export class CollectionsService {
 function nullableTrim(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed;
+}
+
+function requiredText(value: string, message: string): string {
+  const text = value.trim();
+  if (text.length === 0) {
+    throw new BadRequestException(message);
+  }
+
+  return text;
 }
 
 function normalizeCreateCollectionInput(input: CreateCollectionInput): {

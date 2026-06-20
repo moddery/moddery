@@ -347,6 +347,13 @@ interface AddProjectToCollectionResponse {
   errors?: GraphqlError[];
 }
 
+interface RemoveProjectFromCollectionResponse {
+  data?: {
+    removeProjectFromCollection?: CollectionSummary;
+  };
+  errors?: GraphqlError[];
+}
+
 interface PublicCollectionBySlugResponse {
   data?: {
     publicCollectionBySlug?: CollectionSummary | null;
@@ -3583,6 +3590,31 @@ async function checkCollectionFlow(options: {
     projectTitle: options.projectTitle,
     slug: collectionSlug,
   });
+
+  const missingRemovePayload =
+    await readGraphql<RemoveProjectFromCollectionResponse>(
+      {
+        query: `
+          mutation SmokeRemoveMissingProjectFromCollection($input: RemoveProjectFromCollectionInput!) {
+            removeProjectFromCollection(input: $input) {
+              id
+            }
+          }
+        `,
+        variables: {
+          input: {
+            collectionId: createdCollection.id,
+            projectSlug: `missing-${options.projectSlug}`,
+          },
+        },
+      },
+      options.token,
+    );
+  assertGraphqlError(
+    missingRemovePayload,
+    'Collection item not found',
+    'missing collection item removal',
+  );
 
   const publicPayload = await readGraphql<PublicCollectionBySlugResponse>({
     query: `
