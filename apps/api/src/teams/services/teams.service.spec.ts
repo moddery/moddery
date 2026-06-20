@@ -124,9 +124,9 @@ describe(TeamsService.name, () => {
         teamMember: {
           findFirst: () =>
             Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
-          update: (query: unknown) => {
+          updateMany: (query: unknown) => {
             updates.push(query);
-            return Promise.resolve({});
+            return Promise.resolve({ count: 1 });
           },
         },
       } as unknown as PrismaService,
@@ -140,7 +140,11 @@ describe(TeamsService.name, () => {
 
     expect(updates[0]).toEqual({
       data: { acceptedAt: expect.any(Date) },
-      where: { id: 'member-a' },
+      where: {
+        acceptedAt: null,
+        id: 'member-a',
+        userId: 'user-a',
+      },
     });
     expect(invitation.id).toBe('member-a');
     expect(auditEvents[0]).toEqual({
@@ -171,15 +175,42 @@ describe(TeamsService.name, () => {
     });
   });
 
+  test('rejects stale invitation acceptance before auditing', async () => {
+    const auditEvents: unknown[] = [];
+    const service = createService(
+      {
+        teamMember: {
+          findFirst: () =>
+            Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
+          updateMany: () => Promise.resolve({ count: 0 }),
+        },
+      } as unknown as PrismaService,
+      auditEvents,
+    );
+
+    let caught: unknown;
+    try {
+      await service.acceptInvitation({
+        invitationId: 'member-a',
+        userId: 'user-a',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Team invitation not found');
+    expect(auditEvents).toEqual([]);
+  });
+
   test('declines pending viewer invitations', async () => {
     const auditEvents: unknown[] = [];
     const deletes: unknown[] = [];
     const service = createService(
       {
         teamMember: {
-          delete: (query: unknown) => {
+          deleteMany: (query: unknown) => {
             deletes.push(query);
-            return Promise.resolve({});
+            return Promise.resolve({ count: 1 });
           },
           findFirst: () =>
             Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
@@ -193,7 +224,13 @@ describe(TeamsService.name, () => {
       userId: 'user-a',
     });
 
-    expect(deletes[0]).toEqual({ where: { id: 'member-a' } });
+    expect(deletes[0]).toEqual({
+      where: {
+        acceptedAt: null,
+        id: 'member-a',
+        userId: 'user-a',
+      },
+    });
     expect(invitation.target.type).toBe('PROJECT');
     expect(auditEvents[0]).toEqual({
       action: 'DECLINE',
@@ -215,6 +252,33 @@ describe(TeamsService.name, () => {
       },
       targetUserId: 'user-a',
     });
+  });
+
+  test('rejects stale invitation decline before auditing', async () => {
+    const auditEvents: unknown[] = [];
+    const service = createService(
+      {
+        teamMember: {
+          deleteMany: () => Promise.resolve({ count: 0 }),
+          findFirst: () =>
+            Promise.resolve({ ...teamInvitationRow(), isOwner: false }),
+        },
+      } as unknown as PrismaService,
+      auditEvents,
+    );
+
+    let caught: unknown;
+    try {
+      await service.declineInvitation({
+        invitationId: 'member-a',
+        userId: 'user-a',
+      });
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Team invitation not found');
+    expect(auditEvents).toEqual([]);
   });
 });
 

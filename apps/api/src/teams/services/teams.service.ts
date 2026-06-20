@@ -70,10 +70,18 @@ export class TeamsService {
 
     const acceptedAt = new Date();
 
-    await this.prisma.teamMember.update({
+    const update = await this.prisma.teamMember.updateMany({
       data: { acceptedAt },
-      where: { id: invitation.id },
+      where: {
+        acceptedAt: null,
+        id: invitation.id,
+        userId,
+      },
     });
+    if (update.count === 0) {
+      throw new NotFoundException('Team invitation not found');
+    }
+
     await this.auditService.recordTeamMembershipChange({
       action: 'ACCEPT',
       actorId: userId,
@@ -105,7 +113,17 @@ export class TeamsService {
       throw new ForbiddenException('Owner invitations cannot be declined');
     }
 
-    await this.prisma.teamMember.delete({ where: { id: invitation.id } });
+    const deletion = await this.prisma.teamMember.deleteMany({
+      where: {
+        acceptedAt: null,
+        id: invitation.id,
+        userId,
+      },
+    });
+    if (deletion.count === 0) {
+      throw new NotFoundException('Team invitation not found');
+    }
+
     await this.auditService.recordTeamMembershipChange({
       action: 'DECLINE',
       actorId: userId,

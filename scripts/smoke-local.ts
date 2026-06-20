@@ -2965,6 +2965,26 @@ async function checkProjectTeamInvitationFlow(options: {
     role: 'Release collaborator',
   });
 
+  const duplicateAcceptPayload =
+    await readGraphql<AcceptTeamInvitationResponse>(
+      {
+        query: `
+          mutation SmokeDuplicateAcceptProjectTeamInvitation($invitationId: String!) {
+            acceptTeamInvitation(invitationId: $invitationId) {
+              id
+            }
+          }
+        `,
+        variables: { invitationId: invitation.id },
+      },
+      options.peerToken,
+    );
+  assertGraphqlError(
+    duplicateAcceptPayload,
+    'Team invitation not found',
+    'duplicate team invitation acceptance',
+  );
+
   const membersPayload = await readGraphql<ProjectMemberSearchResponse>({
     query: `
       query SmokeProjectMemberSearch($projectSlug: String!) {
