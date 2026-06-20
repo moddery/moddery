@@ -256,6 +256,36 @@ describe(searchProjects.name, () => {
       },
     });
   });
+
+  test('passes abort signals to the GraphQL project search request', async () => {
+    const signal = new AbortController().signal;
+    const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
+      data: {
+        projectSearch: {
+          projects: [],
+          totalHits: 0,
+        },
+      },
+    } as never);
+
+    await searchProjects({
+      categories: [],
+      limit: 20,
+      loaders: [],
+      page: 1,
+      projectType: 'plugin',
+      query: '',
+      signal,
+      sort: 'relevance',
+      versions: [],
+    });
+
+    const queryOptions = querySpy.mock.calls[0]?.[0] as
+      | { context?: { fetchOptions?: { signal?: AbortSignal } } }
+      | undefined;
+
+    expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
+  });
 });
 
 describe(fetchProjectVersions.name, () => {

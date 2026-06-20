@@ -33,6 +33,7 @@ export async function searchProjects({
     ProjectsQueryData,
     ProjectsQueryVariables
   >({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: PROJECTS_QUERY,
     variables: {
