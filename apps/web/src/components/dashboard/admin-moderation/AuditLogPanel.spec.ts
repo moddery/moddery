@@ -5,6 +5,7 @@ import {
   auditUserHref,
   projectAuditSnapshotHref,
 } from './AuditLogPanel.tsx';
+import { deniedActionLabel } from './AuditLogDescription.tsx';
 
 describe(auditUserHref.name, () => {
   test('links audit users to encoded profile paths', () => {
@@ -60,5 +61,12 @@ describe(projectAuditSnapshotHref.name, () => {
         slug: 'server-tools',
       }),
     ).toBe('/plugins?project=server-tools&type=plugin');
+  });
+});
+
+describe(deniedActionLabel.name, () => {
+  test('formats denied permission actions', () => {
+    expect(deniedActionLabel('PROJECT_UPDATE')).toBe('project update');
+    expect(deniedActionLabel(null)).toBe('a denied action');
   });
 });

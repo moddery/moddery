@@ -6,12 +6,19 @@ import { ProjectManagementService } from './project-management.service.js';
 function createProjectManagementService(
   prisma: PrismaService,
   searchService: unknown,
+  auditEvents: unknown[] = [],
 ) {
   const source = prisma as unknown as {
     user?: Record<string, unknown>;
   };
 
   return new ProjectManagementService(
+    {
+      recordPermissionDenied: (event: unknown) => {
+        auditEvents.push(event);
+        return Promise.resolve();
+      },
+    } as never,
     {
       ...(prisma as object),
       user: {
@@ -485,6 +492,83 @@ describe(ProjectManagementService.name, () => {
 
     expect(project.status).toBe('REJECTED');
     expect(deleted).toEqual(['project-a']);
+  });
+
+  test('records denied update attempts against existing unmanaged projects', async () => {
+    const auditEvents: unknown[] = [];
+    const service = createProjectManagementService(
+      {
+        project: {
+          findFirst: () => Promise.resolve(null),
+          findUnique: () =>
+            Promise.resolve({ id: 'project-a', slug: 'example' }),
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: () => Promise.resolve(),
+        indexProjects: () => Promise.resolve(),
+      },
+      auditEvents,
+    );
+
+    let caught: unknown;
+    try {
+      await service.updateProject(
+        {
+          projectSlug: ' example ',
+          summary: 'Updated summary',
+        },
+        'user-b',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project not found');
+    expect(auditEvents).toEqual([
+      {
+        actorId: 'user-b',
+        attemptedAction: 'PROJECT_UPDATE',
+        resource: {
+          id: 'project-a',
+          kind: 'PROJECT',
+          slug: 'example',
+        },
+      },
+    ]);
+  });
+
+  test('does not record denied update attempts for missing projects', async () => {
+    const auditEvents: unknown[] = [];
+    const service = createProjectManagementService(
+      {
+        project: {
+          findFirst: () => Promise.resolve(null),
+          findUnique: () => Promise.resolve(null),
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: () => Promise.resolve(),
+        indexProjects: () => Promise.resolve(),
+      },
+      auditEvents,
+    );
+
+    let caught: unknown;
+    try {
+      await service.updateProject(
+        {
+          projectSlug: 'missing-project',
+          summary: 'Updated summary',
+        },
+        'user-b',
+      );
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project not found');
+    expect(auditEvents).toEqual([]);
   });
 
   test('updates managed project license and extra links', async () => {

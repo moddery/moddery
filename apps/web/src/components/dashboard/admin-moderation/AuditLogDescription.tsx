@@ -82,6 +82,19 @@ export function AuditDescription({ auditLog }: { auditLog: AdminAuditLog }) {
   }
 
   if (auditLog.action === 'SECURITY_EVENT') {
+    if (auditLog.securityAction === 'PERMISSION_DENIED') {
+      return (
+        <>
+          <AuditUserLink
+            fallback={auditLog.actorId ?? auditLog.targetUserId ?? 'System'}
+            user={auditLog.actor ?? auditLog.targetUser}
+          />{' '}
+          attempted {deniedActionLabel(auditLog.deniedAction)} on{' '}
+          <DeniedResourceLink resource={auditLog.deniedResource} />
+        </>
+      );
+    }
+
     return (
       <>
         <AuditUserLink
@@ -113,6 +126,12 @@ export function AuditDescription({ auditLog }: { auditLog: AdminAuditLog }) {
       />
     </>
   );
+}
+
+export function deniedActionLabel(action: string | null) {
+  if (action === null) return 'a denied action';
+
+  return enumLabel(action).toLowerCase();
 }
 
 function AuditUserLink({
@@ -151,4 +170,26 @@ function AuditResourceLink({
       {resource?.name}
     </a>
   );
+}
+
+function DeniedResourceLink({
+  resource,
+}: {
+  resource: AdminAuditLog['deniedResource'];
+}) {
+  if (resource?.kind === 'PROJECT' && resource.slug) {
+    return (
+      <a
+        className="font-semibold text-ink transition-colors hover:text-accent"
+        href={`/mods?project=${encodeURIComponent(resource.slug)}&type=mod`}
+      >
+        {resource.slug}
+      </a>
+    );
+  }
+
+  if (resource?.slug) return resource.slug;
+  if (resource?.id) return resource.id;
+
+  return 'a protected resource';
 }

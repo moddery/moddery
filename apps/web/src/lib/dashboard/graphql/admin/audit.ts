@@ -20,6 +20,12 @@ export const ADMIN_AUDIT_LOG_SEARCH_QUERY = gql`
           status
         }
         createdAt
+        deniedAction
+        deniedResource {
+          id
+          kind
+          slug
+        }
         id
         moderationAction
         projectAfter {

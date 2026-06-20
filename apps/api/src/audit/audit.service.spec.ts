@@ -362,6 +362,95 @@ describe(AuditService.name, () => {
     });
   });
 
+  test('loads permission denial security audit metadata', async () => {
+    const service = new AuditService({
+      auditLog: {
+        count: () => Promise.resolve(1),
+        findMany: () =>
+          Promise.resolve([
+            {
+              action: 'SECURITY_EVENT',
+              actor: {
+                displayName: null,
+                id: 'user-a',
+                username: 'creator',
+              },
+              actorId: 'user-a',
+              createdAt: new Date('2026-01-06T00:00:00.000Z'),
+              id: 'audit-denied',
+              metadata: {
+                action: 'PERMISSION_DENIED',
+                attemptedAction: 'PROJECT_UPDATE',
+                resource: {
+                  id: 'project-a',
+                  kind: 'PROJECT',
+                  slug: 'example',
+                },
+              },
+              targetUser: {
+                displayName: null,
+                id: 'user-a',
+                username: 'creator',
+              },
+              targetUserId: 'user-a',
+            },
+          ]),
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.findAdminAuditLogs();
+
+    expect(result.auditLogs[0]).toMatchObject({
+      action: 'SECURITY_EVENT',
+      deniedAction: 'PROJECT_UPDATE',
+      deniedResource: {
+        id: 'project-a',
+        kind: 'PROJECT',
+        slug: 'example',
+      },
+      securityAction: 'PERMISSION_DENIED',
+    });
+  });
+
+  test('records permission denial audit events', async () => {
+    const writes: unknown[] = [];
+    const service = new AuditService({
+      auditLog: {
+        create: (query: unknown) => {
+          writes.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    await service.recordPermissionDenied({
+      actorId: 'user-a',
+      attemptedAction: 'PROJECT_UPDATE',
+      resource: {
+        id: 'project-a',
+        kind: 'PROJECT',
+        slug: 'example',
+      },
+    });
+
+    expect(writes[0]).toEqual({
+      data: {
+        action: 'SECURITY_EVENT',
+        actorId: 'user-a',
+        metadata: {
+          action: 'PERMISSION_DENIED',
+          attemptedAction: 'PROJECT_UPDATE',
+          resource: {
+            id: 'project-a',
+            kind: 'PROJECT',
+            slug: 'example',
+          },
+        },
+        targetUserId: 'user-a',
+      },
+    });
+  });
+
   test('loads email verification as security audit metadata', async () => {
     const service = new AuditService({
       auditLog: {

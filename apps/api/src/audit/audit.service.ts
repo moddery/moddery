@@ -187,6 +187,29 @@ export class AuditService {
       },
     });
   }
+
+  async recordPermissionDenied({
+    actorId,
+    attemptedAction,
+    resource,
+  }: {
+    actorId: string;
+    attemptedAction: string;
+    resource: PermissionDeniedAuditResource;
+  }): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        action: 'SECURITY_EVENT',
+        actorId,
+        metadata: {
+          action: 'PERMISSION_DENIED',
+          attemptedAction,
+          resource,
+        },
+        targetUserId: actorId,
+      },
+    });
+  }
 }
 
 export interface UserAccountAuditSnapshot extends Prisma.InputJsonObject {
@@ -237,6 +260,12 @@ export interface TeamMemberAuditSnapshot extends Prisma.InputJsonObject {
   username: string;
 }
 
+export interface PermissionDeniedAuditResource extends Prisma.InputJsonObject {
+  id: string | null;
+  kind: 'ORGANIZATION' | 'PROJECT' | 'VERSION';
+  slug: string | null;
+}
+
 export type SecurityAuditAction =
   | 'API_TOKEN_CREATED'
   | 'API_TOKEN_REVOKED'
@@ -245,6 +274,7 @@ export type SecurityAuditAction =
   | 'OAUTH_CLIENT_CREATED'
   | 'OAUTH_CLIENT_REVOKED'
   | 'PASSWORD_RESET_CONFIRMED'
+  | 'PERMISSION_DENIED'
   | 'SESSION_CREATED'
   | 'SESSION_REVOKED'
   | 'TWO_FACTOR_DISABLED'
@@ -291,6 +321,8 @@ export interface AuditLogContract {
   teamMemberBefore: TeamMemberAuditSnapshot | null;
   versionAfter: VersionAuditSnapshot | null;
   versionBefore: VersionAuditSnapshot | null;
+  deniedAction: string | null;
+  deniedResource: PermissionDeniedAuditResource | null;
 }
 
 function auditLogSelect() {
@@ -337,6 +369,8 @@ function auditLogRowToContract(row: {
     after: metadata.after,
     before: metadata.before,
     createdAt: row.createdAt,
+    deniedAction: metadata.deniedAction,
+    deniedResource: metadata.deniedResource,
     id: row.id,
     moderationAction: metadata.moderationAction,
     projectAfter: metadata.projectAfter,
@@ -372,6 +406,8 @@ function auditMetadata(metadata: Prisma.JsonValue): {
   teamMemberBefore: TeamMemberAuditSnapshot | null;
   versionAfter: VersionAuditSnapshot | null;
   versionBefore: VersionAuditSnapshot | null;
+  deniedAction: string | null;
+  deniedResource: PermissionDeniedAuditResource | null;
 } {
   if (metadata === null || typeof metadata !== 'object') {
     return emptyAuditMetadata();
@@ -391,6 +427,11 @@ function auditMetadata(metadata: Prisma.JsonValue): {
         : null,
     after: auditSnapshot(metadata.after),
     before: auditSnapshot(metadata.before),
+    deniedAction:
+      typeof metadata.attemptedAction === 'string'
+        ? metadata.attemptedAction
+        : null,
+    deniedResource: permissionDeniedResource(metadata.resource),
     projectAfter: projectSnapshot(metadata.after),
     projectBefore: projectSnapshot(metadata.before),
     reason: typeof metadata.reason === 'string' ? metadata.reason : null,
@@ -429,6 +470,8 @@ function emptyAuditMetadata() {
     teamMemberBefore: null,
     versionAfter: null,
     versionBefore: null,
+    deniedAction: null,
+    deniedResource: null,
   };
 }
 
@@ -436,17 +479,44 @@ function rowActionIsSecurity(
   metadata: Prisma.JsonObject,
 ): metadata is Prisma.JsonObject & { action: string } {
   return (
+    metadata.action === 'ACCOUNT_CREDENTIALS_REVOKED' ||
     metadata.action === 'API_TOKEN_CREATED' ||
     metadata.action === 'API_TOKEN_REVOKED' ||
     metadata.action === 'EMAIL_VERIFICATION_CONFIRMED' ||
     metadata.action === 'OAUTH_CLIENT_CREATED' ||
     metadata.action === 'OAUTH_CLIENT_REVOKED' ||
     metadata.action === 'PASSWORD_RESET_CONFIRMED' ||
+    metadata.action === 'PERMISSION_DENIED' ||
     metadata.action === 'SESSION_CREATED' ||
     metadata.action === 'SESSION_REVOKED' ||
     metadata.action === 'TWO_FACTOR_DISABLED' ||
     metadata.action === 'TWO_FACTOR_ENABLED'
   );
+}
+
+function permissionDeniedResource(
+  value: Prisma.JsonValue | undefined,
+): PermissionDeniedAuditResource | null {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return null;
+  }
+
+  if (Array.isArray(value) || typeof value.kind !== 'string') {
+    return null;
+  }
+
+  const kind = value.kind.toUpperCase();
+  if (kind !== 'ORGANIZATION' && kind !== 'PROJECT' && kind !== 'VERSION') {
+    return null;
+  }
+
+  const resource: PermissionDeniedAuditResource = {
+    id: typeof value.id === 'string' ? value.id : null,
+    kind,
+    slug: typeof value.slug === 'string' ? value.slug : null,
+  };
+
+  return resource;
 }
 
 function auditSnapshot(

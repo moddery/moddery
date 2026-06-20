@@ -121,6 +121,18 @@ export class TeamMemberAuditSnapshot {
 }
 
 @ObjectType()
+export class PermissionDeniedAuditResource {
+  @Field(() => String, { nullable: true })
+  id!: string | null;
+
+  @Field(() => String)
+  kind!: string;
+
+  @Field(() => String, { nullable: true })
+  slug!: string | null;
+}
+
+@ObjectType()
 export class AuditLogSummary {
   @Field(() => String)
   action!: string;
@@ -139,6 +151,12 @@ export class AuditLogSummary {
 
   @Field(() => Date)
   createdAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  deniedAction!: string | null;
+
+  @Field(() => PermissionDeniedAuditResource, { nullable: true })
+  deniedResource!: PermissionDeniedAuditResource | null;
 
   @Field(() => String)
   id!: string;

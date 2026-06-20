@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { type ProjectSummaryContract } from '@moddery/shared';
 
+import { AuditService } from '../../audit/audit.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
 import { SearchService } from '../../search/search.service.js';
@@ -35,6 +36,7 @@ import {
 @Injectable()
 export class ProjectManagementService {
   constructor(
+    private readonly auditService: AuditService,
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
     private readonly redis: RedisService,
@@ -180,10 +182,11 @@ export class ProjectManagementService {
   }
 
   private async findManagedProject(projectSlug: string, userId: string) {
+    const slug = projectSlug.trim();
     const project = await this.prisma.project.findFirst({
       select: { id: true },
       where: {
-        slug: projectSlug.trim(),
+        slug,
         team: {
           members: {
             some: {
@@ -196,6 +199,7 @@ export class ProjectManagementService {
     });
 
     if (project === null) {
+      await this.recordProjectUpdateDenied(userId, slug);
       throw new NotFoundException('Project not found');
     }
 
@@ -215,6 +219,30 @@ export class ProjectManagementService {
 
   private invalidateProjectBySlugCache(slug: string): Promise<void> {
     return this.redis.delete(projectBySlugCacheKey(slug));
+  }
+
+  private async recordProjectUpdateDenied(
+    userId: string,
+    slug: string,
+  ): Promise<void> {
+    if (slug.length === 0) return;
+
+    const existingProject = await this.prisma.project.findUnique({
+      select: { id: true, slug: true },
+      where: { slug },
+    });
+
+    if (existingProject === null) return;
+
+    await this.auditService.recordPermissionDenied({
+      actorId: userId,
+      attemptedAction: 'PROJECT_UPDATE',
+      resource: {
+        id: existingProject.id,
+        kind: 'PROJECT',
+        slug: existingProject.slug,
+      },
+    });
   }
 }
 

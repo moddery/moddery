@@ -77,6 +77,8 @@ export interface AdminAuditLog {
   after: UserAccountAuditSnapshot | null;
   before: UserAccountAuditSnapshot | null;
   createdAt: string;
+  deniedAction: string | null;
+  deniedResource: PermissionDeniedAuditResource | null;
   id: string;
   moderationAction: string | null;
   projectAfter: ProjectAuditSnapshot | null;
@@ -93,6 +95,12 @@ export interface AdminAuditLog {
   teamMemberBefore: TeamMemberAuditSnapshot | null;
   versionAfter: VersionAuditSnapshot | null;
   versionBefore: VersionAuditSnapshot | null;
+}
+
+export interface PermissionDeniedAuditResource {
+  id: string | null;
+  kind: 'ORGANIZATION' | 'PROJECT' | 'VERSION';
+  slug: string | null;
 }
 
 export interface AuditResourceSnapshot {
