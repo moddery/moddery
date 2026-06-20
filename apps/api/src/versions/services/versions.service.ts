@@ -92,6 +92,7 @@ export class VersionsService {
     validateVersionFiles(
       input.files,
       this.config.getOrThrow<string>('s3.publicBaseUrl'),
+      project.slug,
     );
     const versionNumber = input.versionNumber.trim();
     if (versionNumber.length === 0) {

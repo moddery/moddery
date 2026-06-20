@@ -54,6 +54,7 @@ export async function createVersionFiles(
 export function validateVersionFiles(
   files: CreateVersionInput['files'],
   publicBaseUrl: string,
+  projectSlug: string,
 ): void {
   if (files.length === 0) {
     throw new BadRequestException('At least one version file is required');
@@ -89,9 +90,9 @@ export function validateVersionFiles(
       throw new BadRequestException('Version file URL is required');
     }
 
-    if (!isStorageObjectUrl(url, publicBaseUrl)) {
+    if (!isProjectVersionFileUrl(url, publicBaseUrl, projectSlug)) {
       throw new BadRequestException(
-        'Version file URL must use project storage',
+        'Version file URL must use this project release storage',
       );
     }
 
@@ -122,21 +123,34 @@ export function validateVersionFiles(
   }
 }
 
-function isStorageObjectUrl(url: string, publicBaseUrl: string): boolean {
+function isProjectVersionFileUrl(
+  url: string,
+  publicBaseUrl: string,
+  projectSlug: string,
+): boolean {
   const normalizedBase = publicBaseUrl.trim().replace(/\/+$/, '');
   if (normalizedBase.length === 0) return false;
 
   try {
     const candidate = new URL(url);
     const base = new URL(`${normalizedBase}/`);
+    const basePath = base.pathname.replace(/\/+$/, '');
+    const expectedPathPrefix = `${basePath}/projects/${encodeStorageKeyPart(
+      projectSlug,
+    )}/version-file/`;
+
     return (
       candidate.protocol === base.protocol &&
       candidate.host === base.host &&
-      candidate.pathname.startsWith(base.pathname)
+      candidate.pathname.startsWith(expectedPathPrefix)
     );
   } catch {
     return false;
   }
+}
+
+function encodeStorageKeyPart(value: string): string {
+  return value.replaceAll(/[^a-z0-9._-]/gi, '-').toLowerCase();
 }
 
 function normalizeHashAlgorithm(value: string): HashAlgorithm {

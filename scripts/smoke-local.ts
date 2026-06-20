@@ -3006,7 +3006,7 @@ async function checkExternalVersionFileUrlGuard(options: {
   );
   assertGraphqlError(
     versionPayload,
-    'Version file URL must use project storage',
+    'Version file URL must use this project release storage',
     'external version file URL',
   );
 }

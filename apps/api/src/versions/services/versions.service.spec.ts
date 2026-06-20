@@ -504,7 +504,7 @@ describe(VersionsService.name, () => {
                         isPrimary: true,
                         scans: [],
                         sizeBytes: 123n,
-                        url: 'https://cdn.example.test/root/example.jar',
+                        url: 'https://cdn.example.test/root/projects/example/version-file/example.jar',
                       },
                     ],
                   }),
@@ -558,7 +558,7 @@ describe(VersionsService.name, () => {
             hashes: [{ algorithm: 'sha256', value: 'ABC123' }],
             primary: true,
             sizeBytes: 123,
-            url: 'https://cdn.example.test/root/example.jar',
+            url: 'https://cdn.example.test/root/projects/example/version-file/example.jar',
           },
         ],
         gameVersions: ['1.21.6'],
@@ -935,7 +935,7 @@ describe(VersionsService.name, () => {
       {
         ...file,
         fileName: 'example-server.jar',
-        url: 'https://cdn.example.test/root/example-server.jar',
+        url: 'https://cdn.example.test/root/projects/example/version-file/example-server.jar',
       },
     ];
 
@@ -985,7 +985,81 @@ describe(VersionsService.name, () => {
 
     expect(caught).toHaveProperty(
       'message',
-      'Version file URL must use project storage',
+      'Version file URL must use this project release storage',
+    );
+  });
+
+  test('rejects version files from another project before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      url: 'https://cdn.example.test/root/projects/other/version-file/example.jar',
+    };
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Version file URL must use this project release storage',
+    );
+  });
+
+  test('rejects project image uploads as version files before opening a transaction', async () => {
+    const service = createVersionsService({
+      $transaction: () => {
+        throw new Error('Version transaction should not run');
+      },
+      project: {
+        findUnique: () =>
+          Promise.resolve({
+            id: 'project-a',
+            slug: 'example',
+            status: 'APPROVED',
+            team: { members: [{ userId: 'user-a' }] },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    const input = validCreateVersionInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = {
+      ...file,
+      url: 'https://cdn.example.test/root/projects/example/project-icon/example.png',
+    };
+
+    let caught: unknown;
+    try {
+      await service.createVersion(input, 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Version file URL must use this project release storage',
     );
   });
 
@@ -1013,7 +1087,7 @@ describe(VersionsService.name, () => {
       {
         ...file,
         primary: false,
-        url: 'https://cdn.example.test/root/example-copy.jar',
+        url: 'https://cdn.example.test/root/projects/example/version-file/example-copy.jar',
       },
     ];
 
@@ -1232,7 +1306,7 @@ function validCreateVersionInput() {
         hashes: [{ algorithm: 'sha256', value: 'ABC123' }],
         primary: true,
         sizeBytes: 123,
-        url: 'https://cdn.example.test/root/example.jar',
+        url: 'https://cdn.example.test/root/projects/example/version-file/example.jar',
       },
     ],
     gameVersions: ['1.21.6'],
