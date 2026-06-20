@@ -56,6 +56,15 @@ export function PublishVersionForm({
       const input = form.buildInput();
       if (localFile !== null) {
         const versionFile = input.files[0];
+        input.files[0] = {
+          fileName: localFile.name,
+          hashes: [],
+          primary: versionFile?.primary ?? true,
+          sizeBytes: localFile.size,
+          url: '',
+        };
+        assertCreateVersionInput(input, { allowMissingFileUrl: true });
+
         const hashes = await computeVersionFileHashes(localFile);
         const target = await uploadProjectFile({
           file: localFile,

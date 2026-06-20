@@ -21,6 +21,17 @@ describe(assertCreateVersionInput.name, () => {
     }).toThrow('Version file URL is required');
   });
 
+  test('allows missing file URLs only during local file preflight validation', () => {
+    const input = baseInput();
+    const [file] = input.files;
+    if (file === undefined) throw new Error('Missing test file');
+    input.files[0] = { ...file, url: '' };
+
+    expect(() => {
+      assertCreateVersionInput(input, { allowMissingFileUrl: true });
+    }).not.toThrow();
+  });
+
   test('requires a positive file size before submitting', () => {
     const input = baseInput();
     const [file] = input.files;

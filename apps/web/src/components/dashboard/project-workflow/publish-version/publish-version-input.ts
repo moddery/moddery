@@ -3,7 +3,14 @@ import { type CreateVersionInput } from '../../../../lib/dashboard.ts';
 const MAX_VERSION_FILES = 8;
 const MAX_FILE_HASHES = 8;
 
-export function assertCreateVersionInput(input: CreateVersionInput): void {
+export interface CreateVersionInputOptions {
+  allowMissingFileUrl?: boolean;
+}
+
+export function assertCreateVersionInput(
+  input: CreateVersionInput,
+  options: CreateVersionInputOptions = {},
+): void {
   if (input.projectSlug.trim().length === 0) {
     throw new Error('Choose a project before publishing a version');
   }
@@ -45,7 +52,7 @@ export function assertCreateVersionInput(input: CreateVersionInput): void {
     }
     fileNames.add(fileName);
 
-    if (file.url.trim().length === 0) {
+    if (file.url.trim().length === 0 && options.allowMissingFileUrl !== true) {
       throw new Error('Version file URL is required');
     }
 
