@@ -29,9 +29,9 @@ export class PlatformResolver {
     return this.platformService.findCategories();
   }
 
+  @Public()
   @Query(() => [GameVersionSummary])
-  gameVersions(@CurrentUser() user: AuthenticatedUser) {
-    assertAdmin(user);
+  gameVersions() {
     return this.platformService.findGameVersions();
   }
 
