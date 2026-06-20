@@ -4,11 +4,11 @@ import { useMemo, useState } from 'react';
 import {
   addProjectToCollection,
   fetchViewerCollectionChoices,
-  hasAuthToken,
   removeProjectFromCollection,
   type ProjectDetails,
   type ViewerCollectionChoice,
 } from '../../../../lib/catalog.ts';
+import { useAuthTokenPresent } from '../../../../lib/users/auth.ts';
 
 export function useProjectCollectionSaveState({
   project,
@@ -20,7 +20,7 @@ export function useProjectCollectionSaveState({
     string | null
   >(null);
   const [message, setMessage] = useState<string | null>(null);
-  const authenticated = hasAuthToken();
+  const authenticated = useAuthTokenPresent();
   const collectionsQuery = useQuery({
     enabled: authenticated,
     queryFn: ({ signal }) => fetchViewerCollectionChoices(signal),

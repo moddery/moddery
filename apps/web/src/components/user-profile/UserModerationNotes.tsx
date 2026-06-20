@@ -1,21 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { hasAuthToken } from '../../lib/catalog.ts';
 import {
   canUseModerationNotes,
   createUserModerationNote,
   fetchModerationViewer,
   fetchUserModerationNoteSearch,
 } from '../../lib/moderation.ts';
+import { useAuthTokenPresent } from '../../lib/users/auth.ts';
 import { ModerationNotesPanel } from '../ModerationNotesPanel.tsx';
 
 const notePageSize = 20;
 
 export function UserModerationNotes({ username }: { username: string }) {
   const [notesPage, setNotesPage] = useState(1);
+  const authenticated = useAuthTokenPresent();
   const viewerQuery = useQuery({
-    enabled: hasAuthToken(),
+    enabled: authenticated,
     queryFn: ({ signal }) => fetchModerationViewer(signal),
     queryKey: ['moderation', 'viewer'],
     retry: false,

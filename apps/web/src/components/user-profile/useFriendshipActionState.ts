@@ -5,15 +5,15 @@ import {
   acceptFriendRequest,
   blockUser,
   fetchViewerFriendship,
-  hasAuthToken,
   removeFriend,
   sendFriendRequest,
+  useAuthTokenPresent,
 } from '../../lib/users.ts';
 
 export function useFriendshipActionState(username: string) {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const signedIn = hasAuthToken();
+  const signedIn = useAuthTokenPresent();
   const relationshipQuery = useQuery({
     enabled: signedIn,
     queryFn: () => fetchViewerFriendship(username),
