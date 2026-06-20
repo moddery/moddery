@@ -44,6 +44,7 @@ export async function fetchProjectDetails(
     ProjectBySlugQueryData,
     ProjectBySlugQueryVariables
   >({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: PROJECT_BY_SLUG_QUERY,
     variables: { slug },
@@ -68,6 +69,7 @@ export async function fetchProjectVersions(
     VersionsForProjectQueryData,
     VersionsForProjectQueryVariables
   >({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: VERSIONS_FOR_PROJECT_QUERY,
     variables: { projectSlug: slug },
@@ -133,6 +135,7 @@ export async function fetchProjectMembers(
     ProjectMembersQueryData,
     ProjectMembersQueryVariables
   >({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: PROJECT_MEMBERS_QUERY,
     variables: { projectSlug: slug },

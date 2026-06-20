@@ -3,6 +3,7 @@ import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { apolloClient } from '../apollo.js';
 import {
   fetchProjectDetails,
+  fetchProjectMembers,
   fetchProjectVersions,
   fetchProjectVersionSearch,
   searchProjects,
@@ -14,7 +15,8 @@ describe(fetchProjectDetails.name, () => {
   });
 
   test('maps project details from GraphQL into the frontend shape', async () => {
-    spyOn(apolloClient, 'query').mockResolvedValue({
+    const signal = new AbortController().signal;
+    const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
       data: {
         projectBySlug: {
           body: 'Project body',
@@ -89,8 +91,12 @@ describe(fetchProjectDetails.name, () => {
       },
     } as never);
 
-    const project = await fetchProjectDetails('example');
+    const project = await fetchProjectDetails('example', signal);
+    const queryOptions = querySpy.mock.calls[0]?.[0] as
+      | { context?: { fetchOptions?: { signal?: AbortSignal } } }
+      | undefined;
 
+    expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
     expect(project.followers).toBe(12);
     expect(project.published).toBe('2025-12-15T00:00:00.000Z');
     expect(project.approvedAt).toBe('2025-12-16T00:00:00.000Z');
@@ -209,6 +215,29 @@ describe(fetchProjectVersionSearch.name, () => {
   });
 });
 
+describe(fetchProjectMembers.name, () => {
+  afterEach(() => {
+    spyOn(apolloClient, 'query').mockRestore();
+  });
+
+  test('passes abort signals to the GraphQL project members request', async () => {
+    const signal = new AbortController().signal;
+    const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
+      data: {
+        projectMembers: [],
+      },
+    } as never);
+
+    await fetchProjectMembers('example', signal);
+
+    const queryOptions = querySpy.mock.calls[0]?.[0] as
+      | { context?: { fetchOptions?: { signal?: AbortSignal } } }
+      | undefined;
+
+    expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
+  });
+});
+
 describe(searchProjects.name, () => {
   afterEach(() => {
     spyOn(apolloClient, 'query').mockRestore();
@@ -294,6 +323,7 @@ describe(fetchProjectVersions.name, () => {
   });
 
   test('maps version dependency targets from GraphQL', async () => {
+    const signal = new AbortController().signal;
     const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
       data: {
         versionsForProject: [
@@ -344,11 +374,15 @@ describe(fetchProjectVersions.name, () => {
       },
     } as never);
 
-    const versions = await fetchProjectVersions('example');
+    const versions = await fetchProjectVersions('example', signal);
     const queryOptions = querySpy.mock.calls[0]?.[0] as
-      | { variables: unknown }
+      | {
+          context?: { fetchOptions?: { signal?: AbortSignal } };
+          variables: unknown;
+        }
       | undefined;
 
+    expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
     expect(queryOptions?.variables).toEqual({ projectSlug: 'example' });
     expect(versions[0]?.versionType).toBe('beta');
     expect(versions[0]?.dependencies).toEqual([
