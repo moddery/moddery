@@ -2,6 +2,7 @@ import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 import { apolloClient } from '../apollo.js';
 import {
+  fetchFilterTags,
   fetchProjectDetails,
   fetchProjectMembers,
   fetchProjectVersions,
@@ -314,6 +315,57 @@ describe(searchProjects.name, () => {
       | undefined;
 
     expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
+  });
+});
+
+describe(fetchFilterTags.name, () => {
+  afterEach(() => {
+    spyOn(apolloClient, 'query').mockRestore();
+  });
+
+  test('passes abort signals to the GraphQL platform metadata request', async () => {
+    const signal = new AbortController().signal;
+    const querySpy = spyOn(apolloClient, 'query').mockResolvedValue({
+      data: {
+        platformMetadata: {
+          categories: [
+            {
+              description: null,
+              name: 'Optimization',
+              projectKind: 'MOD',
+              slug: 'optimization',
+            },
+            {
+              description: null,
+              name: 'Server',
+              projectKind: 'PLUGIN',
+              slug: 'server',
+            },
+            {
+              description: null,
+              name: 'Library',
+              projectKind: null,
+              slug: 'library',
+            },
+          ],
+          gameVersions: [],
+          licenses: [],
+          loaders: [],
+        },
+      },
+    } as never);
+
+    const filterTags = await fetchFilterTags('mod', signal);
+
+    const queryOptions = querySpy.mock.calls[0]?.[0] as
+      | { context?: { fetchOptions?: { signal?: AbortSignal } } }
+      | undefined;
+
+    expect(queryOptions?.context?.fetchOptions?.signal).toBe(signal);
+    expect(filterTags.categories.map((category) => category.slug)).toEqual([
+      'optimization',
+      'library',
+    ]);
   });
 });
 

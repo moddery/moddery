@@ -68,6 +68,7 @@ export async function fetchFilterTags(
   throwIfAborted(signal);
 
   const { data } = await apolloClient.query<PlatformMetadataQueryData>({
+    context: { fetchOptions: { signal } },
     fetchPolicy: 'cache-first',
     query: PLATFORM_METADATA_QUERY,
   });
