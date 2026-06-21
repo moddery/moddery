@@ -3,11 +3,8 @@ import { DASHBOARD_QUERY } from '../graphql.js';
 import { type DashboardQueryData } from '../internal-types.js';
 import { type DashboardData } from '../types.js';
 
-export async function fetchDashboard(
-  signal?: AbortSignal,
-): Promise<DashboardData | null> {
+export async function fetchDashboard(): Promise<DashboardData | null> {
   const { data } = await apolloClient.query<DashboardQueryData>({
-    context: { fetchOptions: { signal } },
     fetchPolicy: 'network-only',
     query: DASHBOARD_QUERY,
   });

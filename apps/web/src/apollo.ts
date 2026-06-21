@@ -2,12 +2,19 @@ import { ApolloClient, createHttpLink, InMemoryCache } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 
 export const graphqlUri =
-  import.meta.env.VITE_GRAPHQL_URL ?? 'http://localhost:3000/graphql';
+  import.meta.env.VITE_GRAPHQL_URL ?? 'http://localhost:13001/graphql';
 
 export const authTokenStorageKey = 'moddery.accessToken';
 export const authTokenChangedEvent = 'moddery:auth-token-changed';
 
+const nonAbortingFetch = Object.assign(
+  (uri: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) =>
+    fetch(uri, options === undefined ? options : { ...options, signal: null }),
+  { preconnect: fetch.preconnect },
+);
+
 const httpLink = createHttpLink({
+  fetch: nonAbortingFetch,
   uri: graphqlUri,
 });
 

@@ -160,6 +160,7 @@ const serviceOrder: HealthCheckResult['name'][] = [
   'database',
   'redis',
   'search',
+  'storage',
   'analytics',
 ];
 
@@ -168,6 +169,7 @@ const serviceLabels: Record<HealthCheckResult['name'], string> = {
   database: 'Postgres',
   redis: 'Redis',
   search: 'OpenSearch',
+  storage: 'S3 storage',
 };
 
 const serviceDescriptions: Record<HealthCheckResult['name'], string> = {
@@ -175,4 +177,5 @@ const serviceDescriptions: Record<HealthCheckResult['name'], string> = {
   database: 'Transactional data store',
   redis: 'Cache and ephemeral state',
   search: 'Project search index',
+  storage: 'Upload and file storage',
 };

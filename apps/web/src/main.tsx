@@ -8,7 +8,14 @@ import App from './App.tsx';
 import { apolloClient } from './apollo.js';
 import { AppErrorBoundary } from './app/AppErrorBoundary.tsx';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: false,
+    },
+  },
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

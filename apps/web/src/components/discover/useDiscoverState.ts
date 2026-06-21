@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import {
   fetchFilterTags,
@@ -90,6 +90,7 @@ export function useDiscoverState({
 
   const projectsQuery = useQuery({
     enabled: shouldLoadCatalog,
+    placeholderData: keepPreviousData,
     queryFn: ({ signal }) =>
       searchProjects({
         projectType,

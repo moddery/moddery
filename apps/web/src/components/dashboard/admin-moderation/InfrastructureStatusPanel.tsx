@@ -114,6 +114,7 @@ const serviceOrder: HealthCheckResult['name'][] = [
   'database',
   'redis',
   'search',
+  'storage',
   'analytics',
 ];
 
@@ -122,4 +123,5 @@ const serviceLabels: Record<HealthCheckResult['name'], string> = {
   database: 'Postgres',
   redis: 'Redis',
   search: 'OpenSearch',
+  storage: 'S3 storage',
 };

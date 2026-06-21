@@ -55,6 +55,7 @@ export function AuthControls({
     NOTIFICATIONS_QUERY,
     {
       skip: token === null,
+      variables: { limit: 5, offset: 0, unreadOnly: null, type: null },
     },
   );
   const [login, loginState] = useMutation<AuthMutationData>(LOGIN_MUTATION);
@@ -180,7 +181,9 @@ export function AuthControls({
         notificationCount={
           notificationsQuery.data?.unreadNotificationCount ?? 0
         }
-        notifications={notificationsQuery.data?.viewerNotifications ?? []}
+        notifications={
+          notificationsQuery.data?.viewerNotificationSearch.notifications ?? []
+        }
         onLogout={logout}
         onOpenNotifications={onOpenNotifications}
         onOpenProfile={onOpenProfile}

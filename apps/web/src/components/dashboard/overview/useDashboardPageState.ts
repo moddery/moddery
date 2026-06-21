@@ -4,7 +4,7 @@ import { fetchDashboard } from '../../../lib/dashboard.ts';
 
 export function useDashboardPageState() {
   const dashboardQuery = useQuery({
-    queryFn: ({ signal }) => fetchDashboard(signal),
+    queryFn: () => fetchDashboard(),
     queryKey: ['dashboard'],
     retry: false,
   });

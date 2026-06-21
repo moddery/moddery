@@ -29,11 +29,13 @@ export function NotificationsPage() {
   }, [selectedType, unreadOnly]);
 
   const notificationsQuery = useQuery({
-    queryFn: ({ signal }) =>
-      fetchViewerNotifications(
-        { limit: pageSize, page, type: selectedType, unreadOnly },
-        signal,
-      ),
+    queryFn: () =>
+      fetchViewerNotifications({
+        limit: pageSize,
+        page,
+        type: selectedType,
+        unreadOnly,
+      }),
     queryKey: ['notifications', 'viewer', selectedType, unreadOnly, page],
   });
   const notifications =

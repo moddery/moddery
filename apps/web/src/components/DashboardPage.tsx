@@ -39,8 +39,13 @@ export function DashboardPage({
       <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
         <EmptyState
           actionLabel="Go home"
+          body={
+            dashboardQuery.error instanceof Error
+              ? dashboardQuery.error.message
+              : 'The dashboard request failed.'
+          }
           onClear={onHome}
-          itemLabel="dashboard"
+          title="Dashboard failed to load"
         />
       </main>
     );
@@ -51,8 +56,9 @@ export function DashboardPage({
       <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
         <EmptyState
           actionLabel="Go home"
+          body="Sign in again to open your dashboard."
           onClear={onHome}
-          itemLabel="account"
+          title="No dashboard session"
         />
       </main>
     );

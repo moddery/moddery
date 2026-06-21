@@ -1,4 +1,7 @@
-import { type NotificationItem } from '../../lib/notifications.ts';
+import {
+  type NotificationItem,
+  type NotificationsQueryData,
+} from '../../lib/notifications.ts';
 
 export interface MeQueryData {
   me: {
@@ -18,11 +21,6 @@ export interface AuthMutationData {
   requestPasswordReset?: boolean;
 }
 
-export interface NotificationsQueryData {
-  unreadNotificationCount: number;
-  viewerNotifications: NotificationItem[];
-}
-
-export type { NotificationItem };
+export type { NotificationItem, NotificationsQueryData };
 
 export type AuthMode = 'login' | 'register' | 'reset-request' | 'reset-confirm';

@@ -20,6 +20,7 @@ describe(fetchReadiness.name, () => {
             checks: [
               { durationMs: 4, name: 'database', status: 'up' },
               { durationMs: 2, name: 'redis', status: 'up' },
+              { durationMs: 5, name: 'storage', status: 'up' },
             ],
             status: 'ready',
           }),
@@ -30,11 +31,12 @@ describe(fetchReadiness.name, () => {
 
     const readiness = await fetchReadiness();
 
-    expect(calls[0]).toBe('http://localhost:3000/health/ready');
+    expect(calls[0]).toBe('http://localhost:13001/health/ready');
     expect(readiness.status).toBe('ready');
     expect(readiness.checks).toEqual([
       { durationMs: 4, name: 'database', status: 'up' },
       { durationMs: 2, name: 'redis', status: 'up' },
+      { durationMs: 5, name: 'storage', status: 'up' },
     ]);
   });
 
