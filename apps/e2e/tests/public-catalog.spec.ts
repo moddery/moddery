@@ -41,7 +41,7 @@ test.describe('public catalog', () => {
       .getByRole('button', { name: /sign in/i })
       .first()
       .click();
-    await expect(page.getByPlaceholder(/username or email/i)).toBeVisible();
-    await expect(page.getByPlaceholder(/^password$/i)).toBeVisible();
+    await expect(page.getByLabel(/username or email/i)).toBeVisible();
+    await expect(page.getByLabel(/^password$/i)).toBeVisible();
   });
 });

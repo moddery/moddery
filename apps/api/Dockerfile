@@ -2,6 +2,7 @@ FROM oven/bun:1.1.42-slim AS deps
 WORKDIR /app
 COPY package.json bun.lockb* ./
 COPY apps/api/package.json apps/api/package.json
+COPY apps/e2e/package.json apps/e2e/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY packages/shared/package.json packages/shared/package.json
 RUN bun install --frozen-lockfile

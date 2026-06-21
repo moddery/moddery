@@ -111,6 +111,7 @@ export function AuthPopover({
               {mode === 'reset-request' && (
                 <input
                   className={fieldInput}
+                  aria-label="Username or email"
                   placeholder="Username or email"
                   value={identifier}
                   onChange={(event) => onIdentifierChange(event.target.value)}
@@ -121,12 +122,14 @@ export function AuthPopover({
                 <>
                   <input
                     className={fieldInput}
+                    aria-label="Reset token"
                     placeholder="Reset token"
                     value={resetToken}
                     onChange={(event) => onResetTokenChange(event.target.value)}
                   />
                   <input
                     className={fieldInput}
+                    aria-label="New password"
                     placeholder="New password"
                     type="password"
                     value={newPassword}
@@ -141,6 +144,7 @@ export function AuthPopover({
                 <>
                   <input
                     className={fieldInput}
+                    aria-label="Email"
                     placeholder="Email"
                     type="email"
                     value={email}
@@ -148,6 +152,7 @@ export function AuthPopover({
                   />
                   <input
                     className={fieldInput}
+                    aria-label="Username"
                     placeholder="Username"
                     value={username}
                     onChange={(event) => onUsernameChange(event.target.value)}
@@ -159,12 +164,14 @@ export function AuthPopover({
                 <>
                   <input
                     className={fieldInput}
+                    aria-label="Username or email"
                     placeholder="Username or email"
                     value={identifier}
                     onChange={(event) => onIdentifierChange(event.target.value)}
                   />
                   <input
                     className={fieldInput}
+                    aria-label="2FA code"
                     inputMode="numeric"
                     maxLength={6}
                     placeholder="2FA code"
@@ -179,6 +186,7 @@ export function AuthPopover({
               {!mode.startsWith('reset') && (
                 <input
                   className={fieldInput}
+                  aria-label="Password"
                   placeholder="Password"
                   type="password"
                   value={password}
