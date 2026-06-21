@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "bun run --filter './packages/*' build && bun run --filter './apps/*' build",
+    "bootstrap:admin": "bun run scripts/bootstrap-admin.ts",
     "check": "bun run typecheck && bun run lint && bun run format:check",
     "dev": "bun run dev:api",
     "dev:api": "bun run --filter @moddery/api start:dev",
@@ -18,6 +19,9 @@
     "docker:dev:detached": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
     "docker:dev:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down",
     "docker:dev:restart": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down && docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
+    "docker:prod": "docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build",
+    "docker:prod:down": "docker compose -f docker-compose.prod.yml --env-file .env.production down",
+    "docker:prod:logs": "docker compose -f docker-compose.prod.yml --env-file .env.production logs -f --tail=200",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",

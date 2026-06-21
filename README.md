@@ -70,3 +70,54 @@ Verify a running local stack:
 ```sh
 bun run smoke:local
 ```
+
+## Production VPS
+
+The public beta deployment target is a Docker VPS running the production Compose
+stack behind Caddy-managed HTTPS.
+
+1. Point DNS for the web, API, and file hosts at the VPS.
+2. Copy `.env.production.example` to `.env.production`.
+3. Replace every placeholder secret and hostname in `.env.production`.
+4. Start the stack:
+
+```sh
+bun run docker:prod
+```
+
+Caddy terminates HTTPS for `PUBLIC_WEB_HOST`, `PUBLIC_API_HOST`, and
+`PUBLIC_STORAGE_HOST`. The API runs migrations through the `api-migrate`
+service before starting.
+
+Useful production commands:
+
+```sh
+bun run docker:prod:logs
+bun run docker:prod:down
+docker compose -f docker-compose.prod.yml --env-file .env.production ps
+docker compose -f docker-compose.prod.yml --env-file .env.production exec api bun run prisma:migrate:deploy
+```
+
+Create the first admin after registering an account:
+
+```sh
+DATABASE_URL='postgresql://moddery:...@127.0.0.1:5432/moddery?schema=public' \
+  bun run bootstrap:admin -- --username your-user
+```
+
+The production Compose stack binds Postgres to `127.0.0.1:5432` only, so this
+command is intended to be run on the VPS, not from a remote laptop.
+
+Back up stateful data before upgrades:
+
+```sh
+docker compose -f docker-compose.prod.yml --env-file .env.production exec postgres sh -c \
+  'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > moddery-postgres.sql
+docker compose -f docker-compose.prod.yml --env-file .env.production exec minio \
+  tar -C /data -cf - . > moddery-minio.tar
+```
+
+Restore into a stopped replacement stack by loading the Postgres dump into the
+`postgres` service and unpacking `moddery-minio.tar` into the MinIO data volume.
+OpenSearch and ClickHouse are treated as rebuildable/search-analytics stores for
+MVP; Postgres and object storage are the critical backups.

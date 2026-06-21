@@ -1,0 +1,18 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$PUBLIC_WEB_HOST} {
+	encode zstd gzip
+	reverse_proxy web:4173
+}
+
+{$PUBLIC_API_HOST} {
+	encode zstd gzip
+	reverse_proxy api:3000
+}
+
+{$PUBLIC_STORAGE_HOST} {
+	encode zstd gzip
+	reverse_proxy minio:9000
+}
