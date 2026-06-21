@@ -121,6 +121,7 @@ describe(AnalyticsService.name, () => {
           findUnique: () =>
             Promise.resolve({
               id: 'file-a',
+              scans: [{ status: 'COMPLETE', verdict: 'CLEAN' }],
               url: 'https://files.example.test/iris.jar',
               version: {
                 id: 'version-a',
@@ -225,6 +226,7 @@ describe(AnalyticsService.name, () => {
           findUnique: () =>
             Promise.resolve({
               id: 'file-a',
+              scans: [{ status: 'COMPLETE', verdict: 'CLEAN' }],
               url: 'https://files.example.test/iris.jar',
               version: {
                 id: 'version-a',
@@ -266,6 +268,7 @@ describe(AnalyticsService.name, () => {
           findUnique: () =>
             Promise.resolve({
               id: 'file-a',
+              scans: [{ status: 'COMPLETE', verdict: 'CLEAN' }],
               url: 'https://files.example.test/private.jar',
               version: {
                 id: 'version-a',
@@ -274,6 +277,46 @@ describe(AnalyticsService.name, () => {
                   status: 'APPROVED',
                 },
                 status: 'PENDING_REVIEW',
+              },
+            }),
+        },
+      } as unknown as PrismaService,
+      { delete: () => Promise.resolve() } as never,
+      { updateProjectDownloads: () => Promise.resolve() } as never,
+    );
+
+    let caught: unknown;
+    try {
+      await service.recordDownload('file-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'File not found');
+  });
+
+  test('rejects download analytics for unscanned files', async () => {
+    const service = new AnalyticsService(
+      {
+        command: () => Promise.resolve(),
+      } as never,
+      {
+        $transaction: () => {
+          throw new Error('Download counters should not update');
+        },
+        versionFile: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'file-a',
+              scans: [],
+              url: 'https://files.example.test/public.jar',
+              version: {
+                id: 'version-a',
+                project: {
+                  id: 'project-a',
+                  status: 'APPROVED',
+                },
+                status: 'APPROVED',
               },
             }),
         },

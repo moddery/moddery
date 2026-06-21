@@ -299,6 +299,65 @@ describe(StorageService.name, () => {
     );
   });
 
+  test('rejects unsupported release file extensions before project lookups', async () => {
+    let caught: unknown;
+
+    try {
+      await serviceWithProject({
+        id: 'project-a',
+        slug: 'cool-project',
+        status: 'APPROVED',
+        team: { members: [{ userId: 'user-a' }] },
+      }).prepareProjectUpload(
+        {
+          fileName: 'release.exe',
+          projectSlug: 'cool-project',
+          sizeBytes: 1024,
+          uploadKind: 'version-file',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(BadRequestException);
+    expect(caught).toHaveProperty(
+      'message',
+      'Version files must be JAR, MRPACK, or ZIP archives',
+    );
+  });
+
+  test('rejects oversized images before project lookups', async () => {
+    let caught: unknown;
+
+    try {
+      await serviceWithProject({
+        id: 'project-a',
+        slug: 'cool-project',
+        status: 'APPROVED',
+        team: { members: [{ userId: 'user-a' }] },
+      }).prepareProjectUpload(
+        {
+          contentType: 'image/png',
+          fileName: 'icon.png',
+          projectSlug: 'cool-project',
+          sizeBytes: 11 * 1024 * 1024,
+          uploadKind: 'project-icon',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(BadRequestException);
+    expect(caught).toHaveProperty(
+      'message',
+      'Image upload exceeds the project limit',
+    );
+  });
+
   test('rejects unsupported upload kinds', async () => {
     let caught: unknown;
 

@@ -164,6 +164,15 @@ describe('routing helpers', () => {
       staticViewFromNavigationUrl(new URL('https://moddery.test/status')),
     ).toBe('status');
     expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/terms')),
+    ).toBe('terms');
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/privacy')),
+    ).toBe('privacy');
+    expect(
+      staticViewFromNavigationUrl(new URL('https://moddery.test/safety')),
+    ).toBe('safety');
+    expect(
       staticViewFromNavigationUrl(new URL('https://moddery.test/users')),
     ).toBe('users');
     expect(

@@ -649,6 +649,17 @@ interface VersionFileScan {
   verdict: string | null;
 }
 
+function assertCleanScan(file: VersionSummary['files'][number]): void {
+  const cleanScan = file.scans?.find(
+    (scan) => scan.status === 'COMPLETE' && scan.verdict === 'CLEAN',
+  );
+  if (cleanScan === undefined) {
+    throw new Error(
+      `Version file ${file.fileName} did not record a clean scan`,
+    );
+  }
+}
+
 interface CollectionSummary {
   id: string;
   name: string;
@@ -1669,6 +1680,10 @@ async function checkCreatorFlow(): Promise<void> {
               fileName
               id
               primary
+              scans {
+                status
+                verdict
+              }
               url
             }
             id
@@ -1718,6 +1733,7 @@ async function checkCreatorFlow(): Promise<void> {
       `Created version should be queued, received ${createdVersion.status}`,
     );
   }
+  assertCleanScan(required(createdVersion.files[0], 'created version file'));
   await checkQueuedVersionDownloadGuard(
     required(createdVersion.files[0], 'queued version file').id,
   );

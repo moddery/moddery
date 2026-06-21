@@ -91,6 +91,21 @@ export function HomePage({
           onTagSearch={onTagSearch}
         />
       </div>
+
+      <nav
+        aria-label="Legal"
+        className="mt-12 flex flex-wrap gap-4 border-t border-line pt-6 text-sm font-semibold text-muted"
+      >
+        <a className="hover:text-ink" href="/terms">
+          Terms
+        </a>
+        <a className="hover:text-ink" href="/privacy">
+          Privacy
+        </a>
+        <a className="hover:text-ink" href="/safety">
+          Safety
+        </a>
+      </nav>
     </main>
   );
 }

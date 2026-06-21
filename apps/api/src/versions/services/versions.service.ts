@@ -11,6 +11,10 @@ import { AuditService } from '../../audit/audit.service.js';
 import { NotificationsService } from '../../notifications/services/notifications.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { RedisService } from '../../redis/redis.service.js';
+import {
+  ClamavScannerService,
+  type ClamavScanResult,
+} from '../../scanner/clamav-scanner.service.js';
 import { SearchService } from '../../search/search.service.js';
 import {
   projectBySlugCacheKey,
@@ -46,6 +50,7 @@ export class VersionsService {
     private readonly config: ConfigService,
     private readonly notificationsService: NotificationsService,
     private readonly prisma: PrismaService,
+    private readonly scanner: ClamavScannerService,
     private readonly versionDependenciesService: VersionDependenciesService,
     private readonly redis: RedisService,
     private readonly search: SearchService,
@@ -98,6 +103,7 @@ export class VersionsService {
     if (versionNumber.length === 0) {
       throw new BadRequestException('Version number is required');
     }
+    const fileScans = await scanVersionFiles(input.files, this.scanner);
 
     const touchedAt = new Date();
     const version = await this.prisma.$transaction(async (tx) => {
@@ -135,7 +141,26 @@ export class VersionsService {
         input.gameVersions ?? [],
       );
       await replaceVersionLoaders(tx, created.id, input.loaders ?? []);
-      await createVersionFiles(tx, created.id, input.files);
+      const createdFiles = await createVersionFiles(
+        tx,
+        created.id,
+        input.files,
+      );
+      for (const file of createdFiles) {
+        const scan = fileScans.get(file.fileName);
+        if (scan === undefined) {
+          throw new BadRequestException('Version file scan result is missing');
+        }
+
+        await tx.fileScan.create({
+          data: {
+            details: fileScanDetails(file.fileName, scan),
+            fileId: file.id,
+            status: scan.status,
+            verdict: scan.verdict,
+          },
+        });
+      }
       await tx.project.update({
         data: { updatedAt: touchedAt },
         where: { id: project.id },
@@ -593,6 +618,37 @@ function versionReviewNotificationBody(
 function clampInteger(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.trunc(value)));
+}
+
+async function scanVersionFiles(
+  files: CreateVersionInput['files'],
+  scanner: ClamavScannerService,
+): Promise<Map<string, ClamavScanResult>> {
+  const scans = new Map<string, ClamavScanResult>();
+  for (const file of files) {
+    const fileName = file.fileName.trim();
+    const scan = await scanner.scanUrl(file.url.trim());
+    if (scan.verdict !== 'CLEAN') {
+      throw new BadRequestException(`${fileName} failed malware scan`);
+    }
+
+    scans.set(fileName, scan);
+  }
+
+  return scans;
+}
+
+function fileScanDetails(
+  fileName: string,
+  scan: ClamavScanResult,
+): Prisma.InputJsonObject {
+  return {
+    engine: 'clamav',
+    fileName,
+    rawResponse: scan.rawResponse,
+    scannedAt: new Date().toISOString(),
+    signature: scan.signature,
+  };
 }
 
 function nullableTrim(value: string | null | undefined): string | null {

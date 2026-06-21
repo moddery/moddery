@@ -164,6 +164,14 @@ export class AnalyticsService implements OnModuleInit {
       select: {
         id: true,
         url: true,
+        scans: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            status: true,
+            verdict: true,
+          },
+          take: 1,
+        },
         version: {
           select: {
             id: true,
@@ -180,9 +188,16 @@ export class AnalyticsService implements OnModuleInit {
       where: { id: fileId },
     });
 
+    if (file === null) {
+      throw new NotFoundException('File not found');
+    }
+
+    const latestScan = file.scans[0];
     if (
-      file?.version.status !== 'APPROVED' ||
-      file.version.project.status !== 'APPROVED'
+      file.version.status !== 'APPROVED' ||
+      file.version.project.status !== 'APPROVED' ||
+      latestScan?.status !== 'COMPLETE' ||
+      latestScan.verdict !== 'CLEAN'
     ) {
       throw new NotFoundException('File not found');
     }

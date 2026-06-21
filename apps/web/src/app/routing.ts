@@ -12,6 +12,9 @@ export type AppView =
   | 'notifications'
   | 'platform'
   | 'status'
+  | 'terms'
+  | 'privacy'
+  | 'safety'
   | 'organization'
   | 'profile';
 
@@ -117,6 +120,18 @@ export function writeNotificationsToUrl() {
 
 export function writeStatusToUrl() {
   writeStaticViewToUrl('/status');
+}
+
+export function writeTermsToUrl() {
+  writeStaticViewToUrl('/terms');
+}
+
+export function writePrivacyToUrl() {
+  writeStaticViewToUrl('/privacy');
+}
+
+export function writeSafetyToUrl() {
+  writeStaticViewToUrl('/safety');
 }
 
 export function writePlatformToUrl() {
@@ -265,6 +280,12 @@ function staticViewFromPathname(pathname: string): AppView | null {
       return 'platform';
     case '/status':
       return 'status';
+    case '/terms':
+      return 'terms';
+    case '/privacy':
+      return 'privacy';
+    case '/safety':
+      return 'safety';
     case '/users':
       return 'users';
     default:

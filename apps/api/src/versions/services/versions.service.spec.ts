@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { type PrismaService } from '../../prisma/prisma.service.js';
+import { type ClamavScannerService } from '../../scanner/clamav-scanner.service.js';
 import { VersionDependenciesService } from './version-dependencies.service.js';
 import { VersionsService } from './versions.service.js';
 
@@ -9,6 +10,7 @@ function createVersionsService(
   auditEvents: unknown[] = [],
   notifications: unknown[] = [],
   searchEvents: unknown[] = [],
+  scanner: ClamavScannerService = cleanScanner(),
 ) {
   const prismaWithProjectDefaults = withDefaultProjectReload(prisma);
 
@@ -32,6 +34,7 @@ function createVersionsService(
       },
     } as never,
     prismaWithProjectDefaults,
+    scanner,
     new VersionDependenciesService(prismaWithProjectDefaults),
     { delete: () => Promise.resolve() } as never,
     {
@@ -45,6 +48,18 @@ function createVersionsService(
       },
     } as never,
   );
+}
+
+function cleanScanner(): ClamavScannerService {
+  return {
+    scanUrl: () =>
+      Promise.resolve({
+        rawResponse: 'stream: OK',
+        signature: null,
+        status: 'COMPLETE',
+        verdict: 'CLEAN',
+      }),
+  } as unknown as ClamavScannerService;
 }
 
 function withDefaultProjectReload(prisma: PrismaService): PrismaService {
@@ -522,6 +537,12 @@ describe(VersionsService.name, () => {
                 return Promise.resolve({});
               },
             },
+            fileScan: {
+              create: (query: unknown) => {
+                transactionSteps.push(`scan:${JSON.stringify(query)}`);
+                return Promise.resolve({});
+              },
+            },
             versionGameVersion: {
               create: () => Promise.resolve({}),
               deleteMany: () => Promise.resolve({}),
@@ -592,6 +613,9 @@ describe(VersionsService.name, () => {
     expect(transactionSteps[0]).toContain('"status":"PENDING_REVIEW"');
     expect(transactionSteps).toContain('file');
     expect(transactionSteps).toContain('hash');
+    expect(transactionSteps.find((step) => step.startsWith('scan:'))).toContain(
+      '"verdict":"CLEAN"',
+    );
     expect(version.files[0]?.hashes[0]?.value).toBe('abc123');
     expect(version.files[0]?.sizeBytes).toBe('123');
     expect(version.projectSlug).toBe('example');
@@ -635,6 +659,46 @@ describe(VersionsService.name, () => {
       'message',
       'Project version permission required',
     );
+  });
+
+  test('rejects malware scan results before creating versions', async () => {
+    const service = createVersionsService(
+      {
+        $transaction: () => {
+          throw new Error('Version transaction should not run');
+        },
+        project: {
+          findUnique: () =>
+            Promise.resolve({
+              id: 'project-a',
+              slug: 'example',
+              status: 'APPROVED',
+              team: { members: [{ userId: 'user-a' }] },
+            }),
+        },
+      } as unknown as PrismaService,
+      [],
+      [],
+      [],
+      {
+        scanUrl: () =>
+          Promise.resolve({
+            rawResponse: 'stream: Eicar-Test-Signature FOUND',
+            signature: 'Eicar-Test-Signature',
+            status: 'COMPLETE',
+            verdict: 'MALWARE',
+          }),
+      } as unknown as ClamavScannerService,
+    );
+
+    let caught: unknown;
+    try {
+      await service.createVersion(validCreateVersionInput(), 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'example.jar failed malware scan');
   });
 
   test('requires verified email before creating versions', async () => {

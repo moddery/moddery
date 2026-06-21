@@ -50,6 +50,11 @@ const StatusPage = lazy(() =>
     default: module.StatusPage,
   })),
 );
+const LegalPage = lazy(() =>
+  import('../components/LegalPage.tsx').then((module) => ({
+    default: module.LegalPage,
+  })),
+);
 const UserProfilePage = lazy(() =>
   import('../components/UserProfilePage.tsx').then((module) => ({
     default: module.UserProfilePage,
@@ -143,6 +148,12 @@ export function AppPages({ app, onRequestAuth }: AppPagesProps) {
         <PlatformPage />
       ) : app.appView === 'status' ? (
         <StatusPage />
+      ) : app.appView === 'terms' ? (
+        <LegalPage page="terms" />
+      ) : app.appView === 'privacy' ? (
+        <LegalPage page="privacy" />
+      ) : app.appView === 'safety' ? (
+        <LegalPage page="safety" />
       ) : app.appView === 'users' ? (
         <UsersPage
           onHome={app.openHome}

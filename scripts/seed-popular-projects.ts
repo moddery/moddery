@@ -888,6 +888,18 @@ async function createVersionFiles(
       },
     });
 
+    await prisma.fileScan.create({
+      data: {
+        details: {
+          engine: 'seed',
+          rawResponse: 'seeded clean scan',
+          scannedAt: new Date().toISOString(),
+        },
+        fileId: saved.id,
+        status: 'COMPLETE',
+        verdict: 'CLEAN',
+      },
+    });
     await createFileHashes(saved.id, file.hashes);
   }
 }

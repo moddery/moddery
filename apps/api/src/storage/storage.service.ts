@@ -31,9 +31,11 @@ export interface ProjectUploadTargetContract {
 }
 
 const maxUploadBytes = 512 * 1024 * 1024;
+const maxImageUploadBytes = 10 * 1024 * 1024;
 const uploadUrlTtlSeconds = 10 * 60;
 const uploadKinds = new Set(['gallery-image', 'project-icon', 'version-file']);
 const imageUploadKinds = new Set(['gallery-image', 'project-icon']);
+const allowedVersionFileExtensions = new Set(['.jar', '.mrpack', '.zip']);
 const allowedImageContentTypes = new Set([
   'image/gif',
   'image/jpeg',
@@ -67,6 +69,8 @@ export class StorageService {
     const fileName = normalizedFileName(input.fileName);
     const sizeBytes = normalizedSize(input.sizeBytes);
     const contentType = normalizedContentType(input.contentType);
+    validateUploadFileName(uploadKind, fileName);
+    validateUploadSize(uploadKind, sizeBytes);
     validateUploadContentType(uploadKind, contentType);
     const project = await this.prisma.project.findUnique({
       select: {
@@ -160,6 +164,10 @@ function normalizedFileName(fileName: string): string {
     throw new BadRequestException('File name cannot contain path separators');
   }
 
+  if (value.length > 160) {
+    throw new BadRequestException('File name is too long');
+  }
+
   return value;
 }
 
@@ -173,6 +181,24 @@ function normalizedSize(sizeBytes: number): number {
   }
 
   return sizeBytes;
+}
+
+function validateUploadFileName(uploadKind: string, fileName: string): void {
+  if (uploadKind !== 'version-file') {
+    return;
+  }
+
+  if (!allowedVersionFileExtensions.has(fileExtension(fileName))) {
+    throw new BadRequestException(
+      'Version files must be JAR, MRPACK, or ZIP archives',
+    );
+  }
+}
+
+function validateUploadSize(uploadKind: string, sizeBytes: number): void {
+  if (imageUploadKinds.has(uploadKind) && sizeBytes > maxImageUploadBytes) {
+    throw new BadRequestException('Image upload exceeds the project limit');
+  }
 }
 
 function normalizedContentType(
@@ -244,6 +270,13 @@ function publicObjectUrl(baseUrl: string, key: string): string {
   const encodedKey = key.split('/').map(encodeURIComponent).join('/');
 
   return `${normalizedBase}/${encodedKey}`;
+}
+
+function fileExtension(fileName: string): string {
+  const extensionIndex = fileName.lastIndexOf('.');
+  return extensionIndex === -1
+    ? ''
+    : fileName.slice(extensionIndex).toLowerCase();
 }
 
 function encodeKeyPart(value: string): string {

@@ -21,7 +21,7 @@ export class ClamavScannerService {
   constructor(private readonly config: ConfigService) {}
 
   async scanUrl(url: string): Promise<ClamavScanResult> {
-    const response = await fetchScanTarget(url);
+    const response = await fetchScanTarget(this.scanFetchUrl(url));
     if (!response.ok) {
       throw new BadGatewayException('File download failed before scan');
     }
@@ -63,8 +63,9 @@ export class ClamavScannerService {
       }
 
       await writeSocket(socket, Buffer.alloc(4));
+      const response = await responsePromise;
       socket.end();
-      return await responsePromise;
+      return response;
     } catch (caught) {
       socket.destroy();
       void responsePromise?.catch(() => undefined);
@@ -73,6 +74,35 @@ export class ClamavScannerService {
       }
 
       throw new ServiceUnavailableException('ClamAV scan failed');
+    }
+  }
+
+  private scanFetchUrl(url: string): string {
+    const s3Endpoint = this.config.get<string>('s3.endpoint');
+    if (s3Endpoint === undefined || s3Endpoint.trim().length === 0) {
+      return url;
+    }
+
+    const publicBaseUrl = this.config.getOrThrow<string>('s3.publicBaseUrl');
+    const bucket = this.config.getOrThrow<string>('s3.bucket');
+
+    try {
+      const candidate = new URL(url);
+      const publicBase = new URL(`${publicBaseUrl.replace(/\/+$/u, '')}/`);
+      if (
+        candidate.protocol !== publicBase.protocol ||
+        candidate.host !== publicBase.host ||
+        !candidate.pathname.startsWith(publicBase.pathname)
+      ) {
+        return url;
+      }
+
+      const relativePath = candidate.pathname.slice(publicBase.pathname.length);
+      const internalUrl = new URL(`${s3Endpoint.replace(/\/+$/u, '')}/`);
+      internalUrl.pathname = `${internalUrl.pathname.replace(/\/+$/u, '')}/${bucket}/${relativePath}`;
+      return internalUrl.toString();
+    } catch {
+      return url;
     }
   }
 }

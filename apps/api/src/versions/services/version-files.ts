@@ -5,12 +5,20 @@ import { type CreateVersionInput } from '../dto/create-version.input.js';
 
 const MAX_VERSION_FILES = 8;
 const MAX_FILE_HASHES = 8;
+const allowedVersionFileExtensions = new Set(['.jar', '.mrpack', '.zip']);
+
+export interface CreatedVersionFile {
+  fileName: string;
+  id: string;
+}
 
 export async function createVersionFiles(
   tx: Prisma.TransactionClient,
   versionId: string,
   files: CreateVersionInput['files'],
-): Promise<void> {
+): Promise<CreatedVersionFile[]> {
+  const createdFiles: CreatedVersionFile[] = [];
+
   for (const file of files) {
     const created = await tx.versionFile.create({
       data: {
@@ -24,6 +32,7 @@ export async function createVersionFiles(
       },
       select: { id: true },
     });
+    createdFiles.push({ fileName: file.fileName.trim(), id: created.id });
 
     for (const hash of file.hashes ?? []) {
       const algorithm = normalizeHashAlgorithm(hash.algorithm);
@@ -49,6 +58,8 @@ export async function createVersionFiles(
       });
     }
   }
+
+  return createdFiles;
 }
 
 export function validateVersionFiles(
@@ -78,6 +89,12 @@ export function validateVersionFiles(
     const fileName = file.fileName.trim();
     if (fileName.length === 0) {
       throw new BadRequestException('Version file name is required');
+    }
+
+    if (!allowedVersionFileExtensions.has(fileExtension(fileName))) {
+      throw new BadRequestException(
+        'Version files must be JAR, MRPACK, or ZIP archives',
+      );
     }
 
     if (fileNames.has(fileName)) {
@@ -121,6 +138,13 @@ export function validateVersionFiles(
       }
     }
   }
+}
+
+function fileExtension(fileName: string): string {
+  const extensionIndex = fileName.lastIndexOf('.');
+  return extensionIndex === -1
+    ? ''
+    : fileName.slice(extensionIndex).toLowerCase();
 }
 
 function isProjectVersionFileUrl(
