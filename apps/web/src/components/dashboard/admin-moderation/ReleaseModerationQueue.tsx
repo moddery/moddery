@@ -8,6 +8,7 @@ import {
 } from '../../../lib/dashboard.ts';
 import { enumLabel } from '../../../lib/labels.ts';
 import { Pagination } from '../../Pagination.tsx';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { nullableText } from './shared.tsx';
 
 const releaseModerationPageSize = 20;
@@ -57,15 +58,15 @@ export function ReleaseModerationQueue() {
   }
 
   return (
-    <section className="mt-8">
-      <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Release review
-        </h2>
-        <span className="text-sm font-semibold text-muted">
-          {totalHits.toLocaleString('en-US')} queued
-        </span>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Release review"
+        action={
+          <span className="text-sm font-semibold text-muted">
+            {totalHits.toLocaleString('en-US')} queued
+          </span>
+        }
+      />
 
       <label className="mt-4 grid gap-1 text-sm font-bold text-ink">
         Reason
@@ -128,7 +129,7 @@ export function ReleaseModerationQueue() {
           {message}
         </p>
       )}
-    </section>
+    </DashboardPanel>
   );
 }
 

@@ -4,23 +4,18 @@ import { ClientSecretNotice } from './developer-applications/ClientSecretNotice.
 import { DeveloperApplicationForm } from './developer-applications/DeveloperApplicationForm.tsx';
 import { DeveloperApplicationList } from './developer-applications/DeveloperApplicationList.tsx';
 import { useDeveloperApplicationsState } from './developer-applications/useDeveloperApplicationsState.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 
 export function DeveloperApplicationsPanel() {
   const state = useDeveloperApplicationsState();
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Developer applications
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Register applications that need user-authorized API access.
-          </p>
-        </div>
-        <AppWindow className="size-5 text-accent-icon" />
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Developer applications"
+        description="Register applications that need user-authorized API access."
+        action={<AppWindow className="size-5 text-accent-icon" />}
+      />
 
       <DeveloperApplicationForm state={state} />
       <ClientSecretNotice clientSecret={state.clientSecret} />
@@ -34,6 +29,6 @@ export function DeveloperApplicationsPanel() {
         setPage={state.setPage}
         totalHits={state.totalHits}
       />
-    </section>
+    </DashboardPanel>
   );
 }

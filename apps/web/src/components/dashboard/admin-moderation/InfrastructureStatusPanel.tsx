@@ -6,6 +6,7 @@ import {
   type HealthCheckResult,
   type ReadinessResult,
 } from '../../../lib/health.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { ReportActionButton } from './shared.tsx';
 
 export function InfrastructureStatusPanel() {
@@ -17,26 +18,22 @@ export function InfrastructureStatusPanel() {
   const readiness = readinessQuery.data;
 
   return (
-    <section className="mt-8 rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Infrastructure
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Runtime status for core services.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Activity className="size-5 text-accent-icon" />
-          <ReportActionButton
-            disabled={readinessQuery.isFetching}
-            onClick={() => void readinessQuery.refetch()}
-          >
-            Refresh
-          </ReportActionButton>
-        </div>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Infrastructure"
+        description="Runtime status for core services."
+        action={
+          <div className="flex items-center gap-3">
+            <Activity className="size-5 text-accent-icon" />
+            <ReportActionButton
+              disabled={readinessQuery.isFetching}
+              onClick={() => void readinessQuery.refetch()}
+            >
+              Refresh
+            </ReportActionButton>
+          </div>
+        }
+      />
 
       {readinessQuery.isLoading ? (
         <p className="mt-4 text-sm font-semibold text-muted">
@@ -55,7 +52,7 @@ export function InfrastructureStatusPanel() {
       ) : (
         <InfrastructureStatusGrid readiness={readiness} />
       )}
-    </section>
+    </DashboardPanel>
   );
 }
 

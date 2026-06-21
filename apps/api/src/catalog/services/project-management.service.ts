@@ -21,7 +21,6 @@ import {
 } from './project-read-model.js';
 import {
   MAX_PROJECT_CATEGORIES,
-  MAX_PROJECT_GAME_VERSIONS,
   MAX_PROJECT_LINKS,
   MAX_PROJECT_LOADERS,
   normalizeSlug,
@@ -182,6 +181,43 @@ export class ProjectManagementService {
     return contract;
   }
 
+  async deleteProject(projectSlug: string, userId: string): Promise<boolean> {
+    const slug = projectSlug.trim();
+    const project = await this.prisma.project.findFirst({
+      select: { id: true, slug: true, teamId: true },
+      where: {
+        slug,
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              isOwner: true,
+              userId,
+            },
+          },
+        },
+      },
+    });
+
+    if (project === null) {
+      throw new NotFoundException('Project not found');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.project.delete({
+        where: { id: project.id },
+      });
+      await tx.team.delete({
+        where: { id: project.teamId },
+      });
+    });
+
+    await this.searchService.deleteProject(project.id);
+    await this.invalidateProjectBySlugCache(project.slug);
+
+    return true;
+  }
+
   private async findManagedProject(projectSlug: string, userId: string) {
     const slug = projectSlug.trim();
     const project = await this.prisma.project.findFirst({
@@ -306,16 +342,6 @@ function validateProjectMetadataLimits(
   ) {
     throw new BadRequestException(
       'A project can include at most 12 categories',
-    );
-  }
-
-  if (
-    input.gameVersions !== undefined &&
-    input.gameVersions !== null &&
-    uniqueNormalized(input.gameVersions).length > MAX_PROJECT_GAME_VERSIONS
-  ) {
-    throw new BadRequestException(
-      'A project can include at most 12 game versions',
     );
   }
 

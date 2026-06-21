@@ -47,6 +47,24 @@ export function DiscoverPage({
 }: DiscoverPageProps) {
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-24 pt-5 sm:px-6">
+      <header className="mb-5 border-b border-line pb-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-display text-3xl font-extrabold text-ink">
+              {meta.label}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Find {meta.plural} by name, loader, game version, category, and
+              license.
+            </p>
+          </div>
+          <p className="text-sm font-semibold text-muted tabular-nums">
+            {total.toLocaleString('en-US')}{' '}
+            {total === 1 ? meta.singular : meta.plural}
+          </p>
+        </div>
+      </header>
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside
           id="filters-panel"

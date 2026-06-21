@@ -23,6 +23,61 @@ export interface SelectedProject {
   projectType: ProjectType;
 }
 
+export type DashboardEditEntity =
+  | 'projects'
+  | 'organizations'
+  | 'collections'
+  | 'versions';
+
+export interface DashboardEditTarget {
+  entity: DashboardEditEntity;
+  id: string;
+}
+
+const DASHBOARD_EDIT_ENTITIES: readonly DashboardEditEntity[] = [
+  'projects',
+  'organizations',
+  'collections',
+  'versions',
+];
+
+export function dashboardEditPath(target: DashboardEditTarget): string {
+  return `/dashboard/${target.entity}/${encodeURIComponent(target.id)}/edit`;
+}
+
+export function dashboardEditFromPathname(
+  pathname: string,
+): DashboardEditTarget | null {
+  const [resource, entity, id, action] = pathname.split('/').filter(Boolean);
+  if (resource !== 'dashboard' || action !== 'edit' || !entity || !id) {
+    return null;
+  }
+  if (!DASHBOARD_EDIT_ENTITIES.includes(entity as DashboardEditEntity)) {
+    return null;
+  }
+
+  return { entity: entity as DashboardEditEntity, id: decodeURIComponent(id) };
+}
+
+export function dashboardEditFromUrl(): DashboardEditTarget | null {
+  return dashboardEditFromPathname(window.location.pathname);
+}
+
+export function dashboardEditFromNavigationUrl(
+  url: URL,
+): DashboardEditTarget | null {
+  return dashboardEditFromPathname(url.pathname);
+}
+
+export function writeDashboardEditToUrl(target: DashboardEditTarget) {
+  const url = new URL(window.location.href);
+  url.pathname = dashboardEditPath(target);
+  url.hash = '';
+  clearProjectSearchParams(url);
+
+  window.history.pushState(null, '', url);
+}
+
 export interface SelectedCollection {
   ownerUsername: string;
   slug: string;
@@ -48,6 +103,7 @@ export function viewFromUrl(): AppView {
   const staticView = staticViewFromPathname(window.location.pathname);
   if (staticView) return staticView;
 
+  if (dashboardEditFromUrl()) return 'dashboard';
   if (collectionFromUrl()) return 'collections';
   if (organizationFromUrl()) return 'organization';
   if (profileFromUrl()) return 'profile';

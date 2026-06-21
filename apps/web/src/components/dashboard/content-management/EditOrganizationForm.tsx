@@ -2,9 +2,11 @@ import { type FormEvent, useEffect, useState } from 'react';
 
 import {
   updateOrganization,
+  uploadOwnerImage,
   type DashboardOrganization,
   type UpdateOrganizationInput,
 } from '../../../lib/dashboard.ts';
+import { FileDropzone } from '../../ui/dashboard/index.ts';
 import {
   assertUpdateOrganizationInput,
   normalizeUpdateOrganizationInput,
@@ -28,6 +30,7 @@ export function EditOrganizationForm({
   const [slug, setSlug] = useState(selected?.slug ?? '');
   const [description, setDescription] = useState(selected?.description ?? '');
   const [iconUrl, setIconUrl] = useState(selected?.iconUrl ?? '');
+  const [iconFile, setIconFile] = useState<File | null>(null);
   const [color, setColor] = useState(selected?.color ?? '#1d9bf0');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +48,7 @@ export function EditOrganizationForm({
     setSlug(next.slug);
     setDescription(next.description ?? '');
     setIconUrl(next.iconUrl ?? '');
+    setIconFile(null);
     setColor(next.color ?? '#1d9bf0');
   }, [organizationId, organizations]);
 
@@ -53,16 +57,29 @@ export function EditOrganizationForm({
     setSubmitting(true);
     setError(null);
 
-    const input: UpdateOrganizationInput = normalizeUpdateOrganizationInput({
-      color,
-      description,
-      iconUrl,
-      name,
-      organizationId,
-      slug,
-    });
-
     try {
+      let nextIconUrl = iconUrl;
+      if (iconFile !== null) {
+        const target = await uploadOwnerImage({
+          file: iconFile,
+          ownerId: organizationId,
+          ownerType: 'organization',
+          uploadKind: 'organization-icon',
+        });
+        nextIconUrl = target.objectUrl;
+        setIconUrl(nextIconUrl);
+        setIconFile(null);
+      }
+
+      const input: UpdateOrganizationInput = normalizeUpdateOrganizationInput({
+        color,
+        description,
+        iconUrl: nextIconUrl,
+        name,
+        organizationId,
+        slug,
+      });
+
       assertUpdateOrganizationInput(input);
       await updateOrganization(input);
       await onUpdated();
@@ -111,7 +128,7 @@ export function EditOrganizationForm({
           required
         />
       </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem]">
+      <div className="grid gap-3 md:grid-cols-[1fr_10rem]">
         <DashboardField
           disabled={submitting}
           label="Description"
@@ -120,17 +137,19 @@ export function EditOrganizationForm({
         />
         <DashboardField
           disabled={submitting}
-          label="Icon URL"
-          value={iconUrl}
-          onChange={setIconUrl}
-        />
-        <DashboardField
-          disabled={submitting}
           label="Color"
           value={color}
           onChange={setColor}
         />
       </div>
+      <FileDropzone
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        disabled={submitting}
+        file={iconFile}
+        existingPreviewUrl={iconUrl.trim() || null}
+        label="Icon"
+        onFileChange={setIconFile}
+      />
 
       {error && (
         <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">

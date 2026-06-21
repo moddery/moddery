@@ -13,13 +13,13 @@ describe(downloadProjectFile.name, () => {
     });
 
     expect(navigations).toEqual([
-      'http://localhost:3000/downloads/files/file-a',
+      'http://localhost:13001/downloads/files/file-a',
     ]);
   });
 
   test('builds canonical API download URLs with encoded file IDs', () => {
     expect(downloadUrlForFile('file/a b')).toBe(
-      'http://localhost:3000/downloads/files/file%2Fa%20b',
+      'http://localhost:13001/downloads/files/file%2Fa%20b',
     );
   });
 });

@@ -1,6 +1,10 @@
-import { UserRound } from 'lucide-react';
-
 import { type DashboardData } from '../../../lib/dashboard.ts';
+import {
+  DashboardPanel,
+  FieldGroup,
+  FileDropzone,
+  SectionHeader,
+} from '../../ui/dashboard/index.ts';
 import { AccountStatusMeta } from './profile/AccountStatusMeta.tsx';
 import { useAccountProfileFormState } from './profile/useAccountProfileFormState.ts';
 import { DashboardField } from './shared.tsx';
@@ -15,34 +19,23 @@ export function AccountProfileForm({
   const profile = useAccountProfileFormState({ dashboard, onUpdated });
 
   return (
-    <section className="mt-8">
-      <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Profile
-        </h2>
-        <span className="text-sm font-semibold text-muted">
-          @{dashboard.username}
-        </span>
-      </div>
+    <DashboardPanel>
+      <SectionHeader title="Profile" description={`@${dashboard.username}`} />
 
       <form
         onSubmit={(event) => void profile.submit(event)}
-        className="mt-4 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]"
+        className="mt-4 grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)]"
       >
-        <div className="grid size-20 place-items-center overflow-hidden rounded-xl border border-line bg-surface-2 text-muted">
-          {profile.avatarUrl.trim() ? (
-            <img
-              src={profile.avatarUrl}
-              alt=""
-              className="size-full object-cover"
-            />
-          ) : (
-            <UserRound className="size-7" />
-          )}
-        </div>
+        <FileDropzone
+          accept="image/png,image/jpeg,image/gif,image/webp"
+          file={profile.avatarFile}
+          existingPreviewUrl={profile.avatarUrl.trim() || null}
+          label="Avatar"
+          onFileChange={profile.setAvatarFile}
+        />
 
         <div className="grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <FieldGroup columns={2}>
             <DashboardField
               label="Display name"
               value={profile.displayName}
@@ -50,18 +43,12 @@ export function AccountProfileForm({
               placeholder={dashboard.username}
             />
             <DashboardField
-              label="Avatar URL"
-              value={profile.avatarUrl}
-              onChange={profile.setAvatarUrl}
-              placeholder="https://..."
-            />
-            <DashboardField
               label="Email"
               value={profile.email}
               onChange={profile.setEmail}
               placeholder="you@example.com"
             />
-          </div>
+          </FieldGroup>
 
           <div className="grid gap-2 rounded-lg border border-line bg-surface p-3 text-sm">
             <label className="flex items-center gap-2 font-bold text-ink">
@@ -133,6 +120,6 @@ export function AccountProfileForm({
           </div>
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }

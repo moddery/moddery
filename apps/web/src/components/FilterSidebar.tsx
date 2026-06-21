@@ -79,15 +79,15 @@ export function FilterSidebar({
         selected={selectedTags}
         onToggle={onToggleTag}
       />
-      <GameVersionPanel
-        options={versionOptions}
-        selected={selectedVersions}
-        onToggle={onToggleVersion}
-      />
       <LoaderPanel
         options={loaderOptions}
         selected={selectedLoaders}
         onToggle={onToggleLoader}
+      />
+      <GameVersionPanel
+        options={versionOptions}
+        selected={selectedVersions}
+        onToggle={onToggleVersion}
       />
       <LicensePanel
         options={licenseOptions}

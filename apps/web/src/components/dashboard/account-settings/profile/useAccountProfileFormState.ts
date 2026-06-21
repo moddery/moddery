@@ -4,6 +4,7 @@ import {
   confirmEmailVerification,
   requestEmailVerification,
   updateViewerProfile,
+  uploadOwnerImage,
   type DashboardData,
   type UpdateViewerProfileInput,
 } from '../../../../lib/dashboard.ts';
@@ -18,6 +19,7 @@ export function useAccountProfileFormState({
   const [displayName, setDisplayName] = useState(dashboard.displayName ?? '');
   const [bio, setBio] = useState(dashboard.bio ?? '');
   const [avatarUrl, setAvatarUrl] = useState(dashboard.avatarUrl ?? '');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [email, setEmail] = useState(dashboard.email ?? '');
   const [newsletterOptIn, setNewsletterOptIn] = useState(
     dashboard.newsletterOptIn,
@@ -45,15 +47,28 @@ export function useAccountProfileFormState({
     setBusy(true);
     setMessage(null);
 
-    const input: UpdateViewerProfileInput = {
-      avatarUrl,
-      bio,
-      displayName,
-      email,
-      newsletterOptIn,
-    };
-
     try {
+      let nextAvatarUrl = avatarUrl;
+      if (avatarFile !== null) {
+        const target = await uploadOwnerImage({
+          file: avatarFile,
+          ownerId: dashboard.id,
+          ownerType: 'user',
+          uploadKind: 'avatar',
+        });
+        nextAvatarUrl = target.objectUrl;
+        setAvatarUrl(nextAvatarUrl);
+        setAvatarFile(null);
+      }
+
+      const input: UpdateViewerProfileInput = {
+        avatarUrl: nextAvatarUrl,
+        bio,
+        displayName,
+        email,
+        newsletterOptIn,
+      };
+
       await updateViewerProfile(input);
       await onUpdated();
       setMessage('Profile updated.');
@@ -103,6 +118,7 @@ export function useAccountProfileFormState({
   }
 
   return {
+    avatarFile,
     avatarUrl,
     bio,
     busy,
@@ -112,6 +128,7 @@ export function useAccountProfileFormState({
     newsletterOptIn,
     sendVerification,
     confirmVerification,
+    setAvatarFile,
     setAvatarUrl,
     setBio,
     setDisplayName,

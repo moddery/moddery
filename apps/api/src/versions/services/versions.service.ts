@@ -413,6 +413,48 @@ export class VersionsService {
     return versionRowToContract(updated);
   }
 
+  async deleteVersion(versionId: string, userId: string): Promise<boolean> {
+    const version = await this.prisma.version.findFirst({
+      select: {
+        id: true,
+        project: {
+          select: {
+            id: true,
+            slug: true,
+            team: {
+              select: {
+                members: {
+                  select: { userId: true },
+                  take: 1,
+                  where: versionManagementMemberWhere(userId),
+                },
+              },
+            },
+          },
+        },
+      },
+      where: { id: versionId },
+    });
+
+    if (version === null) {
+      throw new NotFoundException('Version not found');
+    }
+
+    if (version.project.team.members.length === 0) {
+      throw new ForbiddenException('Project version permission required');
+    }
+
+    await this.prisma.version.delete({
+      where: { id: version.id },
+    });
+    await this.refreshProjectAfterVersionChange({
+      projectId: version.project.id,
+      projectSlug: version.project.slug,
+    });
+
+    return true;
+  }
+
   async updateVersionDependencies(
     input: UpdateVersionDependenciesInput,
     userId: string,

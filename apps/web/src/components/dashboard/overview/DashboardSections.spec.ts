@@ -15,13 +15,13 @@ function projectWithCapabilities(
 }
 
 describe(projectWorkflowFormOrder.name, () => {
-  test('starts empty project workflows at project publishing', () => {
+  test('has no inline forms when the viewer manages no projects', () => {
     expect(projectWorkflowFormOrder(dashboardProjectsByCapability([]))).toEqual(
-      ['publish-project'],
+      [],
     );
   });
 
-  test('includes all workflows for project owners', () => {
+  test('includes all management workflows for project owners', () => {
     expect(
       projectWorkflowFormOrder(
         dashboardProjectsByCapability([
@@ -34,12 +34,9 @@ describe(projectWorkflowFormOrder.name, () => {
         ]),
       ),
     ).toEqual([
-      'publish-project',
-      'project-metadata',
       'project-gallery',
       'project-team',
       'project-analytics',
-      'publish-version',
       'edit-version',
       'edit-version-dependencies',
     ]);
@@ -58,9 +55,7 @@ describe(projectWorkflowFormOrder.name, () => {
         ]),
       ),
     ).toEqual([
-      'publish-project',
       'project-analytics',
-      'publish-version',
       'edit-version',
       'edit-version-dependencies',
     ]);

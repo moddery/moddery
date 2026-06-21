@@ -6,6 +6,7 @@ import {
   updateVersion,
   type DashboardData,
 } from '../../../lib/dashboard.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { EditVersionFields } from './edit-version/EditVersionFields.tsx';
 import { EditVersionSelectors } from './edit-version/EditVersionSelectors.tsx';
 import { assertUpdateVersionInput } from './edit-version/update-version-input.ts';
@@ -60,15 +61,11 @@ export function EditVersionForm({
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Edit a version
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Update release metadata, changelog, loaders, and game versions.
-        </p>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Edit a version"
+        description="Update release metadata, changelog, loaders, and game versions."
+      />
 
       <form
         onSubmit={(event) => void submit(event)}
@@ -121,7 +118,7 @@ export function EditVersionForm({
           </button>
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }
 

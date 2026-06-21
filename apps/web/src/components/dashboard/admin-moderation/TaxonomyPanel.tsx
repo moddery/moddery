@@ -1,5 +1,6 @@
 import { FolderKanban } from 'lucide-react';
 
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { TaxonomyCategoryForm } from './taxonomy/TaxonomyCategoryForm.tsx';
 import { TaxonomyGameVersionForm } from './taxonomy/TaxonomyGameVersionForm.tsx';
 import { TaxonomyLicenseForm } from './taxonomy/TaxonomyLicenseForm.tsx';
@@ -9,18 +10,12 @@ export function TaxonomyPanel() {
   const state = useTaxonomyPanelState();
 
   return (
-    <section className="mt-8 rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Taxonomy
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Manage category and game version rows used by discovery.
-          </p>
-        </div>
-        <FolderKanban className="size-5 text-accent-icon" />
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Taxonomy"
+        description="Manage category and game version rows used by discovery."
+        action={<FolderKanban className="size-5 text-accent-icon" />}
+      />
       {state.message && (
         <p className="mt-3 text-sm font-semibold text-muted">{state.message}</p>
       )}
@@ -64,6 +59,6 @@ export function TaxonomyPanel() {
           onSubmit={(event) => void state.submitLicense(event)}
         />
       </div>
-    </section>
+    </DashboardPanel>
   );
 }

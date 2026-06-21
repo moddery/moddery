@@ -5,7 +5,7 @@ import { CheckRow } from './CheckRow.tsx';
 import { Panel } from './Panel.tsx';
 import { type FacetOption } from './types.ts';
 
-const visibleVersionLimit = 60;
+const visibleVersionLimit = 12;
 
 export function GameVersionPanel({
   options,
@@ -33,7 +33,7 @@ export function GameVersionPanel({
   if (options.length === 0) return null;
 
   return (
-    <Panel title="Game version">
+    <Panel title="Game version" defaultOpen={selected.size > 0}>
       <div className="relative mb-2">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-accent-icon" />
         <input

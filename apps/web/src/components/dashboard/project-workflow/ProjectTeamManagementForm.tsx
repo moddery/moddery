@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchProjectMemberSearch } from '../../../lib/catalog.ts';
 import { type DashboardProject } from '../../../lib/dashboard.ts';
 import { Pagination } from '../../Pagination.tsx';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { ProjectTeamFields } from './team-management/ProjectTeamFields.tsx';
 import { ProjectTeamMembersList } from './team-management/ProjectTeamMembersList.tsx';
 import { useProjectTeamManagementState } from './team-management/useProjectTeamManagementState.ts';
@@ -61,16 +62,11 @@ export function ProjectTeamManagementForm({
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Manage project team
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Invite an existing user to a project team or remove a non-owner
-          member.
-        </p>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Manage project team"
+        description="Invite an existing user to a project team or remove a non-owner member."
+      />
 
       <form
         onSubmit={(event) => void addMember(event)}
@@ -130,7 +126,7 @@ export function ProjectTeamManagementForm({
           </div>
         )}
       </form>
-    </section>
+    </DashboardPanel>
   );
 }
 

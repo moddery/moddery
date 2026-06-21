@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import { fetchAdminAuditLogSearch } from '../../../lib/dashboard.ts';
 import { Pagination } from '../../Pagination.tsx';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { AuditLogEventCard } from './AuditLogEventCard.tsx';
 import { ReportActionButton } from './shared.tsx';
 
@@ -26,28 +27,24 @@ export function AuditLogPanel() {
   const totalPages = Math.ceil(totalHits / auditPageSize);
 
   return (
-    <section className="mt-8 rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Audit log
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Recent administrative account and project moderation changes.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-semibold text-muted">
-            {totalHits.toLocaleString('en-US')} events
-          </span>
-          <ReportActionButton
-            disabled={auditLogsQuery.isFetching}
-            onClick={() => void auditLogsQuery.refetch()}
-          >
-            Refresh
-          </ReportActionButton>
-        </div>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Audit log"
+        description="Recent administrative account and project moderation changes."
+        action={
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-muted">
+              {totalHits.toLocaleString('en-US')} events
+            </span>
+            <ReportActionButton
+              disabled={auditLogsQuery.isFetching}
+              onClick={() => void auditLogsQuery.refetch()}
+            >
+              Refresh
+            </ReportActionButton>
+          </div>
+        }
+      />
 
       {auditLogsQuery.isLoading ? (
         <p className="mt-4 text-sm text-muted">Loading audit events...</p>
@@ -75,6 +72,6 @@ export function AuditLogPanel() {
           )}
         </div>
       )}
-    </section>
+    </DashboardPanel>
   );
 }

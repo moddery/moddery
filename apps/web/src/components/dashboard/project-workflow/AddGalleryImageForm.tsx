@@ -5,6 +5,7 @@ import {
   type DashboardProject,
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { GalleryImageFields } from './gallery-image/GalleryImageFields.tsx';
 import {
   GalleryImageManager,
@@ -90,15 +91,11 @@ export function AddGalleryImageForm({
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Add gallery image
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Add screenshots or preview media to a managed project.
-        </p>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Add gallery image"
+        description="Add screenshots or preview media to a managed project."
+      />
 
       <form
         onSubmit={(event) => void submit(event)}
@@ -107,16 +104,13 @@ export function AddGalleryImageForm({
         <GalleryImageFields
           description={description}
           disabled={submitting}
-          displayUrl={displayUrl}
           featured={featured}
-          hasLocalFile={localFile !== null}
+          localFile={localFile}
           projectSlug={projectSlug}
           projects={projects}
-          rawUrl={rawUrl}
           sortOrder={sortOrder}
           title={title}
           onDescriptionChange={setDescription}
-          onDisplayUrlChange={setDisplayUrl}
           onFeaturedChange={setFeatured}
           onLocalFileChange={changeLocalFile}
           onProjectSlugChange={(slug) => {
@@ -124,7 +118,6 @@ export function AddGalleryImageForm({
             setCreated(null);
             setError(null);
           }}
-          onRawUrlChange={setRawUrl}
           onSortOrderChange={setSortOrder}
           onTitleChange={setTitle}
         />
@@ -157,7 +150,7 @@ export function AddGalleryImageForm({
           </button>
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }
 

@@ -306,3 +306,15 @@ export const REMOVE_PROJECT_FROM_COLLECTION_MUTATION = gql`
     }
   }
 `;
+
+export const DELETE_ORGANIZATION_MUTATION = gql`
+  mutation DeleteOrganization($organizationId: String!) {
+    deleteOrganization(organizationId: $organizationId)
+  }
+`;
+
+export const DELETE_COLLECTION_MUTATION = gql`
+  mutation DeleteCollection($collectionId: String!) {
+    deleteCollection(collectionId: $collectionId)
+  }
+`;

@@ -1,6 +1,8 @@
 import { apolloClient } from '../../../apollo.js';
 import {
   CREATE_COLLECTION_MUTATION,
+  DELETE_COLLECTION_MUTATION,
+  DELETE_ORGANIZATION_MUTATION,
   UPDATE_COLLECTION_MUTATION,
   UPDATE_COLLECTION_PROJECT_MUTATION,
   CREATE_ORGANIZATION_MUTATION,
@@ -15,6 +17,10 @@ import {
 import {
   type CreateCollectionMutationData,
   type CreateCollectionMutationVariables,
+  type DeleteCollectionMutationData,
+  type DeleteCollectionMutationVariables,
+  type DeleteOrganizationMutationData,
+  type DeleteOrganizationMutationVariables,
   type UpdateCollectionMutationData,
   type UpdateCollectionMutationVariables,
   type UpdateCollectionProjectMutationData,
@@ -248,4 +254,30 @@ export async function removeProjectFromCollection(
   }
 
   return data.removeProjectFromCollection;
+}
+
+export async function deleteOrganization(
+  organizationId: string,
+): Promise<boolean> {
+  const { data } = await apolloClient.mutate<
+    DeleteOrganizationMutationData,
+    DeleteOrganizationMutationVariables
+  >({
+    mutation: DELETE_ORGANIZATION_MUTATION,
+    variables: { organizationId },
+  });
+
+  return data?.deleteOrganization ?? false;
+}
+
+export async function deleteCollection(collectionId: string): Promise<boolean> {
+  const { data } = await apolloClient.mutate<
+    DeleteCollectionMutationData,
+    DeleteCollectionMutationVariables
+  >({
+    mutation: DELETE_COLLECTION_MUTATION,
+    variables: { collectionId },
+  });
+
+  return data?.deleteCollection ?? false;
 }

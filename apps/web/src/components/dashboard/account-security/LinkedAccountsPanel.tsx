@@ -5,6 +5,11 @@ import {
   linkedAccountAddedLabel,
   linkedAccountProviderLabel,
 } from './linked-accounts/linked-account-labels.ts';
+import {
+  DashboardPanel,
+  PanelEmptyState,
+  SectionHeader,
+} from '../../ui/dashboard/index.ts';
 
 export function LinkedAccountsPanel({
   accounts,
@@ -12,21 +17,15 @@ export function LinkedAccountsPanel({
   accounts: DashboardAuthAccount[];
 }) {
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Linked accounts
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            External sign-in providers connected to this account.
-          </p>
-        </div>
-        <KeyRound className="size-5 text-accent-icon" />
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Linked accounts"
+        description="External sign-in providers connected to this account."
+        action={<KeyRound className="size-5 text-accent-icon" />}
+      />
 
       {accounts.length === 0 ? (
-        <p className="mt-4 text-sm text-muted">No linked providers.</p>
+        <PanelEmptyState title="No linked providers." />
       ) : (
         <div className="mt-4 grid gap-2">
           {accounts.map((account) => (
@@ -44,6 +43,6 @@ export function LinkedAccountsPanel({
           ))}
         </div>
       )}
-    </section>
+    </DashboardPanel>
   );
 }

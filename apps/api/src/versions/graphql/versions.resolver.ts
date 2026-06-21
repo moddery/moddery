@@ -110,6 +110,15 @@ export class VersionsResolver {
     return this.versionsService.updateVersionDependencies(input, user.id);
   }
 
+  @RequireCredentialScopes('write:projects')
+  @Mutation(() => Boolean)
+  deleteVersion(
+    @Args('versionId', { type: () => String }) versionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<boolean> {
+    return this.versionsService.deleteVersion(versionId, user.id);
+  }
+
   @Mutation(() => VersionSummary)
   recordFileScan(
     @Args('input') input: RecordFileScanInput,

@@ -16,8 +16,7 @@ export function ProjectMetadataFields({
   extraLinks,
   gameVersionOptions,
   gameVersions,
-  hasLocalIconFile,
-  iconUrl,
+  iconFile,
   issuesUrl,
   licenseKey,
   licenseName,
@@ -31,7 +30,6 @@ export function ProjectMetadataFields({
   onExtraLinksChange,
   onGameVersionsChange,
   onIconFileChange,
-  onIconUrlChange,
   onIssuesUrlChange,
   onLicenseKeyChange,
   onLicenseNameChange,
@@ -61,13 +59,11 @@ export function ProjectMetadataFields({
       <ProjectIdentityFields
         color={color}
         disabled={disabled}
-        hasLocalIconFile={hasLocalIconFile}
-        iconUrl={iconUrl}
+        iconFile={iconFile}
         summary={summary}
         title={title}
         onColorChange={onColorChange}
         onIconFileChange={onIconFileChange}
-        onIconUrlChange={onIconUrlChange}
         onSummaryChange={onSummaryChange}
         onTitleChange={onTitleChange}
       />

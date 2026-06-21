@@ -12,6 +12,7 @@ import { ApiTokenCreatedNotice } from './api-tokens/ApiTokenCreatedNotice.tsx';
 import { ApiTokenCreateForm } from './api-tokens/ApiTokenCreateForm.tsx';
 import { ApiTokenList } from './api-tokens/ApiTokenList.tsx';
 import { type CredentialScope } from './shared.tsx';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 
 const pageSize = 20;
 
@@ -84,18 +85,12 @@ export function ApiTokensPanel() {
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Personal access tokens
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Create bearer tokens for local tools and automation.
-          </p>
-        </div>
-        <KeyRound className="size-5 text-accent-icon" />
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Personal access tokens"
+        description="Create bearer tokens for local tools and automation."
+        action={<KeyRound className="size-5 text-accent-icon" />}
+      />
 
       <ApiTokenCreateForm
         busy={creating}
@@ -128,7 +123,7 @@ export function ApiTokensPanel() {
         totalHits={totalHits}
         totalPages={totalPages}
       />
-    </section>
+    </DashboardPanel>
   );
 }
 

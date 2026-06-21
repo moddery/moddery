@@ -5,6 +5,7 @@ import {
   CREATE_PROJECT_MUTATION,
   ADD_PROJECT_GALLERY_IMAGE_MUTATION,
   ADD_PROJECT_TEAM_MEMBER_MUTATION,
+  DELETE_PROJECT_MUTATION,
   REMOVE_PROJECT_TEAM_MEMBER_MUTATION,
   REMOVE_PROJECT_GALLERY_IMAGE_MUTATION,
   UPDATE_PROJECT_MUTATION,
@@ -13,6 +14,8 @@ import {
 import {
   type CreateProjectMutationData,
   type CreateProjectMutationVariables,
+  type DeleteProjectMutationData,
+  type DeleteProjectMutationVariables,
   type AddProjectGalleryImageMutationData,
   type AddProjectTeamMemberMutationData,
   type RemoveProjectGalleryImageMutationData,
@@ -188,4 +191,16 @@ export function dashboardProjectToMod(project: DashboardProject): Mod {
     title: project.title,
     updated: project.updatedAt,
   };
+}
+
+export async function deleteProject(projectSlug: string): Promise<boolean> {
+  const { data } = await apolloClient.mutate<
+    DeleteProjectMutationData,
+    DeleteProjectMutationVariables
+  >({
+    mutation: DELETE_PROJECT_MUTATION,
+    variables: { projectSlug },
+  });
+
+  return data?.deleteProject ?? false;
 }

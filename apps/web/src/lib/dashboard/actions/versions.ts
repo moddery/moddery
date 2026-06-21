@@ -1,6 +1,7 @@
 import { apolloClient } from '../../../apollo.js';
 import {
   CREATE_VERSION_MUTATION,
+  DELETE_VERSION_MUTATION,
   VIEWER_PROJECT_VERSION_SEARCH_QUERY,
   UPDATE_VERSION_MUTATION,
   UPDATE_VERSION_DEPENDENCIES_MUTATION,
@@ -10,6 +11,8 @@ import {
 import {
   type CreateVersionMutationData,
   type CreateVersionMutationVariables,
+  type DeleteVersionMutationData,
+  type DeleteVersionMutationVariables,
   type UpdateVersionMutationData,
   type UpdateVersionMutationVariables,
   type UpdateVersionDependenciesMutationData,
@@ -143,4 +146,16 @@ export async function scanVersionFile(
   }
 
   return data.scanVersionFile;
+}
+
+export async function deleteVersion(versionId: string): Promise<boolean> {
+  const { data } = await apolloClient.mutate<
+    DeleteVersionMutationData,
+    DeleteVersionMutationVariables
+  >({
+    mutation: DELETE_VERSION_MUTATION,
+    variables: { versionId },
+  });
+
+  return data?.deleteVersion ?? false;
 }

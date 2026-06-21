@@ -477,6 +477,22 @@ export interface ProjectUploadTarget {
   uploadUrl: string;
 }
 
+export type OwnerUploadType = 'user' | 'organization' | 'collection';
+
+export type OwnerUploadKind =
+  | 'avatar'
+  | 'organization-icon'
+  | 'collection-icon';
+
+export interface PrepareOwnerUploadInput {
+  contentType: string | null;
+  fileName: string;
+  ownerId: string;
+  ownerType: OwnerUploadType;
+  sizeBytes: number;
+  uploadKind: OwnerUploadKind;
+}
+
 export interface RemoveProjectTeamMemberInput {
   projectSlug: string;
   username: string;

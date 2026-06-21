@@ -697,6 +697,100 @@ describe(ProjectManagementService.name, () => {
       },
     });
   });
+
+  test('deletes projects for the team owner', async () => {
+    const deletes: unknown[] = [];
+    const searchDeletes: unknown[] = [];
+    const teamDeletes: unknown[] = [];
+    const lookups: unknown[] = [];
+    const service = createProjectManagementService(
+      {
+        $transaction: (callback: (transaction: unknown) => unknown) =>
+          callback({
+            project: {
+              delete: (query: unknown) => {
+                deletes.push(query);
+                return Promise.resolve({});
+              },
+            },
+            team: {
+              delete: (query: unknown) => {
+                teamDeletes.push(query);
+                return Promise.resolve({});
+              },
+            },
+          }),
+        project: {
+          findFirst: (query: unknown) => {
+            lookups.push(query);
+            return Promise.resolve({
+              id: 'project-a',
+              slug: 'example',
+              teamId: 'team-a',
+            });
+          },
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: (projectId: string) => {
+          searchDeletes.push(projectId);
+          return Promise.resolve();
+        },
+        indexProjects: () => Promise.resolve(),
+      },
+    );
+
+    const result = await service.deleteProject(' example ', 'user-a');
+
+    expect(lookups[0]).toEqual({
+      select: { id: true, slug: true, teamId: true },
+      where: {
+        slug: 'example',
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              isOwner: true,
+              userId: 'user-a',
+            },
+          },
+        },
+      },
+    });
+    expect(deletes[0]).toEqual({ where: { id: 'project-a' } });
+    expect(teamDeletes[0]).toEqual({ where: { id: 'team-a' } });
+    expect(searchDeletes).toEqual(['project-a']);
+    expect(result).toBe(true);
+  });
+
+  test('rejects deleting projects the caller does not own', async () => {
+    const deletes: unknown[] = [];
+    const service = createProjectManagementService(
+      {
+        project: {
+          delete: (query: unknown) => {
+            deletes.push(query);
+            return Promise.resolve({});
+          },
+          findFirst: () => Promise.resolve(null),
+        },
+      } as unknown as PrismaService,
+      {
+        deleteProject: () => Promise.resolve(),
+        indexProjects: () => Promise.resolve(),
+      },
+    );
+
+    let caught: unknown;
+    try {
+      await service.deleteProject('example', 'user-b');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Project not found');
+    expect(deletes).toEqual([]);
+  });
 });
 
 function validCreateProjectInput() {

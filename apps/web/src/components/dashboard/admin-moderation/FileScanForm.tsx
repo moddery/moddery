@@ -5,6 +5,7 @@ import {
   scanVersionFile,
   type DashboardProject,
 } from '../../../lib/dashboard.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { FileScanResultFields } from './file-scan/FileScanResultFields.tsx';
 import { FileScanSelectedFileSummary } from './file-scan/FileScanSelectedFileSummary.tsx';
 import { FileScanSelectors } from './file-scan/FileScanSelectors.tsx';
@@ -58,15 +59,11 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
   if (projects.length === 0) return null;
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Record file scan
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Attach a moderation scan result to a version file.
-        </p>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Record file scan"
+        description="Attach a moderation scan result to a version file."
+      />
 
       <form
         onSubmit={(event) => void submit(event)}
@@ -116,7 +113,7 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
           )}
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }
 

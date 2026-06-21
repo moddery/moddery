@@ -1,5 +1,6 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
+import { RequireCredentialScopes } from '../../auth/decorators/credential-scopes.decorator.js';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
@@ -144,6 +145,18 @@ export class OrganizationsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OrganizationSummary[]> {
     return this.organizationsService.findViewerOrganizations(user.id);
+  }
+
+  @RequireCredentialScopes('write:projects')
+  @Mutation(() => Boolean)
+  deleteOrganization(
+    @Args('organizationId', { type: () => String }) organizationId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<boolean> {
+    return this.organizationManagementService.deleteOrganization(
+      organizationId,
+      user.id,
+    );
   }
 
   @Mutation(() => OrganizationSummary)

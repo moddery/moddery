@@ -128,11 +128,14 @@ export function AppPages({ app, onRequestAuth }: AppPagesProps) {
           onRequestAuth={onRequestAuth}
         >
           <DashboardPage
+            editTarget={app.dashboardEdit}
+            onCloseEdit={app.closeDashboardEdit}
             onHome={app.openHome}
             onOpenCollection={app.openCollection}
             onOpenOrganization={app.openOrganization}
             onOpenProject={app.openProject}
             onOpenProjectReference={app.openProjectReference}
+            onOpenEdit={app.openDashboardEdit}
             onTagSearch={app.searchByTag}
           />
         </AuthRequiredPage>

@@ -3,9 +3,11 @@ import { type FormEvent, useEffect, useState } from 'react';
 
 import {
   updateCollection,
+  uploadOwnerImage,
   type DashboardCollection,
   type UpdateCollectionInput,
 } from '../../../lib/dashboard.ts';
+import { FileDropzone } from '../../ui/dashboard/index.ts';
 import {
   assertUpdateCollectionInput,
   normalizeUpdateCollectionInput,
@@ -27,6 +29,7 @@ export function EditCollectionForm({
   const [slug, setSlug] = useState(selected?.slug ?? '');
   const [description, setDescription] = useState(selected?.description ?? '');
   const [iconUrl, setIconUrl] = useState(selected?.iconUrl ?? '');
+  const [iconFile, setIconFile] = useState<File | null>(null);
   const [color, setColor] = useState(selected?.color ?? '#1d9bf0');
   const [visibility, setVisibility] = useState<CollectionVisibility>(
     selected?.visibility ?? 'PRIVATE',
@@ -46,6 +49,7 @@ export function EditCollectionForm({
     setSlug(next.slug);
     setDescription(next.description ?? '');
     setIconUrl(next.iconUrl ?? '');
+    setIconFile(null);
     setColor(next.color ?? '#1d9bf0');
     setVisibility(next.visibility);
   }, [collectionId, collections]);
@@ -55,17 +59,30 @@ export function EditCollectionForm({
     setSubmitting(true);
     setError(null);
 
-    const input: UpdateCollectionInput = normalizeUpdateCollectionInput({
-      collectionId,
-      color,
-      description,
-      iconUrl,
-      name,
-      slug,
-      visibility,
-    });
-
     try {
+      let nextIconUrl = iconUrl;
+      if (iconFile !== null) {
+        const target = await uploadOwnerImage({
+          file: iconFile,
+          ownerId: collectionId,
+          ownerType: 'collection',
+          uploadKind: 'collection-icon',
+        });
+        nextIconUrl = target.objectUrl;
+        setIconUrl(nextIconUrl);
+        setIconFile(null);
+      }
+
+      const input: UpdateCollectionInput = normalizeUpdateCollectionInput({
+        collectionId,
+        color,
+        description,
+        iconUrl: nextIconUrl,
+        name,
+        slug,
+        visibility,
+      });
+
       assertUpdateCollectionInput(input);
       await updateCollection(input);
       await onUpdated();
@@ -114,18 +131,12 @@ export function EditCollectionForm({
           required
         />
       </div>
-      <div className="grid gap-3 md:grid-cols-[1fr_1fr_10rem_12rem]">
+      <div className="grid gap-3 md:grid-cols-[1fr_10rem_12rem]">
         <DashboardField
           disabled={submitting}
           label="Description"
           value={description}
           onChange={setDescription}
-        />
-        <DashboardField
-          disabled={submitting}
-          label="Icon URL"
-          value={iconUrl}
-          onChange={setIconUrl}
         />
         <DashboardField
           disabled={submitting}
@@ -149,6 +160,14 @@ export function EditCollectionForm({
           </select>
         </label>
       </div>
+      <FileDropzone
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        disabled={submitting}
+        file={iconFile}
+        existingPreviewUrl={iconUrl.trim() || null}
+        label="Icon"
+        onFileChange={setIconFile}
+      />
 
       {error && (
         <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm font-bold text-ink">

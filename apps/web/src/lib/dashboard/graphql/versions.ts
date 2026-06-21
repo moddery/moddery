@@ -131,3 +131,9 @@ export const SCAN_VERSION_FILE_MUTATION = gql`
   }
   ${DASHBOARD_VERSION_FIELDS}
 `;
+
+export const DELETE_VERSION_MUTATION = gql`
+  mutation DeleteVersion($versionId: String!) {
+    deleteVersion(versionId: $versionId)
+  }
+`;

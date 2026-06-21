@@ -93,6 +93,30 @@ export class CollectionsService {
     return collectionRowToContract(collection);
   }
 
+  async deleteCollection(
+    collectionId: string,
+    ownerId: string,
+  ): Promise<boolean> {
+    const id = requiredText(collectionId, 'Collection is required');
+    const collection = await this.prisma.collection.findFirst({
+      select: { id: true },
+      where: {
+        id,
+        ownerId,
+      },
+    });
+
+    if (collection === null) {
+      throw new NotFoundException('Collection not found');
+    }
+
+    await this.prisma.collection.delete({
+      where: { id: collection.id },
+    });
+
+    return true;
+  }
+
   async removeProjectFromCollection(
     input: RemoveProjectFromCollectionInput,
     ownerId: string,

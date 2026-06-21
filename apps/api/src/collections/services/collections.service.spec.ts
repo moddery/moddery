@@ -482,6 +482,56 @@ describe(CollectionsService.name, () => {
 
     expect(caught).toHaveProperty('message', 'Project is required');
   });
+
+  test('deletes collections owned by the current user', async () => {
+    const deletes: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: (query: { where: { id?: string; ownerId?: string } }) => {
+          if (
+            query.where.id === 'collection-a' &&
+            query.where.ownerId === 'user-a'
+          ) {
+            return Promise.resolve({ id: 'collection-a' });
+          }
+
+          return Promise.resolve(null);
+        },
+        delete: (query: unknown) => {
+          deletes.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.deleteCollection('collection-a', 'user-a');
+
+    expect(deletes[0]).toEqual({ where: { id: 'collection-a' } });
+    expect(result).toBe(true);
+  });
+
+  test('rejects deleting collections the caller does not own', async () => {
+    const deletes: unknown[] = [];
+    const service = new CollectionsService({
+      collection: {
+        findFirst: () => Promise.resolve(null),
+        delete: (query: unknown) => {
+          deletes.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.deleteCollection('collection-a', 'user-b');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Collection not found');
+    expect(deletes).toEqual([]);
+  });
 });
 
 function collectionRow(overrides: Partial<{ name: string }> = {}) {

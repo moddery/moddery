@@ -8,6 +8,7 @@ import {
   type ModerationReportState,
 } from '../../../lib/dashboard.ts';
 import { Pagination } from '../../Pagination.tsx';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { ReportRow } from './reports/ReportRow.tsx';
 
 const pageSize = 20;
@@ -45,15 +46,15 @@ export function ModerationQueue() {
   }
 
   return (
-    <section className="mt-8">
-      <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Moderation queue
-        </h2>
-        <span className="text-sm font-semibold text-muted">
-          {totalHits.toLocaleString('en-US')} active
-        </span>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Moderation queue"
+        action={
+          <span className="text-sm font-semibold text-muted">
+            {totalHits.toLocaleString('en-US')} active
+          </span>
+        }
+      />
 
       {message && (
         <p className="mt-4 rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
@@ -98,7 +99,7 @@ export function ModerationQueue() {
           )}
         </div>
       )}
-    </section>
+    </DashboardPanel>
   );
 }
 

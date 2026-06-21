@@ -9,6 +9,7 @@ import {
   type DashboardProject,
   uploadProjectFile,
 } from '../../lib/dashboard.ts';
+import { DashboardPanel, SectionHeader } from '../ui/dashboard/index.ts';
 import { ProjectMetadataFields } from './project-metadata/ProjectMetadataFields.tsx';
 import { useProjectMetadataFormState } from './project-metadata/useProjectMetadataFormState.ts';
 
@@ -85,15 +86,11 @@ export function ProjectMetadataForm({
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Edit project metadata
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Update project copy, icons, links, and discovery tags.
-        </p>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Edit project metadata"
+        description="Update project copy, icons, links, and discovery tags."
+      />
 
       <form
         onSubmit={(event) => void submit(event)}
@@ -105,6 +102,7 @@ export function ProjectMetadataForm({
           disabled={submitting}
           gameVersionOptions={gameVersionsQuery.data ?? []}
           hasLocalIconFile={localIconFile !== null}
+          iconFile={localIconFile}
           onIconFileChange={changeLocalIconFile}
           onProjectChange={selectProject}
         />
@@ -130,7 +128,7 @@ export function ProjectMetadataForm({
           </button>
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }
 

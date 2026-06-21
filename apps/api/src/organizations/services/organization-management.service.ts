@@ -276,6 +276,35 @@ export class OrganizationManagementService {
     return this.findViewerOrganization(organization.id, userId);
   }
 
+  async deleteOrganization(
+    organizationId: string,
+    ownerId: string,
+  ): Promise<boolean> {
+    const id = requiredText(organizationId, 'Organization is required');
+    const organization = await this.prisma.organization.findFirst({
+      select: { id: true, teamId: true },
+      where: {
+        id,
+        ownerId,
+      },
+    });
+
+    if (organization === null) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.organization.delete({
+        where: { id: organization.id },
+      });
+      await tx.team.delete({
+        where: { id: organization.teamId },
+      });
+    });
+
+    return true;
+  }
+
   async updateOrganization(input: UpdateOrganizationInput, ownerId: string) {
     const normalized = normalizeUpdateOrganizationInput(input);
     const organization = await this.prisma.organization.findFirst({

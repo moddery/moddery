@@ -3,6 +3,8 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import {
   collectionFromUrl,
   collectionPath,
+  dashboardEditFromPathname,
+  dashboardEditPath,
   dashboardPath,
   organizationFromUrl,
   organizationPath,
@@ -86,6 +88,22 @@ describe('routing helpers', () => {
     expect(dashboardPath('dashboard-messages')).toBe(
       '/dashboard#dashboard-messages',
     );
+  });
+
+  test('builds and parses dashboard edit paths', () => {
+    expect(dashboardEditPath({ entity: 'collections', id: 'abc 1' })).toBe(
+      '/dashboard/collections/abc%201/edit',
+    );
+
+    expect(
+      dashboardEditFromPathname('/dashboard/projects/my-mod/edit'),
+    ).toEqual({ entity: 'projects', id: 'my-mod' });
+
+    expect(dashboardEditFromPathname('/dashboard/widgets/x/edit')).toBeNull();
+    expect(dashboardEditFromPathname('/dashboard')).toBeNull();
+    expect(
+      dashboardEditFromPathname('/dashboard/collections/abc%201/edit'),
+    ).toEqual({ entity: 'collections', id: 'abc 1' });
   });
 
   test('builds encoded project paths', () => {

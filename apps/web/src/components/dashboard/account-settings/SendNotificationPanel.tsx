@@ -2,6 +2,11 @@ import { Bell } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
 import { sendNotification } from '../../../lib/dashboard.ts';
+import {
+  DashboardPanel,
+  FieldGroup,
+  SectionHeader,
+} from '../../ui/dashboard/index.ts';
 import { DashboardField, nullableText } from './shared.tsx';
 
 export function SendNotificationPanel() {
@@ -39,23 +44,17 @@ export function SendNotificationPanel() {
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Send notification
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Queue a user notification and delivery records.
-          </p>
-        </div>
-        <Bell className="size-5 text-accent-icon" />
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Send notification"
+        description="Queue a user notification and delivery records."
+        action={<Bell className="size-5 text-accent-icon" />}
+      />
       <form
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
       >
-        <div className="grid gap-3 md:grid-cols-3">
+        <FieldGroup columns={3}>
           <DashboardField
             label="Username"
             value={username}
@@ -73,7 +72,7 @@ export function SendNotificationPanel() {
             value={actionUrl}
             onChange={setActionUrl}
           />
-        </div>
+        </FieldGroup>
         <DashboardField
           label="Title"
           value={title}
@@ -102,6 +101,6 @@ export function SendNotificationPanel() {
           )}
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }

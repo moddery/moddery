@@ -1,3 +1,4 @@
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { AddFriendForm } from './friends-panel/AddFriendForm.tsx';
 import { FriendGroup, FriendList } from './friends-panel/FriendLists.tsx';
 import {
@@ -15,22 +16,18 @@ export function FriendsPanel() {
   const requests = friends.requestsResult?.friendships ?? [];
 
   return (
-    <section className="mt-8 border-t border-line pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Friends
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Manage friend requests and accepted friends.
-          </p>
-        </div>
-        {friends.message && (
-          <span className="text-sm font-semibold text-muted">
-            {friends.message}
-          </span>
-        )}
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Friends"
+        description="Manage friend requests and accepted friends."
+        action={
+          friends.message ? (
+            <span className="text-sm font-semibold text-muted">
+              {friends.message}
+            </span>
+          ) : undefined
+        }
+      />
 
       <AddFriendForm
         busyUsername={friends.busyUsername}
@@ -86,6 +83,6 @@ export function FriendsPanel() {
           />
         </FriendGroup>
       </div>
-    </section>
+    </DashboardPanel>
   );
 }

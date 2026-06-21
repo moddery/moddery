@@ -9,6 +9,7 @@ import {
   markDirectThreadRead,
 } from '../../../lib/dashboard/actions/account.ts';
 import { type DirectThread } from '../../../lib/dashboard/types.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { DirectMessageComposer } from './direct-messages/DirectMessageComposer.tsx';
 import { DirectThreadList } from './direct-messages/DirectThreadList.tsx';
 
@@ -94,54 +95,51 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
   const totalPages = Math.max(1, Math.ceil(totalHits / pageSize));
 
   return (
-    <section
-      id="dashboard-messages"
-      className="mt-8 scroll-mt-32 border-t border-line pt-6"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Messages
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            {threadsQuery.data
+    <div id="dashboard-messages" className="scroll-mt-32">
+      <DashboardPanel>
+        <SectionHeader
+          title="Messages"
+          description={
+            threadsQuery.data
               ? `${totalHits.toLocaleString('en-US')} direct threads`
-              : 'Send direct messages to other users.'}
-          </p>
-        </div>
-        {status && (
-          <span className="text-sm font-semibold text-muted">{status}</span>
-        )}
-      </div>
+              : 'Send direct messages to other users.'
+          }
+          action={
+            status ? (
+              <span className="text-sm font-semibold text-muted">{status}</span>
+            ) : undefined
+          }
+        />
 
-      <DirectMessageComposer
-        body={body}
-        submitting={composerSubmitting}
-        username={username}
-        onBodyChange={setBody}
-        onSubmit={startThread}
-        onUsernameChange={setUsername}
-      />
+        <DirectMessageComposer
+          body={body}
+          submitting={composerSubmitting}
+          username={username}
+          onBodyChange={setBody}
+          onSubmit={startThread}
+          onUsernameChange={setUsername}
+        />
 
-      <DirectThreadList
-        busyThreadId={busyThreadId}
-        loading={threadsQuery.isLoading}
-        messageBodyByThread={messageBodyByThread}
-        page={page}
-        threads={threads}
-        totalPages={totalPages}
-        viewerId={viewerId}
-        onMessageChange={(threadId, value) =>
-          setMessageBodyByThread((current) => ({
-            ...current,
-            [threadId]: value,
-          }))
-        }
-        onPage={setPage}
-        onRead={(threadId) => void markThreadRead(threadId)}
-        onReply={(threadId) => void replyToThread(threadId)}
-      />
-    </section>
+        <DirectThreadList
+          busyThreadId={busyThreadId}
+          loading={threadsQuery.isLoading}
+          messageBodyByThread={messageBodyByThread}
+          page={page}
+          threads={threads}
+          totalPages={totalPages}
+          viewerId={viewerId}
+          onMessageChange={(threadId, value) =>
+            setMessageBodyByThread((current) => ({
+              ...current,
+              [threadId]: value,
+            }))
+          }
+          onPage={setPage}
+          onRead={(threadId) => void markThreadRead(threadId)}
+          onReply={(threadId) => void replyToThread(threadId)}
+        />
+      </DashboardPanel>
+    </div>
   );
 }
 

@@ -28,6 +28,7 @@ import {
   type ModerationReport,
   type ModerationReportSearchResult,
   type ModerationReportState,
+  type PrepareOwnerUploadInput,
   type PrepareProjectUploadInput,
   type ProjectUploadTarget,
   type RemoveProjectGalleryImageInput,
@@ -197,6 +198,14 @@ export interface PrepareProjectUploadMutationData {
 
 export interface PrepareProjectUploadMutationVariables {
   input: PrepareProjectUploadInput;
+}
+
+export interface PrepareOwnerUploadMutationData {
+  prepareOwnerUpload: ProjectUploadTarget;
+}
+
+export interface PrepareOwnerUploadMutationVariables {
+  input: PrepareOwnerUploadInput;
 }
 
 export interface RemoveProjectTeamMemberMutationVariables {
@@ -457,4 +466,36 @@ export interface ModerateProjectMutationVariables {
 
 export interface ProjectModerationLockMutationVariables {
   projectSlug: string;
+}
+
+export interface DeleteProjectMutationData {
+  deleteProject: boolean;
+}
+
+export interface DeleteProjectMutationVariables {
+  projectSlug: string;
+}
+
+export interface DeleteVersionMutationData {
+  deleteVersion: boolean;
+}
+
+export interface DeleteVersionMutationVariables {
+  versionId: string;
+}
+
+export interface DeleteOrganizationMutationData {
+  deleteOrganization: boolean;
+}
+
+export interface DeleteOrganizationMutationVariables {
+  organizationId: string;
+}
+
+export interface DeleteCollectionMutationData {
+  deleteCollection: boolean;
+}
+
+export interface DeleteCollectionMutationVariables {
+  collectionId: string;
 }

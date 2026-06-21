@@ -1,5 +1,6 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 
+import { RequireCredentialScopes } from '../../auth/decorators/credential-scopes.decorator.js';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator.js';
 import { Public } from '../../auth/decorators/public.decorator.js';
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
@@ -97,6 +98,15 @@ export class CollectionsResolver {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.collectionsService.removeProjectFromCollection(input, user.id);
+  }
+
+  @RequireCredentialScopes('write:projects')
+  @Mutation(() => Boolean)
+  deleteCollection(
+    @Args('collectionId', { type: () => String }) collectionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<boolean> {
+    return this.collectionsService.deleteCollection(collectionId, user.id);
   }
 
   @Mutation(() => CollectionSummary)

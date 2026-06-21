@@ -4,6 +4,7 @@ import {
   updateVersionDependencies,
   type DashboardData,
 } from '../../../lib/dashboard.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { DependencyFields } from './edit-version-dependencies/DependencyFields.tsx';
 import { DependencyVersionSelectors } from './edit-version-dependencies/DependencyVersionSelectors.tsx';
 import { useVersionDependencyFormState } from './edit-version-dependencies/useVersionDependencyFormState.ts';
@@ -52,16 +53,11 @@ export function EditVersionDependencyForm({
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Edit version dependency
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Replace the dependency list for a version with project, version, or
-          external file dependencies.
-        </p>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Edit version dependency"
+        description="Replace the dependency list for a version with project, version, or external file dependencies."
+      />
 
       <form
         onSubmit={(event) => void submit(event)}
@@ -114,7 +110,7 @@ export function EditVersionDependencyForm({
           </button>
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }
 

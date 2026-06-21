@@ -73,3 +73,9 @@ export const UPDATE_PROJECT_MUTATION = gql`
     }
   }
 `;
+
+export const DELETE_PROJECT_MUTATION = gql`
+  mutation DeleteProject($projectSlug: String!) {
+    deleteProject(projectSlug: $projectSlug)
+  }
+`;

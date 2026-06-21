@@ -1,4 +1,5 @@
 import { type DashboardOrganization } from '../../../lib/dashboard.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { OrganizationTeamFields } from './organization-team/OrganizationTeamFields.tsx';
 import { OrganizationTeamMembersList } from './organization-team/OrganizationTeamMembersList.tsx';
 import { useOrganizationTeamManagementState } from './organization-team/useOrganizationTeamManagementState.ts';
@@ -32,16 +33,11 @@ export function OrganizationTeamManagementForm({
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex flex-col gap-1">
-        <h2 className="font-display text-xl font-extrabold text-ink">
-          Manage organization team
-        </h2>
-        <p className="text-sm leading-6 text-muted">
-          Invite an existing user to an organization team or remove a non-owner
-          member.
-        </p>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Manage organization team"
+        description="Invite an existing user to an organization team or remove a non-owner member."
+      />
 
       <form
         onSubmit={(event) => void addMember(event)}
@@ -86,7 +82,7 @@ export function OrganizationTeamManagementForm({
           </button>
         </div>
       </form>
-    </section>
+    </DashboardPanel>
   );
 }
 

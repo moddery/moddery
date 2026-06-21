@@ -18,6 +18,7 @@ import { extname } from 'node:path';
 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { versionManagementMemberWhere } from '../versions/services/version-management.js';
+import { type PrepareOwnerUploadInput } from './dto/prepare-owner-upload.input.js';
 import { type PrepareProjectUploadInput } from './dto/prepare-project-upload.input.js';
 import { S3_CLIENT, S3_PRESIGN_CLIENT } from './storage.constants.js';
 
@@ -34,7 +35,25 @@ const maxUploadBytes = 512 * 1024 * 1024;
 const maxImageUploadBytes = 10 * 1024 * 1024;
 const uploadUrlTtlSeconds = 10 * 60;
 const uploadKinds = new Set(['gallery-image', 'project-icon', 'version-file']);
-const imageUploadKinds = new Set(['gallery-image', 'project-icon']);
+const ownerUploadKinds = new Set([
+  'avatar',
+  'collection-icon',
+  'organization-icon',
+]);
+const ownerTypeForUploadKind: Record<string, OwnerType> = {
+  avatar: 'user',
+  'collection-icon': 'collection',
+  'organization-icon': 'organization',
+};
+const imageUploadKinds = new Set([
+  'avatar',
+  'collection-icon',
+  'gallery-image',
+  'organization-icon',
+  'project-icon',
+]);
+
+type OwnerType = 'user' | 'organization' | 'collection';
 const allowedVersionFileExtensions = new Set(['.jar', '.mrpack', '.zip']);
 const allowedImageContentTypes = new Set([
   'image/gif',
@@ -140,6 +159,114 @@ export class StorageService {
       ),
       uploadUrl,
     };
+  }
+
+  async prepareOwnerUpload(
+    input: PrepareOwnerUploadInput,
+    userId: string,
+  ): Promise<ProjectUploadTargetContract> {
+    const uploadKind = normalizedOwnerUploadKind(input.uploadKind);
+    const ownerType = normalizedOwnerType(input.ownerType, uploadKind);
+    const ownerId = requiredText(input.ownerId, 'Owner is required');
+    const fileName = normalizedFileName(input.fileName);
+    const sizeBytes = normalizedSize(input.sizeBytes);
+    const contentType = normalizedContentType(input.contentType);
+    validateUploadSize(uploadKind, sizeBytes);
+    validateUploadContentType(uploadKind, contentType);
+
+    const ownerSlug = await this.authorizeOwnerUpload(
+      ownerType,
+      ownerId,
+      userId,
+    );
+
+    const bucket = this.config.getOrThrow<string>('s3.bucket');
+    const key = ownerUploadKey({
+      fileName,
+      ownerSlug,
+      ownerType,
+      uploadKind,
+    });
+
+    const uploadUrl = await getSignedUrl(
+      this.presignS3,
+      new PutObjectCommand({
+        Bucket: bucket,
+        ContentLength: sizeBytes,
+        ContentType: contentType ?? undefined,
+        Key: key,
+      }),
+      { expiresIn: uploadUrlTtlSeconds },
+    );
+
+    return {
+      bucket,
+      expiresAt: new Date(Date.now() + uploadUrlTtlSeconds * 1000),
+      key,
+      method: 'PUT',
+      objectUrl: publicObjectUrl(
+        this.config.getOrThrow<string>('s3.publicBaseUrl'),
+        key,
+      ),
+      uploadUrl,
+    };
+  }
+
+  // Authorizes the upload and returns a stable slug/id used to namespace the
+  // object key. Throws Forbidden/NotFound mirroring the project upload path.
+  private async authorizeOwnerUpload(
+    ownerType: OwnerType,
+    ownerId: string,
+    userId: string,
+  ): Promise<string> {
+    if (ownerType === 'user') {
+      if (ownerId !== userId) {
+        throw new ForbiddenException(
+          'Avatar uploads require account ownership',
+        );
+      }
+      return userId;
+    }
+
+    if (ownerType === 'organization') {
+      const organization = await this.prisma.organization.findFirst({
+        select: { slug: true },
+        where: {
+          id: ownerId,
+          team: {
+            members: {
+              some: {
+                acceptedAt: { not: null },
+                OR: [
+                  { isOwner: true },
+                  { permissions: { has: TeamPermission.MANAGE_SETTINGS } },
+                ],
+                userId,
+              },
+            },
+          },
+        },
+      });
+
+      if (organization === null) {
+        throw new ForbiddenException(
+          'Organization settings permission required',
+        );
+      }
+
+      return organization.slug;
+    }
+
+    const collection = await this.prisma.collection.findFirst({
+      select: { slug: true },
+      where: { id: ownerId, ownerId: userId },
+    });
+
+    if (collection === null) {
+      throw new ForbiddenException('Collection ownership required');
+    }
+
+    return collection.slug;
   }
 }
 
@@ -281,4 +408,52 @@ function fileExtension(fileName: string): string {
 
 function encodeKeyPart(value: string): string {
   return value.replaceAll(/[^a-z0-9._-]/gi, '-').toLowerCase();
+}
+
+function normalizedOwnerUploadKind(uploadKind: string): string {
+  const value = uploadKind.trim().toLowerCase();
+
+  if (!ownerUploadKinds.has(value)) {
+    throw new BadRequestException('Unsupported upload kind');
+  }
+
+  return value;
+}
+
+function normalizedOwnerType(ownerType: string, uploadKind: string): OwnerType {
+  const value = ownerType.trim().toLowerCase();
+  const expected = ownerTypeForUploadKind[uploadKind];
+
+  if (value !== expected) {
+    throw new BadRequestException('Owner type does not match upload kind');
+  }
+
+  return expected;
+}
+
+function ownerUploadKey({
+  fileName,
+  ownerSlug,
+  ownerType,
+  uploadKind,
+}: {
+  fileName: string;
+  ownerSlug: string;
+  ownerType: OwnerType;
+  uploadKind: string;
+}): string {
+  const extension = extname(fileName).toLowerCase();
+  const prefix =
+    ownerType === 'user'
+      ? 'users'
+      : ownerType === 'organization'
+        ? 'organizations'
+        : 'collections';
+
+  return [
+    prefix,
+    encodeKeyPart(ownerSlug),
+    uploadKind,
+    `${randomUUID()}${extension}`,
+  ].join('/');
 }

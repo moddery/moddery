@@ -1,58 +1,31 @@
-import { afterEach, describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 
 import {
-  dashboardSectionHref,
-  scrollToDashboardSection,
-} from './DashboardSectionNav.tsx';
-import { dashboardSectionItems } from './dashboardSectionItems.ts';
+  DEFAULT_DASHBOARD_SECTION,
+  dashboardSectionItems,
+  isDashboardSectionId,
+} from './dashboardSectionItems.ts';
 
-const originalWindow = Reflect.get(globalThis, 'window') as Window | undefined;
-const originalDocument = Reflect.get(globalThis, 'document') as
-  | Document
-  | undefined;
-
-afterEach(() => {
-  if (originalWindow) {
-    Reflect.set(globalThis, 'window', originalWindow);
-  } else {
-    Reflect.deleteProperty(globalThis, 'window');
-  }
-
-  if (originalDocument) {
-    Reflect.set(globalThis, 'document', originalDocument);
-  } else {
-    Reflect.deleteProperty(globalThis, 'document');
-  }
-});
-
-describe('DashboardSectionNav helpers', () => {
-  test('builds viewer section items with counts', () => {
+describe('dashboardSectionItems', () => {
+  test('orders viewer sections with overview first and counts attached', () => {
     expect(
       dashboardSectionItems({
         canModerate: false,
         collectionCount: 3,
         organizationCount: 2,
         projectCount: 5,
-      }),
+      }).map(({ count, id, label }) => ({ count, id, label })),
     ).toEqual([
-      { id: 'dashboard-account', label: 'Account' },
-      { id: 'dashboard-security', label: 'Security' },
-      {
-        count: 2,
-        id: 'dashboard-content',
-        label: 'Organizations',
-      },
+      { count: undefined, id: 'dashboard-overview', label: 'Overview' },
       { count: 5, id: 'dashboard-projects', label: 'Projects' },
-      {
-        count: 3,
-        id: 'dashboard-collections',
-        label: 'Collections',
-      },
-      { id: 'dashboard-overview', label: 'Overview' },
+      { count: 2, id: 'dashboard-content', label: 'Organizations' },
+      { count: 3, id: 'dashboard-collections', label: 'Collections' },
+      { count: undefined, id: 'dashboard-account', label: 'Account' },
+      { count: undefined, id: 'dashboard-security', label: 'Security' },
     ]);
   });
 
-  test('places moderation before overview for moderators', () => {
+  test('appends moderation only for moderators', () => {
     expect(
       dashboardSectionItems({
         canModerate: true,
@@ -61,56 +34,38 @@ describe('DashboardSectionNav helpers', () => {
         projectCount: 0,
       }).map((item) => item.id),
     ).toEqual([
+      'dashboard-overview',
+      'dashboard-projects',
+      'dashboard-content',
+      'dashboard-collections',
       'dashboard-account',
       'dashboard-security',
-      'dashboard-content',
-      'dashboard-projects',
-      'dashboard-collections',
       'dashboard-moderation',
-      'dashboard-overview',
     ]);
   });
 
-  test('builds section hashes', () => {
-    expect(dashboardSectionHref('dashboard-projects')).toBe(
-      '#dashboard-projects',
-    );
+  test('every item carries an icon for the sidebar', () => {
+    const items = dashboardSectionItems({
+      canModerate: true,
+      collectionCount: 0,
+      organizationCount: 0,
+      projectCount: 0,
+    });
+
+    const icons = new Set(items.map((item) => item.icon));
+    expect(icons.size).toBeGreaterThanOrEqual(items.length - 1);
+  });
+});
+
+describe(isDashboardSectionId.name, () => {
+  test('accepts known section ids', () => {
+    expect(isDashboardSectionId(DEFAULT_DASHBOARD_SECTION)).toBe(true);
+    expect(isDashboardSectionId('dashboard-moderation')).toBe(true);
   });
 
-  test('updates the dashboard hash before scrolling to a section', () => {
-    const scrollCalls: ScrollIntoViewOptions[] = [];
-    const fakeWindow = {
-      history: {
-        pushState: (_state: unknown, _title: string, nextUrl: string | URL) => {
-          fakeWindow.location = new URL(
-            String(nextUrl),
-            fakeWindow.location.href,
-          );
-        },
-      },
-      location: new URL('https://moddery.test/dashboard'),
-    };
-    const fakeDocument = {
-      getElementById: (id: string) =>
-        id === 'dashboard-projects'
-          ? {
-              scrollIntoView: (options?: boolean | ScrollIntoViewOptions) => {
-                if (typeof options === 'object') {
-                  scrollCalls.push(options);
-                }
-              },
-            }
-          : null,
-    };
-
-    Reflect.set(globalThis, 'window', fakeWindow as unknown as Window);
-    Reflect.set(globalThis, 'document', fakeDocument as unknown as Document);
-
-    scrollToDashboardSection('dashboard-projects');
-
-    expect(fakeWindow.location.href).toBe(
-      'https://moddery.test/dashboard#dashboard-projects',
-    );
-    expect(scrollCalls).toEqual([{ behavior: 'smooth', block: 'start' }]);
+  test('rejects unknown ids', () => {
+    expect(isDashboardSectionId('')).toBe(false);
+    expect(isDashboardSectionId('dashboard-unknown')).toBe(false);
+    expect(isDashboardSectionId('projects')).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import { type FormEvent } from 'react';
 
 import { Pagination } from '../../Pagination.tsx';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 import { AdminUserRow } from './admin-users/AdminUserRow.tsx';
 import { useAdminUsersPanelState } from './admin-users/useAdminUsersPanelState.ts';
 import { DashboardField, ReportActionButton } from './shared.tsx';
@@ -29,28 +30,24 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
   }
 
   return (
-    <section className="mt-8 rounded-xl border border-line bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            User accounts
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Recent accounts and moderation access.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-semibold text-muted">
-            {totalHits.toLocaleString('en-US')} users
-          </span>
-          <ReportActionButton
-            disabled={busy || usersQuery.isFetching}
-            onClick={() => void usersQuery.refetch()}
-          >
-            Refresh
-          </ReportActionButton>
-        </div>
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="User accounts"
+        description="Recent accounts and moderation access."
+        action={
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-muted">
+              {totalHits.toLocaleString('en-US')} users
+            </span>
+            <ReportActionButton
+              disabled={busy || usersQuery.isFetching}
+              onClick={() => void usersQuery.refetch()}
+            >
+              Refresh
+            </ReportActionButton>
+          </div>
+        }
+      />
       <form onSubmit={onSearch} className="mt-4 flex max-w-xl gap-2">
         <div className="min-w-0 flex-1">
           <DashboardField
@@ -109,7 +106,7 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
           </div>
         )}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 

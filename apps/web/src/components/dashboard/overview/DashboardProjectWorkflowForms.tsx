@@ -4,19 +4,13 @@ import {
   EditVersionDependencyForm,
   EditVersionForm,
   ProjectTeamManagementForm,
-  PublishProjectForm,
-  PublishVersionForm,
 } from '../ProjectWorkflowPanels.tsx';
 import { ProjectAnalyticsPanel } from '../ProjectInsightsPanels.tsx';
-import { ProjectMetadataForm } from '../ProjectMetadataForm.tsx';
 
 export type ProjectWorkflowFormKey =
-  | 'publish-project'
-  | 'project-metadata'
   | 'project-gallery'
   | 'project-team'
   | 'project-analytics'
-  | 'publish-version'
   | 'edit-version'
   | 'edit-version-dependencies';
 
@@ -34,12 +28,7 @@ export function DashboardProjectWorkflowForms({
   return (
     <>
       {projectWorkflowFormOrder(projectsByCapability).map((item) =>
-        projectWorkflowForm(
-          item,
-          projectsByCapability,
-          dashboard.emailVerifiedAt,
-          onUpdated,
-        ),
+        projectWorkflowForm(item, projectsByCapability, onUpdated),
       )}
     </>
   );
@@ -48,14 +37,14 @@ export function DashboardProjectWorkflowForms({
 export function projectWorkflowFormOrder(
   projectsByCapability: ProjectsByCapability,
 ): ProjectWorkflowFormKey[] {
-  const items: ProjectWorkflowFormKey[] = ['publish-project'];
+  const items: ProjectWorkflowFormKey[] = [];
 
   if (projectsByCapability.all.length === 0) {
     return items;
   }
 
   if (projectsByCapability.manageDetails.length > 0) {
-    items.push('project-metadata', 'project-gallery');
+    items.push('project-gallery');
   }
 
   if (projectsByCapability.manageMembers.length > 0) {
@@ -67,7 +56,7 @@ export function projectWorkflowFormOrder(
   }
 
   if (projectsByCapability.manageVersions.length > 0) {
-    items.push('publish-version', 'edit-version', 'edit-version-dependencies');
+    items.push('edit-version', 'edit-version-dependencies');
   }
 
   return items;
@@ -102,10 +91,10 @@ export function dashboardProjectsByCapability(
 }
 
 function projectsForWorkflowForm(
-  item: Exclude<ProjectWorkflowFormKey, 'publish-project'>,
+  item: ProjectWorkflowFormKey,
   projectsByCapability: ProjectsByCapability,
 ) {
-  if (item === 'project-metadata' || item === 'project-gallery') {
+  if (item === 'project-gallery') {
     return projectsByCapability.manageDetails;
   }
 
@@ -123,30 +112,9 @@ function projectsForWorkflowForm(
 function projectWorkflowForm(
   item: ProjectWorkflowFormKey,
   projectsByCapability: ProjectsByCapability,
-  emailVerifiedAt: string | null,
   onUpdated: () => Promise<void>,
 ) {
-  if (item === 'publish-project') {
-    return (
-      <PublishProjectForm
-        key={item}
-        emailVerifiedAt={emailVerifiedAt}
-        onCreated={onUpdated}
-      />
-    );
-  }
-
   const projects = projectsForWorkflowForm(item, projectsByCapability);
-
-  if (item === 'project-metadata') {
-    return (
-      <ProjectMetadataForm
-        key={item}
-        projects={projects}
-        onUpdated={onUpdated}
-      />
-    );
-  }
 
   if (item === 'project-gallery') {
     return (
@@ -160,17 +128,6 @@ function projectWorkflowForm(
 
   if (item === 'project-analytics') {
     return <ProjectAnalyticsPanel key={item} projects={projects} />;
-  }
-
-  if (item === 'publish-version') {
-    return (
-      <PublishVersionForm
-        key={item}
-        emailVerifiedAt={emailVerifiedAt}
-        projects={projects}
-        onCreated={onUpdated}
-      />
-    );
   }
 
   if (item === 'edit-version') {

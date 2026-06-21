@@ -5,7 +5,6 @@ import { Loader, LinkKind, type Prisma } from '@prisma/client';
 import { type UpdateProjectInput } from '../dto/update-project.input.js';
 
 export const MAX_PROJECT_CATEGORIES = 12;
-export const MAX_PROJECT_GAME_VERSIONS = 12;
 export const MAX_PROJECT_LOADERS = 8;
 export const MAX_PROJECT_LINKS = 16;
 

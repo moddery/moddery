@@ -16,6 +16,7 @@ export interface ProjectMetadataFieldsProps {
   gameVersionOptions: GameVersionTaxonomy[];
   gameVersions: string[];
   hasLocalIconFile: boolean;
+  iconFile: File | null;
   iconUrl: string;
   issuesUrl: string;
   licenseKey: string;

@@ -675,6 +675,66 @@ describe(OrganizationManagementService.name, () => {
     expect(organization.name).toBe('Updated Organization');
   });
 
+  test('deletes owned organizations', async () => {
+    const deletes: unknown[] = [];
+    const teamDeletes: unknown[] = [];
+    const service = createService({
+      $transaction: (callback: (transaction: unknown) => unknown) =>
+        callback({
+          organization: {
+            delete: (query: unknown) => {
+              deletes.push(query);
+              return Promise.resolve({});
+            },
+          },
+          team: {
+            delete: (query: unknown) => {
+              teamDeletes.push(query);
+              return Promise.resolve({});
+            },
+          },
+        }),
+      organization: {
+        findFirst: (query: { where: { id?: string; ownerId?: string } }) => {
+          if (query.where.id === 'org-a' && query.where.ownerId === 'user-a') {
+            return Promise.resolve({ id: 'org-a', teamId: 'team-a' });
+          }
+
+          return Promise.resolve(null);
+        },
+      },
+    } as unknown as PrismaService);
+
+    const result = await service.deleteOrganization('org-a', 'user-a');
+
+    expect(deletes[0]).toEqual({ where: { id: 'org-a' } });
+    expect(teamDeletes[0]).toEqual({ where: { id: 'team-a' } });
+    expect(result).toBe(true);
+  });
+
+  test('rejects deleting organizations the caller does not own', async () => {
+    const deletes: unknown[] = [];
+    const service = createService({
+      organization: {
+        findFirst: () => Promise.resolve(null),
+        delete: (query: unknown) => {
+          deletes.push(query);
+          return Promise.resolve({});
+        },
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.deleteOrganization('org-a', 'user-b');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Organization not found');
+    expect(deletes).toEqual([]);
+  });
+
   test('rejects invalid organization updates before lookups', async () => {
     const service = createService({
       organization: {

@@ -8,6 +8,7 @@ import {
   type TwoFactorSetup,
 } from '../../../lib/dashboard.ts';
 import { DashboardField } from './shared.tsx';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 
 type TwoFactorBusyAction = 'disable' | 'enable' | 'setup';
 
@@ -81,18 +82,12 @@ export function TwoFactorPanel({
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Two-factor authentication
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Require a six-digit authenticator code when signing in.
-          </p>
-        </div>
-        <ShieldCheck className="size-5 text-accent-icon" />
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Two-factor authentication"
+        description="Require a six-digit authenticator code when signing in."
+        action={<ShieldCheck className="size-5 text-accent-icon" />}
+      />
 
       <div className="mt-4 rounded-lg border border-line bg-control p-4">
         <p className="text-sm font-bold text-ink">
@@ -150,7 +145,7 @@ export function TwoFactorPanel({
       {message && (
         <p className="mt-3 text-sm font-semibold text-muted">{message}</p>
       )}
-    </section>
+    </DashboardPanel>
   );
 }
 

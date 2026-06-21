@@ -7,6 +7,7 @@ import {
   updateNotificationPreference,
   type NotificationPreference,
 } from '../../../lib/dashboard.ts';
+import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
 
 export function NotificationPreferencesPanel() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -41,18 +42,12 @@ export function NotificationPreferencesPanel() {
   }
 
   return (
-    <section className="mt-8 border-b border-line pb-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-extrabold text-ink">
-            Notification preferences
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted">
-            Choose where account, team, and moderation updates are delivered.
-          </p>
-        </div>
-        <Bell className="size-5 text-accent-icon" />
-      </div>
+    <DashboardPanel>
+      <SectionHeader
+        title="Notification preferences"
+        description="Choose where account, team, and moderation updates are delivered."
+        action={<Bell className="size-5 text-accent-icon" />}
+      />
 
       {preferencesQuery.isLoading ? (
         <p className="mt-4 text-sm font-semibold text-muted">
@@ -81,7 +76,7 @@ export function NotificationPreferencesPanel() {
           {message}
         </p>
       )}
-    </section>
+    </DashboardPanel>
   );
 }
 

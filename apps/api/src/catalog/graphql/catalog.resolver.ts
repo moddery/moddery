@@ -248,6 +248,15 @@ export class CatalogResolver {
     );
   }
 
+  @RequireCredentialScopes('write:projects')
+  @Mutation(() => Boolean)
+  deleteProject(
+    @Args('projectSlug', { type: () => String }) projectSlug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<boolean> {
+    return this.projectManagementService.deleteProject(projectSlug, user.id);
+  }
+
   @Mutation(() => ProjectSummary)
   async moderateProject(
     @Args('input') input: ModerateProjectInput,

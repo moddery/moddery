@@ -1358,6 +1358,95 @@ describe(VersionsService.name, () => {
       'Version file hash value is required',
     );
   });
+
+  test('deletes versions for project owners or version managers', async () => {
+    const deletes: unknown[] = [];
+    const lookups: unknown[] = [];
+    const searchEvents: unknown[] = [];
+    const service = createVersionsService(
+      {
+        version: {
+          delete: (query: unknown) => {
+            deletes.push(query);
+            return Promise.resolve({});
+          },
+          findFirst: (query: unknown) => {
+            lookups.push(query);
+            return Promise.resolve({
+              id: 'version-a',
+              project: {
+                id: 'project-a',
+                slug: 'cool-project',
+                team: { members: [{ userId: 'user-a' }] },
+              },
+            });
+          },
+        },
+      } as unknown as PrismaService,
+      [],
+      [],
+      searchEvents,
+    );
+
+    const result = await service.deleteVersion('version-a', 'user-a');
+
+    expect(lookups[0]).toMatchObject({
+      where: { id: 'version-a' },
+    });
+    expect(deletes[0]).toEqual({ where: { id: 'version-a' } });
+    expect(result).toBe(true);
+  });
+
+  test('rejects deleting versions without management permission', async () => {
+    const deletes: unknown[] = [];
+    const service = createVersionsService({
+      version: {
+        delete: (query: unknown) => {
+          deletes.push(query);
+          return Promise.resolve({});
+        },
+        findFirst: () =>
+          Promise.resolve({
+            id: 'version-a',
+            project: {
+              id: 'project-a',
+              slug: 'cool-project',
+              team: { members: [] },
+            },
+          }),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.deleteVersion('version-a', 'user-b');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty(
+      'message',
+      'Project version permission required',
+    );
+    expect(deletes).toEqual([]);
+  });
+
+  test('rejects deleting missing versions', async () => {
+    const service = createVersionsService({
+      version: {
+        findFirst: () => Promise.resolve(null),
+      },
+    } as unknown as PrismaService);
+
+    let caught: unknown;
+    try {
+      await service.deleteVersion('missing-version', 'user-a');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toHaveProperty('message', 'Version not found');
+  });
 });
 
 function validCreateVersionInput() {

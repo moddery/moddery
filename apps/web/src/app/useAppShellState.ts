@@ -6,6 +6,8 @@ import { type Mod, type ProjectType } from '../types.ts';
 import {
   collectionFromUrl,
   collectionFromNavigationUrl,
+  dashboardEditFromUrl,
+  dashboardEditFromNavigationUrl,
   organizationFromUrl,
   organizationFromNavigationUrl,
   profileFromUrl,
@@ -20,6 +22,7 @@ import {
   writeCollectionToUrl,
   writeCollectionsToUrl,
   writeDashboardToUrl,
+  writeDashboardEditToUrl,
   writeHomeToUrl,
   writeNotificationsToUrl,
   writeOrganizationToUrl,
@@ -31,6 +34,7 @@ import {
   writeStatusToUrl,
   writeUsersToUrl,
   type AppView,
+  type DashboardEditTarget,
   type SelectedCollection,
   type SelectedProject,
 } from './routing.ts';
@@ -47,6 +51,9 @@ export function useAppShellState() {
   );
   const [selectedCollection, setSelectedCollection] = useState(() =>
     collectionFromUrl(),
+  );
+  const [dashboardEdit, setDashboardEdit] = useState(() =>
+    dashboardEditFromUrl(),
   );
   const [appView, setAppView] = useState<AppView>(() =>
     projectFromUrl()
@@ -73,11 +80,17 @@ export function useAppShellState() {
       const nextUsername = profileFromUrl();
       const nextOrganization = organizationFromUrl();
       const nextCollection = collectionFromUrl();
+      const nextDashboardEdit = dashboardEditFromUrl();
       setSelectedProject(nextProject);
       setSelectedUsername(nextUsername);
       setSelectedOrganization(nextOrganization);
       setSelectedCollection(nextCollection);
-      setAppView(resolveView(nextProject, nextOrganization, nextUsername));
+      setDashboardEdit(nextDashboardEdit);
+      setAppView(
+        nextDashboardEdit
+          ? 'dashboard'
+          : resolveView(nextProject, nextOrganization, nextUsername),
+      );
       setProjectType(
         nextProject?.projectType ?? projectTypeFromPath() ?? 'mod',
       );
@@ -184,6 +197,19 @@ export function useAppShellState() {
     scrollToTop();
   }
 
+  function openDashboardEdit(target: DashboardEditTarget) {
+    resetSelection('dashboard');
+    setDashboardEdit(target);
+    writeDashboardEditToUrl(target);
+    scrollToTop();
+  }
+
+  function closeDashboardEdit() {
+    resetSelection('dashboard');
+    writeDashboardToUrl();
+    scrollToTop();
+  }
+
   function openNotifications() {
     resetSelection('notifications');
     writeNotificationsToUrl();
@@ -228,6 +254,15 @@ export function useAppShellState() {
 
   function navigateToUrl(url: URL): boolean {
     if (url.origin !== window.location.origin) return false;
+
+    const nextDashboardEdit = dashboardEditFromNavigationUrl(url);
+    if (nextDashboardEdit) {
+      resetSelection('dashboard');
+      setDashboardEdit(nextDashboardEdit);
+      window.history.pushState(null, '', url);
+      scrollToTop();
+      return true;
+    }
 
     const nextProject = projectFromNavigationUrl(url);
     if (nextProject) {
@@ -298,17 +333,21 @@ export function useAppShellState() {
     setSelectedUsername(null);
     setSelectedOrganization(null);
     setSelectedCollection(null);
+    setDashboardEdit(null);
     setAppView(nextView);
   }
 
   return {
     appView,
     changeProjectType,
+    closeDashboardEdit,
     closeProject,
+    dashboardEdit,
     discover,
     openCollection,
     openCollections,
     openDashboard,
+    openDashboardEdit,
     openDiscover,
     openHome,
     openNotifications,

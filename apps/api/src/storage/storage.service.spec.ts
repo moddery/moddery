@@ -383,4 +383,216 @@ describe(StorageService.name, () => {
     expect(caught).toBeInstanceOf(Error);
     expect(caught).toHaveProperty('message', 'Unsupported upload kind');
   });
+
+  test('prepares avatar uploads for the owning user', async () => {
+    const target = await ownerService().prepareOwnerUpload(
+      {
+        contentType: 'image/png',
+        fileName: 'me.png',
+        ownerId: 'user-a',
+        ownerType: 'user',
+        sizeBytes: 1024,
+        uploadKind: 'avatar',
+      },
+      'user-a',
+    );
+
+    expect(target.key).toMatch(/^users\/user-a\/avatar\/[a-f0-9-]+\.png$/);
+    expect(target.method).toBe('PUT');
+    expect(target.objectUrl).toBe(
+      `https://cdn.example.test/root/${target.key}`,
+    );
+  });
+
+  test('rejects avatar uploads for a different user', async () => {
+    let caught: unknown;
+    try {
+      await ownerService().prepareOwnerUpload(
+        {
+          contentType: 'image/png',
+          fileName: 'me.png',
+          ownerId: 'user-b',
+          ownerType: 'user',
+          sizeBytes: 1024,
+          uploadKind: 'avatar',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ForbiddenException);
+    expect(caught).toHaveProperty(
+      'message',
+      'Avatar uploads require account ownership',
+    );
+  });
+
+  test('prepares organization icon uploads for managers', async () => {
+    const queries: unknown[] = [];
+    const target = await ownerService({
+      organization: { slug: 'acme' },
+      queries,
+    }).prepareOwnerUpload(
+      {
+        contentType: 'image/png',
+        fileName: 'logo.png',
+        ownerId: 'org-a',
+        ownerType: 'organization',
+        sizeBytes: 1024,
+        uploadKind: 'organization-icon',
+      },
+      'user-a',
+    );
+
+    expect(target.key).toMatch(
+      /^organizations\/acme\/organization-icon\/[a-f0-9-]+\.png$/,
+    );
+    expect(queries[0]).toMatchObject({
+      where: {
+        id: 'org-a',
+        team: {
+          members: {
+            some: {
+              acceptedAt: { not: null },
+              OR: [
+                { isOwner: true },
+                { permissions: { has: 'MANAGE_SETTINGS' } },
+              ],
+              userId: 'user-a',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  test('rejects organization icon uploads without management permission', async () => {
+    let caught: unknown;
+    try {
+      await ownerService({ organization: null }).prepareOwnerUpload(
+        {
+          contentType: 'image/png',
+          fileName: 'logo.png',
+          ownerId: 'org-a',
+          ownerType: 'organization',
+          sizeBytes: 1024,
+          uploadKind: 'organization-icon',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ForbiddenException);
+    expect(caught).toHaveProperty(
+      'message',
+      'Organization settings permission required',
+    );
+  });
+
+  test('prepares collection icon uploads for the owner', async () => {
+    const target = await ownerService({
+      collection: { slug: 'favorites' },
+    }).prepareOwnerUpload(
+      {
+        contentType: 'image/png',
+        fileName: 'cover.png',
+        ownerId: 'collection-a',
+        ownerType: 'collection',
+        sizeBytes: 1024,
+        uploadKind: 'collection-icon',
+      },
+      'user-a',
+    );
+
+    expect(target.key).toMatch(
+      /^collections\/favorites\/collection-icon\/[a-f0-9-]+\.png$/,
+    );
+  });
+
+  test('rejects collection icon uploads for non-owners', async () => {
+    let caught: unknown;
+    try {
+      await ownerService({ collection: null }).prepareOwnerUpload(
+        {
+          contentType: 'image/png',
+          fileName: 'cover.png',
+          ownerId: 'collection-a',
+          ownerType: 'collection',
+          sizeBytes: 1024,
+          uploadKind: 'collection-icon',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ForbiddenException);
+    expect(caught).toHaveProperty('message', 'Collection ownership required');
+  });
+
+  test('rejects owner uploads when owner type mismatches the kind', async () => {
+    let caught: unknown;
+    try {
+      await ownerService().prepareOwnerUpload(
+        {
+          contentType: 'image/png',
+          fileName: 'me.png',
+          ownerId: 'user-a',
+          ownerType: 'organization',
+          sizeBytes: 1024,
+          uploadKind: 'avatar',
+        },
+        'user-a',
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(BadRequestException);
+    expect(caught).toHaveProperty(
+      'message',
+      'Owner type does not match upload kind',
+    );
+  });
 });
+
+function ownerService({
+  organization,
+  collection,
+  queries = [],
+}: {
+  organization?: unknown;
+  collection?: unknown;
+  queries?: unknown[];
+} = {}) {
+  return new StorageService(
+    {
+      getOrThrow: (key: string) => {
+        if (key === 's3.bucket') return 'project-files';
+        if (key === 's3.publicBaseUrl') return 'https://cdn.example.test/root';
+        throw new Error(`Unexpected config key ${key}`);
+      },
+    } as never,
+    {
+      collection: {
+        findFirst: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(collection ?? null);
+        },
+      },
+      organization: {
+        findFirst: (query: unknown) => {
+          queries.push(query);
+          return Promise.resolve(organization ?? null);
+        },
+      },
+    } as unknown as PrismaService,
+    s3Client('https://internal-s3.example.test'),
+    s3Client('https://s3.example.test'),
+  );
+}
