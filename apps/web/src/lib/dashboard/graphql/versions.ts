@@ -122,3 +122,12 @@ export const RECORD_FILE_SCAN_MUTATION = gql`
   }
   ${DASHBOARD_VERSION_FIELDS}
 `;
+
+export const SCAN_VERSION_FILE_MUTATION = gql`
+  mutation ScanVersionFile($fileId: String!) {
+    scanVersionFile(fileId: $fileId) {
+      ...DashboardVersionFields
+    }
+  }
+  ${DASHBOARD_VERSION_FIELDS}
+`;

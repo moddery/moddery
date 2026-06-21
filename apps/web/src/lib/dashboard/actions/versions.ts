@@ -5,6 +5,7 @@ import {
   UPDATE_VERSION_MUTATION,
   UPDATE_VERSION_DEPENDENCIES_MUTATION,
   RECORD_FILE_SCAN_MUTATION,
+  SCAN_VERSION_FILE_MUTATION,
 } from '../graphql.js';
 import {
   type CreateVersionMutationData,
@@ -16,6 +17,8 @@ import {
   type ViewerProjectVersionSearchQueryVariables,
   type RecordFileScanMutationData,
   type RecordFileScanMutationVariables,
+  type ScanVersionFileMutationData,
+  type ScanVersionFileMutationVariables,
   type UpdateVersionDependenciesMutationVariables,
 } from '../internal-types.js';
 import {
@@ -122,4 +125,22 @@ export async function recordFileScan(input: {
   }
 
   return data.recordFileScan;
+}
+
+export async function scanVersionFile(
+  fileId: string,
+): Promise<DashboardVersion> {
+  const { data } = await apolloClient.mutate<
+    ScanVersionFileMutationData,
+    ScanVersionFileMutationVariables
+  >({
+    mutation: SCAN_VERSION_FILE_MUTATION,
+    variables: { fileId },
+  });
+
+  if (!data?.scanVersionFile) {
+    throw new Error('File scan did not return a version');
+  }
+
+  return data.scanVersionFile;
 }

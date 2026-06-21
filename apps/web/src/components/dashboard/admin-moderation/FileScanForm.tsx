@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 
 import {
   recordFileScan,
+  scanVersionFile,
   type DashboardProject,
 } from '../../../lib/dashboard.ts';
 import { FileScanResultFields } from './file-scan/FileScanResultFields.tsx';
@@ -12,14 +13,15 @@ import { nullableText } from './shared.tsx';
 
 export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
   const form = useFileScanFormState(projects);
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<'manual' | 'scan' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const busy = busyAction !== null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (form.selectedFile === undefined) return;
 
-    setBusy(true);
+    setBusyAction('manual');
     setMessage(null);
     try {
       const version = await recordFileScan({
@@ -33,7 +35,23 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
     } catch (caught) {
       setMessage(caught instanceof Error ? caught.message : 'Scan failed');
     } finally {
-      setBusy(false);
+      setBusyAction(null);
+    }
+  }
+
+  async function runScanner() {
+    if (form.selectedFile === undefined) return;
+
+    setBusyAction('scan');
+    setMessage(null);
+    try {
+      const version = await scanVersionFile(form.selectedFile.id);
+      await form.versionsQuery.refetch();
+      setMessage(`ClamAV scan recorded for ${version.name}.`);
+    } catch (caught) {
+      setMessage(caught instanceof Error ? caught.message : 'Scan failed');
+    } finally {
+      setBusyAction(null);
     }
   }
 
@@ -83,7 +101,15 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
             disabled={busy || form.selectedFile === undefined}
             className="inline-flex h-9 items-center justify-center rounded-lg bg-accent px-3 text-sm font-bold text-white transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {fileScanSubmitLabel(busy)}
+            {fileScanSubmitLabel(busyAction === 'manual')}
+          </button>
+          <button
+            type="button"
+            disabled={busy || form.selectedFile === undefined}
+            onClick={() => void runScanner()}
+            className="inline-flex h-9 items-center justify-center rounded-lg border border-line px-3 text-sm font-bold text-ink transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {fileScanRunLabel(busyAction === 'scan')}
           </button>
           {message && (
             <span className="text-sm font-semibold text-muted">{message}</span>
@@ -96,4 +122,8 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
 
 export function fileScanSubmitLabel(busy: boolean) {
   return busy ? 'Recording...' : 'Record scan';
+}
+
+export function fileScanRunLabel(busy: boolean) {
+  return busy ? 'Scanning...' : 'Run ClamAV scan';
 }

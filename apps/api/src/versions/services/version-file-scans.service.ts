@@ -8,6 +8,7 @@ import { type Prisma } from '@prisma/client';
 
 import { type AuthenticatedUser } from '../../auth/services/auth-token.service.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { ClamavScannerService } from '../../scanner/clamav-scanner.service.js';
 import { type RecordFileScanInput } from '../dto/record-file-scan.input.js';
 import {
   type VersionSummaryContract,
@@ -17,7 +18,10 @@ import {
 
 @Injectable()
 export class VersionFileScansService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly scanner: ClamavScannerService,
+  ) {}
 
   async recordFileScan(
     input: RecordFileScanInput,
@@ -55,6 +59,58 @@ export class VersionFileScansService {
     });
 
     return versionRowToContract(updated);
+  }
+
+  async scanVersionFile(
+    fileId: string,
+    user: AuthenticatedUser,
+  ): Promise<VersionSummaryContract> {
+    assertCanModerate(user);
+
+    const file = await this.prisma.versionFile.findUnique({
+      select: {
+        fileName: true,
+        id: true,
+        sizeBytes: true,
+        url: true,
+        versionId: true,
+      },
+      where: { id: fileId },
+    });
+
+    if (file === null) {
+      throw new NotFoundException('File not found');
+    }
+
+    const scan = await this.scanner.scanUrl(file.url);
+    await this.prisma.fileScan.create({
+      data: {
+        details: {
+          engine: 'clamav',
+          fileName: file.fileName,
+          rawResponse: scan.rawResponse,
+          scannedAt: new Date().toISOString(),
+          signature: scan.signature,
+          sizeBytes: file.sizeBytes.toString(),
+        },
+        fileId: file.id,
+        status: scan.status,
+        verdict: scan.verdict,
+      },
+    });
+
+    const updated = await this.prisma.version.findUniqueOrThrow({
+      select: versionSelect(),
+      where: { id: file.versionId },
+    });
+
+    return versionRowToContract(updated);
+  }
+}
+
+function assertCanModerate(user: AuthenticatedUser): void {
+  if (user.role !== 'ADMIN' && user.role !== 'MODERATOR') {
+    throw new ForbiddenException('Moderator access required');
   }
 }
 

@@ -354,6 +354,14 @@ export interface RecordFileScanMutationVariables {
   };
 }
 
+export interface ScanVersionFileMutationData {
+  scanVersionFile: DashboardVersion;
+}
+
+export interface ScanVersionFileMutationVariables {
+  fileId: string;
+}
+
 export interface ModerationVersionSearchQueryData {
   moderationVersionSearch: DashboardVersionSearchResult;
 }

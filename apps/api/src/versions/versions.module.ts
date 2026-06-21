@@ -5,6 +5,7 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { RedisModule } from '../redis/redis.module.js';
 import { SearchModule } from '../search/search.module.js';
+import { ScannerModule } from '../scanner/scanner.module.js';
 import { VersionsResolver } from './graphql/versions.resolver.js';
 import { VersionDependenciesService } from './services/version-dependencies.service.js';
 import { VersionDirectoryService } from './services/version-directory.service.js';
@@ -18,6 +19,7 @@ import { VersionsService } from './services/versions.service.js';
     NotificationsModule,
     PrismaModule,
     RedisModule,
+    ScannerModule,
     SearchModule,
   ],
   providers: [

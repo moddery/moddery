@@ -119,6 +119,14 @@ export class VersionsResolver {
   }
 
   @Mutation(() => VersionSummary)
+  scanVersionFile(
+    @Args('fileId', { type: () => String }) fileId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<VersionSummary> {
+    return this.versionFileScansService.scanVersionFile(fileId, user);
+  }
+
+  @Mutation(() => VersionSummary)
   moderateVersion(
     @Args('input') input: ModerateVersionInput,
     @CurrentUser() user: AuthenticatedUser,
