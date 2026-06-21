@@ -103,6 +103,10 @@ jobs:
           SMOKE_SEED_FIXTURES: 'true'
           SMOKE_WEB_URL: http://localhost:15174
         run: bun run smoke:local
+      - name: Install browser test runtime
+        run: bun run --filter @moddery/e2e install:browsers:ci
+      - name: Browser smoke test Docker stack
+        run: bun run e2e
       - name: Dump Compose logs on failure
         if: failure()
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --no-color --tail=250

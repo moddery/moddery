@@ -7,6 +7,7 @@
     "build": "bun run typecheck",
     "e2e": "playwright test",
     "install:browsers": "playwright install chromium",
+    "install:browsers:ci": "playwright install --with-deps chromium",
     "test": "bun run typecheck",
     "typecheck": "tsc --noEmit"
   },
