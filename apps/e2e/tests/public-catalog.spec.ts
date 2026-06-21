@@ -18,7 +18,9 @@ test.describe('public catalog', () => {
     await expect(page.getByText(/\d+ results?/)).toBeVisible();
 
     await page.getByLabel(/search mods/i).fill('optimization');
+    await expect(page.getByLabel(/search mods/i)).toHaveValue('optimization');
     await expect(page.getByText(/\d+ results?/)).toBeVisible();
+    await page.getByRole('button', { name: /clear search/i }).click();
 
     const firstProject = page.getByRole('link', { name: /^Open / }).first();
     await expect(firstProject).toBeVisible();
