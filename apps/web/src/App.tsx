@@ -7,7 +7,7 @@ import { NavBar } from './components/NavBar.tsx';
 
 export function App() {
   const app = useAppShellState();
-  const [authPromptKey, setAuthPromptKey] = useState(0);
+  const [authPromptKey, setAuthPromptKey] = useState<number>();
   const homePage = isHomePage(app);
   const handleInternalNavigation = (event: MouseEvent<HTMLElement>) => {
     if (
@@ -75,7 +75,7 @@ export function App() {
 
       <AppPages
         app={app}
-        onRequestAuth={() => setAuthPromptKey((current) => current + 1)}
+        onRequestAuth={() => setAuthPromptKey((current) => (current ?? 0) + 1)}
       />
     </div>
   );
