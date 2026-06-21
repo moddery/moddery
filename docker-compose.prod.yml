@@ -71,6 +71,8 @@ services:
       OPENSEARCH_NODE: http://opensearch:9200
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
       S3_ENDPOINT: http://minio:9000
       S3_PRESIGN_ENDPOINT: ${PUBLIC_STORAGE_URL}
       S3_PUBLIC_BASE_URL: ${PUBLIC_STORAGE_URL}/${S3_BUCKET}
@@ -113,6 +115,22 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
+
+  clamav:
+    image: clamav/clamav-debian:1.4_base
+    environment:
+      CLAMAV_NO_MILTERD: 'true'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - echo PING | nc -w 5 127.0.0.1 3310 | grep PONG
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    restart: unless-stopped
+    volumes:
+      - clamav-data:/var/lib/clamav
 
   opensearch:
     image: opensearchproject/opensearch:2.11.1
@@ -190,6 +208,7 @@ services:
 volumes:
   caddy-config:
   caddy-data:
+  clamav-data:
   clickhouse-data:
   minio-data:
   opensearch-data:

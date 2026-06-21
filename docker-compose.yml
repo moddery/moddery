@@ -40,6 +40,8 @@ services:
       OPENSEARCH_NODE: http://opensearch:9200
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_DATABASE: moddery
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
       S3_ENDPOINT: http://minio:9000
       S3_PRESIGN_ENDPOINT: http://localhost:9002
       S3_PUBLIC_BASE_URL: http://localhost:9002/moddery-dev
@@ -86,6 +88,23 @@ services:
     ports:
       - '1026:1025'
       - '8026:8025'
+
+  clamav:
+    image: clamav/clamav-debian:1.4_base
+    environment:
+      CLAMAV_NO_MILTERD: 'true'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - echo PING | nc -w 5 127.0.0.1 3310 | grep PONG
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+    ports:
+      - '127.0.0.1:3310:3310'
+    volumes:
+      - clamav-data:/var/lib/clamav
 
   opensearch:
     image: opensearchproject/opensearch:2.11.1
@@ -163,6 +182,7 @@ services:
         mc anonymous set download local/moddery-dev
 
 volumes:
+  clamav-data:
   clickhouse-data:
   minio-data:
   opensearch-data:

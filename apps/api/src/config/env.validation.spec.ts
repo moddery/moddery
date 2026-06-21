@@ -12,6 +12,8 @@ describe(validateEnvironment.name, () => {
   test('parses rate limit configuration into the app config namespace', () => {
     process.env = {
       CLICKHOUSE_URL: 'http://localhost:8123',
+      CLAMAV_HOST: 'clamav',
+      CLAMAV_PORT: '3310',
       CORS_ORIGINS: 'http://localhost:5173',
       DATABASE_URL: 'postgresql://user:pass@localhost:5432/db',
       JWT_ACCESS_TOKEN_SECRET: 'x'.repeat(32),
@@ -41,6 +43,10 @@ describe(validateEnvironment.name, () => {
     expect(validateEnvironment().s3).toMatchObject({
       endpoint: 'http://internal-s3.example.test',
       presignEndpoint: 'http://public-s3.example.test',
+    });
+    expect(validateEnvironment().scanner).toEqual({
+      clamavHost: 'clamav',
+      clamavPort: 3310,
     });
   });
 });

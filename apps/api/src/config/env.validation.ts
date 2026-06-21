@@ -35,6 +35,8 @@ const envSchema = z.object({
   CLICKHOUSE_USERNAME: z.string().min(1).default('default'),
   CLICKHOUSE_PASSWORD: z.string().optional(),
   CLICKHOUSE_DATABASE: z.string().min(1).default('moddery'),
+  CLAMAV_HOST: z.string().min(1).default('localhost'),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
@@ -103,6 +105,10 @@ export function validateEnvironment(): {
     url: Environment['CLICKHOUSE_URL'];
     username: Environment['CLICKHOUSE_USERNAME'];
   };
+  scanner: {
+    clamavHost: Environment['CLAMAV_HOST'];
+    clamavPort: Environment['CLAMAV_PORT'];
+  };
   s3: {
     accessKeyId: Environment['S3_ACCESS_KEY_ID'];
     bucket: Environment['S3_BUCKET'];
@@ -150,6 +156,10 @@ export function validateEnvironment(): {
       password: env.CLICKHOUSE_PASSWORD,
       url: env.CLICKHOUSE_URL,
       username: env.CLICKHOUSE_USERNAME,
+    },
+    scanner: {
+      clamavHost: env.CLAMAV_HOST,
+      clamavPort: env.CLAMAV_PORT,
     },
     s3: {
       accessKeyId: env.S3_ACCESS_KEY_ID,
