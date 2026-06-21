@@ -302,8 +302,8 @@ export function organizationMemberRowToContract(member: OrganizationMemberRow) {
 
 export function projectRowToContract(project: OrganizationProjectRow) {
   return {
-    approvedAt: project.approvedAt,
-    archivedAt: project.archivedAt,
+    approvedAt: project.approvedAt?.toISOString() ?? null,
+    archivedAt: project.archivedAt?.toISOString() ?? null,
     body: project.description,
     categories: project.categories.map(({ category }) => category.slug),
     color: project.color,
@@ -312,7 +312,7 @@ export function projectRowToContract(project: OrganizationProjectRow) {
     followers: project.followers,
     gallery: project.gallery.map((image) => ({
       ...image,
-      createdAt: image.createdAt,
+      createdAt: image.createdAt.toISOString(),
     })),
     gameVersions: project.gameVersions.map(
       ({ gameVersion }) => gameVersion.version,
@@ -329,15 +329,15 @@ export function projectRowToContract(project: OrganizationProjectRow) {
     links: project.links,
     loaders: project.loaders.map(({ loader }) => loader),
     owner: project.team.members[0]?.user ?? null,
-    publishedAt: project.publishedAt,
-    queuedAt: project.queuedAt,
+    publishedAt: project.publishedAt?.toISOString() ?? null,
+    queuedAt: project.queuedAt?.toISOString() ?? null,
     requestedStatus: project.requestedStatus,
     slug: project.slug,
     sourceUrl: project.sourceUrl,
     status: project.status,
     summary: project.summary,
     title: project.title,
-    updatedAt: project.updatedAt,
+    updatedAt: project.updatedAt.toISOString(),
     wikiUrl: project.wikiUrl,
   };
 }

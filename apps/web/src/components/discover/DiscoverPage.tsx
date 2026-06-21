@@ -110,6 +110,7 @@ export function DiscoverPage({
           <DiscoverResults
             clearAll={clearAll}
             error={error}
+            hasActiveFilters={hasActiveFilters}
             layout={layout}
             loading={loading}
             meta={meta}

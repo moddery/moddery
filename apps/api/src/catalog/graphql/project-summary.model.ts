@@ -3,8 +3,8 @@ import { type ProjectKind, type ProjectStatus } from '@moddery/shared';
 
 @ObjectType()
 export class ProjectGalleryImage {
-  @Field(() => Date)
-  createdAt!: Date;
+  @Field(() => String)
+  createdAt!: string;
 
   @Field(() => String, { nullable: true })
   description!: string | null;
@@ -87,11 +87,11 @@ export class ProjectOrganization {
 
 @ObjectType()
 export class ProjectModerationLock {
-  @Field(() => Date)
-  createdAt!: Date;
+  @Field(() => String)
+  createdAt!: string;
 
-  @Field(() => Date)
-  expiresAt!: Date;
+  @Field(() => String)
+  expiresAt!: string;
 
   @Field(() => String)
   id!: string;
@@ -150,17 +150,17 @@ export class ProjectSummary {
   @Field(() => ProjectModerationLock, { nullable: true })
   moderationLock?: ProjectModerationLock | null;
 
-  @Field(() => Date, { nullable: true })
-  approvedAt!: Date | null;
+  @Field(() => String, { nullable: true })
+  approvedAt!: string | null;
 
-  @Field(() => Date, { nullable: true })
-  archivedAt!: Date | null;
+  @Field(() => String, { nullable: true })
+  archivedAt!: string | null;
 
-  @Field(() => Date, { nullable: true })
-  publishedAt!: Date | null;
+  @Field(() => String, { nullable: true })
+  publishedAt!: string | null;
 
-  @Field(() => Date, { nullable: true })
-  queuedAt!: Date | null;
+  @Field(() => String, { nullable: true })
+  queuedAt!: string | null;
 
   @Field(() => String, { nullable: true })
   requestedStatus!: ProjectStatus | null;
@@ -201,8 +201,8 @@ export class ProjectSummary {
   @Field(() => String)
   title!: string;
 
-  @Field(() => Date)
-  updatedAt!: Date;
+  @Field(() => String)
+  updatedAt!: string;
 
   @Field(() => ProjectViewerCapabilities, { nullable: true })
   viewerCapabilities?: ProjectViewerCapabilities | null;

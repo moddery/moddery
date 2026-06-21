@@ -9,6 +9,7 @@ type DiscoverResultsProps = Pick<
   DiscoverPageProps,
   | 'clearAll'
   | 'error'
+  | 'hasActiveFilters'
   | 'layout'
   | 'loading'
   | 'meta'
@@ -24,6 +25,7 @@ type DiscoverResultsProps = Pick<
 export function DiscoverResults({
   clearAll,
   error,
+  hasActiveFilters,
   layout,
   loading,
   meta,
@@ -46,8 +48,13 @@ export function DiscoverResults({
 
         {loading ? (
           <ResultsSkeleton layout={layout} count={5} />
-        ) : total === 0 ? (
+        ) : total === 0 && hasActiveFilters ? (
           <EmptyState onClear={clearAll} itemLabel={meta.plural} />
+        ) : total === 0 ? (
+          <EmptyState
+            title={`No ${meta.plural} have been published yet`}
+            body={`Published ${meta.plural} will appear here once creators start adding them.`}
+          />
         ) : (
           <div
             className={cn(

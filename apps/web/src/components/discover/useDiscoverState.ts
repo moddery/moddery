@@ -120,7 +120,7 @@ export function useDiscoverState({
 
   const mods = projectsQuery.data?.projects ?? [];
   const total = projectsQuery.data?.totalHits ?? 0;
-  const loading = projectsQuery.isLoading || projectsQuery.isFetching;
+  const loading = projectsQuery.isLoading;
   const error =
     projectsQuery.error instanceof Error ? projectsQuery.error.message : null;
 

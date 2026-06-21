@@ -64,7 +64,7 @@ describe(OrganizationDirectoryService.name, () => {
         id: 'user-owner',
         username: 'creator',
       },
-      publishedAt: new Date('2025-12-15T00:00:00.000Z'),
+      publishedAt: '2025-12-15T00:00:00.000Z',
       queuedAt: null,
       requestedStatus: null,
       slug: 'sodium',
@@ -72,7 +72,7 @@ describe(OrganizationDirectoryService.name, () => {
       status: 'APPROVED',
       summary: 'Fast rendering',
       title: 'Sodium',
-      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+      updatedAt: '2026-01-02T00:00:00.000Z',
       wikiUrl: null,
     });
   });

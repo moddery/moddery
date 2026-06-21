@@ -5,6 +5,8 @@ import { CheckRow } from './CheckRow.tsx';
 import { Panel } from './Panel.tsx';
 import { type FacetOption } from './types.ts';
 
+const visibleVersionLimit = 60;
+
 export function GameVersionPanel({
   options,
   selected,
@@ -17,6 +19,18 @@ export function GameVersionPanel({
   const [query, setQuery] = useState('');
   const q = query.trim();
   const filtered = q ? options.filter((o) => o.value.includes(q)) : options;
+  const visibleOptions = q
+    ? filtered
+    : filtered
+        .filter((option) => selected.has(option.value))
+        .concat(
+          filtered
+            .filter((option) => !selected.has(option.value))
+            .slice(0, visibleVersionLimit),
+        );
+  const hiddenCount = filtered.length - visibleOptions.length;
+
+  if (options.length === 0) return null;
 
   return (
     <Panel title="Game version">
@@ -34,7 +48,7 @@ export function GameVersionPanel({
       </div>
 
       <div className="scrollbar-none max-h-72 overflow-y-auto">
-        {filtered.map((o) => (
+        {visibleOptions.map((o) => (
           <CheckRow
             key={o.value}
             checked={selected.has(o.value)}
@@ -44,6 +58,12 @@ export function GameVersionPanel({
         ))}
         {filtered.length === 0 && (
           <p className="px-2 py-3 text-xs text-faint">No versions found.</p>
+        )}
+        {hiddenCount > 0 && (
+          <p className="px-2 py-3 text-xs font-medium text-faint">
+            {hiddenCount.toLocaleString('en-US')} more versions hidden. Search
+            to narrow.
+          </p>
         )}
       </div>
     </Panel>
