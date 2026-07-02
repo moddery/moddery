@@ -4,19 +4,17 @@ import { ClientSecretNotice } from './developer-applications/ClientSecretNotice.
 import { DeveloperApplicationForm } from './developer-applications/DeveloperApplicationForm.tsx';
 import { DeveloperApplicationList } from './developer-applications/DeveloperApplicationList.tsx';
 import { useDeveloperApplicationsState } from './developer-applications/useDeveloperApplicationsState.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 
 export function DeveloperApplicationsPanel() {
   const state = useDeveloperApplicationsState();
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Developer applications"
-        description="Register applications that need user-authorized API access."
-        action={<AppWindow className="size-5 text-accent-icon" />}
-      />
-
+    <CollapsiblePanel
+      title="Developer applications"
+      description="Register applications that need user-authorized API access."
+      action={<AppWindow className="size-5 text-accent-icon" />}
+    >
       <DeveloperApplicationForm state={state} />
       <ClientSecretNotice clientSecret={state.clientSecret} />
       <DeveloperApplicationList
@@ -29,6 +27,6 @@ export function DeveloperApplicationsPanel() {
         setPage={state.setPage}
         totalHits={state.totalHits}
       />
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }

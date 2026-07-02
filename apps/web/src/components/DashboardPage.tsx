@@ -79,12 +79,17 @@ export function DashboardPage({
 
   if (editTarget) {
     return (
-      <DashboardEditPage
+      <DashboardModalProvider
         dashboard={dashboard}
-        target={editTarget}
-        onClose={onCloseEdit ?? onHome}
         onUpdated={refreshDashboard}
-      />
+      >
+        <DashboardEditPage
+          dashboard={dashboard}
+          target={editTarget}
+          onClose={onCloseEdit ?? onHome}
+          onUpdated={refreshDashboard}
+        />
+      </DashboardModalProvider>
     );
   }
 

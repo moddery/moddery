@@ -6,15 +6,17 @@ import {
   updateVersion,
   type DashboardData,
 } from '../../../lib/dashboard.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { EditVersionFields } from './edit-version/EditVersionFields.tsx';
 import { EditVersionSelectors } from './edit-version/EditVersionSelectors.tsx';
 import { assertUpdateVersionInput } from './edit-version/update-version-input.ts';
 import { useEditVersionFormState } from './edit-version/useEditVersionFormState.ts';
 
 export function EditVersionForm({
+  defaultOpen = false,
   projects,
 }: {
+  defaultOpen?: boolean;
   projects: DashboardData['projects'];
 }) {
   const form = useEditVersionFormState(projects);
@@ -61,12 +63,11 @@ export function EditVersionForm({
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Edit a version"
-        description="Update release metadata, changelog, loaders, and game versions."
-      />
-
+    <CollapsiblePanel
+      defaultOpen={defaultOpen}
+      title="Edit a version"
+      description="Update release metadata, changelog, loaders, and game versions."
+    >
       <form
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
@@ -118,7 +119,7 @@ export function EditVersionForm({
           </button>
         </div>
       </form>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

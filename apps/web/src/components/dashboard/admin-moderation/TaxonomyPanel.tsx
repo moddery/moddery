@@ -1,6 +1,6 @@
 import { FolderKanban } from 'lucide-react';
 
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { TaxonomyCategoryForm } from './taxonomy/TaxonomyCategoryForm.tsx';
 import { TaxonomyGameVersionForm } from './taxonomy/TaxonomyGameVersionForm.tsx';
 import { TaxonomyLicenseForm } from './taxonomy/TaxonomyLicenseForm.tsx';
@@ -10,12 +10,11 @@ export function TaxonomyPanel() {
   const state = useTaxonomyPanelState();
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Taxonomy"
-        description="Manage category and game version rows used by discovery."
-        action={<FolderKanban className="size-5 text-accent-icon" />}
-      />
+    <CollapsiblePanel
+      title="Taxonomy"
+      description="Manage category and game version rows used by discovery."
+      action={<FolderKanban className="size-5 text-accent-icon" />}
+    >
       {state.message && (
         <p className="mt-3 text-sm font-semibold text-muted">{state.message}</p>
       )}
@@ -59,6 +58,6 @@ export function TaxonomyPanel() {
           onSubmit={(event) => void state.submitLicense(event)}
         />
       </div>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }

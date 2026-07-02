@@ -5,11 +5,7 @@ import {
   linkedAccountAddedLabel,
   linkedAccountProviderLabel,
 } from './linked-accounts/linked-account-labels.ts';
-import {
-  DashboardPanel,
-  PanelEmptyState,
-  SectionHeader,
-} from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel, PanelEmptyState } from '../../ui/dashboard/index.ts';
 
 export function LinkedAccountsPanel({
   accounts,
@@ -17,13 +13,11 @@ export function LinkedAccountsPanel({
   accounts: DashboardAuthAccount[];
 }) {
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Linked accounts"
-        description="External sign-in providers connected to this account."
-        action={<KeyRound className="size-5 text-accent-icon" />}
-      />
-
+    <CollapsiblePanel
+      title="Linked accounts"
+      description="External sign-in providers connected to this account."
+      action={<KeyRound className="size-5 text-accent-icon" />}
+    >
       {accounts.length === 0 ? (
         <PanelEmptyState title="No linked providers." />
       ) : (
@@ -43,6 +37,6 @@ export function LinkedAccountsPanel({
           ))}
         </div>
       )}
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }

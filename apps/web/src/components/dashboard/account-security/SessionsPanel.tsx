@@ -9,7 +9,7 @@ import {
   revokeSession,
 } from '../../../lib/dashboard.ts';
 import { SessionList } from './sessions/SessionList.tsx';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 
 const pageSize = 20;
 
@@ -53,12 +53,11 @@ export function SessionsPanel() {
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Sessions"
-        description="Revoke browser sessions that should no longer have access."
-        action={<ShieldCheck className="size-5 text-accent-icon" />}
-      />
+    <CollapsiblePanel
+      title="Sessions"
+      description="Revoke browser sessions that should no longer have access."
+      action={<ShieldCheck className="size-5 text-accent-icon" />}
+    >
       {message && (
         <p className="mt-3 text-sm font-semibold text-muted">{message}</p>
       )}
@@ -81,7 +80,7 @@ export function SessionsPanel() {
         totalHits={totalHits}
         totalPages={totalPages}
       />
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

@@ -7,7 +7,7 @@ import {
   updateNotificationPreference,
   type NotificationPreference,
 } from '../../../lib/dashboard.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 
 export function NotificationPreferencesPanel() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -42,13 +42,11 @@ export function NotificationPreferencesPanel() {
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Notification preferences"
-        description="Choose where account, team, and moderation updates are delivered."
-        action={<Bell className="size-5 text-accent-icon" />}
-      />
-
+    <CollapsiblePanel
+      title="Notification preferences"
+      description="Choose where account, team, and moderation updates are delivered."
+      action={<Bell className="size-5 text-accent-icon" />}
+    >
       {preferencesQuery.isLoading ? (
         <p className="mt-4 text-sm font-semibold text-muted">
           Loading preferences...
@@ -76,7 +74,7 @@ export function NotificationPreferencesPanel() {
           {message}
         </p>
       )}
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

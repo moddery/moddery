@@ -38,40 +38,37 @@ export function DashboardSummarySections({
 
       <section className="rounded-xl border border-line bg-surface p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-          <div>
-            <h2 className="font-display text-xl font-extrabold text-ink">
-              What needs attention
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              A compact view of creator work that is not fully public yet.
-            </p>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            What needs attention
+          </h2>
+        </div>
+        {pendingProjects.length === 0 && draftProjects.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">
+            Nothing is waiting on you right now.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {pendingProjects.length > 0 && (
+              <AttentionCard
+                count={pendingProjects.length}
+                label="Projects in review"
+              />
+            )}
+            {draftProjects.length > 0 && (
+              <AttentionCard
+                count={draftProjects.length}
+                label="Draft projects"
+              />
+            )}
           </div>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <AttentionCard
-            count={pendingProjects.length}
-            label="Projects in review"
-            empty="No projects waiting on moderation."
-          />
-          <AttentionCard
-            count={draftProjects.length}
-            label="Draft projects"
-            empty="No draft projects."
-          />
-        </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-line pb-3">
-          <div>
-            <h2 className="font-display text-xl font-extrabold text-ink">
-              Recent projects
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              Open Projects for full management, releases, members, and
-              metadata.
-            </p>
-          </div>
+          <h2 className="font-display text-xl font-extrabold text-ink">
+            Recent projects
+          </h2>
         </div>
         {recentProjects.length === 0 ? (
           <p className="py-8 text-sm text-muted">
@@ -124,26 +121,13 @@ function OverviewMetric({
   );
 }
 
-function AttentionCard({
-  count,
-  empty,
-  label,
-}: {
-  count: number;
-  empty: string;
-  label: string;
-}) {
+function AttentionCard({ count, label }: { count: number; label: string }) {
   return (
-    <div className="rounded-lg border border-line bg-surface-2 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-extrabold text-ink">{label}</p>
-        <span className="rounded-md bg-control px-2 py-1 text-xs font-bold text-muted tabular-nums">
-          {count.toLocaleString('en-US')}
-        </span>
-      </div>
-      <p className="mt-2 text-sm text-muted">
-        {count === 0 ? empty : 'Open Projects to continue work.'}
-      </p>
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 p-3">
+      <p className="text-sm font-extrabold text-ink">{label}</p>
+      <span className="rounded-md bg-control px-2 py-1 text-xs font-bold text-muted tabular-nums">
+        {count.toLocaleString('en-US')}
+      </span>
     </div>
   );
 }

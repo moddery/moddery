@@ -9,7 +9,7 @@ import {
   markDirectThreadRead,
 } from '../../../lib/dashboard/actions/account.ts';
 import { type DirectThread } from '../../../lib/dashboard/types.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { DirectMessageComposer } from './direct-messages/DirectMessageComposer.tsx';
 import { DirectThreadList } from './direct-messages/DirectThreadList.tsx';
 
@@ -96,21 +96,20 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
 
   return (
     <div id="dashboard-messages" className="scroll-mt-32">
-      <DashboardPanel>
-        <SectionHeader
-          title="Messages"
-          description={
-            threadsQuery.data
-              ? `${totalHits.toLocaleString('en-US')} direct threads`
-              : 'Send direct messages to other users.'
-          }
-          action={
-            status ? (
-              <span className="text-sm font-semibold text-muted">{status}</span>
-            ) : undefined
-          }
-        />
-
+      <CollapsiblePanel
+        title="Messages"
+        description="Send direct messages to other users."
+        hint={
+          threadsQuery.data
+            ? `${totalHits.toLocaleString('en-US')} direct threads`
+            : undefined
+        }
+        action={
+          status ? (
+            <span className="text-sm font-semibold text-muted">{status}</span>
+          ) : undefined
+        }
+      >
         <DirectMessageComposer
           body={body}
           submitting={composerSubmitting}
@@ -138,7 +137,7 @@ export function DirectMessagesPanel({ viewerId }: { viewerId: string }) {
           onRead={(threadId) => void markThreadRead(threadId)}
           onReply={(threadId) => void replyToThread(threadId)}
         />
-      </DashboardPanel>
+      </CollapsiblePanel>
     </div>
   );
 }
