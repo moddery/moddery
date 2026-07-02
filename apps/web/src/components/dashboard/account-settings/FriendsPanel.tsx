@@ -1,4 +1,4 @@
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { AddFriendForm } from './friends-panel/AddFriendForm.tsx';
 import { FriendGroup, FriendList } from './friends-panel/FriendLists.tsx';
 import {
@@ -16,19 +16,17 @@ export function FriendsPanel() {
   const requests = friends.requestsResult?.friendships ?? [];
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Friends"
-        description="Manage friend requests and accepted friends."
-        action={
-          friends.message ? (
-            <span className="text-sm font-semibold text-muted">
-              {friends.message}
-            </span>
-          ) : undefined
-        }
-      />
-
+    <CollapsiblePanel
+      title="Friends"
+      description="Manage friend requests and accepted friends."
+      action={
+        friends.message ? (
+          <span className="text-sm font-semibold text-muted">
+            {friends.message}
+          </span>
+        ) : undefined
+      }
+    >
       <AddFriendForm
         busyUsername={friends.busyUsername}
         onRequestFriend={friends.requestFriend}
@@ -83,6 +81,6 @@ export function FriendsPanel() {
           />
         </FriendGroup>
       </div>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }

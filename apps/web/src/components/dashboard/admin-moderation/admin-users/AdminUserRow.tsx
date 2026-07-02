@@ -60,29 +60,28 @@ export function AdminUserRow({
         </span>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <AccountBadge tone={user.status === 'ACTIVE' ? 'strong' : 'muted'}>
+        <AccountBadge tone={statusBadgeTone(user.status)}>
           {user.status.toLowerCase()}
         </AccountBadge>
-        <AccountBadge tone={user.role === 'ADMIN' ? 'strong' : 'muted'}>
+        <AccountBadge tone={user.role === 'ADMIN' ? 'accent' : 'muted'}>
           {user.role.toLowerCase()}
         </AccountBadge>
-        <AccountBadge tone={user.emailVerifiedAt ? 'strong' : 'muted'}>
-          {user.emailVerifiedAt
-            ? `email verified ${timeAgo(user.emailVerifiedAt)}`
-            : 'email unverified'}
+        <AccountBadge tone={user.emailVerifiedAt ? 'muted' : 'warning'}>
+          {user.emailVerifiedAt ? 'email verified' : 'email unverified'}
         </AccountBadge>
-        <AccountBadge tone={user.twoFactorEnabled ? 'strong' : 'muted'}>
+        <AccountBadge>
           2FA {user.twoFactorEnabled ? 'enabled' : 'disabled'}
         </AccountBadge>
-        <AccountBadge tone={user.newsletterOptIn ? 'strong' : 'muted'}>
-          newsletter {user.newsletterOptIn ? 'on' : 'off'}
-        </AccountBadge>
-        <AccountBadge>
-          {user.projectCount.toLocaleString('en-US')} projects
-        </AccountBadge>
-        <AccountBadge>
-          {user.collectionCount.toLocaleString('en-US')} collections
-        </AccountBadge>
+        {user.projectCount > 0 && (
+          <AccountBadge>
+            {user.projectCount.toLocaleString('en-US')} projects
+          </AccountBadge>
+        )}
+        {user.collectionCount > 0 && (
+          <AccountBadge>
+            {user.collectionCount.toLocaleString('en-US')} collections
+          </AccountBadge>
+        )}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {ACCOUNT_ROLES.map((role) => (
@@ -118,20 +117,31 @@ export function adminUserHref(user: Pick<AdminUserAccount, 'username'>) {
   return userPath(user.username);
 }
 
+export function statusBadgeTone(status: string): AccountBadgeTone {
+  if (status === 'SUSPENDED') return 'warning';
+  if (status === 'DELETED') return 'danger';
+  return 'muted';
+}
+
+type AccountBadgeTone = 'muted' | 'accent' | 'warning' | 'danger';
+
+const BADGE_TONE_CLASSES: Record<AccountBadgeTone, string> = {
+  accent: 'bg-accent-soft text-accent',
+  danger: 'bg-danger/10 text-danger',
+  muted: 'bg-surface-2 text-muted',
+  warning: 'bg-warning/10 text-warning',
+};
+
 function AccountBadge({
   children,
   tone = 'muted',
 }: {
   children: ReactNode;
-  tone?: 'muted' | 'strong';
+  tone?: AccountBadgeTone;
 }) {
   return (
     <span
-      className={
-        tone === 'strong'
-          ? 'rounded-md bg-accent-soft px-2 py-1 text-xs font-bold text-accent'
-          : 'rounded-md bg-surface-2 px-2 py-1 text-xs font-bold text-muted'
-      }
+      className={`rounded-md px-2 py-1 text-xs font-bold ${BADGE_TONE_CLASSES[tone]}`}
     >
       {children}
     </span>

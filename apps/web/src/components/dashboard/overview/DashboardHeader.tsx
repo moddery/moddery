@@ -1,14 +1,11 @@
-import { Building2, FolderKanban, Heart, ShieldCheck } from 'lucide-react';
-import { type ReactNode } from 'react';
+import { ShieldCheck } from 'lucide-react';
 
 import { userPath } from '../../../app/routing.ts';
 import { type DashboardData } from '../../../lib/dashboard.ts';
 import { useDashboardModal } from '../modals/DashboardModalProvider.tsx';
-import { dashboardHeaderStats } from './dashboard-header-stats.ts';
 
 export function DashboardHeader({ dashboard }: { dashboard: DashboardData }) {
   const displayName = dashboard.displayName ?? dashboard.username;
-  const stats = dashboardHeaderStats(dashboard);
   const { openModal } = useDashboardModal();
 
   return (
@@ -54,46 +51,6 @@ export function DashboardHeader({ dashboard }: { dashboard: DashboardData }) {
           )}
         </div>
       </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <DashboardStat
-          icon={<FolderKanban className="size-4" />}
-          label="Projects"
-          value={stats.projects}
-        />
-        <DashboardStat
-          icon={<Building2 className="size-4" />}
-          label="Organizations"
-          value={stats.organizations}
-        />
-        <DashboardStat
-          icon={<Heart className="size-4" />}
-          label="Following"
-          value={stats.following}
-        />
-      </div>
     </header>
-  );
-}
-
-function DashboardStat({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-3">
-      <div className="flex items-center gap-2 text-muted">
-        {icon}
-        <span className="text-xs font-bold uppercase">{label}</span>
-      </div>
-      <div className="mt-1 text-lg font-extrabold text-ink tabular-nums">
-        {value.toLocaleString('en-US')}
-      </div>
-    </div>
   );
 }

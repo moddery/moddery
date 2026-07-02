@@ -1,4 +1,4 @@
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Upload } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 import { type DashboardEditTarget } from '../../../app/routing.ts';
@@ -14,9 +14,24 @@ import {
   PanelEmptyState,
   SectionHeader,
 } from '../../ui/dashboard/index.ts';
+import { CollectionManagement } from '../ContentManagementPanels.tsx';
 import { EditCollectionForm } from '../content-management/EditCollectionForm.tsx';
 import { EditOrganizationForm } from '../content-management/EditOrganizationForm.tsx';
+import { OrganizationProjectForms } from '../content-management/OrganizationProjectForms.tsx';
+import { OrganizationTeamManagementForm } from '../content-management/OrganizationTeamManagementForm.tsx';
+import { useDashboardModal } from '../modals/DashboardModalProvider.tsx';
+import { ProjectAnalyticsPanel } from '../ProjectInsightsPanels.tsx';
 import { ProjectMetadataForm } from '../ProjectMetadataForm.tsx';
+import {
+  AddGalleryImageForm,
+  EditVersionDependencyForm,
+  EditVersionForm,
+  ProjectTeamManagementForm,
+} from '../ProjectWorkflowPanels.tsx';
+import { workflowProjectHref } from '../project-workflow/version-route-links.ts';
+import { DashboardEditTabs } from './DashboardEditTabs.tsx';
+
+type DashboardProject = DashboardData['projects'][number];
 
 export function DashboardEditPage({
   dashboard,
@@ -51,6 +66,7 @@ export function DashboardEditPage({
         </DashboardPanel>
       ) : (
         <EditTargetEditor
+          key={`${target.entity}:${target.id}`}
           dashboard={dashboard}
           onClose={onClose}
           onUpdated={onUpdated}
@@ -70,9 +86,12 @@ function EditTargetEditor({
   dashboard: DashboardData;
   onClose: () => void;
   onUpdated: () => Promise<void>;
-  resolved: ResolvedTargetWithEditor;
+  resolved: ResolvedEditTarget;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [activeTabId, setActiveTabId] = useState(resolved.tabs[0]?.id ?? '');
+  const activeTab =
+    resolved.tabs.find((tab) => tab.id === activeTabId) ?? resolved.tabs[0];
 
   async function handleDelete() {
     if (resolved.delete === null) return;
@@ -85,7 +104,6 @@ function EditTargetEditor({
     <div className="space-y-5">
       <SectionHeader
         title={resolved.title}
-        description={resolved.description}
         action={
           <div className="flex gap-2">
             {resolved.viewHref && (
@@ -110,7 +128,13 @@ function EditTargetEditor({
         }
       />
 
-      {resolved.renderEditor(dashboard, onUpdated)}
+      <DashboardEditTabs
+        tabs={resolved.tabs}
+        activeId={activeTab?.id ?? ''}
+        onSelect={setActiveTabId}
+      />
+
+      {activeTab?.render(dashboard, onUpdated)}
 
       {resolved.delete && (
         <ConfirmDeleteDialog
@@ -126,15 +150,40 @@ function EditTargetEditor({
   );
 }
 
-interface ResolvedTargetWithEditor {
-  delete: (() => Promise<boolean>) | null;
-  description: string;
-  entity: DashboardEditTarget['entity'];
-  name: string;
-  renderEditor: (
+function ProjectVersionsTab({ project }: { project: DashboardProject }) {
+  const { openModal } = useDashboardModal();
+
+  return (
+    <div className="space-y-5">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => openModal('version')}
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors hover:bg-accent-strong"
+        >
+          <Upload className="size-4" />
+          Upload version
+        </button>
+      </div>
+      <EditVersionForm defaultOpen projects={[project]} />
+      <EditVersionDependencyForm projects={[project]} />
+    </div>
+  );
+}
+
+interface EditTab {
+  id: string;
+  label: string;
+  render: (
     dashboard: DashboardData,
     onUpdated: () => Promise<void>,
   ) => ReactNode;
+}
+
+interface ResolvedEditTarget {
+  delete: (() => Promise<boolean>) | null;
+  name: string;
+  tabs: EditTab[];
   title: string;
   viewHref: string | null;
 }
@@ -142,23 +191,61 @@ interface ResolvedTargetWithEditor {
 function resolveEditTarget(
   dashboard: DashboardData,
   target: DashboardEditTarget,
-): ResolvedTargetWithEditor | null {
+): ResolvedEditTarget | null {
   if (target.entity === 'organizations') {
     const organization = dashboard.organizations.find(
       (item) => item.id === target.id,
     );
     if (!organization) return null;
+
+    const tabs: EditTab[] = [
+      {
+        id: 'details',
+        label: 'Details',
+        render: (data, onUpdated) => (
+          <EditOrganizationForm
+            organizations={[organization]}
+            onUpdated={onUpdated}
+          />
+        ),
+      },
+      {
+        id: 'members',
+        label: 'Members',
+        render: (data, onUpdated) => (
+          <OrganizationTeamManagementForm
+            defaultOpen
+            organizations={[organization]}
+            onChanged={onUpdated}
+          />
+        ),
+      },
+    ];
+
+    if (dashboard.projects.length > 0) {
+      tabs.push({
+        id: 'projects',
+        label: 'Projects',
+        render: (data, onUpdated) => (
+          <DashboardPanel>
+            <SectionHeader
+              title="Organization projects"
+              description="Move managed projects in or out of this organization."
+            />
+            <OrganizationProjectForms
+              organizations={[organization]}
+              projects={data.projects}
+              onChanged={onUpdated}
+            />
+          </DashboardPanel>
+        ),
+      });
+    }
+
     return {
       delete: () => deleteOrganization(organization.id),
-      description: 'Update organization details, icon, and color.',
-      entity: 'organizations',
       name: organization.name,
-      renderEditor: (data, onUpdated) => (
-        <EditOrganizationForm
-          organizations={[organization]}
-          onUpdated={onUpdated}
-        />
-      ),
+      tabs,
       title: organization.name,
       viewHref: `/organizations/${encodeURIComponent(organization.slug)}`,
     };
@@ -169,14 +256,45 @@ function resolveEditTarget(
       (item) => item.id === target.id,
     );
     if (!collection) return null;
+
+    const tabs: EditTab[] = [
+      {
+        id: 'details',
+        label: 'Details',
+        render: (data, onUpdated) => (
+          <EditCollectionForm
+            collections={[collection]}
+            onUpdated={onUpdated}
+          />
+        ),
+      },
+    ];
+
+    if (dashboard.projects.length > 0) {
+      tabs.push({
+        id: 'projects',
+        label: 'Projects',
+        render: (data, onUpdated) => (
+          <DashboardPanel>
+            <SectionHeader
+              title="Collection projects"
+              description="Add managed projects to this collection and set their order."
+            />
+            <CollectionManagement
+              collections={[collection]}
+              ownerUsername={data.username}
+              projects={data.projects}
+              onChanged={onUpdated}
+            />
+          </DashboardPanel>
+        ),
+      });
+    }
+
     return {
       delete: () => deleteCollection(collection.id),
-      description: 'Update collection details, visibility, and icon.',
-      entity: 'collections',
       name: collection.name,
-      renderEditor: (data, onUpdated) => (
-        <EditCollectionForm collections={[collection]} onUpdated={onUpdated} />
-      ),
+      tabs,
       title: collection.name,
       viewHref: `/collections/${encodeURIComponent(
         dashboard.username,
@@ -187,16 +305,71 @@ function resolveEditTarget(
   if (target.entity === 'projects') {
     const project = dashboard.projects.find((item) => item.slug === target.id);
     if (!project) return null;
+
+    const capabilities = project.viewerCapabilities;
+    const tabs: EditTab[] = [];
+
+    if (capabilities?.manageDetails === true) {
+      tabs.push({
+        id: 'details',
+        label: 'Details',
+        render: (data, onUpdated) => (
+          <ProjectMetadataForm projects={[project]} onUpdated={onUpdated} />
+        ),
+      });
+    }
+
+    if (capabilities?.manageVersions === true) {
+      tabs.push({
+        id: 'versions',
+        label: 'Versions',
+        render: () => <ProjectVersionsTab project={project} />,
+      });
+    }
+
+    if (capabilities?.manageDetails === true) {
+      tabs.push({
+        id: 'gallery',
+        label: 'Gallery',
+        render: (data, onUpdated) => (
+          <AddGalleryImageForm
+            defaultOpen
+            projects={[project]}
+            onAdded={onUpdated}
+          />
+        ),
+      });
+    }
+
+    if (capabilities?.manageMembers === true) {
+      tabs.push({
+        id: 'team',
+        label: 'Team',
+        render: () => (
+          <ProjectTeamManagementForm defaultOpen projects={[project]} />
+        ),
+      });
+    }
+
+    if (capabilities?.viewAnalytics === true) {
+      tabs.push({
+        id: 'analytics',
+        label: 'Analytics',
+        render: () => <ProjectAnalyticsPanel projects={[project]} />,
+      });
+    }
+
+    if (tabs.length === 0) return null;
+
     return {
-      delete: () => deleteProject(project.slug),
-      description: 'Update project copy, icon, links, and discovery tags.',
-      entity: 'projects',
+      delete:
+        capabilities?.manageDetails === true
+          ? () => deleteProject(project.slug)
+          : null,
       name: project.title,
-      renderEditor: (data, onUpdated) => (
-        <ProjectMetadataForm projects={[project]} onUpdated={onUpdated} />
-      ),
+      tabs,
       title: project.title,
-      viewHref: null,
+      viewHref: workflowProjectHref(project),
     };
   }
 

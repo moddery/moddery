@@ -1,9 +1,5 @@
 import { Pagination } from '../../Pagination.tsx';
-import {
-  DashboardPanel,
-  PanelEmptyState,
-  SectionHeader,
-} from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel, PanelEmptyState } from '../../ui/dashboard/index.ts';
 import { TeamInvitationRow } from './team-invitations/TeamInvitationRow.tsx';
 import { useTeamInvitationsPanelState } from './team-invitations/useTeamInvitationsPanelState.ts';
 
@@ -12,19 +8,17 @@ export function TeamInvitationsPanel() {
 
   return (
     <div id="dashboard-team-invitations" className="scroll-mt-32">
-      <DashboardPanel>
-        <SectionHeader
-          title="Team invitations"
-          description="Review project and organization team invitations."
-          action={
-            state.message ? (
-              <span className="text-sm font-semibold text-muted">
-                {state.message}
-              </span>
-            ) : undefined
-          }
-        />
-
+      <CollapsiblePanel
+        title="Team invitations"
+        description="Review project and organization team invitations."
+        action={
+          state.message ? (
+            <span className="text-sm font-semibold text-muted">
+              {state.message}
+            </span>
+          ) : undefined
+        }
+      >
         <div className="mt-4 grid gap-3">
           {state.invitationsQuery.isLoading ? (
             <p className="text-sm text-muted">Loading invitations...</p>
@@ -66,7 +60,7 @@ export function TeamInvitationsPanel() {
             </>
           )}
         </div>
-      </DashboardPanel>
+      </CollapsiblePanel>
     </div>
   );
 }

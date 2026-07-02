@@ -6,7 +6,7 @@ import {
   type HealthCheckResult,
   type ReadinessResult,
 } from '../../../lib/health.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { ReportActionButton } from './shared.tsx';
 
 export function InfrastructureStatusPanel() {
@@ -18,23 +18,21 @@ export function InfrastructureStatusPanel() {
   const readiness = readinessQuery.data;
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Infrastructure"
-        description="Runtime status for core services."
-        action={
-          <div className="flex items-center gap-3">
-            <Activity className="size-5 text-accent-icon" />
-            <ReportActionButton
-              disabled={readinessQuery.isFetching}
-              onClick={() => void readinessQuery.refetch()}
-            >
-              Refresh
-            </ReportActionButton>
-          </div>
-        }
-      />
-
+    <CollapsiblePanel
+      title="Infrastructure"
+      description="Runtime status for core services."
+      action={
+        <div className="flex items-center gap-3">
+          <Activity className="size-5 text-accent-icon" />
+          <ReportActionButton
+            disabled={readinessQuery.isFetching}
+            onClick={() => void readinessQuery.refetch()}
+          >
+            Refresh
+          </ReportActionButton>
+        </div>
+      }
+    >
       {readinessQuery.isLoading ? (
         <p className="mt-4 text-sm font-semibold text-muted">
           Loading service status...
@@ -52,7 +50,7 @@ export function InfrastructureStatusPanel() {
       ) : (
         <InfrastructureStatusGrid readiness={readiness} />
       )}
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 
