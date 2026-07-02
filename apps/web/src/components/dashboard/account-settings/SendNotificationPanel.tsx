@@ -2,11 +2,7 @@ import { Bell } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 
 import { sendNotification } from '../../../lib/dashboard.ts';
-import {
-  DashboardPanel,
-  FieldGroup,
-  SectionHeader,
-} from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel, FieldGroup } from '../../ui/dashboard/index.ts';
 import { DashboardField, nullableText } from './shared.tsx';
 
 export function SendNotificationPanel() {
@@ -44,12 +40,11 @@ export function SendNotificationPanel() {
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Send notification"
-        description="Queue a user notification and delivery records."
-        action={<Bell className="size-5 text-accent-icon" />}
-      />
+    <CollapsiblePanel
+      title="Send notification"
+      description="Queue a user notification and delivery records."
+      action={<Bell className="size-5 text-accent-icon" />}
+    >
       <form
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
@@ -101,6 +96,6 @@ export function SendNotificationPanel() {
           )}
         </div>
       </form>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }

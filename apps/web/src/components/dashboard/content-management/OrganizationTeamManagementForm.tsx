@@ -1,13 +1,15 @@
 import { type DashboardOrganization } from '../../../lib/dashboard.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { OrganizationTeamFields } from './organization-team/OrganizationTeamFields.tsx';
 import { OrganizationTeamMembersList } from './organization-team/OrganizationTeamMembersList.tsx';
 import { useOrganizationTeamManagementState } from './organization-team/useOrganizationTeamManagementState.ts';
 
 export function OrganizationTeamManagementForm({
+  defaultOpen = false,
   onChanged,
   organizations,
 }: {
+  defaultOpen?: boolean;
   onChanged: () => Promise<void>;
   organizations: DashboardOrganization[];
 }) {
@@ -33,12 +35,11 @@ export function OrganizationTeamManagementForm({
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Manage organization team"
-        description="Invite an existing user to an organization team or remove a non-owner member."
-      />
-
+    <CollapsiblePanel
+      defaultOpen={defaultOpen}
+      title="Manage organization team"
+      description="Invite an existing user to an organization team or remove a non-owner member."
+    >
       <form
         onSubmit={(event) => void addMember(event)}
         className="mt-4 grid gap-3"
@@ -82,7 +83,7 @@ export function OrganizationTeamManagementForm({
           </button>
         </div>
       </form>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

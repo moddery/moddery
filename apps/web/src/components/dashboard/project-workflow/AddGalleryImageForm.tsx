@@ -5,7 +5,7 @@ import {
   type DashboardProject,
   uploadProjectFile,
 } from '../../../lib/dashboard.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { GalleryImageFields } from './gallery-image/GalleryImageFields.tsx';
 import {
   GalleryImageManager,
@@ -15,9 +15,11 @@ import { GalleryPreview } from './gallery-image/GalleryPreview.tsx';
 import { nullableText } from './shared.tsx';
 
 export function AddGalleryImageForm({
+  defaultOpen = false,
   onAdded,
   projects,
 }: {
+  defaultOpen?: boolean;
   onAdded: () => Promise<void>;
   projects: DashboardProject[];
 }) {
@@ -91,12 +93,11 @@ export function AddGalleryImageForm({
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Add gallery image"
-        description="Add screenshots or preview media to a managed project."
-      />
-
+    <CollapsiblePanel
+      defaultOpen={defaultOpen}
+      title="Add gallery image"
+      description="Add screenshots or preview media to a managed project."
+    >
       <form
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
@@ -150,7 +151,7 @@ export function AddGalleryImageForm({
           </button>
         </div>
       </form>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

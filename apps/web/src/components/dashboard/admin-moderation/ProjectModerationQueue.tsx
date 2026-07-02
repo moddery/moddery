@@ -1,6 +1,6 @@
 import { type Mod } from '../../../types.ts';
 import { Pagination } from '../../Pagination.tsx';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { ProjectModerationRow } from './projects/ProjectModerationRow.tsx';
 import {
   ProjectModerationEmpty,
@@ -18,16 +18,11 @@ export function ProjectModerationQueue({
   const busy = projectModerationQueueBusy(queue.busySlug);
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Project review"
-        action={
-          <span className="text-sm font-semibold text-muted">
-            {queue.totalHits.toLocaleString('en-US')} queued
-          </span>
-        }
-      />
-
+    <CollapsiblePanel
+      title="Project review"
+      hint={`${queue.totalHits.toLocaleString('en-US')} queued`}
+      defaultOpen={true}
+    >
       <label className="mt-4 grid gap-1 text-sm font-bold text-ink">
         Reason
         <input
@@ -94,7 +89,7 @@ export function ProjectModerationQueue({
           {queue.message}
         </p>
       )}
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

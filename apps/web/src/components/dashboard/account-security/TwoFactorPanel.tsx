@@ -8,7 +8,7 @@ import {
   type TwoFactorSetup,
 } from '../../../lib/dashboard.ts';
 import { DashboardField } from './shared.tsx';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 
 type TwoFactorBusyAction = 'disable' | 'enable' | 'setup';
 
@@ -82,13 +82,12 @@ export function TwoFactorPanel({
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Two-factor authentication"
-        description="Require a six-digit authenticator code when signing in."
-        action={<ShieldCheck className="size-5 text-accent-icon" />}
-      />
-
+    <CollapsiblePanel
+      title="Two-factor authentication"
+      description="Require a six-digit authenticator code when signing in."
+      action={<ShieldCheck className="size-5 text-accent-icon" />}
+      defaultOpen={true}
+    >
       <div className="mt-4 rounded-lg border border-line bg-control p-4">
         <p className="text-sm font-bold text-ink">
           Status: {locallyEnabled ? 'enabled' : 'disabled'}
@@ -145,7 +144,7 @@ export function TwoFactorPanel({
       {message && (
         <p className="mt-3 text-sm font-semibold text-muted">{message}</p>
       )}
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

@@ -24,16 +24,10 @@ import {
   ReleaseModerationQueue,
   TaxonomyPanel,
 } from '../AdminModerationPanels.tsx';
-import {
-  CollectionManagement,
-  OrganizationTeamManagementForm,
-} from '../ContentManagementPanels.tsx';
-import { OrganizationProjectForms } from '../content-management/OrganizationProjectForms.tsx';
 import { SectionHeader } from '../../ui/dashboard/index.ts';
 import { DashboardEntityList } from '../edit/DashboardEntityList.tsx';
 import { useDashboardModal } from '../modals/DashboardModalProvider.tsx';
 import { type DashboardSectionId } from './dashboardSectionItems.ts';
-import { DashboardProjectWorkflowForms } from './DashboardProjectWorkflowForms.tsx';
 import { DashboardSummarySections } from './DashboardSummarySections.tsx';
 
 function CreateButton({
@@ -100,7 +94,6 @@ export function DashboardSections({
         <DashboardProjectsSection
           dashboard={dashboard}
           onOpenEdit={onOpenEdit}
-          onUpdated={onUpdated}
         />
       );
     case 'dashboard-content':
@@ -108,7 +101,6 @@ export function DashboardSections({
         <DashboardContentSection
           dashboard={dashboard}
           onOpenEdit={onOpenEdit}
-          onUpdated={onUpdated}
         />
       );
     case 'dashboard-collections':
@@ -116,7 +108,6 @@ export function DashboardSections({
         <DashboardCollectionsSection
           dashboard={dashboard}
           onOpenEdit={onOpenEdit}
-          onUpdated={onUpdated}
         />
       );
     case 'dashboard-account':
@@ -180,11 +171,9 @@ function DashboardSecuritySection({
 function DashboardContentSection({
   dashboard,
   onOpenEdit,
-  onUpdated,
 }: {
   dashboard: DashboardData;
   onOpenEdit?: (target: DashboardEditTarget) => void;
-  onUpdated: () => Promise<void>;
 }) {
   const { openModal } = useDashboardModal();
 
@@ -192,7 +181,6 @@ function DashboardContentSection({
     <section id="dashboard-content" className="space-y-5">
       <SectionHeader
         title="Organizations"
-        description="Create creator groups for shared ownership and project grouping."
         action={
           <CreateButton
             label="Create organization"
@@ -212,22 +200,6 @@ function DashboardContentSection({
         }))}
         onEdit={(id) => onOpenEdit?.({ entity: 'organizations', id })}
       />
-
-      {dashboard.organizations.length > 0 && (
-        <>
-          {dashboard.projects.length > 0 && (
-            <OrganizationProjectForms
-              organizations={dashboard.organizations}
-              projects={dashboard.projects}
-              onChanged={onUpdated}
-            />
-          )}
-          <OrganizationTeamManagementForm
-            organizations={dashboard.organizations}
-            onChanged={onUpdated}
-          />
-        </>
-      )}
     </section>
   );
 }
@@ -235,36 +207,17 @@ function DashboardContentSection({
 function DashboardProjectsSection({
   dashboard,
   onOpenEdit,
-  onUpdated,
 }: {
   dashboard: DashboardData;
   onOpenEdit?: (target: DashboardEditTarget) => void;
-  onUpdated: () => Promise<void>;
 }) {
-  const { openModal } = useDashboardModal();
   const manageableProjects = dashboard.projects.filter(
     (project) => project.viewerCapabilities?.manageDetails === true,
   );
 
   return (
     <section id="dashboard-projects" className="space-y-5">
-      <SectionHeader
-        title="Projects"
-        description="Publish new projects and releases, or manage the ones you own."
-        action={
-          <div className="flex gap-2">
-            <CreateButton
-              label="Publish project"
-              onClick={() => openModal('project')}
-            />
-            <CreateButton
-              label="Upload version"
-              variant="secondary"
-              onClick={() => openModal('version')}
-            />
-          </div>
-        }
-      />
+      <SectionHeader title="Projects" />
       <DashboardEntityList
         emptyTitle="No editable projects"
         emptyBody="Publish a project to manage its metadata here."
@@ -276,10 +229,6 @@ function DashboardProjectsSection({
         }))}
         onEdit={(id) => onOpenEdit?.({ entity: 'projects', id })}
       />
-      <DashboardProjectWorkflowForms
-        dashboard={dashboard}
-        onUpdated={onUpdated}
-      />
     </section>
   );
 }
@@ -287,11 +236,9 @@ function DashboardProjectsSection({
 function DashboardCollectionsSection({
   dashboard,
   onOpenEdit,
-  onUpdated,
 }: {
   dashboard: DashboardData;
   onOpenEdit?: (target: DashboardEditTarget) => void;
-  onUpdated: () => Promise<void>;
 }) {
   const { openModal } = useDashboardModal();
 
@@ -299,7 +246,6 @@ function DashboardCollectionsSection({
     <section id="dashboard-collections" className="space-y-5">
       <SectionHeader
         title="Collections"
-        description="Create curated lists and add managed projects to them."
         action={
           <CreateButton
             label="Create collection"
@@ -317,12 +263,6 @@ function DashboardCollectionsSection({
           name: collection.name,
         }))}
         onEdit={(id) => onOpenEdit?.({ entity: 'collections', id })}
-      />
-      <CollectionManagement
-        collections={dashboard.collections}
-        ownerUsername={dashboard.username}
-        projects={dashboard.projects}
-        onChanged={onUpdated}
       />
     </section>
   );

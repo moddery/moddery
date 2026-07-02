@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchProjectMemberSearch } from '../../../lib/catalog.ts';
 import { type DashboardProject } from '../../../lib/dashboard.ts';
 import { Pagination } from '../../Pagination.tsx';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { ProjectTeamFields } from './team-management/ProjectTeamFields.tsx';
 import { ProjectTeamMembersList } from './team-management/ProjectTeamMembersList.tsx';
 import { useProjectTeamManagementState } from './team-management/useProjectTeamManagementState.ts';
@@ -12,8 +12,10 @@ import { useProjectTeamManagementState } from './team-management/useProjectTeamM
 const memberPageSize = 12;
 
 export function ProjectTeamManagementForm({
+  defaultOpen = false,
   projects,
 }: {
+  defaultOpen?: boolean;
   projects: DashboardProject[];
 }) {
   const state = useProjectTeamManagementState(projects);
@@ -62,12 +64,11 @@ export function ProjectTeamManagementForm({
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Manage project team"
-        description="Invite an existing user to a project team or remove a non-owner member."
-      />
-
+    <CollapsiblePanel
+      defaultOpen={defaultOpen}
+      title="Manage project team"
+      description="Invite an existing user to a project team or remove a non-owner member."
+    >
       <form
         onSubmit={(event) => void addMember(event)}
         className="mt-4 grid gap-3"
@@ -126,7 +127,7 @@ export function ProjectTeamManagementForm({
           </div>
         )}
       </form>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

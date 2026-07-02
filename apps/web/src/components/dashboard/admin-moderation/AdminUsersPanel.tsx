@@ -1,7 +1,7 @@
 import { type FormEvent } from 'react';
 
 import { Pagination } from '../../Pagination.tsx';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { AdminUserRow } from './admin-users/AdminUserRow.tsx';
 import { useAdminUsersPanelState } from './admin-users/useAdminUsersPanelState.ts';
 import { DashboardField, ReportActionButton } from './shared.tsx';
@@ -30,24 +30,19 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="User accounts"
-        description="Recent accounts and moderation access."
-        action={
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-semibold text-muted">
-              {totalHits.toLocaleString('en-US')} users
-            </span>
-            <ReportActionButton
-              disabled={busy || usersQuery.isFetching}
-              onClick={() => void usersQuery.refetch()}
-            >
-              Refresh
-            </ReportActionButton>
-          </div>
-        }
-      />
+    <CollapsiblePanel
+      title="User accounts"
+      description="Recent accounts and moderation access."
+      hint={`${totalHits.toLocaleString('en-US')} users`}
+      action={
+        <ReportActionButton
+          disabled={busy || usersQuery.isFetching}
+          onClick={() => void usersQuery.refetch()}
+        >
+          Refresh
+        </ReportActionButton>
+      }
+    >
       <form onSubmit={onSearch} className="mt-4 flex max-w-xl gap-2">
         <div className="min-w-0 flex-1">
           <DashboardField
@@ -106,7 +101,7 @@ export function AdminUsersPanel({ viewerId }: { viewerId: string }) {
           </div>
         )}
       </div>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

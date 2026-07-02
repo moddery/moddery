@@ -5,7 +5,7 @@ import {
   scanVersionFile,
   type DashboardProject,
 } from '../../../lib/dashboard.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { FileScanResultFields } from './file-scan/FileScanResultFields.tsx';
 import { FileScanSelectedFileSummary } from './file-scan/FileScanSelectedFileSummary.tsx';
 import { FileScanSelectors } from './file-scan/FileScanSelectors.tsx';
@@ -59,12 +59,10 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
   if (projects.length === 0) return null;
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Record file scan"
-        description="Attach a moderation scan result to a version file."
-      />
-
+    <CollapsiblePanel
+      title="Record file scan"
+      description="Attach a moderation scan result to a version file."
+    >
       <form
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
@@ -113,7 +111,7 @@ export function FileScanForm({ projects }: { projects: DashboardProject[] }) {
           )}
         </div>
       </form>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

@@ -8,7 +8,7 @@ import {
 } from '../../../lib/dashboard.ts';
 import { enumLabel } from '../../../lib/labels.ts';
 import { Pagination } from '../../Pagination.tsx';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { nullableText } from './shared.tsx';
 
 const releaseModerationPageSize = 20;
@@ -58,16 +58,11 @@ export function ReleaseModerationQueue() {
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Release review"
-        action={
-          <span className="text-sm font-semibold text-muted">
-            {totalHits.toLocaleString('en-US')} queued
-          </span>
-        }
-      />
-
+    <CollapsiblePanel
+      title="Release review"
+      hint={`${totalHits.toLocaleString('en-US')} queued`}
+      defaultOpen={true}
+    >
       <label className="mt-4 grid gap-1 text-sm font-bold text-ink">
         Reason
         <input
@@ -129,7 +124,7 @@ export function ReleaseModerationQueue() {
           {message}
         </p>
       )}
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 
