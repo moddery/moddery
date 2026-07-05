@@ -4,14 +4,16 @@ import {
   updateVersionDependencies,
   type DashboardData,
 } from '../../../lib/dashboard.ts';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { DependencyFields } from './edit-version-dependencies/DependencyFields.tsx';
 import { DependencyVersionSelectors } from './edit-version-dependencies/DependencyVersionSelectors.tsx';
 import { useVersionDependencyFormState } from './edit-version-dependencies/useVersionDependencyFormState.ts';
 
 export function EditVersionDependencyForm({
+  defaultOpen = false,
   projects,
 }: {
+  defaultOpen?: boolean;
   projects: DashboardData['projects'];
 }) {
   const form = useVersionDependencyFormState(projects);
@@ -53,12 +55,11 @@ export function EditVersionDependencyForm({
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Edit version dependency"
-        description="Replace the dependency list for a version with project, version, or external file dependencies."
-      />
-
+    <CollapsiblePanel
+      defaultOpen={defaultOpen}
+      title="Edit version dependency"
+      description="Replace the dependency list for a version with project, version, or external file dependencies."
+    >
       <form
         onSubmit={(event) => void submit(event)}
         className="mt-4 grid gap-3"
@@ -110,7 +111,7 @@ export function EditVersionDependencyForm({
           </button>
         </div>
       </form>
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

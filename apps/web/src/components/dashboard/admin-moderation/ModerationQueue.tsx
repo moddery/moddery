@@ -8,7 +8,7 @@ import {
   type ModerationReportState,
 } from '../../../lib/dashboard.ts';
 import { Pagination } from '../../Pagination.tsx';
-import { DashboardPanel, SectionHeader } from '../../ui/dashboard/index.ts';
+import { CollapsiblePanel } from '../../ui/dashboard/index.ts';
 import { ReportRow } from './reports/ReportRow.tsx';
 
 const pageSize = 20;
@@ -46,16 +46,11 @@ export function ModerationQueue() {
   }
 
   return (
-    <DashboardPanel>
-      <SectionHeader
-        title="Moderation queue"
-        action={
-          <span className="text-sm font-semibold text-muted">
-            {totalHits.toLocaleString('en-US')} active
-          </span>
-        }
-      />
-
+    <CollapsiblePanel
+      title="Moderation queue"
+      hint={`${totalHits.toLocaleString('en-US')} active`}
+      defaultOpen={true}
+    >
       {message && (
         <p className="mt-4 rounded-md bg-accent-soft px-3 py-2 text-sm font-bold text-ink">
           {message}
@@ -99,7 +94,7 @@ export function ModerationQueue() {
           )}
         </div>
       )}
-    </DashboardPanel>
+    </CollapsiblePanel>
   );
 }
 

@@ -19,6 +19,7 @@ export {
   type WizardStep,
 } from './MultiStepDialog.tsx';
 export {
+  CollapsiblePanel,
   DashboardPanel,
   FieldGroup,
   PanelEmptyState,
